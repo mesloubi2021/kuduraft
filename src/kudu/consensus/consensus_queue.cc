@@ -89,6 +89,14 @@ DEFINE_bool(synchronous_transfer_leadership, false,
             "When a transfer leadership call is made, it checks if peer is already "
             "caught up and initiates transfer leadership, short circuiting async "
             "wait for next response");
+
+// FB - warning - this is disabled in upstream Mysql raft, because automatic
+// health management of peers is risky. It also reduces contention on consensus
+// queue lock, as it does not have to be reacquired.
+DEFINE_bool(update_peer_health_status, true,
+            "After every request for peer, maintain the health status of the peer "
+            " This can be used to evict an irrecovarable peer");
+
 TAG_FLAG(synchronous_transfer_leadership, advanced);
 DECLARE_bool(enable_flexi_raft);
 
@@ -678,7 +686,12 @@ Status PeerMessageQueue::RequestForPeer(const string& uuid,
   // Always trigger a health status update check at the end of this function.
   bool wal_catchup_progress = false;
   bool wal_catchup_failure = false;
+  // Preventing the overhead of this as we need to take consensus queue lock
+  // again
   SCOPED_CLEANUP({
+      if (!FLAGS_update_peer_health_status) {
+        return;
+      }
       std::lock_guard<simple_spinlock> lock(queue_lock_);
       TrackedPeer* peer = FindPtrOrNull(peers_map_, uuid);
       if (PREDICT_FALSE(peer == nullptr || queue_state_.mode == NON_LEADER)) {

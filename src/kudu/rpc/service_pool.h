@@ -18,6 +18,7 @@
 #ifndef KUDU_SERVICE_POOL_H
 #define KUDU_SERVICE_POOL_H
 
+#include <atomic>
 #include <cstddef>
 #include <functional>
 #include <string>
@@ -92,6 +93,11 @@ class ServicePool : public RpcService {
 
   const std::string service_name() const;
 
+  /**
+   * Dump the current contents of the service queue
+   */
+  std::string RpcServiceQueueToString() const;
+
  private:
   void RunThread();
   void RejectTooBusy(InboundCall* c);
@@ -107,6 +113,7 @@ class ServicePool : public RpcService {
   bool closing_;
 
   std::function<void(void)> too_busy_hook_;
+  std::atomic<bool> logged_busy_;
 
   DISALLOW_COPY_AND_ASSIGN(ServicePool);
 };

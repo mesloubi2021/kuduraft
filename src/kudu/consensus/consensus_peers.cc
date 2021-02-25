@@ -243,6 +243,15 @@ void Peer::SendNextRequest(bool even_if_queue_empty) {
       request_.committed_index() : kMinimumOpIdIndex;
 
   if (PREDICT_FALSE(!s.ok())) {
+    // Incrementing failed_attempts_ prevents a RequestForPeer error to continually
+    // trigger an error on every actual write. The next attempt to RequestForPeer
+    // will now be restricted to Heartbeats, but because this is hard failure
+    // it will keep failing but only fail less often.
+    // TODO -
+    // Make empty heartbeats go through after a failure to send actual messages,
+    // without changing the cursor at all on peer, but still maintaining authority on
+    // it. Otherwise node keeps asking for votes, destabilizing cluster.
+    failed_attempts_++;
     VLOG_WITH_PREFIX_UNLOCKED(1) << s.ToString();
     return;
   }

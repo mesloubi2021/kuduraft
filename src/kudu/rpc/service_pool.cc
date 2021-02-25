@@ -79,7 +79,8 @@ ServicePool::ServicePool(gscoped_ptr<ServiceIf> service,
     incoming_queue_time_(METRIC_rpc_incoming_queue_time.Instantiate(entity)),
     rpcs_timed_out_in_queue_(METRIC_rpcs_timed_out_in_queue.Instantiate(entity)),
     rpcs_queue_overflow_(METRIC_rpcs_queue_overflow.Instantiate(entity)),
-    closing_(false) {
+    closing_(false),
+    logged_busy_(false) {
 }
 
 ServicePool::~ServicePool() {
@@ -129,12 +130,22 @@ void ServicePool::RejectTooBusy(InboundCall* c) {
   KLOG_EVERY_N_SECS(WARNING, 300) << err_msg;
   c->RespondFailure(ErrorStatusPB::ERROR_SERVER_TOO_BUSY,
                     Status::ServiceUnavailable(err_msg));
-  DLOG(INFO) << err_msg << " Contents of service queue:\n"
-             << service_queue_.ToString();
+
+  if (!logged_busy_.load(std::memory_order_acquire)) {
+    // throttle, as don't want to flood log with lines if
+    // pool is always at edge of queue.
+    KLOG_EVERY_N_SECS(WARNING, 600) << err_msg << " Contents of service queue:\n"
+        << service_queue_.ToString();
+    logged_busy_ = true;
+  }
 
   if (too_busy_hook_) {
     too_busy_hook_();
   }
+}
+
+std::string ServicePool::RpcServiceQueueToString() const {
+  return service_queue_.ToString();
 }
 
 RpcMethodInfo* ServicePool::LookupMethod(const RemoteMethod& method) {
@@ -172,6 +183,9 @@ Status ServicePool::QueueInboundCall(gscoped_ptr<InboundCall> call) {
   if (PREDICT_FALSE(evicted != boost::none)) {
     RejectTooBusy(*evicted);
   }
+
+  // success in enqueu. Clear the printed state for busy
+  logged_busy_.store(false, std::memory_order_release);
 
   if (PREDICT_TRUE(queue_status == QUEUE_SUCCESS)) {
     // NB: do not do anything with 'c' after it is successfully queued --
