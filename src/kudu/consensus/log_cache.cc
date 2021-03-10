@@ -99,7 +99,8 @@ LogCache::LogCache(const scoped_refptr<MetricEntity>& metric_entity,
     next_sequential_op_index_(0),
     min_pinned_op_index_(0),
     metrics_(metric_entity),
-    codec_(nullptr) {
+    codec_(nullptr),
+    enable_compression_on_cache_miss_(false) {
 
 
   const int64_t max_ops_size_bytes = FLAGS_log_cache_size_limit_mb * 1024L * 1024L;
@@ -140,6 +141,7 @@ Status LogCache::SetCompressionCodec(const std::string& codec) {
   if (codec.empty()) {
     LOG(INFO) << "Disabling compression";
     codec_.store(nullptr);
+    enable_compression_on_cache_miss_ = false;
     return Status::OK();
   }
 
@@ -155,6 +157,18 @@ Status LogCache::SetCompressionCodec(const std::string& codec) {
 
   LOG(INFO) << "Updating compression codec to: " << codec;
   codec_.store(comp_codec);
+  return Status::OK();
+}
+
+Status LogCache::EnableCompressionOnCacheMiss(bool enable) {
+  if (enable && codec_ == nullptr) {
+    LOG(INFO) << "Compression codec needs to be set before enabling compression on cache miss";
+    return Status::NotSupported("Compression codec is not set");
+  }
+
+  enable_compression_on_cache_miss_ = enable;
+
+  LOG(INFO) << "Compression on cache miss is set to: " << enable;
   return Status::OK();
 }
 
@@ -255,21 +269,20 @@ Status LogCache::UncompressMsg(const ReplicateRefPtr& msg,
   return Status::OK();
 }
 
-Status LogCache::CompressMsg(const ReplicateRefPtr& msg,
+Status LogCache::CompressMsg(const ReplicateMsg* msg,
                              faststring& buffer,
                              std::unique_ptr<ReplicateMsg>* compressed_msg) {
   // Grab the reference to the payload that needs to be compressed
-  ReplicateMsg* original_msg = msg->get();
-  const std::string& payload_str = original_msg->write_payload().payload();
+  const std::string& payload_str = msg->write_payload().payload();
   bool is_compressed =
-    (original_msg->write_payload().compression_codec() != NO_COMPRESSION);
+    (msg->write_payload().compression_codec() != NO_COMPRESSION);
 
   if (PREDICT_FALSE(is_compressed)) {
     // msg is already compressed
     return Status::NotSupported("Double compression is not supported");
   }
 
-  if (original_msg->op_type() != WRITE_OP_EXT) {
+  if (msg->op_type() != WRITE_OP_EXT) {
     // Compression of messages other than WRITE_OP_EXT is not supported
     return Status::NotSupported("Only write ops can be compressed");
   }
@@ -291,22 +304,22 @@ Status LogCache::CompressMsg(const ReplicateRefPtr& msg,
 
   if (!status.ok()) {
     LOG(ERROR) <<
-      "Compression failed for OpId: " << msg->get()->id().ShortDebugString();
+      "Compression failed for OpId: " << msg->id().ShortDebugString();
     return status;
   }
 
   // Resize buffer to the actual compressed length
   buffer.resize(compressed_len);
-  VLOG(2) << "Compressed OpId: " <<  msg->get()->id().ShortDebugString() <<
+  VLOG(2) << "Compressed OpId: " <<  msg->id().ShortDebugString() <<
              " original payload size: " << uncompressed_slice.size() <<
              " compressed payload size: " << compressed_len;
 
   // Now create a new replicate message and copy contents from original message
   // and compressed payload
   std::unique_ptr<ReplicateMsg> rep_msg(new ReplicateMsg);
-  *(rep_msg->mutable_id()) = msg->get()->id();
-  rep_msg->set_timestamp(msg->get()->timestamp());
-  rep_msg->set_op_type(msg->get()->op_type());
+  *(rep_msg->mutable_id()) = msg->id();
+  rep_msg->set_timestamp(msg->timestamp());
+  rep_msg->set_op_type(msg->op_type());
 
   WritePayloadPB* write_payload = rep_msg->mutable_write_payload();
   write_payload->set_payload(std::move(buffer.ToString()));
@@ -314,6 +327,26 @@ Status LogCache::CompressMsg(const ReplicateRefPtr& msg,
   write_payload->set_uncompressed_size(payload_str.size());
 
   compressed_msg->reset(rep_msg.release());
+  return Status::OK();
+}
+
+Status LogCache::CompressMsgs(const vector<ReplicateMsg*>& replicate_ptrs,
+                              vector<ReplicateMsg*>* compressed_replicate_ptrs) {
+  faststring compression_buffer;
+  std::unique_ptr<ReplicateMsg> compressed_msg;
+  compressed_replicate_ptrs->clear();
+  compressed_replicate_ptrs->reserve(replicate_ptrs.size());
+
+  for (ReplicateMsg* msg : replicate_ptrs) {
+    auto status = CompressMsg(msg, compression_buffer, &compressed_msg);
+    if (status.ok()) {
+      compressed_replicate_ptrs->emplace_back(compressed_msg.release());
+      delete msg;
+    } else {
+      compressed_replicate_ptrs->emplace_back(msg);
+    }
+  }
+
   return Status::OK();
 }
 
@@ -356,7 +389,7 @@ Status LogCache::AppendOperations(const vector<ReplicateRefPtr>& msgs,
     if (!is_compressed && codec && op_type == WRITE_OP_EXT) {
       std::unique_ptr<ReplicateMsg> compressed_msg;
       auto status =
-        CompressMsg(msg, log_cache_compression_buf_, &compressed_msg);
+        CompressMsg(msg->get(), log_cache_compression_buf_, &compressed_msg);
       if (status.ok()) {
         // Successfully compressed this msg. So, use the compressed msg to cache
         e.mem_usage = static_cast<int64_t>(compressed_msg->SpaceUsedLong());
@@ -637,11 +670,32 @@ Status LogCache::ReadOps(int64_t after_op_index,
         log_->ReadReplicatesInRange(
           next_index, up_to, remaining_space, context, &raw_replicate_ptrs),
         Substitute("Failed to read ops $0..$1", next_index, up_to));
-      l.lock();
+
       VLOG_WITH_PREFIX_UNLOCKED(2)
           << "Successfully read " << raw_replicate_ptrs.size() << " ops "
           << "from disk (" << next_index << ".."
           << (next_index + raw_replicate_ptrs.size() - 1) << ")";
+
+      if (enable_compression_on_cache_miss_ && !context.route_via_proxy) {
+        // Compress messages read from the log if:
+        // (1) the feature is enabled through
+        // enable_compression_on_cache_miss_ flag
+        // (2) the request is not for a proxy host (the payload is discarded for
+        // a proxy request and it is wasteful to compress it here)
+        vector<ReplicateMsg*> compressed_replicate_ptrs;
+        (void) CompressMsgs(raw_replicate_ptrs, &compressed_replicate_ptrs);
+
+        // TODO (vinay): Refactor this to not have to copy pointers again into
+        // original vector
+        raw_replicate_ptrs.clear();
+        raw_replicate_ptrs.reserve(compressed_replicate_ptrs.size());
+        raw_replicate_ptrs.insert(
+            raw_replicate_ptrs.end(),
+            compressed_replicate_ptrs.begin(),
+            compressed_replicate_ptrs.end());
+      }
+
+      l.lock();
 
       for (ReplicateMsg* msg : raw_replicate_ptrs) {
         CHECK_EQ(next_index, msg->id().index());

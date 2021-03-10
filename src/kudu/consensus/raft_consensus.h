@@ -588,6 +588,9 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // Set the compression codec to be used to compress ReplicateMsg payload
   Status SetCompressionCodec(const std::string& codec);
 
+  // Enables (or disables) compression of messages read from log
+  Status EnableCompressionOnCacheMiss(bool enable);
+
  protected:
   RaftConsensus(ConsensusOptions options,
                 RaftPeerPB local_peer_pb,

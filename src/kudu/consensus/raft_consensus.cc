@@ -4048,6 +4048,11 @@ Status RaftConsensus::SetCompressionCodec(const std::string& codec) {
   return queue_->log_cache()->SetCompressionCodec(codec);
 }
 
+Status RaftConsensus::EnableCompressionOnCacheMiss(bool enable) {
+  LockGuard l(lock_);
+  return queue_->log_cache()->EnableCompressionOnCacheMiss(enable);
+}
+
 ////////////////////////////////////////////////////////////////////////
 // ConsensusBootstrapInfo
 ////////////////////////////////////////////////////////////////////////
