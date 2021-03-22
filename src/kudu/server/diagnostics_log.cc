@@ -67,6 +67,8 @@ namespace google {
 // returns false.
 bool Symbolize(void *pc, char *out, int out_size);
 }
+DEFINE_bool(diagnostics_thread_refresh_histogram_stats, false,
+            "Refresh the histogram stats after flushing stats");
 
 DEFINE_int32(diagnostics_log_stack_traces_interval_ms, 60000,
              "The interval at which the server will a snapshot of its thread stacks to the "
@@ -336,7 +338,7 @@ Status DiagnosticsLog::LogStacks(const string& reason) {
 
 Status DiagnosticsLog::LogMetrics() {
   MetricJsonOptions opts;
-  opts.include_raw_histograms = true;
+  opts.include_raw_histograms = false;
 
   opts.only_modified_in_or_after_epoch = metrics_epoch_;
 
@@ -348,6 +350,7 @@ Status DiagnosticsLog::LogMetrics() {
   // Entity attributes aren't that useful in the context of this log. We can
   // always grab the entity attributes separately if necessary.
   opts.include_entity_attributes = false;
+  opts.refresh_histogram_metrics = FLAGS_diagnostics_thread_refresh_histogram_stats;
 
   std::ostringstream buf;
   MicrosecondsInt64 now = GetCurrentTimeMicros();
