@@ -728,6 +728,7 @@ Status PeerMessageQueue::RequestForPeer(const string& uuid,
     read_context.for_peer_uuid = &uuid;
     read_context.for_peer_host = &peer_copy.peer_pb.last_known_addr().host();
     read_context.for_peer_port = peer_copy.peer_pb.last_known_addr().port();
+    read_context.route_via_proxy = route_via_proxy;
 
     // We try to get the follower's next_index from our log.
     Status s = log_cache_.ReadOps(peer_copy.next_index - 1,

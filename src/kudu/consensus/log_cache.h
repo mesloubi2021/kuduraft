@@ -169,6 +169,9 @@ class LogCache {
   // Sets compression codec and updates the internal codec_ atomic pointer
   Status SetCompressionCodec(const std::string& codec);
 
+  // Enable (or disable) compression of messages read from log
+  Status EnableCompressionOnCacheMiss(bool enable);
+
  private:
   FRIEND_TEST(LogCacheTest, TestAppendAndGetMessages);
   FRIEND_TEST(LogCacheTest, TestGlobalMemoryLimit);
@@ -179,9 +182,15 @@ class LogCache {
   // Compress the payload in 'msg' and populate a new ReplicateMsg with
   // compressed payload in 'compressed_msg'. Uses 'buffer' as a temporary buffer
   // to hold the compressed message
-  Status CompressMsg(const ReplicateRefPtr& msg,
+  Status CompressMsg(const ReplicateMsg* msg,
                      faststring& buffer,
                      std::unique_ptr<ReplicateMsg>* compressed_msg);
+
+  // Compress all messages in 'replicate_ptrs' and return the compressed
+  // messages in 'compressed_replicate_ptrs'. If any message is uncompressable,
+  // then it inserts the original msg into 'compressed_replicate_ptrs'
+  Status CompressMsgs(const std::vector<ReplicateMsg*>& replicate_ptrs,
+                      std::vector<ReplicateMsg*>* compressed_repliate_ptrs);
 
   // Uncompresses the payload of 'msg' based on its compression_codec and
   // populates a new ReplicateMsg with uncompressed payload in
@@ -289,6 +298,8 @@ class LogCache {
   // serialized externally and that there can be only one in-flight append
   // operation
   faststring log_cache_compression_buf_;
+
+  std::atomic<bool> enable_compression_on_cache_miss_;
 
   DISALLOW_COPY_AND_ASSIGN(LogCache);
 };
