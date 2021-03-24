@@ -490,13 +490,21 @@ void Peer::ProcessResponseError(const Status& status) {
   }
 #endif
 
-  KLOG_EVERY_N_SECS(WARNING, 300) << LogPrefixUnlocked() << "Couldn't send request to peer [EVERY 300 seconds] " << peer_pb_.permanent_uuid()
-      << " for tablet " << tablet_id_ << "."
+  request_pending_ = false;
+
+  if (status.IsIllegalState() &&
+      status.ToString().find("Previous Rotate Event with") != std::string::npos) {
+    // This is expected rotation delay. Do not log error and return early
+    return;
+  }
+
+  KLOG_EVERY_N_SECS(WARNING, 300)
+      << LogPrefixUnlocked() << "Couldn't send request to peer "
+      << peer_pb_.permanent_uuid() << " for tablet " << tablet_id_ << "."
       << resp_err_info
       << " Status: " << status.ToString() << "."
       << " Retrying in the next heartbeat period."
       << " Already tried " << failed_attempts_ << " times.";
-  request_pending_ = false;
 }
 
 string Peer::LogPrefixUnlocked() const {

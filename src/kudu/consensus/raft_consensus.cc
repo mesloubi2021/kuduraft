@@ -1756,7 +1756,12 @@ Status RaftConsensus::UpdateReplica(const ConsensusRequestPB* request,
                                 request->caller_uuid(),
                                 request->caller_term(),
                                 prepare_status.ToString());
-        LOG_WITH_PREFIX_UNLOCKED(INFO) << msg;
+
+        // Log the message only when there is no rotation message in this batch
+        if (!expected_rotation_delay) {
+          LOG_WITH_PREFIX_UNLOCKED(INFO) << msg;
+        }
+
         FillConsensusResponseError(response, ConsensusErrorPB::CANNOT_PREPARE,
                                    Status::IllegalState(msg));
         FillConsensusResponseOKUnlocked(response);
