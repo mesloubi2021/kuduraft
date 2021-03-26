@@ -844,6 +844,9 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
                                        const std::string& hostname_port,
                                        VoteResponsePB* response);
 
+  // Get the context sent by the candidate as a string. Used for logging
+  std::string GetCandidateContextString(const VoteRequestPB* request);
+
   // Callback for leader election driver. ElectionCallback is run on the
   // reactor thread, so it simply defers its work to DoElectionCallback.
   void ElectionCallback(ElectionContext context, const ElectionResult& result);

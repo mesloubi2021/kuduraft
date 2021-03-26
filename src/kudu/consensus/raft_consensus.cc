@@ -651,6 +651,9 @@ Status RaftConsensus::StartElection(ElectionMode mode, ElectionContext context) 
     request.set_ignore_live_leader(mode == ELECT_EVEN_IF_LEADER_IS_ALIVE);
     request.set_candidate_uuid(peer_uuid());
     request.set_candidate_term(candidate_term);
+    *request.mutable_candidate_context()->mutable_candidate_peer_pb() =
+      local_peer_pb_;
+
     if (mode == PRE_ELECTION) {
       request.set_is_pre_election(true);
     }
@@ -2594,13 +2597,14 @@ Status RaftConsensus::RequestVoteRespondInvalidTerm(const VoteRequestPB* request
                                                     VoteResponsePB* response) {
   FillVoteResponseVoteDenied(ConsensusErrorPB::INVALID_TERM, response);
   string msg = Substitute("$0: Denying $1 to candidate $2 $3 for earlier term $4. "
-                          "Current term is $5.",
+                          "Current term is $5. Candidate context $6. ",
                           GetRequestVoteLogPrefixUnlocked(*request),
                           (request->is_pre_election() ? "pre-vote" : "vote"),
                           hostname_port,
                           request->candidate_uuid(),
                           request->candidate_term(),
-                          CurrentTermUnlocked());
+                          CurrentTermUnlocked(),
+                          GetCandidateContextString(request));
   LOG(INFO) << msg;
   StatusToPB(Status::InvalidArgument(msg), response->mutable_consensus_error()->mutable_status());
   return Status::OK();
@@ -2611,12 +2615,14 @@ Status RaftConsensus::RequestVoteRespondVoteAlreadyGranted(const VoteRequestPB* 
                                                            VoteResponsePB* response) {
   FillVoteResponseVoteGranted(response);
   LOG(INFO) << Substitute("$0: Already granted yes $1 for candidate $2 $3 in term $4. "
+                          "Candidate context $5. "
                           "Re-sending same reply.",
                           GetRequestVoteLogPrefixUnlocked(*request),
                           (request->is_pre_election() ? "pre-vote" : "vote"),
                           hostname_port,
                           request->candidate_uuid(),
-                          request->candidate_term());
+                          request->candidate_term(),
+                          GetCandidateContextString(request));
   return Status::OK();
 }
 
@@ -2625,13 +2631,15 @@ Status RaftConsensus::RequestVoteRespondAlreadyVotedForOther(const VoteRequestPB
                                                              VoteResponsePB* response) {
   FillVoteResponseVoteDenied(ConsensusErrorPB::ALREADY_VOTED, response);
   string msg = Substitute("$0: Denying $1 to candidate $2 $3 in current term $4: "
-                          "Already voted for candidate $5 in this term.",
+                          "Already voted for candidate $5 in this term. "
+                          "Candidate context $6.",
                           GetRequestVoteLogPrefixUnlocked(*request),
                           (request->is_pre_election() ? "pre-vote" : "vote"),
                           hostname_port,
                           request->candidate_uuid(),
                           CurrentTermUnlocked(),
-                          GetVotedForCurrentTermUnlocked());
+                          GetVotedForCurrentTermUnlocked(),
+                          GetCandidateContextString(request));
   LOG(INFO) << msg;
   StatusToPB(Status::InvalidArgument(msg), response->mutable_consensus_error()->mutable_status());
   return Status::OK();
@@ -2644,14 +2652,16 @@ Status RaftConsensus::RequestVoteRespondLastOpIdTooOld(const OpId& local_last_lo
   FillVoteResponseVoteDenied(ConsensusErrorPB::LAST_OPID_TOO_OLD, response);
   string msg = Substitute("$0: Denying $1 to candidate $2 $3 for term $4 because "
                           "replica has last-logged OpId of $5, which is greater than that of the "
-                          "candidate, which has last-logged OpId of $6.",
+                          "candidate, which has last-logged OpId of $6. "
+                          "Candidate context: $7.",
                           GetRequestVoteLogPrefixUnlocked(*request),
                           (request->is_pre_election() ? "pre-vote" : "vote"),
                           hostname_port,
                           request->candidate_uuid(),
                           request->candidate_term(),
                           SecureShortDebugString(local_last_logged_opid),
-                          SecureShortDebugString(request->candidate_status().last_received()));
+                          SecureShortDebugString(request->candidate_status().last_received()),
+                          GetCandidateContextString(request));
   LOG(INFO) << msg;
   StatusToPB(Status::InvalidArgument(msg), response->mutable_consensus_error()->mutable_status());
   return Status::OK();
@@ -2662,12 +2672,14 @@ Status RaftConsensus::RequestVoteRespondVoteWitheld(const VoteRequestPB* request
                                                     VoteResponsePB* response) {
   FillVoteResponseVoteDenied(ConsensusErrorPB::UNKNOWN, response);
   string msg = Substitute("$0: Denying $1 to candidate $2 $3 for term $4 because "
-                          "votes are being witheld for testing.",
+                          "votes are being witheld for testing. "
+                          "Candidate context: $5.",
                           GetRequestVoteLogPrefixUnlocked(*request),
                           (request->is_pre_election() ? "pre-vote" : "vote"),
                           hostname_port,
                           request->candidate_uuid(),
-                          request->candidate_term());
+                          request->candidate_term(),
+                          GetCandidateContextString(request));
   LOG(INFO) << msg;
   StatusToPB(Status::InvalidArgument(msg), response->mutable_consensus_error()->mutable_status());
   return Status::OK();
@@ -2679,12 +2691,13 @@ Status RaftConsensus::RequestVoteRespondLeaderIsAlive(const VoteRequestPB* reque
   FillVoteResponseVoteDenied(ConsensusErrorPB::LEADER_IS_ALIVE, response);
   string msg = Substitute("$0: Denying $1 to candidate $2 $3 for term $4 because "
                           "replica is either leader or believes a valid leader to "
-                          "be alive.",
+                          "be alive. Candidate context: $5.",
                           GetRequestVoteLogPrefixUnlocked(*request),
                           (request->is_pre_election() ? "pre-vote" : "vote"),
                           hostname_port,
                           request->candidate_uuid(),
-                          request->candidate_term());
+                          request->candidate_term(),
+                          GetCandidateContextString(request));
   LOG(INFO) << msg;
   StatusToPB(Status::InvalidArgument(msg), response->mutable_consensus_error()->mutable_status());
   return Status::OK();
@@ -2695,11 +2708,12 @@ Status RaftConsensus::RequestVoteRespondIsBusy(const VoteRequestPB* request,
   FillVoteResponseVoteDenied(ConsensusErrorPB::CONSENSUS_BUSY, response);
   string msg = Substitute("$0: Denying $1 to candidate $2 for term $3 because "
                           "replica is already servicing an update from a current leader "
-                          "or another vote.",
+                          "or another vote. Candidate context: $4. ",
                           GetRequestVoteLogPrefixUnlocked(*request),
                           (request->is_pre_election() ? "pre-vote" : "vote"),
                           request->candidate_uuid(),
-                          request->candidate_term());
+                          request->candidate_term(),
+                          GetCandidateContextString(request));
   LOG(INFO) << msg;
   StatusToPB(Status::ServiceUnavailable(msg),
              response->mutable_consensus_error()->mutable_status());
@@ -2727,12 +2741,32 @@ Status RaftConsensus::RequestVoteRespondVoteGranted(const VoteRequestPB* request
   // vote. When disk latency is high, this should help reduce churn.
   SnoozeFailureDetector(/*reason_for_log=*/boost::none, backoff);
 
-  LOG(INFO) << Substitute("$0: Granting yes vote for candidate $1 $2 in term $3.",
+  LOG(INFO) << Substitute("$0: Granting yes vote for candidate $1 $2 in term $3. "
+                          "Candidate context: $4.",
                           GetRequestVoteLogPrefixUnlocked(*request),
                           hostname_port,
                           request->candidate_uuid(),
-                          CurrentTermUnlocked());
+                          CurrentTermUnlocked(),
+                          GetCandidateContextString(request));
   return Status::OK();
+}
+
+std::string RaftConsensus::GetCandidateContextString(const VoteRequestPB* request) {
+  std::string msg = "No candidate context";
+
+  if (request && request->has_candidate_context() &&
+      request->candidate_context().has_candidate_peer_pb()) {
+    const RaftPeerPB& candidate_peer_pb =
+      request->candidate_context().candidate_peer_pb();
+
+    if (candidate_peer_pb.has_last_known_addr()) {
+      const HostPortPB& host_port = candidate_peer_pb.last_known_addr();
+      msg = Substitute("Candidate host $0.  Candidate port $1.",
+          host_port.host(), host_port.port());
+    }
+  }
+
+  return msg;
 }
 
 RaftPeerPB::Role RaftConsensus::role() const {
