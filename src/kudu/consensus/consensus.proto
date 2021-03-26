@@ -351,6 +351,14 @@ message ConsensusStatusPB {
   optional ConsensusErrorPB error = 3;
 }
 
+// The candidate populates this field and sends it along with the RequestVote
+// RPC.Current usage is mainly for logging to improve debugging leader
+// elections
+message CandidateContext {
+  // Candidate peer information
+  optional RaftPeerPB candidate_peer_pb = 1;
+}
+
 // A request from a candidate peer that wishes to become leader of
 // the configuration serving tablet with 'tablet_id'.
 // See RAFT sec. 5.2.
@@ -388,6 +396,9 @@ message VoteRequestPB {
   // In a "pre-election", voters should respond how they _would_ have voted
   // but not actually record the vote.
   optional bool is_pre_election = 7 [ default = false ];
+
+  // Additional candidate context that is passed by the candidate
+  optional CandidateContext candidate_context = 8;
 }
 
 // A response from a replica to a leader election request.
