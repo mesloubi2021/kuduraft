@@ -2229,6 +2229,62 @@ Status RaftConsensus::CheckBulkConfigChangeAndGetNewConfigUnlocked(
           }
           if (IsRaftConfigVoter(server_uuid, committed_config)) {
             num_voters_modified++;
+
+            // If we are in flexi-raft mode, we want to make sure that the number of
+            // voters does not dip below quorum requirements/min-rep-factor
+            // So if we have 6 voters in LEADER region and min-replication-factor/
+            // quorum = Majority(6) = 4, then in healthy state we are expecting 6 voters.
+            // We can safely remove 2 voters and we will still have 4 voters, having enough
+            // for write-availability, but we can't remove another one as that will make #voters=3
+            // which will prevent commit with a MIN-REP-FACTOR=4
+            // We are also currently only enforcing this requirement in current LEADER region
+            // for single region dynami mode. In SRD mode we allow other regions to go below this
+            // requirement, because it gives flexibility to automation to replace nodes without
+            // impacting the write availability.
+            if (FLAGS_enable_flexi_raft) {
+              const auto& vd_map = committed_config.voter_distribution();
+
+              std::map<std::string, int> voters_in_config_per_region;
+              std::string unused_leader_region;
+              std::string unused_leader_uuid;
+              // Get number of voters in each region
+              GetRegionalCountsFromConfig(
+                  committed_config, unused_leader_uuid, &voters_in_config_per_region,
+                  &unused_leader_region);
+
+              // single region dynamic mode.
+              bool srd_mode = committed_config.has_commit_rule() &&
+                  (committed_config.commit_rule().mode() == QuorumMode::SINGLE_REGION_DYNAMIC);
+              for (const RaftPeerPB& peer : committed_config.peers()) {
+                if (peer.permanent_uuid() != server_uuid) {
+                  continue;
+                }
+
+                // Zeroed in on the peer we are about to remove.
+                const std::string& region = peer.attrs().region();
+
+                // In SINGLE REGION DYANMIC mode, we only do this extra check
+                // in current LEADER region. the local peer is the LEADER
+                // because of CheckActiveLeaderUnlocked above
+                if (srd_mode && region != peer_region()) {
+                  break;
+                }
+                int current_count = voters_in_config_per_region[region];
+                // reduce count by 1
+                int future_count = current_count - 1;
+                auto vd_itr = vd_map.find(region);
+                if (vd_itr != vd_map.end()) {
+                  int expected_voters = (*vd_itr).second;
+                  int quorum = MajoritySize(expected_voters);
+                  if (future_count < quorum) {
+                    return Status::InvalidArgument(strings::Substitute("Cannot remove a voter in region: $0"
+                        " which will make future voter count: $1 dip below expected voters: $2",
+                        region, future_count, quorum));
+                  }
+                }
+                break;
+              }
+            }
           }
           break;
 
