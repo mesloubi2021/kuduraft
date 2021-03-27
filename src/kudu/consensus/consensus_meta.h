@@ -18,6 +18,7 @@
 
 #include <atomic>
 #include <cstdint>
+#include <deque>
 #include <string>
 
 #include <gtest/gtest_prod.h>
@@ -186,6 +187,27 @@ class ConsensusMetadata : public RefCountedThreadSafe<ConsensusMetadata> {
     return on_disk_size_.load(std::memory_order_relaxed);
   }
 
+  // Adds all the peer_uuid's in 'removed_peers' to the internal list
+  // (removed_peers_) tracking peers that have been removed from the active
+  // config. 'removed_peers_' can only track 'max_removed_peers' peers. So, the
+  // earliest peers are evicted from the list (if needed)
+  void InsertIntoRemovedPeersList(const std::vector<std::string>& removed_peers);
+
+  // Returns true if 'peer_uuid' is present in 'removed_peers_' list
+  bool IsPeerRemoved(const std::string& peer_uuid);
+
+  // Deletes all the uuids in 'peer_uuids' from 'removed_peers_' list
+  void DeleteFromRemovedPeersList(const std::vector<std::string>& peer_uuids);
+
+  // Deletes 'peer_uuid' frpm 'removed_peers_' list
+  void DeleteFromRemovedPeersList(const std::string& peer_uuid);
+
+  // Clears the 'removed_peers_' list
+  void ClearRemovedPeersList();
+
+  // Returns a copy of 'removed_peers_' list
+  std::vector<std::string> RemovedPeersList();
+
  private:
   friend class RefCountedThreadSafe<ConsensusMetadata>;
   friend class ConsensusMetadataManager;
@@ -274,6 +296,11 @@ class ConsensusMetadata : public RefCountedThreadSafe<ConsensusMetadata> {
   // as opposed to uint64_t, which is the return type of the underlying function
   // used to populate this value.
   std::atomic<int64_t> on_disk_size_;
+
+  // Tracks the last 'max_removed_peers' peers that have been removed
+  // from the config
+  static const int max_removed_peers = 30;
+  std::deque<std::string> removed_peers_;
 
   DISALLOW_COPY_AND_ASSIGN(ConsensusMetadata);
 };

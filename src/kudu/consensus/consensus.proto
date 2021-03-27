@@ -401,6 +401,15 @@ message VoteRequestPB {
   optional CandidateContext candidate_context = 8;
 }
 
+// Additional context that a voter sends back in the response to RequestVote()
+// rpc
+message VoterContext {
+  // Candidate was removed from the voter's committed config and is currently
+  // tracked in the voter's 'removed_peers_' list. This is used by the candidate
+  // to perform aggressive backoffs
+  optional bool is_candidate_removed = 1 [ default = false ];
+}
+
 // A response from a replica to a leader election request.
 message VoteResponsePB {
   // The uuid of the node sending the reply.
@@ -421,6 +430,9 @@ message VoteResponsePB {
 
   // Last known leader as per the responding voter.
   optional LastKnownLeaderPB last_known_leader = 6;
+
+  // Additional context sent back by the voter
+  optional VoterContext voter_context = 7;
 
   // TODO: Migrate ConsensusService to the AppStatusPB RPC style and merge these errors.
   // Error message from the consensus implementation.

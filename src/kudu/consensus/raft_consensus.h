@@ -591,6 +591,14 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // Enables (or disables) compression of messages read from log
   Status EnableCompressionOnCacheMiss(bool enable);
 
+  // Clear the 'removed_peers_' list managed by consensus_meta
+  void ClearRemovedPeersList();
+
+  // Delete uuids in 'peer_uuids_ from 'removed_peers_' list
+  void DeleteFromRemovedPeersList(const std::vector<std::string>& peer_uuids);
+
+  // Returns the 'removed_peers_' list managed by consensus-meta
+  std::vector<std::string> RemovedPeersList();
  protected:
   RaftConsensus(ConsensusOptions options,
                 RaftPeerPB local_peer_pb,
@@ -884,6 +892,7 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   //
   // The maximum delta is capped by 'FLAGS_leader_failure_exp_backoff_max_delta_ms'.
   MonoDelta LeaderElectionExpBackoffDeltaUnlocked();
+  MonoDelta LeaderElectionExpBackoffNotInConfig();
 
   MonoDelta TimeoutBackoffHelper(double backoff_factor);
 
@@ -1127,6 +1136,12 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // the last time it saw a stable leader (either itself or another node).
   // This is used to calculate back-off of the election timeout.
   int64_t failed_elections_since_stable_leader_;
+
+  // Number of times this node has started and lost a leader (pre) election and
+  // the voters responded with 'candidate-removed' response i.e this candidate
+  // was not present in the active config of the voters.
+  // The counter is reset when this node hears from a valid leader
+  int64_t failed_elections_candidate_not_in_config_;
 
   Callback<void(const std::string& reason)> mark_dirty_clbk_;
 
