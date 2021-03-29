@@ -478,7 +478,7 @@ void LogIndex::GC(int64_t min_index_to_retain) {
       PLOG(WARNING) << "Unable to delete index chunk " << path;
       continue;
     }
-    LOG(INFO) << "Deleted log index segment " << path;
+    VLOG(2) << "Deleted log index segment " << path;
     {
       std::lock_guard<simple_spinlock> l(open_chunks_lock_);
       open_chunks_.erase(chunk_idx);
