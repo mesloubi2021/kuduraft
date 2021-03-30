@@ -237,17 +237,23 @@ Status InboundCall::AddOutboundSidecar(unique_ptr<RpcSidecar> car, int* idx) {
 
 string InboundCall::ToString() const {
   if (header_.has_request_id()) {
-    return Substitute("Call $0 from $1 (ReqId={client: $2, seq_no=$3, attempt_no=$4})",
+    return Substitute("Call $0 from $1 (ReqId={client: $2, seq_no=$3, attempt_no=$4}) recv: $5 handled: $6 comp: $7",
                       remote_method_.ToString(),
                       conn_->remote().ToString(),
                       header_.request_id().client_id(),
                       header_.request_id().seq_no(),
-                      header_.request_id().attempt_no());
+                      header_.request_id().attempt_no(),
+                      timing_.time_received.ToString(),
+                      (timing_.time_handled.Initialized() ? timing_.time_handled.ToString() : "NOT_HANDLED"),
+                      (timing_.time_completed.Initialized() ? timing_.time_completed.ToString() : "NOT_COMPLETED"));
   }
-  return Substitute("Call $0 from $1 (request call id $2)",
+  return Substitute("Call $0 from $1 (request call id $2) recv: $3 handled: $4 comp: $5",
                       remote_method_.ToString(),
                       conn_->remote().ToString(),
-                      header_.call_id());
+                      header_.call_id(),
+                      timing_.time_received.ToString(),
+                      (timing_.time_handled.Initialized() ? timing_.time_handled.ToString() : "NOT_HANDLED"),
+                      (timing_.time_completed.Initialized() ? timing_.time_completed.ToString() : "NOT_COMPLETED"));
 }
 
 void InboundCall::DumpPB(const DumpRunningRpcsRequestPB& req,

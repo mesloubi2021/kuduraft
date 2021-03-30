@@ -97,6 +97,11 @@ class TabletServer : public kserver::KuduServer {
 
 #endif
 
+  /*
+   * Capture a snapshot of the RPC service queue in the server log file.
+   */
+  std::string ConsensusServiceRpcQueueToString() const;
+
  private:
   friend class TabletServerTestBase;
   friend class TSTabletManager;
