@@ -56,6 +56,9 @@ struct VoteInfo {
 
   // Term and UUID of the last known leader as per the responding voter.
   LastKnownLeaderPB last_known_leader;
+
+  // Was this candidate peer removed from the voter's committed config
+  bool is_candidate_removed = false;
 };
 
 // Internal structure to denote the optimizer's computation of the
@@ -101,6 +104,8 @@ class VoteCounter {
   // If vote is not yet decided, returns Status::IllegalState().
   virtual Status GetDecision(ElectionVote* decision) const;
 
+  bool IsCandidateRemoved() const;
+
   // Return the total of "Yes" and "No" votes.
   int GetTotalVotesCounted() const;
 
@@ -116,13 +121,16 @@ class VoteCounter {
   typedef std::map<std::string, VoteInfo> VoteMap;
   VoteMap votes_; // Voting record.
 
+  // Set to true when any voters respond with a 'no' vote and also indicate that
+  // this candidate peer is removed from the committed config on the voter node
+  bool is_candidate_removed_;
+
  private:
   friend class VoteCounterTest;
 
   const int majority_size_;
   int yes_votes_; // Accumulated yes votes, for quick counting.
   int no_votes_;  // Accumulated no votes.
-
   DISALLOW_COPY_AND_ASSIGN(VoteCounter);
 };
 
@@ -349,7 +357,8 @@ class FlexibleVoteCounter : public VoteCounter {
 struct ElectionResult {
  public:
   ElectionResult(VoteRequestPB vote_request, ElectionVote decision,
-                 ConsensusTerm highest_term, const std::string& message);
+                 ConsensusTerm highest_term, const std::string& message,
+                 bool is_candidate_removed);
 
   // The vote request that was sent to the voters for this election.
   const VoteRequestPB vote_request;
@@ -362,6 +371,11 @@ struct ElectionResult {
 
   // Human-readable explanation of the vote result, if any.
   const std::string message;
+
+  // Set to true when the decision is VOTE_DENIED and atleast one voter
+  // responded with a 'no' vote and indicated that the candidate has been
+  // removed from the voter's committed config
+  const bool is_candidate_removed;
 };
 
 // Driver class to run a leader election.

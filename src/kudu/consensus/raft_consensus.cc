@@ -181,6 +181,9 @@ DEFINE_bool(enable_flexi_raft, false,
             "Enables flexi raft mode. All the configurations need to be already"
             " present and setup before the flag can be enabled.");
 
+DEFINE_bool(track_removed_peers, true,
+            "Should peers removed from the config be tracked for using it in RequestVote()");
+
 // Metrics
 // ---------
 METRIC_DEFINE_counter(server, follower_memory_pressure_rejections,
@@ -276,6 +279,7 @@ RaftConsensus::RaftConsensus(
       withhold_votes_(false),
       last_received_cur_leader_(MinimumOpId()),
       failed_elections_since_stable_leader_(0),
+      failed_elections_candidate_not_in_config_(0),
       disable_noop_(false),
       shutdown_(false),
       update_calls_for_tests_(0) {
@@ -1645,6 +1649,7 @@ Status RaftConsensus::UpdateReplica(const ConsensusRequestPB* request,
     // if another replica was elected leader in an election concurrent with
     // the one called by this replica.
     failed_elections_since_stable_leader_ = 0;
+    failed_elections_candidate_not_in_config_ = 0;
     num_failed_elections_metric_->set_value(failed_elections_since_stable_leader_);
 
     // We update the lag metrics here in addition to after appending to the queue so the
@@ -1965,10 +1970,17 @@ Status RaftConsensus::RequestVote(const VoteRequestPB* request,
   // If the node is not in the configuration, allow the vote (this is required by Raft)
   // but log an informational message anyway.
   std::string hostname_port("[NOT-IN-CONFIG]");
+  response->mutable_voter_context()->set_is_candidate_removed(false);
+
   if (!cmeta_->IsMemberInConfigWithDetail(request->candidate_uuid(), ACTIVE_CONFIG, &hostname_port)) {
     LOG_WITH_PREFIX_UNLOCKED(INFO) << "Handling vote request from an unknown peer "
                                    << request->candidate_uuid();
+    if (cmeta_->IsPeerRemoved(request->candidate_uuid())) {
+      response->mutable_voter_context()->set_is_candidate_removed(true);
+    }
   }
+
+
 
   // If we've heard recently from the leader, then we should ignore the request.
   // It might be from a "disruptive" server. This could happen in a few cases:
@@ -2899,6 +2911,7 @@ const char* RaftConsensus::State_Name(State state) {
 Status RaftConsensus::SetLeaderUuidUnlocked(const string& uuid) {
   DCHECK(lock_.is_locked());
   failed_elections_since_stable_leader_ = 0;
+  failed_elections_candidate_not_in_config_ = 0;
   num_failed_elections_metric_->set_value(failed_elections_since_stable_leader_);
   Status s = cmeta_->set_leader_uuid(uuid);
   routing_table_->UpdateLeader(uuid);
@@ -3100,7 +3113,16 @@ void RaftConsensus::DoElectionCallback(
   // - When we lose or otherwise we can fall into a cycle, where everyone keeps
   //   triggering elections but no election ever completes because by the time they
   //   finish another one is triggered already.
-  SnoozeFailureDetector(string("election complete"), LeaderElectionExpBackoffDeltaUnlocked());
+  if (result.decision == VOTE_DENIED && result.is_candidate_removed) {
+    // TODO: disable detector after a few attempts
+    SnoozeFailureDetector(
+        string("election complete - candidate not in config"),
+        LeaderElectionExpBackoffNotInConfig());
+    failed_elections_candidate_not_in_config_++;
+  } else {
+    SnoozeFailureDetector(
+        string("election complete"), LeaderElectionExpBackoffDeltaUnlocked());
+  }
 
   if (result.decision == VOTE_DENIED) {
     failed_elections_since_stable_leader_++;
@@ -3350,12 +3372,19 @@ void RaftConsensus::CompleteConfigChangeRoundUnlocked(ConsensusRound* round, con
   // messages were delayed.
   int64_t committed_config_opid_index = cmeta_->GetConfigOpIdIndex(COMMITTED_CONFIG);
   if (new_config.opid_index() > committed_config_opid_index) {
+    std::vector<std::string> removed_peers;
+    std::string config_diff =
+      DiffRaftConfigs(old_config, new_config, &removed_peers);
     LOG_WITH_PREFIX_UNLOCKED(INFO)
         << "Committing config change with OpId "
         << op_id << ": "
-        << DiffRaftConfigs(old_config, new_config)
+        << config_diff
         << ". New config: { " << SecureShortDebugString(new_config) << " }";
     CHECK_OK(SetCommittedConfigUnlocked(new_config));
+
+    if (FLAGS_track_removed_peers) {
+      cmeta_->InsertIntoRemovedPeersList(removed_peers);
+    }
   } else {
     LOG_WITH_PREFIX_UNLOCKED(INFO)
         << "Ignoring commit of config change with OpId "
@@ -3435,6 +3464,16 @@ MonoDelta RaftConsensus::MinimumElectionTimeoutWithBan() {
   int32_t failure_timeout = FLAGS_leader_failure_max_missed_heartbeat_periods *
       FLAGS_raft_heartbeat_interval_ms * FLAGS_snooze_for_leader_ban_ratio;
   return MonoDelta::FromMilliseconds(failure_timeout);
+}
+
+MonoDelta RaftConsensus::LeaderElectionExpBackoffNotInConfig() {
+  DCHECK(lock_.is_locked());
+  // Compute a backoff factor based on how many leader elections have
+  // failed since a stablie leader with a 'not-in-config' indicator
+  // This is aggressive backoff starting with 5 seconds, 25 seconds, 125 seconds
+  // and so on
+  double duration = pow(5, failed_elections_candidate_not_in_config_ + 1);
+  return MonoDelta::FromSeconds(duration);
 }
 
 MonoDelta RaftConsensus::LeaderElectionExpBackoffDeltaUnlocked() {
@@ -4146,6 +4185,22 @@ Status RaftConsensus::SetCompressionCodec(const std::string& codec) {
 Status RaftConsensus::EnableCompressionOnCacheMiss(bool enable) {
   LockGuard l(lock_);
   return queue_->log_cache()->EnableCompressionOnCacheMiss(enable);
+}
+
+void RaftConsensus::ClearRemovedPeersList() {
+  LockGuard l(lock_);
+  cmeta_->ClearRemovedPeersList();
+}
+
+void RaftConsensus::DeleteFromRemovedPeersList(
+    const std::vector<std::string>& peer_uuids) {
+  LockGuard l(lock_);
+  cmeta_->DeleteFromRemovedPeersList(peer_uuids);
+}
+
+std::vector<std::string> RaftConsensus::RemovedPeersList() {
+  LockGuard l(lock_);
+  return cmeta_->RemovedPeersList();
 }
 
 ////////////////////////////////////////////////////////////////////////

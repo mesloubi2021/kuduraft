@@ -458,5 +458,68 @@ Status ConsensusMetadata::UpdateOnDiskSize() {
   return Status::OK();
 }
 
+void ConsensusMetadata::InsertIntoRemovedPeersList(
+    const std::vector<std::string>& removed_peers) {
+  DFAKE_SCOPED_RECURSIVE_LOCK(fake_lock_);
+
+  for (const auto& peer_uuid : removed_peers) {
+    // Sanity check again to ensure that the peer is not in active config
+    if (!IsMemberInConfig(peer_uuid, ACTIVE_CONFIG)) {
+      if (removed_peers_.size() == max_removed_peers) {
+        removed_peers_.pop_front();
+      }
+      removed_peers_.push_back(peer_uuid);
+    }
+  }
+}
+
+bool ConsensusMetadata::IsPeerRemoved(const std::string& peer_uuid) {
+  DFAKE_SCOPED_RECURSIVE_LOCK(fake_lock_);
+
+  // Sanity check in active config too
+  if (IsMemberInConfig(peer_uuid, ACTIVE_CONFIG)) {
+    return false;
+  }
+
+  auto removed = std::find(
+      std::begin(removed_peers_), std::end(removed_peers_), peer_uuid);
+
+  return (removed != std::end(removed_peers_));
+}
+
+void ConsensusMetadata::DeleteFromRemovedPeersList(
+    const std::string& peer_uuid) {
+  DFAKE_SCOPED_RECURSIVE_LOCK(fake_lock_);
+
+  for (auto it = removed_peers_.begin(); it != removed_peers_.end();) {
+    if (peer_uuid == *it) {
+      removed_peers_.erase(it);
+    } else {
+      it++;
+    }
+  }
+}
+
+void ConsensusMetadata::DeleteFromRemovedPeersList(
+    const std::vector<std::string>& peer_uuids) {
+  DFAKE_SCOPED_RECURSIVE_LOCK(fake_lock_);
+
+  for (const auto& peer_uuid : peer_uuids) {
+    DeleteFromRemovedPeersList(peer_uuid);
+  }
+}
+
+void ConsensusMetadata::ClearRemovedPeersList() {
+  DFAKE_SCOPED_RECURSIVE_LOCK(fake_lock_);
+  removed_peers_.clear();
+}
+
+std::vector<std::string> ConsensusMetadata::RemovedPeersList() {
+  DFAKE_SCOPED_RECURSIVE_LOCK(fake_lock_);
+  std::vector<std::string> removed_peers(
+      removed_peers_.begin(), removed_peers_.end());
+  return removed_peers;
+}
+
 } // namespace consensus
 } // namespace kudu

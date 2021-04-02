@@ -278,7 +278,8 @@ Status VerifyConsensusState(const ConsensusStatePB& cstate) {
 }
 
 std::string DiffRaftConfigs(const RaftConfigPB& old_config,
-                            const RaftConfigPB& new_config) {
+                            const RaftConfigPB& new_config,
+                            std::vector<std::string>* evicted_peers) {
   // Create dummy ConsensusState objects so we can reuse the code
   // from the below function.
   ConsensusStatePB old_state;
@@ -286,7 +287,7 @@ std::string DiffRaftConfigs(const RaftConfigPB& old_config,
   ConsensusStatePB new_state;
   new_state.mutable_committed_config()->CopyFrom(new_config);
 
-  return DiffConsensusStates(old_state, new_state);
+  return DiffConsensusStates(old_state, new_state, evicted_peers);
 }
 
 namespace {
@@ -295,13 +296,23 @@ namespace {
 typedef map<string, pair<RaftPeerPB, RaftPeerPB>> PeerInfoMap;
 
 bool DiffPeers(const PeerInfoMap& peer_infos,
-               vector<string>* change_strs) {
+               vector<string>* change_strs,
+               vector<string>* evicted_peers) {
   bool changes = false;
   for (const auto& e : peer_infos) {
     const auto& old_peer = e.second.first;
     const auto& new_peer = e.second.second;
     if (old_peer.has_permanent_uuid() && !new_peer.has_permanent_uuid()) {
       changes = true;
+      if (evicted_peers) {
+        auto it = std::find(
+            evicted_peers->begin(),
+            evicted_peers->end(),
+            old_peer.permanent_uuid());
+        if (it == evicted_peers->end()) {
+          evicted_peers->emplace_back(old_peer.permanent_uuid());
+        }
+      }
       change_strs->push_back(
         Substitute("$0 $1 ($2) evicted",
                    RaftPeerPB_MemberType_Name(old_peer.member_type()),
@@ -343,7 +354,8 @@ string PeersString(const RaftConfigPB& config) {
 } // anonymous namespace
 
 string DiffConsensusStates(const ConsensusStatePB& old_state,
-                           const ConsensusStatePB& new_state) {
+                           const ConsensusStatePB& new_state,
+                           std::vector<std::string>* evicted_peers) {
   bool leader_changed = old_state.leader_uuid() != new_state.leader_uuid();
   bool term_changed = old_state.current_term() != new_state.current_term();
   bool config_changed =
@@ -400,7 +412,7 @@ string DiffConsensusStates(const ConsensusStatePB& old_state,
                                      old_leader, new_leader));
   }
 
-  DiffPeers(committed_peer_infos, &change_strs);
+  DiffPeers(committed_peer_infos, &change_strs, evicted_peers);
 
   if (pending_config_gained) {
     change_strs.push_back(Substitute("now has a pending config: $0",
@@ -423,7 +435,7 @@ string DiffConsensusStates(const ConsensusStatePB& old_state,
     }
 
     vector<string> pending_change_strs;
-    if (DiffPeers(pending_peer_infos, &pending_change_strs)) {
+    if (DiffPeers(pending_peer_infos, &pending_change_strs, evicted_peers)) {
       change_strs.emplace_back("pending config changed");
       change_strs.insert(change_strs.end(), pending_change_strs.cbegin(),
                          pending_change_strs.cend());

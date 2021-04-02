@@ -92,6 +92,7 @@ using strings::Substitute;
 
 VoteCounter::VoteCounter(int num_voters, int majority_size)
   : num_voters_(num_voters),
+    is_candidate_removed_(false),
     majority_size_(majority_size),
     yes_votes_(0),
     no_votes_(0) {
@@ -139,6 +140,8 @@ Status VoteCounter::RegisterVote(
       ++yes_votes_;
       break;
     case VOTE_DENIED:
+      is_candidate_removed_ =
+        is_candidate_removed_ || vote_info.is_candidate_removed;
       ++no_votes_;
       break;
   }
@@ -161,6 +164,10 @@ Status VoteCounter::GetDecision(ElectionVote* decision) const {
     return Status::OK();
   }
   return Status::IllegalState("Vote not yet decided");
+}
+
+bool VoteCounter::IsCandidateRemoved() const {
+  return is_candidate_removed_;
 }
 
 int VoteCounter::GetTotalVotesCounted() const {
@@ -1131,11 +1138,13 @@ std::string FlexibleVoteCounter::LogPrefix() const {
 ///////////////////////////////////////////////////
 
 ElectionResult::ElectionResult(VoteRequestPB vote_request, ElectionVote decision,
-                               ConsensusTerm highest_voter_term, const std::string& message)
+                               ConsensusTerm highest_voter_term, const std::string& message,
+                               bool is_candidate_removed)
   : vote_request(std::move(vote_request)),
     decision(decision),
     highest_voter_term(highest_voter_term),
-    message(message) {
+    message(message),
+    is_candidate_removed(is_candidate_removed) {
   DCHECK(!message.empty());
 }
 
@@ -1286,7 +1295,14 @@ void LeaderElection::CheckForDecision() {
                 << ((decision == VOTE_GRANTED) ? "won." : "lost.");
       string msg = (decision == VOTE_GRANTED) ?
           "achieved majority votes" : "could not achieve majority";
-      result_.reset(new ElectionResult(request_, decision, highest_voter_term_, msg));
+
+      bool is_candidate_removed = false;
+      if (decision == VOTE_DENIED) {
+        is_candidate_removed = vote_counter_->IsCandidateRemoved();
+      }
+
+      result_.reset(new ElectionResult(
+            request_, decision, highest_voter_term_, msg, is_candidate_removed));
     }
     // Check whether to respond. This can happen as a result of either getting
     // a majority vote or of something invalidating the election, like
@@ -1359,6 +1375,11 @@ void LeaderElection::RecordVoteUnlocked(
   vote_info.vote = vote;
   vote_info.last_known_leader = state.response.last_known_leader();
   vote_info.last_pruned_term = state.response.last_pruned_term();
+  if (state.response.has_voter_context()) {
+    vote_info.is_candidate_removed =
+      state.response.voter_context().is_candidate_removed();
+  }
+
   for (int i = 0; i < state.response.previous_vote_history_size(); i++) {
     vote_info.previous_vote_history.push_back(
         state.response.previous_vote_history(i));
@@ -1397,9 +1418,18 @@ void LeaderElection::HandleHigherTermUnlocked(const VoterState& state) {
   LOG_WITH_PREFIX(WARNING) << msg;
 
   if (!result_) {
+    bool is_candidate_removed = false;
     LOG_WITH_PREFIX(INFO) << "Cancelling election due to peer responding with higher term";
-    result_.reset(new ElectionResult(request_, VOTE_DENIED,
-                                     state.response.responder_term(), msg));
+    if (state.response.has_voter_context() &&
+        state.response.voter_context().is_candidate_removed()) {
+      is_candidate_removed = true;
+    }
+    result_.reset(new ElectionResult(
+          request_,
+          VOTE_DENIED,
+          state.response.responder_term(),
+          msg,
+          is_candidate_removed));
   }
 }
 

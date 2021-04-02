@@ -118,11 +118,15 @@ Status VerifyConsensusState(const ConsensusStatePB& cstate);
 // Provide a textual description of the difference between two consensus states,
 // suitable for logging.
 std::string DiffConsensusStates(const ConsensusStatePB& old_state,
-                                const ConsensusStatePB& new_state);
+                                const ConsensusStatePB& new_state,
+                                std::vector<std::string>* evicted_peers = nullptr);
 
 // Same as the above, but just the RaftConfigPB portion of the configuration.
+// If some peers are evicted in the new_config, then returns the evicted peer
+// uuids in 'evicted_peers'
 std::string DiffRaftConfigs(const RaftConfigPB& old_config,
-                            const RaftConfigPB& new_config);
+                            const RaftConfigPB& new_config,
+                            std::vector<std::string>* evicted_peers = nullptr);
 
 // Return 'true' iff the specified tablet configuration is under-replicated
 // given the 'replication_factor' and should add a replica. The decision is
