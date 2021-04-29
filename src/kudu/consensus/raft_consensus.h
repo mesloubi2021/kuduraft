@@ -42,6 +42,7 @@
 #include "kudu/consensus/log.h"
 #include "kudu/consensus/metadata.pb.h"
 #include "kudu/consensus/opid.pb.h"
+#include "kudu/consensus/proxy_policy.h"
 #include "kudu/consensus/ref_counted_replicate.h"
 #include "kudu/consensus/routing.h"
 #include "kudu/gutil/callback.h"
@@ -96,6 +97,7 @@ struct ElectionResult;
 
 struct ConsensusOptions {
   std::string tablet_id;
+  ProxyPolicy proxy_policy;
 };
 
 struct TabletVotingState {
@@ -250,6 +252,9 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
 
   // Rejects AppendEntries RPCs, if set to true.
   void SetRejectAppendEntriesForTests(bool reject_append_entries);
+
+  // Update the proxy policy used to route entries
+  Status SetProxyPolicy(const ProxyPolicy& proxy_policy);
 
   // Emulates an election by increasing the term number and asserting leadership
   // in the configuration by sending a NO_OP to other peers.
@@ -1067,8 +1072,12 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // Consensus metadata persistence object.
   scoped_refptr<ConsensusMetadata> cmeta_;
 
-  // Proxy routing peristence object.
-  std::shared_ptr<DurableRoutingTable> routing_table_;
+  // The policy used to route requests from leader through intermediate proxy
+  // peers
+  ProxyPolicy proxy_policy_ = ProxyPolicy::DURABLE_ROUTING_POLICY;
+
+  // Proxy routing table object. The right table is built based on proxy_policy
+  std::shared_ptr<RoutingTableContainer> routing_table_container_;
 
   // Threadpool token for constructing requests to peers, handling RPC callbacks, etc.
   std::unique_ptr<ThreadPoolToken> raft_pool_token_;
@@ -1175,6 +1184,7 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // Ensures that we don't miss a leader detection on plain follower
   // restarts
   bool new_leader_detected_failsafe_;
+
 
   // Proxy metrics.
   scoped_refptr<Counter> raft_proxy_num_requests_received_;

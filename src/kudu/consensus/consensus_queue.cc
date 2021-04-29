@@ -176,14 +176,14 @@ PeerMessageQueue::PeerMessageQueue(const scoped_refptr<MetricEntity>& metric_ent
                                    scoped_refptr<log::Log> log,
                                    scoped_refptr<TimeManager> time_manager,
                                    RaftPeerPB local_peer_pb,
-                                   std::shared_ptr<DurableRoutingTable> routing_table,
+                                   std::shared_ptr<RoutingTableContainer> routing_table_container,
                                    string tablet_id,
                                    unique_ptr<ThreadPoolToken> raft_pool_observers_token,
                                    OpId last_locally_replicated,
                                    const OpId& last_locally_committed)
     : raft_pool_observers_token_(std::move(raft_pool_observers_token)),
       local_peer_pb_(std::move(local_peer_pb)),
-      routing_table_(std::move(routing_table)),
+      routing_table_container_(std::move(routing_table_container)),
       tablet_id_(std::move(tablet_id)),
       successor_watch_in_progress_(false),
       log_cache_(metric_entity, std::move(log), local_peer_pb_.permanent_uuid(), tablet_id_),
@@ -691,7 +691,8 @@ Status PeerMessageQueue::RequestForPeer(const string& uuid,
     request->set_region_durable_index(queue_state_.region_durable_index);
     unreachable_time = MonoTime::Now() - peer_copy.last_communication_time;
 
-    RETURN_NOT_OK(routing_table_->NextHop(local_peer_pb_.permanent_uuid(), uuid, &next_hop_uuid));
+    RETURN_NOT_OK(routing_table_container_->NextHop(
+          local_peer_pb_.permanent_uuid(), uuid, &next_hop_uuid));
   }
 
   // Always trigger a health status update check at the end of this function.
@@ -1348,8 +1349,10 @@ void PeerMessageQueue::EndWatchForSuccessor() {
   tl_filter_fn_ = nullptr;
 }
 
-Status PeerMessageQueue::GetNextRoutingHopFromLeader(const string& dest_uuid, string* next_hop) const {
-  return routing_table_->NextHop(local_peer_pb_.permanent_uuid(), dest_uuid, next_hop);
+Status PeerMessageQueue::GetNextRoutingHopFromLeader(
+    const string& dest_uuid, string* next_hop) const {
+  return routing_table_container_->NextHop(
+      local_peer_pb_.permanent_uuid(), dest_uuid, next_hop);
 }
 
 void PeerMessageQueue::UpdateFollowerWatermarks(int64_t committed_index,

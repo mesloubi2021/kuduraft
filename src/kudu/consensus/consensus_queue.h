@@ -201,7 +201,7 @@ class PeerMessageQueue {
                    scoped_refptr<log::Log> log,
                    scoped_refptr<TimeManager> time_manager,
                    RaftPeerPB local_peer_pb,
-                   std::shared_ptr<DurableRoutingTable> routing_table,
+                   std::shared_ptr<RoutingTableContainer> routing_table_container,
                    std::string tablet_id,
                    std::unique_ptr<ThreadPoolToken> raft_pool_observers_token,
                    OpId last_locally_replicated,
@@ -651,7 +651,7 @@ class PeerMessageQueue {
   // PB containing identifying information about the local peer.
   const RaftPeerPB local_peer_pb_;
 
-  std::shared_ptr<DurableRoutingTable> routing_table_;
+  std::shared_ptr<RoutingTableContainer> routing_table_container_;
 
   // The id of the tablet.
   const std::string tablet_id_;
