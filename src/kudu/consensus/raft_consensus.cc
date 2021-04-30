@@ -69,6 +69,7 @@
 #include "kudu/rpc/periodic.h"
 #include "kudu/rpc/rpc_context.h"
 #include "kudu/util/async_util.h"
+#include "kudu/util/crc.h"
 #include "kudu/util/debug/trace_event.h"
 #include "kudu/util/flag_tags.h"
 #include "kudu/util/logging.h"
@@ -1247,6 +1248,18 @@ static bool IsConsensusOnlyOperation(OperationType op_type) {
 
 Status RaftConsensus::StartFollowerTransactionUnlocked(const ReplicateRefPtr& msg) {
   DCHECK(lock_.is_locked());
+
+  // Validate crc32 checksum
+  uint32_t payload_crc32 = msg->get()->write_payload().crc32();
+  if (payload_crc32 != 0) {
+    const std::string& payload = msg->get()->write_payload().payload();
+    uint32_t computed_crc32 = crc::Crc32c(payload.c_str(), payload.size());
+    if (payload_crc32 != computed_crc32) {
+      std::string err_msg = Substitute("Rejected: Payload corruption for $0",
+          OpIdToString(msg->get()->id()));
+      return Status::Corruption(err_msg);
+    }
+  }
 
   if (IsConsensusOnlyOperation(msg->get()->op_type())) {
     return StartConsensusOnlyRoundUnlocked(msg);

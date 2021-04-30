@@ -44,6 +44,7 @@
 #include "kudu/gutil/strings/substitute.h"
 #include "kudu/util/compression/compression.pb.h"
 #include "kudu/util/compression/compression_codec.h"
+#include "kudu/util/crc.h"
 #include "kudu/util/faststring.h"
 #include "kudu/util/flag_tags.h"
 #include "kudu/util/mutex.h"
@@ -406,6 +407,12 @@ Status LogCache::AppendOperations(const vector<ReplicateRefPtr>& msgs,
       e.msg = msg;
     }
 
+    // Update the crc32 checksum for the payload
+    uint32_t payload_crc32 = crc::Crc32c(
+        e.msg->get()->write_payload().payload().c_str(),
+        e.msg->get()->write_payload().payload().size());
+    e.msg->get()->mutable_write_payload()->set_crc32(payload_crc32);
+
     total_msg_size += e.msg_size;
     mem_required += e.mem_usage;
     entries_to_insert.emplace_back(std::move(e));
@@ -693,6 +700,17 @@ Status LogCache::ReadOps(int64_t after_op_index,
             raw_replicate_ptrs.end(),
             compressed_replicate_ptrs.begin(),
             compressed_replicate_ptrs.end());
+      }
+
+      if (!context.route_via_proxy) {
+        // Compute crc checksums for the payload that was read from the log
+        // Note that this is done _only_ for non-proxy requests because payload
+        // is discarded for proxy requests
+        for (ReplicateMsg* msg : raw_replicate_ptrs) {
+          const std::string& payload = msg->write_payload().payload();
+          uint32_t payload_crc32 = crc::Crc32c(payload.c_str(), payload.size());
+          msg->mutable_write_payload()->set_crc32(payload_crc32);
+        }
       }
 
       l.lock();
