@@ -262,6 +262,10 @@ message WritePayloadPB {
   // Uncompressed size of payload. Should be present when
   // compression_codec != NO_COMPRESSION
   optional int64 uncompressed_size = 3;
+
+  // crc32 checksum of the payload. If the payload is compressed, then the
+  // checksum is computed _after_ compression
+  optional uint32 crc32 = 4 [ default = 0 ];
 }
 
 // A Replicate message, sent to replicas by leader to indicate this operation must
