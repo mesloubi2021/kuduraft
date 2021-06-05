@@ -109,6 +109,14 @@ class ConsensusPeersTest : public KuduTest {
     clock_.reset(new clock::HybridClock());
     ASSERT_OK(clock_->Init());
 
+    RaftConfigPB raft_config;
+    routing_table_container_ = std::make_shared<RoutingTableContainer>(
+        ProxyPolicy::DURABLE_ROUTING_POLICY,
+        FakeRaftPeerPB(kLeaderUuid),
+        raft_config,
+        routing_table_);
+
+
     scoped_refptr<TimeManager> time_manager(new TimeManager(clock_, Timestamp::kMin));
 
     message_queue_.reset(new PeerMessageQueue(
@@ -116,7 +124,7 @@ class ConsensusPeersTest : public KuduTest {
         log_.get(),
         time_manager,
         FakeRaftPeerPB(kLeaderUuid),
-        routing_table_,
+        routing_table_container_,
         kTabletId,
         raft_pool_->NewToken(ThreadPool::ExecutionMode::SERIAL),
         MinimumOpId(),
@@ -180,6 +188,7 @@ class ConsensusPeersTest : public KuduTest {
   gscoped_ptr<FsManager> fs_manager_;
   scoped_refptr<Log> log_;
   shared_ptr<DurableRoutingTable> routing_table_;
+  shared_ptr<RoutingTableContainer> routing_table_container_;
   gscoped_ptr<ThreadPool> raft_pool_;
   gscoped_ptr<PeerMessageQueue> message_queue_;
 #ifdef FB_DO_NOT_REMOVE

@@ -39,6 +39,7 @@
 #include "kudu/consensus/consensus_meta.h"
 #include "kudu/consensus/consensus_meta_manager.h"
 #include "kudu/consensus/consensus_peers.h"
+#include "kudu/consensus/proxy_policy.h"
 #include "kudu/consensus/time_manager.h"
 #include "kudu/consensus/log.h"
 #include "kudu/consensus/log_util.h"
@@ -428,6 +429,8 @@ Status TSTabletManager::SetupRaft() {
 
   ConsensusOptions options;
   options.tablet_id = kSysCatalogTabletId;
+  options.proxy_policy = server_->opts().proxy_policy;
+
   shared_ptr<RaftConsensus> consensus;
   TRACE("Creating consensus");
   LOG(INFO) << LogPrefix(kSysCatalogTabletId) << "Creating Raft for the system tablet";

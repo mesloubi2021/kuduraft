@@ -507,6 +507,292 @@ string DurableRoutingTable::LogPrefix() const {
   return strings::Substitute("T $0 P $1: ", tablet_id_, fs_manager_->uuid());
 }
 
+ProxyPolicy DurableRoutingTable::GetProxyPolicy() const {
+  return ProxyPolicy::DURABLE_ROUTING_POLICY;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// SimpleRegionRoutingTable
+////////////////////////////////////////////////////////////////////////////////
+Status SimpleRegionRoutingTable::Create(
+    RaftConfigPB raft_config,
+    RaftPeerPB local_peer_pb,
+    std::shared_ptr<SimpleRegionRoutingTable>* srt) {
+  auto simple_routing_table = std::make_shared<SimpleRegionRoutingTable>();
+  simple_routing_table->SetLocalPeerPB(std::move(local_peer_pb));
+  simple_routing_table->UpdateRaftConfig(std::move(raft_config));
+  *srt = std::move(simple_routing_table);
+
+  return Status::OK();
+}
+
+Status SimpleRegionRoutingTable::RebuildProxyTopology(RaftConfigPB raft_config) {
+  ProxyTopologyPB proxy_topology;
+  const std::string& local_peer_region = local_peer_pb_.attrs().region();
+
+  // Take a copy of current map
+  std::unordered_map<std::string, std::string> current_dst_to_proxy_map;
+  {
+    shared_lock<RWMutex> l(lock_);
+    current_dst_to_proxy_map = dst_to_proxy_map_;
+  }
+
+  // 1. Identify the 'proxy peer' for each region. The peer that is backed by a
+  // database in a region acts as a 'proxy peer' for the region. [Update when
+  // region splitting is supported]. If there are multiple such peers in a
+  // region, then pick the first peer as the 'proxy peer' for the region [this
+  // cannot happen once region splitting is supported]
+  // 2. Also build a map of "peer-uuid to peer-region" for all peers
+  std::unordered_map<std::string, std::string> region_proxy_peer_map;
+  std::unordered_map<std::string, std::string> peer_region_map;
+  for (const RaftPeerPB& peer : raft_config.peers()) {
+    if (peer.attrs().backing_db_present()) {
+      region_proxy_peer_map.emplace(
+          peer.attrs().region(), peer.permanent_uuid());
+    }
+    peer_region_map.emplace(peer.permanent_uuid(), peer.attrs().region());
+  }
+
+  // For every destination peer, choose the peer from which it will be proxied
+  // from. Some rules (see proxy_policy.h):
+  // 1. A peer with a backing database is never proxied. Leader ships messages
+  // directly to all such peers
+  // 2. A peer which is in the same region as the node that is shipping messages
+  // will not be proxied i.e all peers in the same region as the 'source' will
+  // get messages directly from the 'source'
+  // 3. A peer which is in a region without any valid 'proxy peer' will recieve
+  // messages directly from the 'source'
+  // 4. Also note that to avoid flapping stable proxy routes, if a peer is
+  // already being proxied and the proxy peer is part of the new config, then
+  // the  proxy host for such a peer is left unchanged
+  std::unordered_map<std::string, std::string> dst_to_proxy_map;
+  for (const RaftPeerPB& dest_peer : raft_config.peers()) {
+    std::string dest_peer_region = dest_peer.attrs().region();
+    if (dest_peer.attrs().backing_db_present()) {
+      // Peers that have a backing database are not proxied (rule #1)
+      continue;
+    } else {
+      const auto& proxy_peer_uuid =
+        region_proxy_peer_map.find(dest_peer_region);
+      if (proxy_peer_uuid == region_proxy_peer_map.end() ||
+          dest_peer_region == local_peer_region) {
+        // Region without a valid 'proxy' peer or peers that are in the same
+        // region as this peer are not proxied (rule #2 and #3)
+        continue;
+      } else {
+        // Add a new edge into the topology
+        ProxyEdgePB* proxy_edge = proxy_topology.add_proxy_edges();
+        proxy_edge->set_peer_uuid(dest_peer.permanent_uuid());
+
+        // Check if this 'destination peer' is being currently proxied.
+        // If yes, check if current 'proxy peer' exists in the new config.
+        // If yes, then do not change the 'proxy peer' for this
+        // 'destination peer'.
+        const auto& current_proxy_peer =
+          current_dst_to_proxy_map.find(dest_peer.permanent_uuid());
+        if (current_proxy_peer != current_dst_to_proxy_map.end()) {
+          // Check if the proxy peer exists in the new config.
+          const auto& current_proxy_peer_region =
+            peer_region_map.find(current_proxy_peer->second);
+          if (current_proxy_peer_region != peer_region_map.end()) {
+            // Continue to route through the existing 'proxy peer'
+            proxy_edge->set_proxy_from_uuid(current_proxy_peer->second);
+            dst_to_proxy_map.emplace(
+                dest_peer.permanent_uuid(), current_proxy_peer->second);
+            continue;
+          }
+        }
+
+        // 'dest_peer' will be proxied through 'proxy_peer_uuid'
+        proxy_edge->set_proxy_from_uuid(proxy_peer_uuid->second);
+        dst_to_proxy_map.emplace(
+            dest_peer.permanent_uuid(), proxy_peer_uuid->second);
+      }
+    }
+  }
+
+  std::lock_guard<RWMutex> l(lock_);
+  proxy_topology_ = std::move(proxy_topology);
+  dst_to_proxy_map_ = std::move(dst_to_proxy_map);
+  peer_region_map_ = std::move(peer_region_map);
+  raft_config_ = std::move(raft_config);
+
+  return Status::OK();
+}
+
+Status SimpleRegionRoutingTable::NextHop(const std::string& src_uuid,
+                                         const std::string& dest_uuid,
+                                         std::string* next_hop) const {
+  shared_lock<RWMutex> l(lock_);
+  const auto& proxy_uuid = dst_to_proxy_map_.find(dest_uuid);
+  if (proxy_uuid == dst_to_proxy_map_.end()) {
+    // Could not find this destination, route directly to the destination
+    *next_hop = dest_uuid;
+    return Status::OK();
+  }
+
+  *next_hop = proxy_uuid->second;
+  return Status::OK();
+}
+
+Status SimpleRegionRoutingTable::UpdateProxyTopology(
+    ProxyTopologyPB proxy_topology) {
+  // SimpleRegionRoutingTable uses config to update proxy maps. Hence cannot
+  // update topology directly.
+  // TODO: provide a way to override designated per-region proxy peer
+  return Status::OK();
+}
+
+ProxyTopologyPB SimpleRegionRoutingTable::GetProxyTopology() const {
+  shared_lock<RWMutex> l(lock_);
+  return proxy_topology_;
+}
+
+Status SimpleRegionRoutingTable::UpdateRaftConfig(RaftConfigPB raft_config) {
+  return RebuildProxyTopology(std::move(raft_config));
+}
+
+void SimpleRegionRoutingTable::UpdateLeader(string leader_uuid) {
+  std::lock_guard<RWMutex> l(lock_);
+  leader_uuid_ = std::move(leader_uuid);
+}
+
+void SimpleRegionRoutingTable::SetLocalPeerPB(RaftPeerPB local_peer_pb) {
+  std::lock_guard<RWMutex> l(lock_);
+  local_peer_pb_ = std::move(local_peer_pb);
+}
+
+ProxyPolicy SimpleRegionRoutingTable::GetProxyPolicy() const {
+  return ProxyPolicy::SIMPLE_REGION_ROUTING_POLICY;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// RoutingTableContainer implementation
+////////////////////////////////////////////////////////////////////////////////
+RoutingTableContainer::RoutingTableContainer(
+      const ProxyPolicy& proxy_policy,
+      const RaftPeerPB& local_peer_pb,
+      RaftConfigPB raft_config,
+      std::shared_ptr<DurableRoutingTable> drt) {
+  proxy_policy_ = proxy_policy;
+  drt_ = std::move(drt);
+
+  std::shared_ptr<SimpleRegionRoutingTable> srt;
+  SimpleRegionRoutingTable::Create(raft_config, local_peer_pb, &srt);
+  srt_ = std::move(srt);
+}
+
+Status RoutingTableContainer::NextHop(const std::string& src_uuid,
+                                      const std::string& dest_uuid,
+                                      std::string* next_hop) const {
+  ProxyPolicy policy = proxy_policy_.load();
+
+  switch (policy) {
+    case ProxyPolicy::DURABLE_ROUTING_POLICY:
+      return drt_->NextHop(src_uuid, dest_uuid, next_hop);
+    case ProxyPolicy::SIMPLE_REGION_ROUTING_POLICY:
+      return srt_->NextHop(src_uuid, dest_uuid, next_hop);
+    case ProxyPolicy::DISABLE_PROXY:
+      *next_hop = dest_uuid;
+      return Status::OK();
+    default:
+      break; // placate the compiler
+  }
+
+  return Status::NotSupported("The specified proxy_policy is not supported");
+}
+
+Status RoutingTableContainer::UpdateProxyTopology(
+    ProxyTopologyPB proxy_topology,
+    RaftConfigPB raft_config,
+    const std::string& leader_uuid) {
+  // Explicit routing topology can only be used by durable routing table
+  // Update the leader uuid before updating proxy_topology
+  drt_->UpdateLeader(leader_uuid);
+  RETURN_NOT_OK(drt_->UpdateRaftConfig(std::move(raft_config)));
+  return drt_->UpdateProxyTopology(std::move(proxy_topology));
+}
+
+ProxyTopologyPB RoutingTableContainer::GetProxyTopology() const {
+  ProxyTopologyPB topology_pb;
+
+  ProxyPolicy policy = proxy_policy_.load();
+
+  switch (policy) {
+    case ProxyPolicy::DURABLE_ROUTING_POLICY:
+      return drt_->GetProxyTopology();
+    case ProxyPolicy::SIMPLE_REGION_ROUTING_POLICY:
+      return srt_->GetProxyTopology();
+    default:
+      break; // placate the compiler
+  }
+
+  return topology_pb;
+}
+
+Status RoutingTableContainer::UpdateRaftConfig(RaftConfigPB raft_config) {
+  ProxyPolicy policy = proxy_policy_.load();
+
+  switch (policy) {
+    case ProxyPolicy::DURABLE_ROUTING_POLICY:
+      return drt_->UpdateRaftConfig(std::move(raft_config));
+    case ProxyPolicy::SIMPLE_REGION_ROUTING_POLICY:
+      return srt_->UpdateRaftConfig(std::move(raft_config));
+    default:
+      break; // placate the compiler
+  }
+
+  return Status::NotSupported("The specified proxy_policy is not supported");
+}
+
+void RoutingTableContainer::UpdateLeader(string leader_uuid) {
+  ProxyPolicy policy = proxy_policy_.load();
+
+  switch (policy) {
+    case ProxyPolicy::DURABLE_ROUTING_POLICY:
+      drt_->UpdateLeader(std::move(leader_uuid));
+      break;
+    case ProxyPolicy::SIMPLE_REGION_ROUTING_POLICY:
+      srt_->UpdateLeader(std::move(leader_uuid));
+      break;
+    default:
+      break; // placate the compiler
+  }
+}
+
+void RoutingTableContainer::SetLocalPeerPB(RaftPeerPB local_peer_pb) {
+  ProxyPolicy policy = proxy_policy_.load();
+
+  switch (policy) {
+    case ProxyPolicy::DURABLE_ROUTING_POLICY:
+      return; // No-Op for drt
+    case ProxyPolicy::SIMPLE_REGION_ROUTING_POLICY:
+      srt_->SetLocalPeerPB(std::move(local_peer_pb));
+      break;
+    default:
+      break; // placate the compiler
+  }
+}
+
+ProxyPolicy RoutingTableContainer::GetProxyPolicy() const {
+  return proxy_policy_.load();
+}
+
+Status RoutingTableContainer::SetProxyPolicy(
+    const ProxyPolicy& proxy_policy,
+    const std::string& leader_uuid,
+    RaftConfigPB raft_config) {
+  drt_->UpdateLeader(leader_uuid);
+  srt_->UpdateLeader(leader_uuid);
+
+  RETURN_NOT_OK(drt_->UpdateRaftConfig(raft_config));
+  RETURN_NOT_OK(srt_->UpdateRaftConfig(raft_config));
+
+  proxy_policy_ = proxy_policy;
+
+  return Status::OK();
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Global functions.
 ////////////////////////////////////////////////////////////////////////////////

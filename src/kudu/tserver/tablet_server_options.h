@@ -21,6 +21,7 @@
 #include <memory>
 
 #include "kudu/consensus/metadata.pb.h"
+#include "kudu/consensus/proxy_policy.h"
 #include "kudu/server/server_base_options.h"
 #include "kudu/util/net/net_util.h"
 
@@ -59,6 +60,9 @@ struct TabletServerOptions : public kudu::server::ServerBaseOptions {
   std::shared_ptr<kudu::log::LogFactory> log_factory;
 
   kudu::consensus::ConsensusRoundHandler *round_handler = nullptr;
+
+  kudu::consensus::ProxyPolicy proxy_policy =
+    kudu::consensus::ProxyPolicy::DURABLE_ROUTING_POLICY;
 
   // Election Decision Callback
   std::function<void(const consensus::ElectionResult&,
