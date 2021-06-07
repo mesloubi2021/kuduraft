@@ -174,7 +174,8 @@ class ConsensusQueueTest : public KuduTest {
     // this should contain no operations.
     vector<ReplicateRefPtr> refs;
     bool needs_tablet_copy;
-    ASSERT_OK(queue_->RequestForPeer(kPeerUuid, request, &refs, &needs_tablet_copy));
+    std::string next_hop_uuid;
+    ASSERT_OK(queue_->RequestForPeer(kPeerUuid, request, &refs, &needs_tablet_copy, &next_hop_uuid, &next_hop_uuid));
     ASSERT_FALSE(needs_tablet_copy);
     ASSERT_EQ(request->ops_size(), 0);
 
@@ -284,7 +285,8 @@ TEST_F(ConsensusQueueTest, TestStartTrackingAfterStart) {
   // Getting a new request should get all operations after 7.50
   vector<ReplicateRefPtr> refs;
   bool needs_tablet_copy;
-  ASSERT_OK(queue_->RequestForPeer(kPeerUuid, &request, &refs, &needs_tablet_copy));
+  std::string next_hop_uuid;
+  ASSERT_OK(queue_->RequestForPeer(kPeerUuid, &request, &refs, &needs_tablet_copy, &next_hop_uuid));
   ASSERT_FALSE(needs_tablet_copy);
   ASSERT_EQ(50, request.ops_size());
 
@@ -293,7 +295,7 @@ TEST_F(ConsensusQueueTest, TestStartTrackingAfterStart) {
   ASSERT_FALSE(send_more_immediately) << "Queue still had requests pending";
 
   // if we ask for a new request, it should come back empty
-  ASSERT_OK(queue_->RequestForPeer(kPeerUuid, &request, &refs, &needs_tablet_copy));
+  ASSERT_OK(queue_->RequestForPeer(kPeerUuid, &request, &refs, &needs_tablet_copy, &next_hop_uuid));
   ASSERT_FALSE(needs_tablet_copy);
   ASSERT_EQ(0, request.ops_size());
 
@@ -349,7 +351,8 @@ TEST_F(ConsensusQueueTest, TestGetPagedMessages) {
     VLOG(1) << "Making request " << i;
     vector<ReplicateRefPtr> refs;
     bool needs_tablet_copy;
-    ASSERT_OK(queue_->RequestForPeer(kPeerUuid, &request, &refs, &needs_tablet_copy));
+    std::string next_hop_uuid;
+    iASSERT_OK(queue_->RequestForPeer(kPeerUuid, &request, &refs, &needs_tablet_copy, &next_hop_uuid));
     ASSERT_FALSE(needs_tablet_copy);
     ASSERT_EQ(kOpsPerRequest, request.ops_size());
     last = request.ops(request.ops_size() -1).id();
@@ -360,7 +363,8 @@ TEST_F(ConsensusQueueTest, TestGetPagedMessages) {
   }
   vector<ReplicateRefPtr> refs;
   bool needs_tablet_copy;
-  ASSERT_OK(queue_->RequestForPeer(kPeerUuid, &request, &refs, &needs_tablet_copy));
+  std::string next_hop_uuid;
+  ASSERT_OK(queue_->RequestForPeer(kPeerUuid, &request, &refs, &needs_tablet_copy, &next_hop_uuid));
   ASSERT_FALSE(needs_tablet_copy);
   ASSERT_EQ(1, request.ops_size());
   last = request.ops(request.ops_size() -1).id();
@@ -402,7 +406,8 @@ TEST_F(ConsensusQueueTest, TestPeersDontAckBeyondWatermarks) {
 
   vector<ReplicateRefPtr> refs;
   bool needs_tablet_copy;
-  ASSERT_OK(queue_->RequestForPeer(kPeerUuid, &request, &refs, &needs_tablet_copy));
+  std::string next_hop_uuid;
+  ASSERT_OK(queue_->RequestForPeer(kPeerUuid, &request, &refs, &needs_tablet_copy, &next_hop_uuid));
   ASSERT_FALSE(needs_tablet_copy);
   ASSERT_EQ(50, request.ops_size());
 
@@ -418,7 +423,7 @@ TEST_F(ConsensusQueueTest, TestPeersDontAckBeyondWatermarks) {
   ASSERT_EQ(queue_->GetAllReplicatedIndex(), 100);
 
   // if we ask for a new request, it should come back with the rest of the messages
-  ASSERT_OK(queue_->RequestForPeer(kPeerUuid, &request, &refs, &needs_tablet_copy));
+  ASSERT_OK(queue_->RequestForPeer(kPeerUuid, &request, &refs, &needs_tablet_copy, &next_hop_uuid));
   ASSERT_FALSE(needs_tablet_copy);
   ASSERT_EQ(100, request.ops_size());
 
@@ -629,7 +634,8 @@ TEST_F(ConsensusQueueTest, TestQueueLoadsOperationsForPeer) {
   // the missing operations.
   vector<ReplicateRefPtr> refs;
   bool needs_tablet_copy;
-  ASSERT_OK(queue_->RequestForPeer(kPeerUuid, &request, &refs, &needs_tablet_copy));
+  std::string next_hop_uuid;
+  ASSERT_OK(queue_->RequestForPeer(kPeerUuid, &request, &refs, &needs_tablet_copy, &next_hop_uuid));
   ASSERT_FALSE(needs_tablet_copy);
   ASSERT_EQ(request.ops_size(), 50);
 
@@ -689,7 +695,8 @@ TEST_F(ConsensusQueueTest, TestQueueHandlesOperationOverwriting) {
   // Ask for a request. The queue assumes the peer is up-to-date so
   // this should contain no operations.
   bool needs_tablet_copy;
-  ASSERT_OK(queue_->RequestForPeer(kPeerUuid, &request, &refs, &needs_tablet_copy));
+  std::string next_hop_uuid;
+  ASSERT_OK(queue_->RequestForPeer(kPeerUuid, &request, &refs, &needs_tablet_copy, &next_hop_uuid));
   ASSERT_FALSE(needs_tablet_copy);
   ASSERT_EQ(request.ops_size(), 0);
   ASSERT_OPID_EQ(request.preceding_id(), MakeOpId(2, 20));
@@ -728,7 +735,7 @@ TEST_F(ConsensusQueueTest, TestQueueHandlesOperationOverwriting) {
 
   // Generate another request for the remote peer, which should include
   // all of the ops since the peer's last-known committed index.
-  ASSERT_OK(queue_->RequestForPeer(kPeerUuid, &request, &refs, &needs_tablet_copy));
+  ASSERT_OK(queue_->RequestForPeer(kPeerUuid, &request, &refs, &needs_tablet_copy, &next_hop_uuid));
   ASSERT_FALSE(needs_tablet_copy);
   ASSERT_OPID_EQ(MakeOpId(1, 5), request.preceding_id());
   ASSERT_EQ(16, request.ops_size());
@@ -854,7 +861,8 @@ TEST_F(ConsensusQueueTest, TestOnlyAdvancesWatermarkWhenPeerHasAPrefixOfOurLog) 
   // When we get operations for this peer we should get them starting immediately after
   // the committed index, for a total of 9 operations.
   bool needs_tablet_copy;
-  ASSERT_OK(queue_->RequestForPeer(kPeerUuid, &request, &refs, &needs_tablet_copy));
+  std::string next_hop_uuid;
+  ASSERT_OK(queue_->RequestForPeer(kPeerUuid, &request, &refs, &needs_tablet_copy, &next_hop_uuid));
   ASSERT_FALSE(needs_tablet_copy);
   ASSERT_EQ(request.ops_size(), 9);
   ASSERT_OPID_EQ(request.ops(0).id(), MakeOpId(72, 32));
@@ -875,7 +883,7 @@ TEST_F(ConsensusQueueTest, TestOnlyAdvancesWatermarkWhenPeerHasAPrefixOfOurLog) 
   // Another request for this peer should get another page of messages. Still not
   // on the queue's term (and thus without advancing watermarks).
   request.mutable_ops()->ExtractSubrange(0, request.ops().size(), nullptr);
-  ASSERT_OK(queue_->RequestForPeer(kPeerUuid, &request, &refs, &needs_tablet_copy));
+  ASSERT_OK(queue_->RequestForPeer(kPeerUuid, &request, &refs, &needs_tablet_copy, &next_hop_uuid));
   ASSERT_FALSE(needs_tablet_copy);
   ASSERT_EQ(request.ops_size(), 9);
   ASSERT_OPID_EQ(request.ops(0).id(), MakeOpId(72, 41));
@@ -893,7 +901,7 @@ TEST_F(ConsensusQueueTest, TestOnlyAdvancesWatermarkWhenPeerHasAPrefixOfOurLog) 
   // The last page of request should overwrite the peer's operations and the
   // response should finally advance the watermarks.
   request.mutable_ops()->ExtractSubrange(0, request.ops().size(), nullptr);
-  ASSERT_OK(queue_->RequestForPeer(kPeerUuid, &request, &refs, &needs_tablet_copy));
+  ASSERT_OK(queue_->RequestForPeer(kPeerUuid, &request, &refs, &needs_tablet_copyi, &next_hop_uuid));
   ASSERT_FALSE(needs_tablet_copy);
   ASSERT_EQ(request.ops_size(), 4);
   ASSERT_OPID_EQ(request.ops(0).id(), MakeOpId(73, 50));
@@ -923,7 +931,8 @@ TEST_F(ConsensusQueueTest, TestTriggerTabletCopyIfTabletNotFound) {
   // Create request for new peer.
   vector<ReplicateRefPtr> refs;
   bool needs_tablet_copy;
-  ASSERT_OK(queue_->RequestForPeer(kPeerUuid, &request, &refs, &needs_tablet_copy));
+  std::string next_hop_uuid;
+  ASSERT_OK(queue_->RequestForPeer(kPeerUuid, &request, &refs, &needs_tablet_copy, &next_hop_uuid));
   ASSERT_FALSE(needs_tablet_copy);
 
   // Peer responds with tablet not found.
@@ -932,7 +941,7 @@ TEST_F(ConsensusQueueTest, TestTriggerTabletCopyIfTabletNotFound) {
 
   // On the next request, we should find out that the queue wants us to initiate Tablet Copy.
   request.Clear();
-  ASSERT_OK(queue_->RequestForPeer(kPeerUuid, &request, &refs, &needs_tablet_copy));
+  ASSERT_OK(queue_->RequestForPeer(kPeerUuid, &request, &refs, &needs_tablet_copy, &next_hop_uuid));
   ASSERT_TRUE(needs_tablet_copy);
 
   StartTabletCopyRequestPB tc_req;
@@ -995,7 +1004,7 @@ TEST(ConsensusQueueUnitTest, PeerHealthStatus) {
   }
 
   peer.last_exchange_status = PeerStatus::TABLET_FAILED;
-  EXPECT_EQ(HealthReportPB::FAILED_UNRECOVERABLE, PeerMessageQueue::PeerHealthStatus(peer));
+  EXPECT_EQ(HealthReportPB::FAILED_UNRECOVERABLE, PeerMessageQueue::PeerHealthStatus(pee));
 
   peer.last_exchange_status = PeerStatus::OK;
   EXPECT_EQ(HealthReportPB::HEALTHY, PeerMessageQueue::PeerHealthStatus(peer));

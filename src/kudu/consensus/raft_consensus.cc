@@ -393,6 +393,11 @@ Status RaftConsensus::Start(const ConsensusBootstrapInfo& info,
       info.last_id,
       info.last_committed_id));
 
+  // Proxy failure threshold is set to "2 * leader failure timeout" which
+  // is roughly equivalent to 3000 ms
+  queue->SetProxyFailureThreshold(
+      2 * MinimumElectionTimeout().ToMilliseconds());
+
   // A manager for the set of peers that actually send the operations both remotely
   // and to the local wal.
   unique_ptr<PeerManager> peer_manager(new PeerManager(options_.tablet_id,
@@ -4221,6 +4226,18 @@ Status RaftConsensus::SetProxyPolicy(const ProxyPolicy& proxy_policy) {
   proxy_policy_ = proxy_policy;
   return routing_table_container_->SetProxyPolicy(
       proxy_policy_, cmeta_->leader_uuid(), cmeta_->ActiveConfig());
+}
+
+void RaftConsensus::SetProxyFailureThreshold(
+    int32_t proxy_failure_threshold_ms) {
+  LockGuard l(lock_);
+  queue_->SetProxyFailureThreshold(proxy_failure_threshold_ms);
+}
+
+void RaftConsensus::SetProxyFailureThresholdLag(
+    int64_t proxy_failure_threshold_lag) {
+  LockGuard l(lock_);
+  queue_->SetProxyFailureThresholdLag(proxy_failure_threshold_lag);
 }
 
 void RaftConsensus::ClearRemovedPeersList() {
