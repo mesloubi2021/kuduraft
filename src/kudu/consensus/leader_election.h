@@ -139,8 +139,10 @@ class FlexibleVoteCounter : public VoteCounter {
  public:
   FlexibleVoteCounter(
       const std::string& candidate_uuid,
-      int64_t election_term, const LastKnownLeaderPB& last_known_leader,
-      RaftConfigPB config);
+      int64_t election_term,
+      const LastKnownLeaderPB& last_known_leader,
+      RaftConfigPB config,
+      bool adjust_voter_distribution);
 
   // Synchronization is done by the LeaderElection class. Therefore, VoteCounter
   // class doesn't need to take care of thread safety of its book-keeping
@@ -334,6 +336,9 @@ class FlexibleVoteCounter : public VoteCounter {
 
   // Mapping from each region to number of active voters.
   std::map<std::string, int> voter_distribution_;
+
+  // Should we adjust voter distribution based on current config?
+  const bool adjust_voter_distribution_;
 
   // Vote count per region.
   std::map<std::string, int> yes_vote_count_, no_vote_count_;

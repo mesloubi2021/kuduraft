@@ -429,6 +429,11 @@ class PeerMessageQueue {
   bool HasProxyPeerFailedUnlocked(
       const TrackedPeer* proxy_peer, const TrackedPeer* dest_peer);
 
+  void SetAdjustVoterDistribution(bool val) {
+    std::lock_guard<simple_spinlock> lock(queue_lock_);
+    adjust_voter_distribution_ = val;
+  }
+
  private:
   FRIEND_TEST(ConsensusQueueTest, TestQueueAdvancesCommittedIndex);
   FRIEND_TEST(ConsensusQueueTest, TestQueueMovesWatermarksBackward);
@@ -675,6 +680,9 @@ class PeerMessageQueue {
   const std::string tablet_id_;
 
   QueueState queue_state_;
+
+  // Should we adjust voter distribution based on current config?
+  bool adjust_voter_distribution_;
 
   // The currently tracked peers.
   PeersMap peers_map_;

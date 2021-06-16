@@ -209,27 +209,33 @@ void FlexibleVoteCounter::FetchTopologyInfo() {
     }
   }
 
-  // Step 1: Compute number of voters in each region in the active config.
-  // As voter distribution provided in topology config can lag,
-  // we need to take into account the active voters as well due to
-  // membership changes.
-  AdjustVoterDistributionWithCurrentVoters(config_, &voter_distribution_);
+  // adjust_voter_distribution_ is set to false on in cases where we want to
+  // perform an election forcefully i.e. unsafe config change
+  if (PREDICT_TRUE(adjust_voter_distribution_)) {
+    // Step 1: Compute number of voters in each region in the active config.
+    // As voter distribution provided in topology config can lag,
+    // we need to take into account the active voters as well due to
+    // membership changes.
+    AdjustVoterDistributionWithCurrentVoters(config_, &voter_distribution_);
 
-  // We assume that there are no voters in config_.peers() who
-  // are in present in regions not covered by voter_distribution_
-  // That is enforced via bootstrap and add-member
-  // The reverse is not true and has been handled in
-  // AdjustVoterDistributionWithCurrentVoters
+    // We assume that there are no voters in config_.peers() who
+    // are in present in regions not covered by voter_distribution_
+    // That is enforced via bootstrap and add-member
+    // The reverse is not true and has been handled in
+    // AdjustVoterDistributionWithCurrentVoters
+  }
 }
 
 FlexibleVoteCounter::FlexibleVoteCounter(
     const std::string& candidate_uuid,
     int64_t election_term,
     const LastKnownLeaderPB& last_known_leader,
-    RaftConfigPB config)
+    RaftConfigPB config,
+    bool adjust_voter_distribution)
   : VoteCounter(1, 1),
     candidate_uuid_(candidate_uuid),
     election_term_(election_term),
+    adjust_voter_distribution_(adjust_voter_distribution),
     last_known_leader_(last_known_leader),
     config_(std::move(config)) {
   num_voters_ = 0;
@@ -242,7 +248,7 @@ FlexibleVoteCounter::FlexibleVoteCounter(
     // When instances are being removed from ring, the voter distribution
     // can have extra regions, but we have taken them out in
     // FetchTopology. So this should never happen
-    if (regional_voter_count.second <= 0) {
+    if (adjust_voter_distribution_ && regional_voter_count.second <= 0) {
       continue;
     }
     // num_voters_ += regional_voter_count.second;
