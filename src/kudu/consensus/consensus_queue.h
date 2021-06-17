@@ -295,7 +295,8 @@ class PeerMessageQueue {
   Status RequestForPeer(const std::string& uuid,
                         ConsensusRequestPB* request,
                         std::vector<ReplicateRefPtr>* msg_refs,
-                        bool* needs_tablet_copy);
+                        bool* needs_tablet_copy,
+                        std::string* next_hop_uuid);
 
 #ifdef FB_DO_NOT_REMOVE
   // Fill in a StartTabletCopyRequest for the specified peer.
@@ -410,6 +411,23 @@ class PeerMessageQueue {
   LogCache* log_cache() {
     return &log_cache_;
   }
+
+  // Set the threshold (in milliseconds) that is used to determine the health of
+  // the 'proxy peer'
+  void SetProxyFailureThreshold(int32_t proxy_failure_threshold_ms);
+
+  // Set the lag threshold (as compared to destination peer) that is used to
+  // determine the health of the 'proxy peer'
+  void SetProxyFailureThresholdLag(int32_t proxy_failure_threshold_lag);
+
+  // Check if the 'proxy_peer' is healthy enough to act as a proxy to ship
+  // messages to 'dest_peer'.
+  // Returns 'true' if the 'proxy_peer' has failed proxy health checks and
+  // cannot act as a proxy peer, 'false' otherwise.
+  // TODO: The method used to check for the proxy peer's health only works on
+  // the leader. Hence it does not support multi hop proxying yet
+  bool HasProxyPeerFailedUnlocked(
+      const TrackedPeer* proxy_peer, const TrackedPeer* dest_peer);
 
  private:
   FRIEND_TEST(ConsensusQueueTest, TestQueueAdvancesCommittedIndex);
@@ -677,6 +695,17 @@ class PeerMessageQueue {
   Metrics metrics_;
 
   scoped_refptr<TimeManager> time_manager_;
+
+  // Duration in milliseconds before a peer is marked as 'failed' to being a
+  // proxy-peer.
+  // If the leader has not communicated with a peer within this threshold, then
+  // such a peer is deemed to have failed proxy health check and cannot act as a
+  // proxy peer
+  int32_t proxy_failure_threshold_ms_ = INT_MAX;
+
+  // Maximum lag (in terms of #ops) as compared to the destination peer after
+  // which proxy peer is marked unhealthy
+  int64_t proxy_failure_threshold_lag_ = 1000;
 };
 
 // The interface between RaftConsensus and the PeerMessageQueue.

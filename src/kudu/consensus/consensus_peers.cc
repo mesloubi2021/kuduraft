@@ -235,10 +235,15 @@ void Peer::SendNextRequest(bool even_if_queue_empty) {
 
   // The peer has no pending request nor is sending: send the request.
   bool needs_tablet_copy = false;
+
+  // The next hop to route to to ship messages to this peer. This could be
+  // different than the peer_uuid when proxy is enabled
+  string next_hop_uuid;
   int64_t commit_index_before = request_.has_committed_index() ?
       request_.committed_index() : kMinimumOpIdIndex;
   Status s = queue_->RequestForPeer(peer_pb_.permanent_uuid(), &request_,
-                                    &replicate_msg_refs_, &needs_tablet_copy);
+                                    &replicate_msg_refs_, &needs_tablet_copy,
+                                    &next_hop_uuid);
   int64_t commit_index_after = request_.has_committed_index() ?
       request_.committed_index() : kMinimumOpIdIndex;
 
@@ -307,12 +312,9 @@ void Peer::SendNextRequest(bool even_if_queue_empty) {
   // that this object outlives the RPC.
   shared_ptr<Peer> s_this = shared_from_this();
 
-  // TODO(mpercy): An error here means that the peer is not in the config. Need
-  // to see whether we can remove this CHECK, since in that case, what is the
-  // state of the current Peer object?
-  string next_hop_uuid;
-  CHECK_OK(queue_->GetNextRoutingHopFromLeader(peer_pb().permanent_uuid(), &next_hop_uuid));
-
+  // TODO: Refactor this code. Ideally all fields in 'request_' related to
+  // proxying should be set inside PeerMessageQueue::RequestForPeer(). Move the
+  // setting of 'proxy_hops_remaining' to PeerMessageQueue::RequestForPeer()
   if (next_hop_uuid != peer_pb().permanent_uuid()) {
     // If this is a proxy request, set the hops remaining value.
     request_.set_proxy_hops_remaining(FLAGS_raft_proxy_max_hops);

@@ -209,6 +209,44 @@ PeerMessageQueue::PeerMessageQueue(const scoped_refptr<MetricEntity>& metric_ent
   log_cache_.Init(queue_state_.last_appended);
 }
 
+void PeerMessageQueue::SetProxyFailureThreshold(
+    int32_t proxy_failure_threshold_ms) {
+  std::lock_guard<simple_spinlock> lock(queue_lock_);
+  proxy_failure_threshold_ms_ = proxy_failure_threshold_ms;
+}
+
+void PeerMessageQueue::SetProxyFailureThresholdLag(
+    int32_t proxy_failure_threshold_lag) {
+  std::lock_guard<simple_spinlock> lock(queue_lock_);
+  proxy_failure_threshold_lag_ = proxy_failure_threshold_lag;
+}
+
+bool PeerMessageQueue::HasProxyPeerFailedUnlocked(
+    const TrackedPeer* proxy_peer, const TrackedPeer* dest_peer) {
+  auto max_proxy_failure_threshold =
+    MonoDelta::FromMilliseconds(proxy_failure_threshold_ms_);
+
+  if (MonoTime::Now() - proxy_peer->last_communication_time >
+      max_proxy_failure_threshold) {
+    // The leader has not communicated with proxy_peer within the
+    // proxy_failure_threshold_ms. Hence this peer cannot act as a 'proxy peer'
+    // and is considered failed
+    return true;
+  }
+
+  bool is_proxy_lagging = (dest_peer->next_index > proxy_peer->next_index) &&
+    ((dest_peer->next_index - proxy_peer->next_index) >
+     proxy_failure_threshold_lag_);
+
+  if (is_proxy_lagging) {
+    // The proxy peer is lagging farther than the destination peer. Hence it
+    // cannot act as a proxy for the destination peer
+    return true;
+  }
+
+  return false;
+}
+
 void PeerMessageQueue::SetLeaderMode(int64_t committed_index,
                                      int64_t current_term,
                                      const RaftConfigPB& active_config) {
@@ -657,13 +695,13 @@ Status PeerMessageQueue::FindPeer(const std::string& uuid, TrackedPeer* peer) {
 Status PeerMessageQueue::RequestForPeer(const string& uuid,
                                         ConsensusRequestPB* request,
                                         vector<ReplicateRefPtr>* msg_refs,
-                                        bool* needs_tablet_copy) {
+                                        bool* needs_tablet_copy,
+                                        std::string* next_hop_uuid) {
   // Maintain a thread-safe copy of necessary members.
   OpId preceding_id;
   int64_t current_term;
   TrackedPeer peer_copy;
   MonoDelta unreachable_time;
-  string next_hop_uuid;
   {
     std::lock_guard<simple_spinlock> lock(queue_lock_);
     DCHECK_EQ(queue_state_.state, kQueueOpen);
@@ -692,7 +730,21 @@ Status PeerMessageQueue::RequestForPeer(const string& uuid,
     unreachable_time = MonoTime::Now() - peer_copy.last_communication_time;
 
     RETURN_NOT_OK(routing_table_container_->NextHop(
-          local_peer_pb_.permanent_uuid(), uuid, &next_hop_uuid));
+          local_peer_pb_.permanent_uuid(), uuid, next_hop_uuid));
+
+    if (*next_hop_uuid != uuid) {
+      // If proxy_peer is not healthy, then route directly to the destination
+      // TODO: Multi hop proxy support needs better failure and health checks
+      // for proxy peer. The current method of detecting unhealthy proxy peer
+      // works only on the leader. One solution could be for the leader to
+      // periodically exchange the health report of all peers as part of
+      // UpdateReplica() call
+      TrackedPeer* proxy_peer = FindPtrOrNull(peers_map_, *next_hop_uuid);
+      if (proxy_peer == nullptr ||
+          HasProxyPeerFailedUnlocked(proxy_peer, peer)) {
+        *next_hop_uuid = uuid;
+      }
+    }
   }
 
   // Always trigger a health status update check at the end of this function.
@@ -724,9 +776,9 @@ Status PeerMessageQueue::RequestForPeer(const string& uuid,
   *needs_tablet_copy = false;
 
   // If the next hop != the destination, we are sending these messages via a proxy.
-  bool route_via_proxy = next_hop_uuid != uuid;
+  bool route_via_proxy = *next_hop_uuid != uuid;
   if (route_via_proxy) {
-    request->set_proxy_dest_uuid(next_hop_uuid);
+    request->set_proxy_dest_uuid(*next_hop_uuid);
   }
 
   // If we've never communicated with the peer, we don't know what messages to
