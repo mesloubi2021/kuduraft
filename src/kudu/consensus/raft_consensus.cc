@@ -187,6 +187,12 @@ DEFINE_bool(track_removed_peers, true,
 
 // Metrics
 // ---------
+METRIC_DEFINE_counter(server, raft_log_truncation_counter,
+                      "Log truncation count",
+                      kudu::MetricUnit::kRequests,
+                      "Number of times ops written to raft log were truncated "
+                      "as a result of the new leader overwriting ops");
+
 METRIC_DEFINE_counter(server, follower_memory_pressure_rejections,
                       "Follower Memory Pressure Rejections",
                       kudu::MetricUnit::kRequests,
@@ -343,6 +349,9 @@ Status RaftConsensus::Start(const ConsensusBootstrapInfo& info,
   DCHECK(peer_proxy_factory_ != NULL);
   DCHECK(log_ != NULL);
   DCHECK(time_manager_ != NULL);
+
+  raft_log_truncation_counter_ =
+    metric_entity->FindOrCreateCounter(&METRIC_raft_log_truncation_counter);
 
   term_metric_ = metric_entity->FindOrCreateGauge(&METRIC_raft_term, CurrentTerm());
   follower_memory_pressure_rejections_ =
@@ -937,7 +946,13 @@ Status RaftConsensus::TruncateCallbackWithRaftLock(int64_t *index_if_truncated) 
   // We pass -1 to TruncateOpsAfter in the log abstraction
   // It is the responsibility of the derived log to truncate from
   // the cached truncation index and clear it.
-  return log_->TruncateOpsAfter(-1, index_if_truncated);
+  RETURN_NOT_OK(log_->TruncateOpsAfter(-1, index_if_truncated));
+
+  if (index_if_truncated && *index_if_truncated != -1) {
+    raft_log_truncation_counter_->Increment();
+  }
+
+  return Status::OK();
 }
 
 Status RaftConsensus::CheckLeadershipAndBindTerm(const scoped_refptr<ConsensusRound>& round) {

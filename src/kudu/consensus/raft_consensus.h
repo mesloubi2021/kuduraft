@@ -1194,6 +1194,9 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // restarts
   bool new_leader_detected_failsafe_;
 
+  // Number of times ops in raft log were truncated as a result of new leader
+  // overwriting the log
+  scoped_refptr<Counter> raft_log_truncation_counter_;
 
   // Proxy metrics.
   scoped_refptr<Counter> raft_proxy_num_requests_received_;
