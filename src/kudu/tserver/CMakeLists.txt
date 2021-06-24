@@ -51,6 +51,7 @@ target_link_libraries(tserver
   krpc
   log
   log_proto
+  persistent_vars_proto
   protobuf
   security
   kserver
@@ -90,6 +91,7 @@ add_custom_command(TARGET tserver
     COMMAND ar -t $<TARGET_FILE:fs_proto> >> touch_link
     COMMAND ar -t $<TARGET_FILE:consensus_metadata_proto> >> touch_link
     COMMAND ar -t $<TARGET_FILE:consensus_proto> >> touch_link
+    COMMAND ar -t $<TARGET_FILE:persistent_vars_proto> >> touch_link
     COMMAND ar -t $<TARGET_FILE:rpc_header_proto> >> touch_link
     COMMAND ar -t $<TARGET_FILE:histogram_proto> >> touch_link
     COMMAND ar -t $<TARGET_FILE:version_info_proto> >> touch_link
@@ -102,7 +104,7 @@ add_custom_command(TARGET tserver
     COMMAND ar -t $<TARGET_FILE:gutil> >> touch_link
     COMMAND cat touch_link | xargs ar -qcs ${C_LIB}
     COMMAND ranlib ${C_LIB}
-    DEPENDS tcmalloc profiler tserver kserver server_process consensus log kudu_fs kudu_common kudu_util clock kudu_util_compression kudu_common_proto kudu_tools_util kudu_tool tool_proto maintenance_manager_proto util_compression_proto fs_proto log_proto consensus_metadata_proto consensus_proto histogram_proto rpc_header_proto rpc_introspection_proto token_proto pb_util_proto tserver_admin_proto server_base_proto
+    DEPENDS tcmalloc profiler tserver kserver server_process consensus log kudu_fs kudu_common kudu_util clock kudu_util_compression kudu_common_proto kudu_tools_util kudu_tool tool_proto maintenance_manager_proto util_compression_proto fs_proto log_proto consensus_metadata_proto consensus_proto histogram_proto rpc_header_proto rpc_introspection_proto token_proto pb_util_proto tserver_admin_proto server_base_proto persistent_vars_proto
 )
 
 #########################################

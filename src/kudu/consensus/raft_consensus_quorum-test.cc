@@ -57,6 +57,9 @@
 #include "kudu/consensus/metadata.pb.h"
 #include "kudu/consensus/opid.pb.h"
 #include "kudu/consensus/opid_util.h"
+#include "kudu/consensus/persistent_vars.pb.h"
+#include "kudu/consensus/persistent_vars.h"
+#include "kudu/consensus/persistent_vars_manager.h"
 #include "kudu/consensus/quorum_util.h"
 #include "kudu/consensus/raft_consensus.h"
 #include "kudu/consensus/time_manager.h"
@@ -165,6 +168,10 @@ class RaftConsensusQuorumTest : public KuduTest {
           new ConsensusMetadataManager(fs_manager.get()));
       cmeta_managers_.push_back(cmeta_manager);
 
+      scoped_refptr<PersistentVarsManager> persistent_vars_manager(
+          new PersistentVarsManager(fs_manager.get()));
+      persistent_vars_managers_.push_back(persistent_vars_manager);
+
       scoped_refptr<Log> log;
       RETURN_NOT_OK(Log::Open(LogOptions(),
                               fs_manager.get(),
@@ -198,8 +205,11 @@ class RaftConsensusQuorumTest : public KuduTest {
   Status BuildPeers() {
     CHECK_EQ(config_.peers_size(), cmeta_managers_.size());
     CHECK_EQ(config_.peers_size(), fs_managers_.size());
+    CHECK_EQ(config_.peers_size(), persistent_vars_managers_.size());
     for (int i = 0; i < config_.peers_size(); i++) {
       RETURN_NOT_OK(cmeta_managers_[i]->CreateCMeta(kTestTablet, config_, kMinimumTerm));
+
+      RETURN_NOT_OK(persistent_vars_managers_[i]->CreatePersistentVars(kTestTablet));
 
       RaftPeerPB* local_peer_pb;
       RETURN_NOT_OK(GetRaftConfigMember(&config_, fs_managers_[i]->uuid(), &local_peer_pb));
@@ -208,7 +218,7 @@ class RaftConsensusQuorumTest : public KuduTest {
       RETURN_NOT_OK(
           RaftConsensus::Create(
               options_, config_.peers(i), cmeta_managers_[i],
-              raft_pool_.get(), &peer));
+              persistent_vars_managers_[i], raft_pool_.get(), &peer));
       peers_->AddPeer(config_.peers(i).permanent_uuid(), peer);
     }
     return Status::OK();
@@ -592,6 +602,7 @@ class RaftConsensusQuorumTest : public KuduTest {
   vector<scoped_refptr<Log> > logs_;
   gscoped_ptr<ThreadPool> raft_pool_;
   vector<scoped_refptr<ConsensusMetadataManager>> cmeta_managers_;
+  vector<scoped_refptr<PersistentVarsManager>> persistent_vars_managers_;
   gscoped_ptr<TestPeerMapManager> peers_;
   vector<TestTransactionFactory*> txn_factories_;
   scoped_refptr<clock::Clock> clock_;

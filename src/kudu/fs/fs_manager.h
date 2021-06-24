@@ -239,6 +239,11 @@ class FsManager {
     return JoinPathSegments(GetConsensusMetadataDir(), tablet_id + ".proxy");
   }
 
+  // Return the path where PersistentVarsPB is stored.
+  std::string GetPersistentVarsPath(const std::string& tablet_id) const {
+     return JoinPathSegments(GetConsensusMetadataDir(), tablet_id + ".persistent_vars");
+  }
+
   Env* env() { return env_; }
 
   bool read_only() const {
