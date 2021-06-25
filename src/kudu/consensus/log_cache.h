@@ -286,6 +286,13 @@ class LogCache {
     // Keeps track of uncompressed size of messages cached. This will be same as
     // log_cache_size if compression is not enabled and on secondaries
     scoped_refptr<AtomicGauge<int64_t> > log_cache_msg_size;
+
+    // Payload size of the msg that is written to the log
+    scoped_refptr<Counter> log_cache_payload_size;
+
+    // Payload size of the compressed msg payload that is sent over the wire
+    // If compression is disabled, it is the same as log_cache_payload_size
+    scoped_refptr<Counter> log_cache_compressed_payload_size;
   };
   Metrics metrics_;
 
