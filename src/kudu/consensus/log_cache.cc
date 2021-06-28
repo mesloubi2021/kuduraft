@@ -84,6 +84,14 @@ METRIC_DEFINE_gauge_int64(server, log_cache_msg_size, "Log Cache Message Size",
                           MetricUnit::kBytes,
                           "Size of the incoming uncompressed payload for the "
                           "messages in the log_cache");
+METRIC_DEFINE_counter(server, log_cache_compressed_payload_size,
+                      "Log Cache Compressed Payload Size",
+                       MetricUnit::kBytes,
+                       "Size of the compressed msg payload that is sent over the wire");
+METRIC_DEFINE_counter(server, log_cache_payload_size,
+                      "Log Cache Payload Size",
+                       MetricUnit::kBytes,
+                      "Size of the msg payload that is written to the log");
 
 static const char kParentMemTrackerId[] = "log_cache";
 
@@ -359,6 +367,8 @@ Status LogCache::AppendOperations(const vector<ReplicateRefPtr>& msgs,
   // and cache the result with each message.
   int64_t mem_required = 0;
   int64_t total_msg_size = 0;
+  int64_t compressed_size = 0;
+  int64_t uncompressed_size = 0;
   vector<CacheEntry> entries_to_insert;
   entries_to_insert.reserve(msgs.size());
 
@@ -371,6 +381,7 @@ Status LogCache::AppendOperations(const vector<ReplicateRefPtr>& msgs,
     const auto op_type = msg->get()->op_type();
     bool is_compressed =
       (msg->get()->write_payload().compression_codec() != NO_COMPRESSION);
+    uncompressed_size += msg->get()->write_payload().payload().size();
 
     if (is_compressed) {
       // This batch has a compressed message. Store this fact to be used later
@@ -406,6 +417,8 @@ Status LogCache::AppendOperations(const vector<ReplicateRefPtr>& msgs,
       e.mem_usage = e.msg_size;
       e.msg = msg;
     }
+
+    compressed_size += e.msg->get()->write_payload().payload().size();
 
     // Update the crc32 checksum for the payload
     uint32_t payload_crc32 = crc::Crc32c(
@@ -466,6 +479,13 @@ Status LogCache::AppendOperations(const vector<ReplicateRefPtr>& msgs,
   metrics_.log_cache_size->IncrementBy(mem_required);
   metrics_.log_cache_msg_size->IncrementBy(total_msg_size);
   metrics_.log_cache_num_ops->IncrementBy(msgs.size());
+  metrics_.log_cache_payload_size->IncrementBy(uncompressed_size);
+  metrics_.log_cache_compressed_payload_size->IncrementBy(compressed_size);
+
+  VLOG(2) << "Compressed size: " << compressed_size <<
+             ", Uncompressed size: " << uncompressed_size <<
+             ", Total msg size: " << total_msg_size <<
+             ", Msg Size: " << mem_required;
 
   Status log_status;
   if (!found_compressed_msgs) {
@@ -885,6 +905,10 @@ LogCache::Metrics::Metrics(const scoped_refptr<MetricEntity>& metric_entity)
   : log_cache_num_ops(INSTANTIATE_METRIC(METRIC_log_cache_num_ops)),
     log_cache_size(INSTANTIATE_METRIC(METRIC_log_cache_size)),
     log_cache_msg_size(INSTANTIATE_METRIC(METRIC_log_cache_msg_size)) {
+    log_cache_payload_size =
+      metric_entity->FindOrCreateCounter(&METRIC_log_cache_payload_size);
+    log_cache_compressed_payload_size =
+      metric_entity->FindOrCreateCounter(&METRIC_log_cache_compressed_payload_size);
 }
 #undef INSTANTIATE_METRIC
 
