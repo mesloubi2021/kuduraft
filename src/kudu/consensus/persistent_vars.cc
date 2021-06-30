@@ -39,7 +39,8 @@ using strings::Substitute;
 
 bool PersistentVars::is_start_election_allowed() const {
   DFAKE_SCOPED_RECURSIVE_LOCK(fake_lock_);
-  DCHECK(pb_.has_allow_start_election());
+  // allow_start_election is optional with default = true
+  // So if it not present, we will allow start elections by default
   return pb_.allow_start_election();
 }
 
