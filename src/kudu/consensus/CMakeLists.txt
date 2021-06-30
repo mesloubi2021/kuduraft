@@ -73,6 +73,24 @@ ADD_EXPORTABLE_LIBRARY(consensus_proto
   NONLINK_DEPS ${CONSENSUS_KRPC_TGTS})
 
 #########################################
+# persistent_vars_proto
+#########################################
+
+PROTOBUF_GENERATE_CPP(
+  PERSISTENT_VARS_PROTO_SRCS PERSISTENT_VARS_PROTO_HDRS PERSISTENT_VARS_PROTO_TGTS
+  SOURCE_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../..
+  BINARY_ROOT ${CMAKE_CURRENT_BINARY_DIR}/../..
+  PROTO_FILES
+    persistent_vars.proto)
+set(PERSISTENT_VARS_PROTO_LIBS
+  kudu_common_proto
+  protobuf)
+ADD_EXPORTABLE_LIBRARY(persistent_vars_proto
+  SRCS ${PERSISTENT_VARS_PROTO_SRCS}
+  DEPS ${PERSISTENT_VARS_PROTO_LIBS}
+  NONLINK_DEPS ${PERSISTENT_VARS_PROTO_TGTS})
+
+#########################################
 # log_proto
 #########################################
 
@@ -104,7 +122,8 @@ target_link_libraries(log
   kudu_util_compression
   consensus_proto
   log_proto
-  consensus_metadata_proto)
+  consensus_metadata_proto
+  persistent_vars_proto)
 
 set(CONSENSUS_SRCS
   consensus_meta.cc
@@ -114,6 +133,8 @@ set(CONSENSUS_SRCS
   leader_election.cc
   log_cache.cc
   peer_manager.cc
+  persistent_vars.cc
+  persistent_vars_manager.cc
   pending_rounds.cc
   quorum_util.cc
   raft_consensus.cc

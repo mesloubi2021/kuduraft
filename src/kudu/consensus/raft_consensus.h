@@ -42,6 +42,8 @@
 #include "kudu/consensus/log.h"
 #include "kudu/consensus/metadata.pb.h"
 #include "kudu/consensus/opid.pb.h"
+#include "kudu/consensus/persistent_vars.pb.h"
+#include "kudu/consensus/persistent_vars.h"
 #include "kudu/consensus/proxy_policy.h"
 #include "kudu/consensus/ref_counted_replicate.h"
 #include "kudu/consensus/routing.h"
@@ -91,6 +93,7 @@ class ConsensusRound;
 class ConsensusRoundHandler;
 class PeerManager;
 class PeerProxyFactory;
+class PersistentVarsManager;
 class PendingRounds;
 struct ConsensusBootstrapInfo;
 struct ElectionResult;
@@ -213,6 +216,7 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   static Status Create(ConsensusOptions options,
                        RaftPeerPB local_peer_pb,
                        scoped_refptr<ConsensusMetadataManager> cmeta_manager,
+                       scoped_refptr<PersistentVarsManager> persistent_vars_manager,
                        ThreadPool* raft_pool,
                        std::shared_ptr<RaftConsensus>* consensus_out);
 
@@ -231,6 +235,20 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
 
   // Returns true if RaftConsensus is running.
   bool IsRunning() const;
+
+  // Allow (or disallow) starting elections on the peer. If disallowed, no type
+  // of election will be started on the peer - even if there are heartbeat
+  // failures from the leader. The setting is persisted to disk and respected
+  // even after the node restarts - this means that if starting elections was
+  // disabled on a leader before it crashes, it will not become leader again on
+  // restart until starting elections is manually re-allowed
+  //
+  // In the future, we can probably have a TTL on this to protect against
+  // accidental prolonged blockage of starting elections
+  void SetAllowStartElection(bool val);
+
+  // Check if starting elections is allowed
+  bool IsStartElectionAllowed() const;
 
   // Start tracking the leader for failures. This typically occurs at startup
   // and when the local peer steps down as leader.
@@ -617,6 +635,7 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   RaftConsensus(ConsensusOptions options,
                 RaftPeerPB local_peer_pb,
                 scoped_refptr<ConsensusMetadataManager> cmeta_manager,
+                scoped_refptr<PersistentVarsManager> persistent_vars_manager,
                 ThreadPool* raft_pool);
 
  private:
@@ -1064,6 +1083,9 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // Consensus metadata service.
   const scoped_refptr<ConsensusMetadataManager> cmeta_manager_;
 
+  // Persistent Vars service
+  const scoped_refptr<PersistentVarsManager> persistent_vars_manager_;
+
   ThreadPool* const raft_pool_;
 
   // TODO(dralves) hack to serialize updates due to repeated/out-of-order messages
@@ -1080,6 +1102,9 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
 
   // Consensus metadata persistence object.
   scoped_refptr<ConsensusMetadata> cmeta_;
+
+  // Persistent vars object
+  scoped_refptr<PersistentVars> persistent_vars_;
 
   // The policy used to route requests from leader through intermediate proxy
   // peers

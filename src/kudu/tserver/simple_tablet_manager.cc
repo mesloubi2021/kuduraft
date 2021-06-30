@@ -39,6 +39,9 @@
 #include "kudu/consensus/consensus_meta.h"
 #include "kudu/consensus/consensus_meta_manager.h"
 #include "kudu/consensus/consensus_peers.h"
+#include "kudu/consensus/persistent_vars.pb.h"
+#include "kudu/consensus/persistent_vars.h"
+#include "kudu/consensus/persistent_vars_manager.h"
 #include "kudu/consensus/proxy_policy.h"
 #include "kudu/consensus/time_manager.h"
 #include "kudu/consensus/log.h"
@@ -86,6 +89,8 @@ namespace kudu {
 using consensus::ConsensusMetadata;
 using consensus::ConsensusMetadataCreateMode;
 using consensus::ConsensusMetadataManager;
+using consensus::PersistentVars;
+using consensus::PersistentVarsManager;
 using consensus::ConsensusStatePB;
 using consensus::ConsensusOptions;
 using consensus::PeerProxyFactory;
@@ -115,6 +120,7 @@ const std::string TSTabletManager::kSysCatalogTabletId("000000000000000000000000
 TSTabletManager::TSTabletManager(TabletServer* server)
   : fs_manager_(server->fs_manager()),
     cmeta_manager_(new ConsensusMetadataManager(fs_manager_)),
+    persistent_vars_manager_(new PersistentVarsManager(fs_manager_)),
     server_(server),
     metric_registry_(server->metric_registry()),
     state_(MANAGER_INITIALIZING),
@@ -199,6 +205,8 @@ Status TSTabletManager::CreateNew(FsManager *fs_manager) {
   // For now, we initialize with an empty proxy graph.
   RETURN_NOT_OK_PREPEND(cmeta_manager_->CreateDRT(kSysCatalogTabletId, config, {}),
                         "Unable to create new durable routing table for tablet " + kSysCatalogTabletId);
+  RETURN_NOT_OK_PREPEND(persistent_vars_manager_->CreatePersistentVars(kSysCatalogTabletId),
+                        "Unable to create persistent vars file for tablet " + kSysCatalogTabletId);
 
   return SetupRaft();
 }
@@ -383,6 +391,9 @@ Status TSTabletManager::Start(bool is_first_run) {
   scoped_refptr<ConsensusMetadata> cmeta;
   Status s = cmeta_manager_->LoadCMeta(kSysCatalogTabletId, &cmeta);
 
+  scoped_refptr<PersistentVars> persistent_vars;
+  s = persistent_vars_manager_->LoadPersistentVars(kSysCatalogTabletId, &persistent_vars);
+
   // We have already captured the ConsensusBootstrapInfo in SetupRaft
   // and saved it locally.
   // consensus::ConsensusBootstrapInfo bootstrap_info;
@@ -437,6 +448,7 @@ Status TSTabletManager::SetupRaft() {
   RETURN_NOT_OK(RaftConsensus::Create(std::move(options),
                                       local_peer_pb_,
                                       cmeta_manager_,
+                                      persistent_vars_manager_,
                                       server_->raft_pool(),
                                       &consensus));
   consensus_ = std::move(consensus);
@@ -462,6 +474,9 @@ Status TSTabletManager::SetupRaft() {
   // Not sure these 2 lines are required
   scoped_refptr<ConsensusMetadata> cmeta;
   Status s = cmeta_manager_->LoadCMeta(kSysCatalogTabletId, &cmeta);
+
+  scoped_refptr<PersistentVars> persistent_vars;
+  s = persistent_vars_manager_->LoadPersistentVars(kSysCatalogTabletId, &persistent_vars);
 
   // Open the log, while passing in the factory class.
   // Factory could be empty.

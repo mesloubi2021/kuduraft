@@ -28,6 +28,7 @@
 #include <gtest/gtest_prod.h>
 
 #include "kudu/consensus/metadata.pb.h"
+#include "kudu/consensus/persistent_vars.pb.h"
 #include "kudu/consensus/raft_consensus.h"
 #include "kudu/gutil/callback.h"
 #include "kudu/gutil/gscoped_ptr.h"
@@ -60,6 +61,7 @@ class Log;
 namespace consensus {
 class ConsensusMetadataManager;
 class OpId;
+class PersistentVarsManager;
 struct ElectionResult;
 } // namespace consensus
 
@@ -186,6 +188,7 @@ class TSTabletManager : public consensus::ConsensusRoundHandler {
   FsManager* const fs_manager_;
 
   const scoped_refptr<consensus::ConsensusMetadataManager> cmeta_manager_;
+  const scoped_refptr<consensus::PersistentVarsManager> persistent_vars_manager_;
 
   // Kudu log, which was created by the passed in
   // factory entity

@@ -53,6 +53,9 @@
 #include "kudu/consensus/opid_util.h"
 #include "kudu/consensus/peer_manager.h"
 #include "kudu/consensus/pending_rounds.h"
+#include "kudu/consensus/persistent_vars.h"
+#include "kudu/consensus/persistent_vars_manager.h"
+#include "kudu/consensus/persistent_vars.pb.h"
 #include "kudu/consensus/quorum_util.h"
 #include "kudu/consensus/routing.h"
 #include "kudu/consensus/time_manager.h"
@@ -273,10 +276,12 @@ RaftConsensus::RaftConsensus(
     ConsensusOptions options,
     RaftPeerPB local_peer_pb,
     scoped_refptr<ConsensusMetadataManager> cmeta_manager,
+    scoped_refptr<PersistentVarsManager> persistent_vars_manager,
     ThreadPool* raft_pool)
     : options_(std::move(options)),
       local_peer_pb_(std::move(local_peer_pb)),
       cmeta_manager_(std::move(cmeta_manager)),
+      persistent_vars_manager_(std::move(persistent_vars_manager)),
       raft_pool_(raft_pool),
       state_(kNew),
       proxy_policy_(options_.proxy_policy),
@@ -293,11 +298,14 @@ RaftConsensus::RaftConsensus(
       update_calls_for_tests_(0) {
   DCHECK(local_peer_pb_.has_permanent_uuid());
   DCHECK(cmeta_manager_ != NULL);
+  DCHECK(persistent_vars_manager_ != NULL);
 }
 
 Status RaftConsensus::Init() {
   DCHECK_EQ(kNew, state_) << State_Name(state_);
   RETURN_NOT_OK(cmeta_manager_->LoadCMeta(options_.tablet_id, &cmeta_));
+
+  RETURN_NOT_OK(persistent_vars_manager_->LoadPersistentVars(options_.tablet_id, &persistent_vars_));
 
   // Durable routing table is persisted - hence better to manage it through
   // consensus_meta_manager.
@@ -320,11 +328,13 @@ RaftConsensus::~RaftConsensus() {
 Status RaftConsensus::Create(ConsensusOptions options,
                              RaftPeerPB local_peer_pb,
                              scoped_refptr<ConsensusMetadataManager> cmeta_manager,
+                             scoped_refptr<PersistentVarsManager> persistent_vars_manager,
                              ThreadPool* raft_pool,
                              shared_ptr<RaftConsensus>* consensus_out) {
   shared_ptr<RaftConsensus> consensus(RaftConsensus::make_shared(std::move(options),
                                                                  std::move(local_peer_pb),
                                                                  std::move(cmeta_manager),
+                                                                 std::move(persistent_vars_manager),
                                                                  raft_pool));
   RETURN_NOT_OK_PREPEND(consensus->Init(), "Unable to initialize Raft consensus");
   *consensus_out = std::move(consensus);
@@ -578,6 +588,12 @@ Status RaftConsensus::StartElection(ElectionMode mode, ElectionContext context) 
     ThreadRestrictions::AssertWaitAllowed();
     LockGuard l(lock_);
     RETURN_NOT_OK(CheckRunningUnlocked());
+
+    if (!persistent_vars_->is_start_election_allowed()) {
+      KLOG_EVERY_N_SECS(WARNING, 300) << LogPrefixUnlocked() <<
+          Substitute("allow_start_election is set to false, not starting $0 [EVERY 300 seconds]", mode_str);
+      return Status::OK();
+    }
 
     context.current_leader_uuid_ = GetLeaderUuidUnlocked();
     if (context.source_uuid_.empty()) {
@@ -3439,6 +3455,17 @@ void RaftConsensus::CompleteConfigChangeRoundUnlocked(ConsensusRound* round, con
         << "Old config: { " << SecureShortDebugString(old_config) << " }. "
         << "New config: { " << SecureShortDebugString(new_config) << " }";
   }
+}
+
+void RaftConsensus::SetAllowStartElection(bool val) {
+  if (PREDICT_FALSE(persistent_vars_->is_start_election_allowed() != val)) {
+    persistent_vars_->set_allow_start_election(val);
+    CHECK_OK(persistent_vars_->Flush());
+  }
+}
+
+bool RaftConsensus::IsStartElectionAllowed() const {
+  return persistent_vars_->is_start_election_allowed();
 }
 
 void RaftConsensus::EnableFailureDetector(boost::optional<MonoDelta> delta) {
