@@ -87,5 +87,9 @@ Status PersistentVarsManager::LoadPersistentVars(const string& tablet_id,
   return Status::OK();
 }
 
+bool PersistentVarsManager::PersistentVarsFileExists(const std::string& tablet_id) const {
+  return PersistentVars::FileExists(fs_manager_, tablet_id);
+}
+
 } // namespace consensus
 } // namespace kudu

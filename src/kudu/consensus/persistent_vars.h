@@ -80,6 +80,9 @@ class PersistentVars : public RefCountedThreadSafe<PersistentVars> {
                      const std::string& peer_uuid,
                      scoped_refptr<PersistentVars>* persistent_vars_out = nullptr);
 
+  // Check whether the persistent_vars file exists for the given tablet
+  static bool FileExists(FsManager* fs_manager, const std::string& tablet_id);
+
   std::string LogPrefix() const;
 
   FsManager* const fs_manager_;

@@ -205,8 +205,8 @@ Status TSTabletManager::CreateNew(FsManager *fs_manager) {
   // For now, we initialize with an empty proxy graph.
   RETURN_NOT_OK_PREPEND(cmeta_manager_->CreateDRT(kSysCatalogTabletId, config, {}),
                         "Unable to create new durable routing table for tablet " + kSysCatalogTabletId);
-  RETURN_NOT_OK_PREPEND(persistent_vars_manager_->CreatePersistentVars(kSysCatalogTabletId),
-                        "Unable to create persistent vars file for tablet " + kSysCatalogTabletId);
+  // Note that we are intentionally not creating Persistent Vars here because we do it
+  // in SetupRaft() anyway if the file does not exist
 
   return SetupRaft();
 }
@@ -438,6 +438,14 @@ Status TSTabletManager::SetupRaft() {
 
   InitLocalRaftPeerPB();
 
+  // If the persistent vars file does not already exist, create one
+  if (!persistent_vars_manager_->PersistentVarsFileExists(kSysCatalogTabletId)) {
+    LOG(INFO) << "Persistent Vars file does not exist for tablet "
+              << kSysCatalogTabletId << ". Creating a new one";
+    RETURN_NOT_OK_PREPEND(persistent_vars_manager_->CreatePersistentVars(kSysCatalogTabletId),
+                          "Unable to create persistent vars file for tablet " + kSysCatalogTabletId);
+  }
+
   ConsensusOptions options;
   options.tablet_id = kSysCatalogTabletId;
   options.proxy_policy = server_->opts().proxy_policy;
@@ -474,9 +482,6 @@ Status TSTabletManager::SetupRaft() {
   // Not sure these 2 lines are required
   scoped_refptr<ConsensusMetadata> cmeta;
   Status s = cmeta_manager_->LoadCMeta(kSysCatalogTabletId, &cmeta);
-
-  scoped_refptr<PersistentVars> persistent_vars;
-  s = persistent_vars_manager_->LoadPersistentVars(kSysCatalogTabletId, &persistent_vars);
 
   // Open the log, while passing in the factory class.
   // Factory could be empty.

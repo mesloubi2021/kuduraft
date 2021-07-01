@@ -108,6 +108,10 @@ Status PersistentVars::Load(FsManager* fs_manager,
   return Status::OK();
 }
 
+bool PersistentVars::FileExists(FsManager* fs_manager, const std::string& tablet_id) {
+  return fs_manager->env()->FileExists(fs_manager->GetPersistentVarsPath(tablet_id));
+}
+
 std::string PersistentVars::LogPrefix() const {
   // No need to lock to read const members.
   return Substitute("T $0 P $1: ", tablet_id_, peer_uuid_);
