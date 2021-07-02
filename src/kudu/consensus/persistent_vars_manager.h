@@ -59,6 +59,9 @@ class PersistentVarsManager : public RefCountedThreadSafe<PersistentVarsManager>
   Status LoadPersistentVars(const std::string& tablet_id,
                    scoped_refptr<PersistentVars>* persistent_vars_out = nullptr);
 
+  // Check whether the Persistent Vars file exists for a given tablet
+  bool PersistentVarsFileExists(const std::string& tablet_id) const;
+
 private:
   friend class RefCountedThreadSafe<PersistentVarsManager>;
 
