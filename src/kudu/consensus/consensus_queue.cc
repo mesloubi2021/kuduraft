@@ -185,6 +185,7 @@ PeerMessageQueue::PeerMessageQueue(const scoped_refptr<MetricEntity>& metric_ent
       local_peer_pb_(std::move(local_peer_pb)),
       routing_table_container_(std::move(routing_table_container)),
       tablet_id_(std::move(tablet_id)),
+      adjust_voter_distribution_(true),
       successor_watch_in_progress_(false),
       log_cache_(metric_entity, std::move(log), local_peer_pb_.permanent_uuid(), tablet_id_),
       metrics_(metric_entity),
@@ -1257,6 +1258,13 @@ int64_t PeerMessageQueue::ComputeNewWatermarkDynamicMode(int64_t* watermark) {
 
   int total_voters = std::max(
       total_voters_from_voter_distribution, total_voters_from_active_config);
+
+  // adjust_voter_distribution_ is set to false on in cases where we want to
+  // perform an election forcefully i.e. unsafe config change
+  if (PREDICT_FALSE(!adjust_voter_distribution_)) {
+    total_voters = total_voters_from_voter_distribution;
+  }
+
   int commit_req = MajoritySize(total_voters);
 
   VLOG_WITH_PREFIX_UNLOCKED(1) << "Computing new commit index in single "
@@ -1332,12 +1340,16 @@ int64_t PeerMessageQueue::ComputeNewWatermarkStaticMode(int64_t* watermark) {
       queue_state_.active_config->voter_distribution().begin(),
       queue_state_.active_config->voter_distribution().end());
 
-  // Compute number of voters in each region in the active config.
-  // As voter distribution provided in topology config can lag,
-  // we need to take into account the active voters as well due to
-  // membership changes.
-  AdjustVoterDistributionWithCurrentVoters(
-      *(queue_state_.active_config), &voter_distribution);
+  // adjust_voter_distribution_ is set to false on in cases where we want to
+  // perform an election forcefully i.e. unsafe config change
+  if (PREDICT_TRUE(adjust_voter_distribution_)) {
+    // Compute number of voters in each region in the active config.
+    // As voter distribution provided in topology config can lag,
+    // we need to take into account the active voters as well due to
+    // membership changes.
+    AdjustVoterDistributionWithCurrentVoters(
+        *(queue_state_.active_config), &voter_distribution);
+  }
 
   return DoComputeNewWatermarkStaticMode(
       voter_distribution, watermarks_by_region, watermark);

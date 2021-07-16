@@ -289,6 +289,7 @@ RaftConsensus::RaftConsensus(
       leader_transfer_in_progress_(false),
       withhold_votes_until_(MonoTime::Min()),
       reject_append_entries_(false),
+      adjust_voter_distribution_(true),
       withhold_votes_(false),
       last_received_cur_leader_(MinimumOpId()),
       failed_elections_since_stable_leader_(0),
@@ -668,8 +669,11 @@ Status RaftConsensus::StartElection(ElectionMode mode, ElectionContext context) 
       counter.reset(new VoteCounter(num_voters, majority_size));
     } else {
       counter.reset(new FlexibleVoteCounter(
-          peer_uuid(), candidate_term,
-          cmeta_->last_known_leader(), active_config));
+          peer_uuid(),
+          candidate_term,
+          cmeta_->last_known_leader(),
+          active_config,
+          adjust_voter_distribution_));
 
       // Populate vote history for self. Although not really needed, this makes
       // the code simpler.
@@ -3486,6 +3490,12 @@ void RaftConsensus::SetWithholdVotesForTests(bool withhold_votes) {
 
 void RaftConsensus::SetRejectAppendEntriesForTests(bool reject_append_entries) {
   reject_append_entries_ = reject_append_entries;
+}
+
+void RaftConsensus::SetAdjustVoterDistribution(bool val) {
+  LockGuard l(lock_);
+  queue_->SetAdjustVoterDistribution(val);
+  adjust_voter_distribution_ = val;
 }
 
 void RaftConsensus::UpdateFailureDetectorState(boost::optional<MonoDelta> delta) {

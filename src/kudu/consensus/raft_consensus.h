@@ -271,6 +271,9 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // Rejects AppendEntries RPCs, if set to true.
   void SetRejectAppendEntriesForTests(bool reject_append_entries);
 
+  // If set to false we won't adjust voter distribution based on current config
+  void SetAdjustVoterDistribution(bool val);
+
   // Update the proxy policy used to route entries
   Status SetProxyPolicy(const ProxyPolicy& proxy_policy);
 
@@ -1166,6 +1169,9 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
 
   // This is used in tests to reject AppendEntries RPC requests.
   bool reject_append_entries_;
+
+  // Should we adjust voter distribution based on current config?
+  bool adjust_voter_distribution_;
 
   // This is used in tests to reject RequestVote RPC requests.
   bool withhold_votes_;
