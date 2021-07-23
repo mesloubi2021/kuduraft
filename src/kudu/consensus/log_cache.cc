@@ -619,14 +619,15 @@ Status LogCache::BlockingReadOps(int64_t after_op_index,
 
   {
     std::lock_guard<Mutex> l(lock_);
-    while (after_op_index >= next_sequential_op_index_) {
+
+    while ((after_op_index + 1) >= next_sequential_op_index_) {
       (void) next_index_cond_.WaitUntil(deadline);
 
       if (MonoTime::Now() > deadline)
         break;
     }
 
-    if (after_op_index >= next_sequential_op_index_) {
+    if ((after_op_index + 1) >= next_sequential_op_index_) {
       // Waited for max_duration_ms, but 'after_op_index' is still not available
       // in the local log
       return Status::Incomplete(Substitute("Op with index $0 is ahead of the local log "
