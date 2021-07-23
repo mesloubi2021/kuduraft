@@ -125,6 +125,8 @@ class ConsensusMetadata : public RefCountedThreadSafe<ConsensusMetadata> {
   void clear_pending_config();
   void set_pending_config(const RaftConfigPB& config);
 
+  void set_active_config(const RaftConfigPB& config);
+
   // If a pending configuration is set, return it.
   // Otherwise, return the committed configuration.
   const RaftConfigPB& ActiveConfig() const;

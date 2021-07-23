@@ -3683,22 +3683,30 @@ Status RaftConsensus::SetPendingConfigUnlocked(const RaftConfigPB& new_config) {
 }
 
 Status
-RaftConsensus::ChangeVoterDistribution(const TopologyConfigPB &topology_config) {
+RaftConsensus::ChangeVoterDistribution(
+    const TopologyConfigPB &topology_config,
+    bool force) {
   TRACE_EVENT2("consensus", "RaftConsensus::ChangeTopologyConfig", "peer",
                peer_uuid(), "tablet", options_.tablet_id);
   ThreadRestrictions::AssertWaitAllowed();
   LockGuard l(lock_);
-  // Do not allow any voter distribution changes on a unsquelched ring.
-  Status s = CheckNoConfigChangePendingUnlocked();
-  RETURN_NOT_OK(s);
 
-  RaftConfigPB committed_config = cmeta_->CommittedConfig();
-  committed_config.clear_voter_distribution();
-  committed_config.mutable_voter_distribution()->insert(
+  // When force is true we're most likely running an unsafe config change
+  // operation to regain availability so we have to live with pending config
+  // changes and force apply a voter distribution to run an election
+  if (!force) {
+    // Do not allow any voter distribution changes on a unsquelched ring.
+    Status s = CheckNoConfigChangePendingUnlocked();
+    RETURN_NOT_OK(s);
+  }
+
+  RaftConfigPB config = cmeta_->ActiveConfig();
+  config.clear_voter_distribution();
+  config.mutable_voter_distribution()->insert(
       topology_config.voter_distribution().begin(),
       topology_config.voter_distribution().end());
 
-  cmeta_->set_committed_config(committed_config);
+  cmeta_->set_active_config(config);
   CHECK_OK(cmeta_->Flush());
   return Status::OK();
 }
