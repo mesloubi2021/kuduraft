@@ -232,6 +232,15 @@ void ConsensusMetadata::set_pending_config(const RaftConfigPB& config) {
   UpdateActiveRole();
 }
 
+void ConsensusMetadata::set_active_config(const RaftConfigPB& config) {
+  DFAKE_SCOPED_RECURSIVE_LOCK(fake_lock_);
+  if (has_pending_config_) {
+    set_pending_config(config);
+  } else {
+    set_committed_config(config);
+  }
+}
+
 const RaftConfigPB& ConsensusMetadata::ActiveConfig() const {
   DFAKE_SCOPED_RECURSIVE_LOCK(fake_lock_);
   return GetConfig(ACTIVE_CONFIG);
