@@ -1183,7 +1183,8 @@ LeaderElection::LeaderElection(RaftConfigPB config,
       vote_counter_(std::move(vote_counter)),
       timeout_(timeout),
       decision_callback_(std::move(decision_callback)),
-      highest_voter_term_(0) {
+      highest_voter_term_(0),
+      start_time_(MonoTime::Now()) {
 }
 
 LeaderElection::~LeaderElection() {
@@ -1297,8 +1298,12 @@ void LeaderElection::CheckForDecision() {
     if (!result_ && vote_counter_->IsDecided()) {
       ElectionVote decision;
       CHECK_OK(vote_counter_->GetDecision(&decision));
+      MonoTime end = MonoTime::Now();
+      MonoDelta election_duration = end.GetDeltaSince(start_time_);
+
       LOG_WITH_PREFIX(INFO) << "Election decided. Result: candidate "
-                << ((decision == VOTE_GRANTED) ? "won." : "lost.");
+                << ((decision == VOTE_GRANTED) ? "won." : "lost.")
+                << " duration: " << election_duration.ToString();
       string msg = (decision == VOTE_GRANTED) ?
           "achieved majority votes" : "could not achieve majority";
 

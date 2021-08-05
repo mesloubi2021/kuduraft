@@ -689,6 +689,7 @@ Status RaftConsensus::StartElection(ElectionMode mode, ElectionContext context) 
     // Vote for ourselves.
     bool duplicate;
     RETURN_NOT_OK(counter->RegisterVote(peer_uuid(), vote_info, &duplicate));
+    LOG_WITH_PREFIX_UNLOCKED(INFO) << "Self-Voted " << mode_str;
     CHECK(!duplicate) << LogPrefixUnlocked()
                       << "Inexplicable duplicate self-vote for term "
                       << CurrentTermUnlocked();
@@ -3708,6 +3709,17 @@ RaftConsensus::ChangeVoterDistribution(
 
   cmeta_->set_active_config(config);
   CHECK_OK(cmeta_->Flush());
+  // NB: Not calling the Proxy routing table update as the
+  // proxy routing table does not deal with Voter Distribution.
+  // If this changes, please make sure this call is uncommented.
+  // RETURN_NOT_OK(routing_table_container_->UpdateRaftConfig(
+        // cmeta_->ActiveConfig()));
+
+  // Since voter distribution has changed, we need to refresh
+  // consensus queue to make sure watermark calculation changes.
+  if (cmeta_->active_role() == RaftPeerPB::LEADER) {
+      RETURN_NOT_OK(RefreshConsensusQueueAndPeersUnlocked());
+  }
   return Status::OK();
 }
 

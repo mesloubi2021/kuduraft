@@ -509,6 +509,9 @@ class LeaderElection : public RefCountedThreadSafe<LeaderElection> {
 
   // The highest term seen from a voter so far (or 0 if no votes).
   int64_t highest_voter_term_;
+
+  // The time when the election started
+  MonoTime start_time_;
 };
 
 } // namespace consensus
