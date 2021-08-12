@@ -4300,6 +4300,25 @@ Status RaftConsensus::SetProxyPolicy(const ProxyPolicy& proxy_policy) {
       proxy_policy_, cmeta_->leader_uuid(), cmeta_->ActiveConfig());
 }
 
+void RaftConsensus::GetProxyPolicy(std::string* proxy_policy) {
+  LockGuard l(lock_);
+
+  switch (proxy_policy_) {
+    case ProxyPolicy::DISABLE_PROXY:
+      *proxy_policy = "DISABLE_PROXY";
+      break;
+    case ProxyPolicy::SIMPLE_REGION_ROUTING_POLICY:
+      *proxy_policy = "SIMPLE_REGION_ROUTING_POLICY";
+      break;
+    case ProxyPolicy::DURABLE_ROUTING_POLICY:
+      *proxy_policy = "DURABLE_ROUTING_POLICY";
+      break;
+    default:
+      *proxy_policy = "UNKNOWN";
+      break;
+  }
+}
+
 void RaftConsensus::SetProxyFailureThreshold(
     int32_t proxy_failure_threshold_ms) {
   LockGuard l(lock_);

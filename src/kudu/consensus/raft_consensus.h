@@ -277,6 +277,9 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // Update the proxy policy used to route entries
   Status SetProxyPolicy(const ProxyPolicy& proxy_policy);
 
+  // Returns the current proxy policy in use
+  void GetProxyPolicy(std::string* proxy_policy);
+
   // Set the failure threshold (in milliseconds) beyond which the leader will
   // mark a 'proxy_peer' as being unhealthy (for acting as a proxy)
   void SetProxyFailureThreshold(int32_t proxy_failure_threshold_ms);
