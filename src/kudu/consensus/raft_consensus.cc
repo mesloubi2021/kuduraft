@@ -4073,6 +4073,7 @@ void RaftConsensus::HandleProxyRequest(const ConsensusRequestPB* request,
     downstream_request.mutable_ops()->ExtractSubrange(
       /*start=*/ 0, /*num=*/ downstream_request.ops_size(), /*elements=*/ nullptr);
   });
+
   downstream_request.set_dest_uuid(request->dest_uuid());
   downstream_request.set_tablet_id(request->tablet_id());
   downstream_request.set_caller_uuid(request->caller_uuid());
@@ -4113,6 +4114,9 @@ void RaftConsensus::HandleProxyRequest(const ConsensusRequestPB* request,
   }
 
   bool degraded_to_heartbeat = false;
+  vector<ReplicateRefPtr> messages;
+  messages.clear();
+
   if (request->dest_uuid() != next_uuid) {
     // Multi-hop proxy request.
     downstream_request.set_proxy_dest_uuid(next_uuid);
@@ -4120,17 +4124,13 @@ void RaftConsensus::HandleProxyRequest(const ConsensusRequestPB* request,
     for (int i = 0; i < request->ops_size(); i++) {
       *downstream_request.add_ops() = request->ops(i);
     }
-    prevent_ops_deletion.cancel(); // The ops we copy here are not pre-allocated.
+    prevent_ops_deletion.cancel(); // The ops we copy here are not pre-allocated
   } else {
 
     // Reconstitute proxied events from the local cache.
     // If the cache does not have all events, we retry up until the specified
     // retry timeout.
     // TODO(mpercy): Switch this from polling to event-triggered.
-
-    vector<ReplicateRefPtr> messages;
-    messages.clear();
-
     PeerMessageQueue::TrackedPeer peer_to_send;
     Status s = queue_->FindPeer(request->dest_uuid(), &peer_to_send);
     ReadContext read_context;
