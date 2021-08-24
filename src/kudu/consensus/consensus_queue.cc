@@ -1798,6 +1798,9 @@ bool PeerMessageQueue::ResponseFromPeer(const std::string& peer_uuid,
     // NOTE: it's possible this node might have lost its leadership (and the notification
     // is just pending behind the lock we're holding), but any future leader will observe
     // the same watermarks and make the same advancement, so this is safe.
+    int64_t old_all_replicated_index = 0;
+    int64_t new_all_replicated_index = 0;
+
     if (mode_copy == LEADER) {
       // Advance the majority replicated index.
       if (!FLAGS_enable_flexi_raft) {
@@ -1808,13 +1811,24 @@ bool PeerMessageQueue::ResponseFromPeer(const std::string& peer_uuid,
                               /*num_peers_required=*/ queue_state_.majority_size_,
                               VOTER_REPLICAS,
                               peer);
-      } else {
+      } else if (peer->last_received.index() > queue_state_.majority_replicated_index ||
+          peer->last_exchange_status != PeerStatus::OK) {
+        // This method is expensive. The 'watermark' can change only if this
+        // peer's last received index is higer than the current
+        // majority_replicated_index. We also call this method when the
+        // last_exhange_status of the peer indicates an error. This is because
+        // 'majority_replicated_index' can go down. It sould be safe to
+        // completely skip calling this method when 'last_exhange_status' is an
+        // error, but we do not want to introduce a behavior change at this
+        // point. Check AdvanceQueueWatermark() for more comments
         AdvanceMajorityReplicatedWatermarkFlexiRaft(
             &queue_state_.majority_replicated_index,
             /*replicated_before=*/ prev_peer_state.last_received,
             /*replicated_after=*/ peer->last_received,
             peer);
       }
+
+      old_all_replicated_index = queue_state_.all_replicated_index;
 
       // Advance the all replicated index.
       AdvanceQueueWatermark("all_replicated",
@@ -1824,6 +1838,9 @@ bool PeerMessageQueue::ResponseFromPeer(const std::string& peer_uuid,
                             /*num_peers_required=*/ peers_map_.size(),
                             ALL_REPLICAS,
                             peer);
+
+      new_all_replicated_index = queue_state_.all_replicated_index;
+
 
       // If the majority-replicated index is in our current term,
       // and it is above our current committed index, then
@@ -1869,7 +1886,13 @@ bool PeerMessageQueue::ResponseFromPeer(const std::string& peer_uuid,
     send_more_immediately = peer->last_known_committed_index < queue_state_.committed_index ||
                             log_cache_.HasOpBeenWritten(peer->next_index);
 
-    log_cache_.EvictThroughOp(queue_state_.all_replicated_index);
+    // Evict ops from log_cache only if:
+    // 1. This is not a leader node OR
+    // 2. 'all_replicated_index' has changed after processing this response
+    if (mode_copy != LEADER ||
+        (old_all_replicated_index != new_all_replicated_index)) {
+      log_cache_.EvictThroughOp(queue_state_.all_replicated_index);
+    }
 
     UpdateMetricsUnlocked();
   }
