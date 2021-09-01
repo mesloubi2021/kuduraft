@@ -236,12 +236,20 @@ void Peer::SendNextRequest(bool even_if_queue_empty) {
   // The peer has no pending request nor is sending: send the request.
   bool needs_tablet_copy = false;
 
+  // If this peer is not healthy (as indicated by failed_attempts_), then
+  // degrade this peer to 'status-only' heartbeat request i.e donot read any ops
+  // from log/log-cache to build the entire batch of ops to be sent to this
+  // peer. This ensures that leader is not doing the expensive operation of
+  // reading from log-cache to build the message for a peer that is not
+  // reachable.
+  bool read_ops = (failed_attempts_ <= 0);
+
   // The next hop to route to to ship messages to this peer. This could be
   // different than the peer_uuid when proxy is enabled
   string next_hop_uuid;
   int64_t commit_index_before = request_.has_committed_index() ?
       request_.committed_index() : kMinimumOpIdIndex;
-  Status s = queue_->RequestForPeer(peer_pb_.permanent_uuid(), &request_,
+  Status s = queue_->RequestForPeer(peer_pb_.permanent_uuid(), read_ops, &request_,
                                     &replicate_msg_refs_, &needs_tablet_copy,
                                     &next_hop_uuid);
   int64_t commit_index_after = request_.has_committed_index() ?
