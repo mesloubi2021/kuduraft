@@ -293,6 +293,7 @@ class PeerMessageQueue {
   // replace the old entries with new ones without de-allocating the old
   // ones if they are still required.
   Status RequestForPeer(const std::string& uuid,
+                        bool read_ops,
                         ConsensusRequestPB* request,
                         std::vector<ReplicateRefPtr>* msg_refs,
                         bool* needs_tablet_copy,

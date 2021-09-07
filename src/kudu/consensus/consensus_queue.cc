@@ -694,6 +694,7 @@ Status PeerMessageQueue::FindPeer(const std::string& uuid, TrackedPeer* peer) {
 }
 
 Status PeerMessageQueue::RequestForPeer(const string& uuid,
+                                        bool read_ops,
                                         ConsensusRequestPB* request,
                                         vector<ReplicateRefPtr>* msg_refs,
                                         bool* needs_tablet_copy,
@@ -790,7 +791,11 @@ Status PeerMessageQueue::RequestForPeer(const string& uuid,
   // If we've never communicated with the peer, we don't know what messages to
   // send, so we'll send a status-only request. Otherwise, we grab requests
   // from the log starting at the last_received point.
-  if (peer_copy.last_exchange_status != PeerStatus::NEW) {
+  // If the caller has explicitly indicated to not read the ops (as indicated by
+  // 'read_ops'), then we skip reading ops from log-cache/log. The caller
+  // ususally does this when the leader detects that a peer is unhealthy and
+  // hence needs to be degraded to a 'status-only' request
+  if (peer_copy.last_exchange_status != PeerStatus::NEW && read_ops) {
 
     // The batch of messages to send to the peer.
     vector<ReplicateRefPtr> messages;
