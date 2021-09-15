@@ -4174,22 +4174,18 @@ void RaftConsensus::HandleProxyRequest(const ConsensusRequestPB* request,
     // an error
     OpId preceding_id;
     if (request->ops_size() > 0) {
-      RET_RESPOND_ERROR_NOT_OK(queue_->log_cache()->BlockingReadOps(
-            first_op_index - 1,
-            max_batch_size,
-            read_context,
-            FLAGS_raft_log_cache_proxy_wait_time_ms,
-            &messages,
-            &preceding_id));
+      queue_->log_cache()->BlockingReadOps(
+          first_op_index - 1,
+          max_batch_size,
+          read_context,
+          FLAGS_raft_log_cache_proxy_wait_time_ms,
+          &messages,
+          &preceding_id);
     }
 
     if (request->ops_size() > 0 && messages.size() == 0) {
-      // We timed out and got nothing from the log cache.
-      Status s = Status::TimedOut(
-          Substitute("unable to reconstitute any of $0 proxied events starting at OpId $1: "
-                     "degrading to heartbeat",
-                     request->ops_size(), OpIdToString(request->ops(0).id())));
-      LOG_WITH_PREFIX(WARNING) << s.ToString(); // TODO(mpercy): Throttle this log message.
+      // We timed out and got nothing from the log cache. Send a heartbeat to
+      // the destination to prevent it from starting (pre) election
       raft_proxy_num_requests_log_read_timeout_->Increment();
       degraded_to_heartbeat = true;
     }
