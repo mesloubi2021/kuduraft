@@ -309,12 +309,11 @@ fetch_and_patch \
  $CRCUTIL_PATCHLEVEL \
  "patch -p0 < $TP_DIR/patches/crcutil-fix-libtoolize-on-osx.patch"
 
-LIBUNWIND_PATCHLEVEL=2
+LIBUNWIND_PATCHLEVEL=1
 fetch_and_patch \
  libunwind-${LIBUNWIND_VERSION}.tar.gz \
  $LIBUNWIND_SOURCE \
  $LIBUNWIND_PATCHLEVEL \
- "patch -p1 < $TP_DIR/patches/libunwind-Use-syscall-directly-in-write_validate-to-avoid-ASAN.patch" \
  "patch -p1 < $TP_DIR/patches/libunwind-trace-cache-destructor.patch"
 
 : '
@@ -410,16 +409,13 @@ fetch_and_patch \
  $THRIFT_SOURCE \
  $THRIFT_PATCHLEVEL
 
-BISON_PATCHLEVEL=1
+BISON_PATCHLEVEL=0
 fetch_and_patch \
  $BISON_NAME.tar.gz \
  $BISON_SOURCE \
- $BISON_PATCHLEVEL \
- "patch -p0 < $TP_DIR/patches/bison-fix-high-sierra-compilation-issue.patch"
- # Fix compilation issue in macOS High Sierra
- # See: https://github.com/spack/spack/issues/5521
+ $BISON_PATCHLEVEL
  # This would normally call autoreconf, but it does not succeed with
- # autoreconf 2.69 (RHEL 7): "autoreconf: 'configure.ac' or 'configure.in' is required".
+ # autoreconf 2.69-11 (RHEL 7): "autoreconf: 'configure.ac' or 'configure.in' is required".
 
 HIVE_PATCHLEVEL=0
 fetch_and_patch \
