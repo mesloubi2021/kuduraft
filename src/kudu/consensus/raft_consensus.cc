@@ -3663,7 +3663,7 @@ Status RaftConsensus::SetPendingConfigUnlocked(const RaftConfigPB& new_config) {
   DCHECK(lock_.is_locked());
   RETURN_NOT_OK_PREPEND(VerifyRaftConfig(new_config),
                         "Invalid config to set as pending");
-  if (!new_config.unsafe_config_change()) {
+  if (adjust_voter_distribution_ && !new_config.unsafe_config_change()) {
     CHECK(!cmeta_->has_pending_config())
         << "Attempt to set pending config while another is already pending! "
         << "Existing pending config: " << SecureShortDebugString(cmeta_->PendingConfig()) << "; "
@@ -3739,12 +3739,16 @@ Status RaftConsensus::SetCommittedConfigUnlocked(const RaftConfigPB& config_to_c
   // Compare committed with pending configuration, ensure that they are the same.
   // In the event of an unsafe config change triggered by an administrator,
   // it is possible that the config being committed may not match the pending config
-  // because unsafe config change allows multiple pending configs to exist.
+  // because
+  // 1. Unsafe config change allows multiple pending configs to exist.
+  // 2. When voter distribution adjustment is disabled there might be a
+  // different in voter dist.
   // Therefore we only need to validate that 'config_to_commit' matches the pending config
-  // if the pending config does not have its 'unsafe_config_change' flag set.
+  // if the pending config does not have its 'unsafe_config_change' flag set or
+  // when voter distribution adjustment is enabled.
   if (cmeta_->has_pending_config()) {
     RaftConfigPB pending_config = cmeta_->PendingConfig();
-    if (!pending_config.unsafe_config_change()) {
+    if (adjust_voter_distribution_ && !pending_config.unsafe_config_change()) {
       // Quorums must be exactly equal, even w.r.t. peer ordering.
       CHECK(MessageDifferencer::Equals(pending_config, config_to_commit))
           << Substitute("New committed config must equal pending config, but does not. "
