@@ -228,7 +228,7 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   Status Start(const ConsensusBootstrapInfo& info,
                gscoped_ptr<PeerProxyFactory> peer_proxy_factory,
                scoped_refptr<log::Log> log,
-               scoped_refptr<TimeManager> time_manager,
+               scoped_refptr<ITimeManager> time_manager,
                ConsensusRoundHandler* round_handler,
                const scoped_refptr<MetricEntity>& metric_entity,
                Callback<void(const std::string& reason)> mark_dirty_clbk);
@@ -524,7 +524,7 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // Thread-safe.
   const std::string& tablet_id() const;
 
-  scoped_refptr<TimeManager> time_manager() const { return time_manager_; }
+  scoped_refptr<ITimeManager> time_manager() const { return time_manager_; }
 
   // Return the minimum election timeout. Due to backoff and random
   // jitter, election timeouts may be longer than this.
@@ -1124,7 +1124,7 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   std::unique_ptr<ThreadPoolToken> raft_pool_token_;
 
   scoped_refptr<log::Log> log_;
-  scoped_refptr<TimeManager> time_manager_;
+  scoped_refptr<ITimeManager> time_manager_;
   gscoped_ptr<PeerProxyFactory> peer_proxy_factory_;
 
   // When we receive a message from a remote peer telling us to start a

@@ -30,7 +30,7 @@ class Status;
 
 namespace consensus {
 class ConsensusRound;
-class TimeManager;
+class ITimeManager;
 
 // Tracks the pending consensus rounds being managed by a Raft replica (either leader
 // or follower).
@@ -41,7 +41,7 @@ class TimeManager;
 // We should consolidate to "round".
 class PendingRounds {
  public:
-  PendingRounds(std::string log_prefix, scoped_refptr<TimeManager> time_manager);
+  PendingRounds(std::string log_prefix, scoped_refptr<ITimeManager> time_manager);
   ~PendingRounds();
 
   // Set the committed op during startup. This should be done after
@@ -109,7 +109,7 @@ class PendingRounds {
   // The OpId of the round that was last committed. Initialized to MinimumOpId().
   OpId last_committed_op_id_;
 
-  scoped_refptr<TimeManager> time_manager_;
+  scoped_refptr<ITimeManager> time_manager_;
 
   DISALLOW_COPY_AND_ASSIGN(PendingRounds);
 };

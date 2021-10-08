@@ -36,6 +36,63 @@ class CountDownLatch;
 namespace consensus {
 class ReplicateMsg;
 
+// An interface to TimeManager. Check the comments in TimeManager for more
+// details. The interface only exists so that the feature can be easily disabled
+// by having a dummy time manager implementation
+class ITimeManager : public RefCountedThreadSafe<ITimeManager> {
+ public:
+  virtual ~ITimeManager() {}
+  virtual void SetLeaderMode() = 0;
+  virtual void SetNonLeaderMode() = 0;
+  virtual Status AssignTimestamp(ReplicateMsg* message) = 0;
+  virtual Status MessageReceivedFromLeader(const ReplicateMsg& message) = 0;
+  virtual void AdvanceSafeTimeWithMessage(const ReplicateMsg& message) = 0;
+  virtual void AdvanceSafeTime(Timestamp safe_time) = 0;
+  virtual Status WaitUntilSafe(Timestamp timestamp, const MonoTime& deadline)= 0;
+  virtual Timestamp GetSafeTime() = 0;
+  virtual Timestamp GetSerialTimestamp() = 0;
+};
+
+class TimeManagerDummy : public ITimeManager {
+  ~TimeManagerDummy() override {}
+
+  void SetLeaderMode() override {
+    return;
+  }
+
+  void SetNonLeaderMode() override {
+    return;
+  }
+
+  Status AssignTimestamp(ReplicateMsg* message) override {
+    return Status::OK();
+  }
+
+  Status MessageReceivedFromLeader(const ReplicateMsg& message) override {
+    return Status::OK();
+  }
+
+  void AdvanceSafeTimeWithMessage(const ReplicateMsg& message) override {
+    return;
+  }
+
+  void AdvanceSafeTime(Timestamp safe_time) override {
+    return;
+  }
+
+  Status WaitUntilSafe(Timestamp timestamp, const MonoTime& deadline) override {
+    return Status::OK();
+  }
+
+  Timestamp GetSafeTime() override {
+    return Timestamp::kInitialTimestamp;
+  }
+
+  Timestamp GetSerialTimestamp() override {
+    return Timestamp::kInitialTimestamp;
+  }
+};
+
 // Manages timestamp assignment to consensus rounds and safe time advancement.
 //
 // Safe time corresponds to a timestamp before which all transactions have been applied to the
@@ -71,17 +128,19 @@ class ReplicateMsg;
 //       This anomaly can cause non-repeatable reads in certain conditions.
 //
 // This class is thread safe.
-class TimeManager : public RefCountedThreadSafe<TimeManager> {
+class TimeManager : public ITimeManager {
  public:
 
   // Constructs a TimeManager in non-leader mode.
   TimeManager(scoped_refptr<clock::Clock> clock,  Timestamp initial_safe_time);
 
+  ~TimeManager() override {}
+
   // Sets this TimeManager to leader mode.
-  void SetLeaderMode();
+  void SetLeaderMode() override;
 
   // Sets this TimeManager to non-leader mode.
-  void SetNonLeaderMode();
+  void SetNonLeaderMode() override;
 
   // Assigns a timestamp to 'message' according to the message's ExternalConsistencyMode and/or
   // message type.
@@ -92,7 +151,7 @@ class TimeManager : public RefCountedThreadSafe<TimeManager> {
   // is advanced.
   //
   // Requires Leader mode (non-OK status otherwise).
-  Status AssignTimestamp(ReplicateMsg* message);
+  Status AssignTimestamp(ReplicateMsg* message) override;
 
   // Updates the internal state based on 'message' received from a leader replica.
   // Replicas are expected to call this for every message received from a valid leader.
@@ -100,21 +159,21 @@ class TimeManager : public RefCountedThreadSafe<TimeManager> {
   // Returns Status::OK if the message/leader is valid and the clock was correctly updated.
   //
   // Requires non-leader mode (CHECK failure if it isn't).
-  Status MessageReceivedFromLeader(const ReplicateMsg& message);
+  Status MessageReceivedFromLeader(const ReplicateMsg& message) override;
 
   // Advances safe time based on the timestamp and type of 'message'.
   //
   // This only moves safe time if 'message's timestamp is higher than the currently known one.
   //
   // Allowed in both leader and non-leader modes.
-  void AdvanceSafeTimeWithMessage(const ReplicateMsg& message);
+  void AdvanceSafeTimeWithMessage(const ReplicateMsg& message) override;
 
   // Same as above but for a specific timestamp.
   //
   // This only moves safe time if 'safe_time' is higher than the currently known one.
   //
   // Requires non-leader mode (CHECK failure if it isn't).
-  void AdvanceSafeTime(Timestamp safe_time);
+  void AdvanceSafeTime(Timestamp safe_time) override;
 
   // Waits until 'timestamp' is less than or equal to safe time or until 'deadline' has elapsed.
   //
@@ -124,19 +183,19 @@ class TimeManager : public RefCountedThreadSafe<TimeManager> {
   //
   // TODO(KUDU-1127) make this return another status if safe time is too far back in the past
   // or hasn't moved in a long time.
-  Status WaitUntilSafe(Timestamp timestamp, const MonoTime& deadline);
+  Status WaitUntilSafe(Timestamp timestamp, const MonoTime& deadline) override;
 
   // Returns the current safe time.
   //
   // In leader mode returns clock_->Now() or some value close to it.
   //
   // In non-leader mode returns the last safe time received from a leader.
-  Timestamp GetSafeTime();
+  Timestamp GetSafeTime() override;
 
   // Returns a timestamp that is guaranteed to be higher than all other timestamps
   // that have been assigned by calls to GetSerialTimestamp() (in this or another
   // replica).
-  Timestamp GetSerialTimestamp();
+  Timestamp GetSerialTimestamp() override;
 
  private:
   FRIEND_TEST(TimeManagerTest, TestTimeManagerNonLeaderMode);

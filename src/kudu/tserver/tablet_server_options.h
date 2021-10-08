@@ -85,6 +85,9 @@ struct TabletServerOptions : public kudu::server::ServerBaseOptions {
 
   consensus::TopologyConfigPB topology_config;
 
+  // Enables functionality provided by kudu::consensus::TimeManager
+  bool enable_time_manager = true;
+
   bool IsDistributed() const;
 };
 

@@ -345,7 +345,7 @@ Status RaftConsensus::Create(ConsensusOptions options,
 Status RaftConsensus::Start(const ConsensusBootstrapInfo& info,
                             gscoped_ptr<PeerProxyFactory> peer_proxy_factory,
                             scoped_refptr<log::Log> log,
-                            scoped_refptr<TimeManager> time_manager,
+                            scoped_refptr<ITimeManager> time_manager,
                             ConsensusRoundHandler* round_handler,
                             const scoped_refptr<MetricEntity>& metric_entity,
                             Callback<void(const std::string& reason)> mark_dirty_clbk) {
@@ -354,6 +354,7 @@ Status RaftConsensus::Start(const ConsensusBootstrapInfo& info,
   peer_proxy_factory_ = std::move(peer_proxy_factory);
   log_ = std::move(log);
   time_manager_ = std::move(time_manager);
+
   round_handler_ = DCHECK_NOTNULL(round_handler);
   mark_dirty_clbk_ = std::move(mark_dirty_clbk);
 
