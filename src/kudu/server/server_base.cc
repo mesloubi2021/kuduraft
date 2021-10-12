@@ -493,6 +493,12 @@ Status ServerBase::Init() {
     builder.set_reuseport();
   }
 
+  // If rpc_opts explicitly specify the number of reactor threads, then use it
+  // to override FLAGS_num_reactor_threads
+  if (options_.rpc_opts.num_reactor_threads != 0) {
+    builder.set_num_reactors(options_.rpc_opts.num_reactor_threads);
+  }
+
   RETURN_NOT_OK(builder.Build(&messenger_));
   rpc_server_->set_too_busy_hook(std::bind(
       &ServerBase::ServiceQueueOverflowed, this, std::placeholders::_1));
