@@ -294,7 +294,7 @@ bool TimeManager::IsTimestampSafeUnlocked(Timestamp timestamp) {
   return timestamp <= GetSafeTimeUnlocked();
 }
 
-Timestamp TimeManager::GetSafeTime()  {
+Timestamp TimeManager::GetSafeTime() {
   Lock l(lock_);
   return GetSafeTimeUnlocked();
 }
@@ -355,7 +355,6 @@ Timestamp TimeManager::GetSerialTimestampUnlocked() {
 Timestamp TimeManager::GetSerialTimestampPlusMaxError() {
   return clock_->NowLatest();
 }
-
 
 } // namespace consensus
 } // namespace kudu

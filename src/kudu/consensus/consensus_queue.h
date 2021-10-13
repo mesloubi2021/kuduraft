@@ -199,7 +199,7 @@ class PeerMessageQueue {
 
   PeerMessageQueue(const scoped_refptr<MetricEntity>& metric_entity,
                    scoped_refptr<log::Log> log,
-                   scoped_refptr<TimeManager> time_manager,
+                   scoped_refptr<ITimeManager> time_manager,
                    RaftPeerPB local_peer_pb,
                    std::shared_ptr<RoutingTableContainer> routing_table_container,
                    std::string tablet_id,
@@ -703,7 +703,7 @@ class PeerMessageQueue {
 
   Metrics metrics_;
 
-  scoped_refptr<TimeManager> time_manager_;
+  scoped_refptr<ITimeManager> time_manager_;
 
   // Duration in milliseconds before a peer is marked as 'failed' to being a
   // proxy-peer.

@@ -89,6 +89,7 @@ namespace kudu {
 using consensus::ConsensusMetadata;
 using consensus::ConsensusMetadataCreateMode;
 using consensus::ConsensusMetadataManager;
+using consensus::ITimeManager;
 using consensus::PersistentVars;
 using consensus::PersistentVarsManager;
 using consensus::ConsensusStatePB;
@@ -99,6 +100,7 @@ using consensus::RpcPeerProxyFactory;
 using consensus::EXCLUDE_HEALTH_REPORT;
 using consensus::INCLUDE_HEALTH_REPORT;
 using consensus::TimeManager;
+using consensus::TimeManagerDummy;
 using consensus::OpId;
 using consensus::OpIdToString;
 using consensus::RECEIVED_OPID;
@@ -403,13 +405,18 @@ Status TSTabletManager::Start(bool is_first_run) {
   VLOG(2) << "RaftConfig before starting: " << SecureDebugString(consensus_->CommittedConfig());
 
   gscoped_ptr<PeerProxyFactory> peer_proxy_factory;
-  scoped_refptr<TimeManager> time_manager;
+  scoped_refptr<ITimeManager> time_manager;
 
   peer_proxy_factory.reset(new RpcPeerProxyFactory(server_->messenger()));
-  // THIS IS OBVIOUSLY NOT CORRECT.
-  // ONLY TO MAKE CODE COMPILE [ Anirban ]
-  time_manager.reset(new TimeManager(server_->clock(), Timestamp::kInitialTimestamp));
-  //time_manager.reset(new TimeManager(server_->clock(), tablet_->mvcc_manager()->GetCleanTimestamp()));
+
+  if (server_->opts().enable_time_manager) {
+    // THIS IS OBVIOUSLY NOT CORRECT.
+    // ONLY TO MAKE CODE COMPILE [ Anirban ]
+    time_manager.reset(new TimeManager(server_->clock(), Timestamp::kInitialTimestamp));
+    //time_manager.reset(new TimeManager(server_->clock(), tablet_->mvcc_manager()->GetCleanTimestamp()));
+  } else {
+    time_manager.reset(new TimeManagerDummy());
+  }
 
   ConsensusRoundHandler *round_handler = this;
   // If round handler comes from server options then override it
