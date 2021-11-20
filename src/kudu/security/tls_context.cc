@@ -251,10 +251,13 @@ Status TlsContext::UseCertificateAndKeyUnlocked(const Cert& cert, const PrivateK
 
   CHECK(!has_cert_);
 
-  OPENSSL_RET_NOT_OK(SSL_CTX_use_PrivateKey(ctx_.get(), key.GetRawData()),
-                     "failed to use private key");
+  // The order here matters.
+  // Look at the documentation of https://linux.die.net/man/3/ssl_ctx_use_privatekey
+  // SSL_CTX_use_PrivateKey
   OPENSSL_RET_NOT_OK(SSL_CTX_use_certificate(ctx_.get(), cert.GetTopOfChainX509()),
                      "failed to use certificate");
+  OPENSSL_RET_NOT_OK(SSL_CTX_use_PrivateKey(ctx_.get(), key.GetRawData()),
+                     "failed to use private key");
   has_cert_ = true;
   return Status::OK();
 }
@@ -315,7 +318,39 @@ Status TlsContext::AddTrustedCertificateUnlocked(const Cert& cert, bool use_new_
   return Status::OK();
 }
 
-Status TlsContext::DumpTrustedCerts(vector<string>* cert_ders) const {
+Status TlsContext::DumpCertsInfo(std::vector<std::string> *certs_info) const {
+  X509 *x509 = SSL_CTX_get0_certificate(ctx_.get());
+
+  RETURN_NOT_OK(DumpTrustedCerts(/*der_or_str = */false, certs_info));
+
+  if (x509) {
+    std::string fields;
+    DumpCertFields(x509, &fields);
+    certs_info->push_back(fields);
+  }
+
+  return Status::OK();
+}
+
+void TlsContext::DumpCertFields(X509 *x509, std::string *cert_details) {
+  const ASN1_TIME* notAfter = X509_get0_notAfter(x509);
+  int remaining_days_a = 0, remaining_seconds_a = 0;
+  int  result = ASN1_TIME_diff(&remaining_days_a, &remaining_seconds_a, NULL, notAfter);
+
+  const ASN1_TIME* notBefore = X509_get0_notBefore(x509);
+  int remaining_days_b = 0, remaining_seconds_b = 0;
+  result = ASN1_TIME_diff(&remaining_days_b, &remaining_seconds_b, NULL, notBefore);
+
+  *cert_details = Substitute(
+      "CERT subject=$0, issuer=$1, notAfterDays=$2, notAfterSeconds=$3,"
+      " notBeforeDays=$4, notBeforeSeconds=$5",
+      X509NameToString(X509_get_subject_name(x509)),
+      X509NameToString(X509_get_issuer_name(x509)),
+      remaining_days_a, remaining_seconds_a,
+      remaining_days_b, remaining_seconds_b);
+}
+
+Status TlsContext::DumpTrustedCerts(bool der_or_str, vector<string>* cert_ders) const {
   SCOPED_OPENSSL_NO_PENDING_ERRORS;
   shared_lock<RWMutex> lock(lock_);
 
@@ -346,11 +381,17 @@ Status TlsContext::DumpTrustedCerts(vector<string>* cert_ders) const {
     auto* obj = sk_X509_OBJECT_value(objects, i);
     if (X509_OBJ_GET_TYPE(obj) != X509_LU_X509) continue;
     auto* x509 = X509_OBJ_GET_X509(obj);
-    Cert c;
-    c.AdoptAndAddRefX509(x509);
-    string der;
-    RETURN_NOT_OK(c.ToString(&der, DataFormat::DER));
-    ret.emplace_back(std::move(der));
+    if (der_or_str) {
+      Cert c;
+      c.AdoptAndAddRefX509(x509);
+      string der;
+      RETURN_NOT_OK(c.ToString(&der, DataFormat::DER));
+      ret.emplace_back(std::move(der));
+    } else {
+      string fields;
+      DumpCertFields(x509, &fields);
+      ret.emplace_back(std::move(fields));
+    }
   }
 
   cert_ders->swap(ret);
@@ -525,7 +566,8 @@ Status TlsContext::LoadCertificateAuthority(const string& certificate_path) {
 
 Status TlsContext::LoadCertFiles(const string& ca_path,
                                  const string& certificate_path,
-                                 const string& key_path) {
+                                 const string& key_path,
+                                 bool use_new_store) {
   SCOPED_OPENSSL_NO_PENDING_ERRORS;
   Cert ca_cert;
   RETURN_NOT_OK(ca_cert.FromFile(ca_path, DataFormat::PEM));
@@ -544,7 +586,7 @@ Status TlsContext::LoadCertFiles(const string& ca_path,
   is_external_cert_ = false;
   trusted_cert_count_ = 0;
 
-  RETURN_NOT_OK(AddTrustedCertificateUnlocked(ca_cert, FLAGS_create_new_x509_store_each_time));
+  RETURN_NOT_OK(AddTrustedCertificateUnlocked(ca_cert, use_new_store));
 
   RETURN_NOT_OK(UseCertificateAndKeyUnlocked(c, k));
 

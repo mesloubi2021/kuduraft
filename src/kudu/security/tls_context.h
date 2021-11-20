@@ -32,6 +32,8 @@
 #include "kudu/util/status.h"
 // IWYU pragma: no_include "kudu/security/cert.h"
 
+DECLARE_bool(create_new_x509_store_each_time);
+
 namespace kudu {
 namespace security {
 
@@ -109,7 +111,8 @@ class TlsContext {
   // @param use_new_store - do we get the current store from the context
   // and push the chain into it, or do we create a fresh new store and set
   // it finally into the context
-  Status AddTrustedCertificateUnlocked(const Cert& cert, bool use_new_store = false) WARN_UNUSED_RESULT;
+  Status AddTrustedCertificateUnlocked(const Cert& cert,
+      bool use_new_store = false) WARN_UNUSED_RESULT;
 
   // The version of above function which takes the context lock and is
   // therefore callable from outside.
@@ -117,7 +120,19 @@ class TlsContext {
 
   // Dump all of the certs that are currently trusted by this context, in DER
   // form, into 'cert_ders'.
-  Status DumpTrustedCerts(std::vector<std::string>* cert_ders) const WARN_UNUSED_RESULT;
+  // @param der_or_str = true, dump the certificate into DER format
+  // @param der_or_str = false, dump some fields of the certificate
+  // for debugging.
+  Status DumpTrustedCerts(bool der_or_str,
+      std::vector<std::string>* cert_ders) const WARN_UNUSED_RESULT;
+
+  // Dump all the certs in SSL context. This includes both the CA
+  // certificates and the servers cert
+  // certs_info : All the certificates in SSL dumped.
+  Status DumpCertsInfo(std::vector<std::string> *certs_info) const;
+
+  // Static helper function to dump Issuer, Subject and Validity times.
+  static void DumpCertFields(X509 *x509, std::string *cert_details);
 
   // Uses 'cert' and 'key' as the cert and key for use with TLS connections.
   //
@@ -153,9 +168,18 @@ class TlsContext {
   // Convenience functions for loading cert/CA/key from file paths.
   // -------------------------------------------------------------
 
+  // Reload cert files from disk into tls context and SSL X509 store
+  // and SSL context.
+  // This should be called on a timer by the application, to
+  // refresh external certs
+  //
+  // @param use_new_store - do we get the current store from the context
+  // and push the chain into it, or do we create a fresh new store and set
+  // it finally into the context
   Status LoadCertFiles(const std::string& ca_path,
                        const std::string& certificate_path,
-                       const std::string& key_path) WARN_UNUSED_RESULT;
+                       const std::string& key_path,
+                       bool use_new_store) WARN_UNUSED_RESULT;
 
   // Load the server certificate and key (PEM encoded).
   Status LoadCertificateAndKey(const std::string& certificate_path,
