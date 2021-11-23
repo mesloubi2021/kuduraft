@@ -24,6 +24,7 @@
 #ifndef KUDU_CONSENSUS_CONSENSUS_PEERS_H_
 #define KUDU_CONSENSUS_CONSENSUS_PEERS_H_
 
+#include <atomic>
 #include <cstdint>
 #include <memory>
 #include <ostream>
