@@ -36,6 +36,7 @@ README.html
 *.swp
 *.autosave
 *~
+compile_commands.json
 
 # IDE cruft
 .settings/
@@ -44,6 +45,7 @@ nbproject/
 .project
 .cproject
 .csettings/
+.vscode/
 
 # WWW dependencies which are not checked in directly
 www/tracing.*
