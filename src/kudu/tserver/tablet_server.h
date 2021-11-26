@@ -20,6 +20,7 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "kudu/gutil/atomicops.h"
 #include "kudu/gutil/gscoped_ptr.h"
@@ -101,6 +102,22 @@ class TabletServer : public kserver::KuduServer {
    * Capture a snapshot of the RPC service queue in the server log file.
    */
   std::string ConsensusServiceRpcQueueToString() const;
+
+  // Show the status of all kudu threads, see ThreadDescriptor for what detailed
+  // information is included for each thread.
+  //
+  // @param threads Output parameters for all thread info.
+  // @return Status:OK if succeed
+  Status ShowKuduThreadStatus(std::vector<ThreadDescriptor>* threads);
+
+  // Change thread priority for a particular category, this not only changes the
+  // current threads belong to that category, but also future threads spawned in
+  // that category.
+  //
+  // @param category In the other words, thread pool name
+  // @param priority thread priority based on nice. Should be -20 to 19
+  // @return Status:OK if succeed
+  Status ChangeKuduThreadPriority(std::string pool, int priority);
 
  private:
   friend class TabletServerTestBase;

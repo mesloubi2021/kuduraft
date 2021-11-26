@@ -368,6 +368,54 @@ class Thread : public RefCountedThreadSafe<Thread> {
 // the given entity. If 'web' is NULL, does not register the path handler.
 Status StartThreadInstrumentation(const scoped_refptr<MetricEntity>& server_metrics,
                                   WebCallbackRegistry* web);
+
+// Container class for any details we want to capture about a thread
+// TODO: Add start-time.
+// TODO: Track fragment ID.
+// fb: Move to header file, so can be used by plugin
+class ThreadDescriptor {
+  public:
+  ThreadDescriptor() { }
+  ThreadDescriptor(std::string category, std::string name, int64_t thread_id)
+      : name_(std::move(name)),
+        category_(std::move(category)),
+        thread_id_(thread_id) {}
+
+  const std::string& name() const { return name_; }
+  const std::string& category() const { return category_; }
+  int64_t thread_id() const { return thread_id_; }
+  int priority() const { return priority_; }
+  void setPriority(int p) { priority_ = p; }
+
+  private:
+  // Thread name
+  std::string name_;
+
+  // Thread pool name
+  std::string category_;
+
+  // Thread's OS pid
+  int64_t thread_id_;
+
+  // Thread priority in NICE value
+  int priority_;
+};
+
+// Show the status of all kudu threads, see ThreadDescriptor for what detailed
+// information is included for each thread.
+//
+// @param threads Output parameters for all thread info.
+// @return Status:OK if succeed
+Status GlobalShowThreadStatus(std::vector<ThreadDescriptor>* threads);
+
+// Change thread priority for a particular category, this not only changes the
+// current threads belong to that category, but also future threads spawned in
+// that category.
+//
+// @param category In the other words, thread pool name
+// @param priority thread priority based on nice. Should be -20 to 19
+// @return Status:OK if succeed
+Status GlobalChangeThreadPriority(std::string category, int priority);
 } // namespace kudu
 
 #endif /* KUDU_UTIL_THREAD_H */

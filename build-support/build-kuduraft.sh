@@ -12,7 +12,7 @@ KRB5_VERSION=1.18.2-12.el8.x86_64  # NOTE: only correct on CentOS 8!
 sudo dnf install -y autoconf automake cyrus-sasl-devel cyrus-sasl-gssapi \
   cyrus-sasl-plain flex gcc gcc-c++ gdb git java-1.8.0-openjdk \
   libtool make openssl-devel patch pkgconfig redhat-lsb-core rsync unzip \
-  vim-common which cmake doxygen \
+  vim-common which cmake doxygen libcap-devel \
   krb5-server-${KRB5_VERSION} krb5-workstation-${KRB5_VERSION}
 
 # DOWNLOAD AND BUILD THE THIRD-PARTY libraries

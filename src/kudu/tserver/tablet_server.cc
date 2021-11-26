@@ -48,6 +48,7 @@
 #endif
 #include "kudu/util/net/net_util.h"
 #include "kudu/util/status.h"
+#include "kudu/util/thread.h"
 
 using std::string;
 using kudu::fs::ErrorHandlerType;
@@ -211,6 +212,14 @@ std::string TabletServer::ConsensusServiceRpcQueueToString() const {
     return pool->RpcServiceQueueToString();
   }
   return "";
+}
+
+Status TabletServer::ShowKuduThreadStatus(std::vector<ThreadDescriptor>* threads) {
+  return GlobalShowThreadStatus(threads);
+}
+
+Status TabletServer::ChangeKuduThreadPriority(string pool, int priority) {
+  return GlobalChangeThreadPriority(pool, priority);
 }
 
 } // namespace tserver
