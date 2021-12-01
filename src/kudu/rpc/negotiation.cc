@@ -331,7 +331,8 @@ void Negotiation::RunNegotiation(const scoped_refptr<Connection>& conn,
     Status reload_status = tls_context->LoadCertFiles(
         FLAGS_rpc_ca_certificate_file,
         FLAGS_rpc_certificate_file,
-        FLAGS_rpc_private_key_file);
+        FLAGS_rpc_private_key_file,
+        FLAGS_create_new_x509_store_each_time);
     TRACE("SSL context certificate store refreshed : $0", reload_status.ToString());
   }
 
