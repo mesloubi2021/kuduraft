@@ -508,7 +508,6 @@ void Peer::ProcessTabletCopyResponse() {
 #endif
 
 void Peer::ProcessResponseError(const Status& status) {
-  failed_attempts_++;
   string resp_err_info;
 
 #ifdef FB_DO_NOT_REMOVE
@@ -527,6 +526,9 @@ void Peer::ProcessResponseError(const Status& status) {
     return;
   }
 
+  // Increment failed attempts only when this is not an expected rejection by a
+  // peer due to file rotation
+  failed_attempts_++;
   KLOG_EVERY_N_SECS(WARNING, 300)
       << LogPrefixUnlocked() << "Couldn't send request to peer "
       << peer_pb_.permanent_uuid() << " for tablet " << tablet_id_ << "."
