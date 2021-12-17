@@ -20,6 +20,7 @@
 #include "kudu/util/thread.h"
 
 #if defined(__linux__)
+#include <sys/capability.h>
 #include <sys/prctl.h>
 #endif // defined(__linux__)
 #include <sys/resource.h>
@@ -56,6 +57,7 @@
 #include "kudu/util/mutex.h"
 #include "kudu/util/os-util.h"
 #include "kudu/util/scoped_cleanup.h"
+#include "kudu/util/status.h"
 #include "kudu/util/stopwatch.h"
 #include "kudu/util/trace.h"
 #include "kudu/util/url-coding.h"
@@ -178,27 +180,15 @@ class ThreadMgr {
   // already been removed, this is a no-op.
   void RemoveThread(const pthread_t& pthread_id, const string& category);
 
+  Status ShowThreadStatus(vector<ThreadDescriptor>* threads);
+
+  Status ChangeThreadPriority(string category, int priority);
+
+  void SetToDefaultPriority(Thread* thread);
+
  private:
-  // Container class for any details we want to capture about a thread
-  // TODO: Add start-time.
-  // TODO: Track fragment ID.
-  class ThreadDescriptor {
-   public:
-    ThreadDescriptor() { }
-    ThreadDescriptor(string category, string name, int64_t thread_id)
-        : name_(std::move(name)),
-          category_(std::move(category)),
-          thread_id_(thread_id) {}
-
-    const string& name() const { return name_; }
-    const string& category() const { return category_; }
-    int64_t thread_id() const { return thread_id_; }
-
-   private:
-    string name_;
-    string category_;
-    int64_t thread_id_;
-  };
+  // Default thread priority for each category
+  map<string, int> category2priority_;
 
   // A ThreadCategory is a set of threads that are logically related.
   // TODO: unordered_map is incompatible with pthread_t, but would be more
@@ -595,6 +585,7 @@ void* Thread::SuperviseThread(void* arg) {
   string name = strings::Substitute("$0-$1", t->name(), system_tid);
   thread_manager->SetThreadName(name, t->tid_);
   thread_manager->AddThread(pthread_self(), name, t->category(), t->tid_);
+  thread_manager->SetToDefaultPriority(t);
 
   // FinishThread() is guaranteed to run (even if functor_ throws an
   // exception) because pthread_cleanup_push() creates a scoped object
@@ -623,6 +614,100 @@ void Thread::FinishThread(void* arg) {
   // NOTE: the above 'Release' call could be the last reference to 'this',
   // so 'this' could be destructed at this point. Do not add any code
   // following here!
+}
+
+static bool set_capability_flag(cap_value_t capability, cap_flag_value_t flag) {
+  cap_value_t cap_list[]= {capability};
+  cap_t caps= cap_get_proc();
+  bool ret= true;
+
+  if (!caps ||
+      cap_set_flag(caps, CAP_EFFECTIVE, 1, cap_list, flag) ||
+      cap_set_proc(caps)) {
+    LOG(ERROR) << "Can not set capability flag";
+    ret= false;
+  }
+
+  if (caps) {
+    cap_free(caps);
+  }
+
+  return true;
+}
+
+static bool acquire_capability(cap_value_t capability)
+{
+  return set_capability_flag(capability, CAP_SET);
+}
+
+static bool drop_capability(cap_value_t capability)
+{
+  return set_capability_flag(capability, CAP_CLEAR);
+}
+
+// CAP_SYS_NICE capability is acquired before changing the thread priority,
+// and dropped after the action is done.
+// This is the same flow like we did in mysqld
+static int set_system_thread_priority(pid_t tid, int pri)
+{
+  acquire_capability(CAP_SYS_NICE);
+  int ret = setpriority(PRIO_PROCESS, tid, pri) != 0;
+  drop_capability(CAP_SYS_NICE);
+
+  return ret;
+}
+
+static int get_system_thread_priority(pid_t tid)
+{
+  return getpriority(PRIO_PROCESS, tid);
+}
+
+Status ThreadMgr::ShowThreadStatus(vector<ThreadDescriptor>* threads) {
+  MutexLock l(lock_);
+  for (auto const& name2category : thread_categories_) {
+    ThreadCategory category = name2category.second;
+    for (auto thread_info : category) {
+      int pri = get_system_thread_priority(thread_info.second.thread_id());
+      thread_info.second.setPriority(pri);
+      threads->push_back(thread_info.second);
+    }
+  }
+  return Status::OK();
+}
+
+Status ThreadMgr::ChangeThreadPriority(string category, int priority) {
+  MutexLock l(lock_);
+  // Change the default for particular pool
+  category2priority_[category] = priority;
+
+  // Change current thread priority
+  if (thread_categories_.count(category)) {
+    for (auto const& thread_info : thread_categories_[category]) {
+      uint64_t thread_id = thread_info.second.thread_id();
+      int ret = set_system_thread_priority(thread_id, priority);
+      if (ret != 0) {
+        return Status::RuntimeError("Can not change thread priority",
+          strerror(ret), ret);
+      }
+    }
+  }
+  return Status::OK();
+}
+
+void ThreadMgr::SetToDefaultPriority(Thread* thread) {
+  MutexLock l(lock_);
+  if (category2priority_.count(thread->category())) {
+    set_system_thread_priority(thread->tid(),
+      category2priority_[thread->category()]);
+  }
+}
+
+Status GlobalShowThreadStatus(vector<ThreadDescriptor>* threads) {
+  return thread_manager->ShowThreadStatus(threads);
+}
+
+Status GlobalChangeThreadPriority(string category, int priority) {
+  return thread_manager->ChangeThreadPriority(category, priority);
 }
 
 } // namespace kudu

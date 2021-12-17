@@ -46,6 +46,8 @@ nbproject/
 .cproject
 .csettings/
 .vscode/
+.cache/*
+.clangd/*
 
 # WWW dependencies which are not checked in directly
 www/tracing.*
