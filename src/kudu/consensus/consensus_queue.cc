@@ -1405,6 +1405,7 @@ void PeerMessageQueue::BeginWatchForSuccessor(
   std::lock_guard<simple_spinlock> l(queue_lock_);
 
   transfer_context_ = std::move(transfer_context);
+  successor_watch_peer_notified_ = false;
 
   if (successor_uuid && FLAGS_synchronous_transfer_leadership &&
       PeerTransferLeadershipImmediatelyUnlocked(successor_uuid.get())) {
@@ -1426,6 +1427,11 @@ void PeerMessageQueue::EndWatchForSuccessor() {
   successor_watch_in_progress_ = false;
   transfer_context_ = boost::none;
   tl_filter_fn_ = nullptr;
+}
+
+bool PeerMessageQueue::WatchForSuccessorPeerNotified() {
+  std::lock_guard<simple_spinlock> l(queue_lock_);
+  return successor_watch_peer_notified_;
 }
 
 Status PeerMessageQueue::GetNextRoutingHopFromLeader(
@@ -2113,6 +2119,7 @@ void PeerMessageQueue::NotifyObserversOfSuccessor(const string& peer_uuid) {
              observer->NotifyPeerToStartElection(peer_uuid, std::move(transfer_context));
            })),
       LogPrefixUnlocked() + "Unable to notify RaftConsensus of available successor.");
+  successor_watch_peer_notified_ = true;
   transfer_context_ = boost::none;
 }
 
