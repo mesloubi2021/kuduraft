@@ -570,10 +570,11 @@ class RpcTestBase : public KuduTest {
                          const std::string& rpc_certificate_file = "",
                          const std::string& rpc_private_key_file = "",
                          const std::string& rpc_ca_certificate_file = "",
-                         const std::string& rpc_private_key_password_cmd = "") {
+                         const std::string& rpc_private_key_password_cmd = "",
+                         const std::shared_ptr<Messenger>& messenger = nullptr) {
     return DoStartTestServer<GenericCalculatorService>(
         server_addr, enable_ssl, rpc_certificate_file, rpc_private_key_file,
-        rpc_ca_certificate_file, rpc_private_key_password_cmd);
+        rpc_ca_certificate_file, rpc_private_key_password_cmd, messenger);
   }
 
   Status StartTestServerWithGeneratedCode(Sockaddr *server_addr, bool enable_ssl = false) {

@@ -80,6 +80,12 @@ class TlsHandshake {
     verification_mode_ = mode;
   }
 
+  // Perform a standard TLS handshake
+  Status SSLHandshake(std::unique_ptr<Socket>* socket, bool is_server) WARN_UNUSED_RESULT;
+
+  // Get selected ALPN protocol
+  std::string GetSelectedAlpn();
+
   // Continue or start a new handshake.
   //
   // 'recv' should contain the input buffer from the remote end, or an empty
@@ -165,6 +171,7 @@ class TlsHandshake {
 
   Cert local_cert_;
   Cert remote_cert_;
+  std::string selected_alpn_;
 };
 
 } // namespace security

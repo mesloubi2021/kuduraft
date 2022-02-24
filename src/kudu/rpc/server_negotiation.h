@@ -137,6 +137,9 @@ class ServerNegotiation {
   // another non-OK status.
   Status Negotiate() WARN_UNUSED_RESULT;
 
+  // Perform normal TLS handshake
+  Status HandleTLS() WARN_UNUSED_RESULT;
+
   // SASL callback for plugin options, supported mechanisms, etc.
   // Returns SASL_FAIL if the option is not handled, which does not fail the handshake.
   int GetOptionCb(const char* plugin_name, const char* option,
@@ -167,6 +170,10 @@ class ServerNegotiation {
   // Encode and send the specified RPC error message to the client.
   // Calls Status.ToString() for the embedded error message.
   Status SendError(ErrorStatusPB::RpcErrorCodePB code, const Status& err) WARN_UNUSED_RESULT;
+
+  // Peek into the first data packet from the client to determine
+  // whether it is a TLS client hello packet.
+  bool LooksLikeTLS();
 
   // Parse and validate connection header.
   Status ValidateConnectionHeader(faststring* recv_buf) WARN_UNUSED_RESULT;

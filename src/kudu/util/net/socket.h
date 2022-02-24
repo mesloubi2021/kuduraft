@@ -153,6 +153,10 @@ class Socket {
   // See also readn() from Stevens (2004) or Kerrisk (2010)
   Status BlockingRecv(uint8_t *buf, size_t amt, size_t *nread, const MonoTime& deadline);
 
+  // Peek data from the beginning of the receiving queue without removing that
+  // data from the queue.
+  Status Peek(uint8_t *buf, size_t amt, size_t *nread, const MonoTime& deadline);
+
  private:
   // Called internally from SetSend/RecvTimeout().
   Status SetTimeout(int opt, const char* optname, const MonoDelta& timeout);

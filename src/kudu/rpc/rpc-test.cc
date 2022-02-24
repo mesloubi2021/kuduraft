@@ -55,6 +55,7 @@
 #include "kudu/rpc/rtest.pb.h"
 #include "kudu/rpc/serialization.h"
 #include "kudu/rpc/transfer.h"
+#include "kudu/security/tls_context.h"
 #include "kudu/security/test/test_certs.h"
 #include "kudu/util/countdown_latch.h"
 #include "kudu/util/env.h"
@@ -75,6 +76,8 @@ METRIC_DECLARE_histogram(rpc_incoming_queue_time);
 
 DECLARE_bool(rpc_reopen_outbound_connections);
 DECLARE_int32(rpc_negotiation_inject_delay_ms);
+DECLARE_bool(authenticate_via_CN);
+DECLARE_string(trusted_CNs);
 
 using std::shared_ptr;
 using std::string;
@@ -100,10 +103,13 @@ TEST_F(TestRpc, TestSockaddr) {
   ASSERT_FALSE(addr2 < addr1);
   ASSERT_EQ(1000, addr1.port());
   ASSERT_EQ(2000, addr2.port());
-  ASSERT_EQ(string("0.0.0.0:1000"), addr1.ToString());
-  ASSERT_EQ(string("0.0.0.0:2000"), addr2.ToString());
+  ASSERT_TRUE(string("0.0.0.0:1000") == addr1.ToString() || \
+      string("[::]:1000") == addr1.ToString());
+  ASSERT_TRUE(string("0.0.0.0:2000") == addr2.ToString() || \
+      string("[::]:2000") == addr2.ToString());
   Sockaddr addr3(addr1);
-  ASSERT_EQ(string("0.0.0.0:1000"), addr3.ToString());
+  ASSERT_TRUE(string("0.0.0.0:1000") == addr3.ToString() || \
+      string("[::]:1000") == addr3.ToString());
 }
 
 TEST_P(TestRpc, TestMessengerCreateDestroy) {
@@ -1358,6 +1364,86 @@ TEST_P(TestRpc, TestCancellationMultiThreads) {
     rpc_thread->Join();
   }
   client_messenger->Shutdown();
+}
+
+TEST_F(TestRpc, TestCallWithNormalTLSOnServerOnly) {
+  FLAGS_authenticate_via_CN = true;
+  FLAGS_trusted_CNs = "myclient.com";
+
+  string client_certificate_file;
+  string client_private_key_file;
+  string server_certificate_file;
+  string server_private_key_file;
+  string rpc_ca_certificate_file;
+
+  ASSERT_OK(security::CreateTestSSLCertForClientAndServer(GetTestDataDirectory(),
+                                                     &client_certificate_file,
+                                                     &client_private_key_file,
+                                                     &server_certificate_file,
+                                                     &server_private_key_file,
+                                                     &rpc_ca_certificate_file));
+  // Set up server.
+  Sockaddr server_addr;
+  shared_ptr<Messenger> server_messenger;
+  ASSERT_OK(CreateMessenger("TestServer", &server_messenger, 3, true,
+          server_certificate_file, server_private_key_file, rpc_ca_certificate_file));
+  server_messenger->mutable_tls_context()->SetEnableNormalTLS(true);
+  ASSERT_OK(StartTestServer(&server_addr, true, "", "", "", "", server_messenger));
+
+  // Set up client.
+  SCOPED_TRACE(strings::Substitute("Connecting to $0", server_addr.ToString()));
+  shared_ptr<Messenger> client_messenger;
+  ASSERT_OK(CreateMessenger("Client", &client_messenger, 1, true,
+      client_certificate_file, client_private_key_file, rpc_ca_certificate_file));
+  server_messenger->mutable_tls_context()->SetEnableNormalTLS(false);
+
+  Proxy p(client_messenger, server_addr, server_addr.host(),
+          GenericCalculatorService::static_service_name());
+  ASSERT_STR_CONTAINS(p.ToString(), strings::Substitute("kudu.rpc.GenericCalculatorService@"
+                                                            "{remote=$0, user_credentials=",
+                                                        server_addr.ToString()));
+
+  ASSERT_OK(DoTestSyncCall(p, GenericCalculatorService::kAddMethodName));
+}
+
+TEST_F(TestRpc, TestCallWithNormalTLSOnBothClientAndServer) {
+  FLAGS_authenticate_via_CN = true;
+  FLAGS_trusted_CNs = "myclient.com";
+
+  string client_certificate_file;
+  string client_private_key_file;
+  string server_certificate_file;
+  string server_private_key_file;
+  string rpc_ca_certificate_file;
+
+  ASSERT_OK(security::CreateTestSSLCertForClientAndServer(GetTestDataDirectory(),
+                                                     &client_certificate_file,
+                                                     &client_private_key_file,
+                                                     &server_certificate_file,
+                                                     &server_private_key_file,
+                                                     &rpc_ca_certificate_file));
+  // Set up server.
+  Sockaddr server_addr;
+  shared_ptr<Messenger> server_messenger;
+  ASSERT_OK(CreateMessenger("TestServer", &server_messenger, 3, true,
+          server_certificate_file, server_private_key_file, rpc_ca_certificate_file));
+  server_messenger->mutable_tls_context()->SetEnableNormalTLS(true);
+  ASSERT_OK(StartTestServer(&server_addr, true, "", "", "", "", server_messenger));
+
+  // Set up client.
+  SCOPED_TRACE(strings::Substitute("Connecting to $0", server_addr.ToString()));
+  shared_ptr<Messenger> client_messenger;
+  ASSERT_OK(CreateMessenger("Client", &client_messenger, 1, true,
+      client_certificate_file, client_private_key_file, rpc_ca_certificate_file));
+  client_messenger->mutable_tls_context()->SetEnableNormalTLS(true);
+
+  Proxy p(client_messenger, server_addr, server_addr.host(),
+          GenericCalculatorService::static_service_name());
+  ASSERT_STR_CONTAINS(p.ToString(), strings::Substitute("kudu.rpc.GenericCalculatorService@"
+                                                            "{remote=$0, user_credentials=",
+                                                        server_addr.ToString()));
+
+  ASSERT_OK(DoTestSyncCall(p, GenericCalculatorService::kAddMethodName));
 }
 
 } // namespace rpc

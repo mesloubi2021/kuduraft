@@ -87,6 +87,9 @@ DEFINE_bool(create_new_x509_store_each_time, false,
              " whether rereading new valid certs into a store with expired certs works");
 TAG_FLAG(create_new_x509_store_each_time, experimental);
 
+DEFINE_bool(enable_normal_tls, false,
+    "Whether to perform normal TLS handshake.");
+
 namespace kudu {
 namespace security {
 
@@ -125,7 +128,8 @@ TlsContext::TlsContext()
       lock_(RWMutex::Priority::PREFER_READING),
       trusted_cert_count_(0),
       has_cert_(false),
-      is_external_cert_(false) {
+      is_external_cert_(false),
+      enable_normal_tls_(FLAGS_enable_normal_tls) {
   security::InitializeOpenSSL();
 }
 
@@ -135,7 +139,8 @@ TlsContext::TlsContext(std::string tls_ciphers, std::string tls_min_protocol)
       lock_(RWMutex::Priority::PREFER_READING),
       trusted_cert_count_(0),
       has_cert_(false),
-      is_external_cert_(false) {
+      is_external_cert_(false),
+      enable_normal_tls_(FLAGS_enable_normal_tls) {
   security::InitializeOpenSSL();
 }
 
@@ -174,7 +179,8 @@ Status TlsContext::Init() {
                                    tls_min_protocol_);
   }
 
-  // We don't currently support TLS 1.3 because the one-and-a-half-RTT negotiation
+  // We don't support TLS 1.3 by default
+  // because the one-and-a-half-RTT negotiation
   // confuses our RPC negotiation protocol. See KUDU-2871.
   options |= SSL_OP_NO_TLSv1_3;
 
@@ -594,8 +600,65 @@ Status TlsContext::LoadCertFiles(const string& ca_path,
   return Status::OK();
 }
 
-Status TlsContext::InitiateHandshake(TlsHandshakeType handshake_type,
-                                     TlsHandshake* handshake) const {
+// Encode the list of alpn protocols into wire format
+static std::vector<unsigned char> encodeAlpn(const std::vector<std::string>& alpns) {
+  std::vector<unsigned char> result;
+  for (auto p : alpns) {
+    CHECK(p.length() <= 255);
+    result.push_back((unsigned char)(p.length()));
+    for (auto c : p) {
+      result.push_back((unsigned char)c);
+    }
+  }
+  return result;
+}
+
+Status TlsContext::SetSupportedAlpns(
+    const std::vector<std::string>& alpns,
+    bool is_server) {
+  CHECK(ctx_);
+  alpns_ = encodeAlpn(alpns);
+
+  if (is_server) {
+    SSL_CTX_set_alpn_select_cb(ctx_.get(), AlpnSelectCallback, this);
+  } else {
+    // SSL_CTX_set_alpn_protos return 0 on success
+    if (SSL_CTX_set_alpn_protos(
+          ctx_.get(),
+          alpns_.data(),
+          alpns_.size()) != 0) {
+      return Status::RuntimeError("failed to set alpn protocols", GetOpenSSLErrors());
+    }
+  }
+
+  return Status::OK();
+}
+
+int TlsContext::AlpnSelectCallback(
+    SSL* /* ssl */,
+    const unsigned char** out,
+    unsigned char* outlen,
+    const unsigned char* in,
+    unsigned int inlen,
+    void* data) {
+  auto context = (TlsContext*)data;
+  CHECK(context);
+  if (context->alpns_.empty()) {
+    *out = nullptr;
+    *outlen = 0;
+  } else if (SSL_select_next_proto(
+      (unsigned char**)out,
+      outlen,
+      context->alpns_.data(),
+      context->alpns_.size(),
+      in,
+      inlen) != OPENSSL_NPN_NEGOTIATED) {
+    return SSL_TLSEXT_ERR_ALERT_FATAL;
+  }
+  return SSL_TLSEXT_ERR_OK;
+}
+
+Status TlsContext::CreateSSL(TlsHandshake* handshake) const {
   SCOPED_OPENSSL_NO_PENDING_ERRORS;
   CHECK(ctx_);
   CHECK(!handshake->ssl_);
@@ -606,6 +669,14 @@ Status TlsContext::InitiateHandshake(TlsHandshakeType handshake_type,
   if (!handshake->ssl_) {
     return Status::RuntimeError("failed to create SSL handle", GetOpenSSLErrors());
   }
+
+  return Status::OK();
+}
+
+Status TlsContext::InitiateHandshake(TlsHandshakeType handshake_type,
+                                     TlsHandshake* handshake) const {
+  SCOPED_OPENSSL_NO_PENDING_ERRORS;
+  RETURN_NOT_OK(CreateSSL(handshake));
 
   SSL_set_bio(handshake->ssl(),
               BIO_new(BIO_s_mem()),
