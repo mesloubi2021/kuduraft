@@ -36,7 +36,7 @@ const char* const SecurityDefaults::SecurityDefaults::kDefaultTlsCiphers =
                                    "AES256-SHA256:AES128-SHA256:"
                                    "AES256-SHA:AES128-SHA";
 
-const char* const SecurityDefaults::SecurityDefaults::kDefaultTlsMinVersion = "TLSv1";
+const char* const SecurityDefaults::SecurityDefaults::kDefaultTlsMinVersion = "TLSv1.2";
 
 } // namespace security
 } // namespace kudu
