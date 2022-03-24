@@ -85,6 +85,7 @@ DEFINE_bool(is_test_child, false,
             "See TestDisableInit.");
 DECLARE_bool(rpc_encrypt_loopback_connections);
 DECLARE_bool(rpc_trace_negotiation);
+DECLARE_bool(use_normal_tls);
 
 using std::string;
 using std::thread;
@@ -197,6 +198,7 @@ TEST_P(TestNegotiation, TestNegotiation) {
   ASSERT_OK(ConfigureTlsContext(desc.client.pki, ca_cert, ca_key, &client_tls_context));
   ASSERT_OK(ConfigureTlsContext(desc.server.pki, ca_cert, ca_key, &server_tls_context));
 
+  FLAGS_use_normal_tls = desc.client.enable_normal_tls;
   client_tls_context.SetEnableNormalTLS(desc.client.enable_normal_tls);
   server_tls_context.SetEnableNormalTLS(desc.server.enable_normal_tls);
 

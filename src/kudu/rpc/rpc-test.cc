@@ -78,6 +78,7 @@ DECLARE_bool(rpc_reopen_outbound_connections);
 DECLARE_int32(rpc_negotiation_inject_delay_ms);
 DECLARE_bool(authenticate_via_CN);
 DECLARE_string(trusted_CNs);
+DECLARE_bool(use_normal_tls);
 
 using std::shared_ptr;
 using std::string;
@@ -1369,6 +1370,7 @@ TEST_P(TestRpc, TestCancellationMultiThreads) {
 TEST_F(TestRpc, TestCallWithNormalTLSOnServerOnly) {
   FLAGS_authenticate_via_CN = true;
   FLAGS_trusted_CNs = "myclient.com";
+  FLAGS_use_normal_tls = false;
 
   string client_certificate_file;
   string client_private_key_file;
@@ -1395,7 +1397,7 @@ TEST_F(TestRpc, TestCallWithNormalTLSOnServerOnly) {
   shared_ptr<Messenger> client_messenger;
   ASSERT_OK(CreateMessenger("Client", &client_messenger, 1, true,
       client_certificate_file, client_private_key_file, rpc_ca_certificate_file));
-  server_messenger->mutable_tls_context()->SetEnableNormalTLS(false);
+  server_messenger->mutable_tls_context()->SetEnableNormalTLS(true);
 
   Proxy p(client_messenger, server_addr, server_addr.host(),
           GenericCalculatorService::static_service_name());
@@ -1409,6 +1411,7 @@ TEST_F(TestRpc, TestCallWithNormalTLSOnServerOnly) {
 TEST_F(TestRpc, TestCallWithNormalTLSOnBothClientAndServer) {
   FLAGS_authenticate_via_CN = true;
   FLAGS_trusted_CNs = "myclient.com";
+  FLAGS_use_normal_tls = true;
 
   string client_certificate_file;
   string client_private_key_file;

@@ -120,6 +120,19 @@ Status CheckMaxSupportedTlsVersion(int tls_version, const char* tls_version_str)
   return Status::OK();
 }
 
+// Encode the list of alpn protocols into wire format
+std::vector<unsigned char> EncodeAlpn(const std::vector<std::string>& alpns) {
+  std::vector<unsigned char> result;
+  for (auto p : alpns) {
+    CHECK(p.length() <= 255);
+    result.push_back((unsigned char)(p.length()));
+    for (auto c : p) {
+      result.push_back((unsigned char)c);
+    }
+  }
+  return result;
+}
+
 } // anonymous namespace
 
 TlsContext::TlsContext()
@@ -600,24 +613,15 @@ Status TlsContext::LoadCertFiles(const string& ca_path,
   return Status::OK();
 }
 
-// Encode the list of alpn protocols into wire format
-static std::vector<unsigned char> encodeAlpn(const std::vector<std::string>& alpns) {
-  std::vector<unsigned char> result;
-  for (auto p : alpns) {
-    CHECK(p.length() <= 255);
-    result.push_back((unsigned char)(p.length()));
-    for (auto c : p) {
-      result.push_back((unsigned char)c);
-    }
-  }
-  return result;
-}
-
 Status TlsContext::SetSupportedAlpns(
     const std::vector<std::string>& alpns,
     bool is_server) {
+  if (!alpns_.empty()) {
+    return Status::OK();
+  }
+
   CHECK(ctx_);
-  alpns_ = encodeAlpn(alpns);
+  alpns_ = EncodeAlpn(alpns);
 
   if (is_server) {
     SSL_CTX_set_alpn_select_cb(ctx_.get(), AlpnSelectCallback, this);

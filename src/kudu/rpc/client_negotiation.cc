@@ -65,6 +65,10 @@ DECLARE_bool(rpc_encrypt_loopback_connections);
 // externally signed (not by internal CA)
 DECLARE_bool(rpc_allow_external_cert_authentication);
 
+// Initiate normal TLS handshake from the client
+DEFINE_bool(use_normal_tls, false,
+    "Whether to initiate normal TLS handshake.");
+
 namespace kudu {
 namespace rpc {
 
@@ -167,7 +171,7 @@ Status ClientNegotiation::Negotiate(unique_ptr<ErrorStatusPB>* rpc_error) {
   RETURN_NOT_OK(CheckInBlockingMode(socket_.get()));
 
   // Step 0: Perform normal TLS handshake if enabled
-  if (tls_context_->GetEnableNormalTLS()) {
+  if (tls_context_->GetEnableNormalTLS() && FLAGS_use_normal_tls) {
     RETURN_NOT_OK(HandleTLS());
     // Send connection context.
     RETURN_NOT_OK(SendConnectionContext());

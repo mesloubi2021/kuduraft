@@ -203,7 +203,9 @@ class TlsContext {
     return enable_normal_tls_;
   }
 
-  // Set ALPN protocols
+  // Set ALPN protocols. ALPN is a mechanism to multiplex multiple protocols on
+  // the same server. And enforcing the protocol match between the client and the
+  // server can prevent the cross protocol attack. See https://alpaca-attack.com/.
   Status SetSupportedAlpns(const std::vector<std::string>& alpns, bool is_server);
 
   static int AlpnSelectCallback(
