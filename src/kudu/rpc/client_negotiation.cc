@@ -124,6 +124,7 @@ ClientNegotiation::ClientNegotiation(unique_ptr<Socket> socket,
       tls_context_(tls_context),
       encryption_(encryption),
       tls_negotiated_(false),
+      normal_tls_negotiated_(false),
       authn_token_(std::move(authn_token)),
       psecret_(nullptr, std::free),
       negotiated_authn_(AuthenticationType::INVALID),
@@ -276,6 +277,7 @@ Status ClientNegotiation::HandleTLS() {
   }
 
   tls_negotiated_ = true;
+  normal_tls_negotiated_ = true;
 
   return Status::OK();
 }

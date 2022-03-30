@@ -330,6 +330,8 @@ class Messenger {
   FRIEND_TEST(TestRpc, TestClientConnectionsMetrics);
   FRIEND_TEST(TestRpc, TestCredentialsPolicy);
   FRIEND_TEST(TestRpc, TestReopenOutboundConnections);
+  FRIEND_TEST(TestRpc, TestCallWithNormalTLSOnServerOnly);
+  FRIEND_TEST(TestRpc, TestCallWithNormalTLSOnBothClientAndServer);
 
   explicit Messenger(const MessengerBuilder &bld);
 

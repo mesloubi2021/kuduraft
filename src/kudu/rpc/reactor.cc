@@ -133,7 +133,9 @@ ReactorThread::ReactorThread(Reactor *reactor, const MessengerBuilder& bld)
     connection_keepalive_time_(bld.connection_keepalive_time_),
     coarse_timer_granularity_(bld.coarse_timer_granularity_),
     total_client_conns_cnt_(0),
-    total_server_conns_cnt_(0) {
+    total_server_conns_cnt_(0),
+    total_client_normal_tls_conns_cnt_(0),
+    total_server_normal_tls_conns_cnt_(0) {
 
   if (bld.metric_entity_) {
     invoke_us_histogram_ =
@@ -270,6 +272,8 @@ Status ReactorThread::GetMetrics(ReactorMetrics* metrics) {
   metrics->num_server_connections_ = server_conns_.size();
   metrics->total_client_connections_ = total_client_conns_cnt_;
   metrics->total_server_connections_ = total_server_conns_cnt_;
+  metrics->total_client_normal_tls_connections_ = total_client_normal_tls_conns_cnt_;
+  metrics->total_server_normal_tls_connections_ = total_server_normal_tls_conns_cnt_;
   return Status::OK();
 }
 
@@ -284,6 +288,14 @@ Status ReactorThread::DumpRunningRpcs(const DumpRunningRpcsRequestPB& req,
     RETURN_NOT_OK(conn->DumpPB(req, resp->add_outbound_connections()));
   }
   return Status::OK();
+}
+
+void ReactorThread::IncrementNormalTLSConnections(bool is_server) {
+  if (is_server) {
+    total_server_normal_tls_conns_cnt_ ++;
+  } else {
+    total_client_normal_tls_conns_cnt_ ++;
+  }
 }
 
 void ReactorThread::WakeThread() {

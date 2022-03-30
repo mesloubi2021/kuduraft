@@ -1387,7 +1387,7 @@ TEST_F(TestRpc, TestCallWithNormalTLSOnServerOnly) {
   // Set up server.
   Sockaddr server_addr;
   shared_ptr<Messenger> server_messenger;
-  ASSERT_OK(CreateMessenger("TestServer", &server_messenger, 3, true,
+  ASSERT_OK(CreateMessenger("TestServer", &server_messenger, 1, true,
           server_certificate_file, server_private_key_file, rpc_ca_certificate_file));
   server_messenger->mutable_tls_context()->SetEnableNormalTLS(true);
   ASSERT_OK(StartTestServer(&server_addr, true, "", "", "", "", server_messenger));
@@ -1406,6 +1406,19 @@ TEST_F(TestRpc, TestCallWithNormalTLSOnServerOnly) {
                                                         server_addr.ToString()));
 
   ASSERT_OK(DoTestSyncCall(p, GenericCalculatorService::kAddMethodName));
+
+  ReactorMetrics metrics;
+  ASSERT_OK(server_messenger->reactors_[0]->GetMetrics(&metrics));
+  ASSERT_EQ(0, metrics.total_server_normal_tls_connections_)
+    << "Server should have 0 server normal TLS connection";
+  ASSERT_EQ(0, metrics.total_client_normal_tls_connections_)
+    << "Server should have 0 client normal TLS connections";
+
+  ASSERT_OK(client_messenger->reactors_[0]->GetMetrics(&metrics));
+  ASSERT_EQ(0, metrics.total_server_normal_tls_connections_)
+    << "Client should have 0 server normal TLS connections";
+  ASSERT_EQ(0, metrics.total_client_normal_tls_connections_)
+    << "Client should have 0 client normal TLS connections";
 }
 
 TEST_F(TestRpc, TestCallWithNormalTLSOnBothClientAndServer) {
@@ -1428,7 +1441,7 @@ TEST_F(TestRpc, TestCallWithNormalTLSOnBothClientAndServer) {
   // Set up server.
   Sockaddr server_addr;
   shared_ptr<Messenger> server_messenger;
-  ASSERT_OK(CreateMessenger("TestServer", &server_messenger, 3, true,
+  ASSERT_OK(CreateMessenger("TestServer", &server_messenger, 1, true,
           server_certificate_file, server_private_key_file, rpc_ca_certificate_file));
   server_messenger->mutable_tls_context()->SetEnableNormalTLS(true);
   ASSERT_OK(StartTestServer(&server_addr, true, "", "", "", "", server_messenger));
@@ -1447,6 +1460,19 @@ TEST_F(TestRpc, TestCallWithNormalTLSOnBothClientAndServer) {
                                                         server_addr.ToString()));
 
   ASSERT_OK(DoTestSyncCall(p, GenericCalculatorService::kAddMethodName));
+
+  ReactorMetrics metrics;
+  ASSERT_OK(server_messenger->reactors_[0]->GetMetrics(&metrics));
+  ASSERT_EQ(1, metrics.total_server_normal_tls_connections_)
+    << "Server should have 1 server normal TLS connection";
+  ASSERT_EQ(0, metrics.total_client_normal_tls_connections_)
+    << "Server should have 0 client normal TLS connections";
+
+  ASSERT_OK(client_messenger->reactors_[0]->GetMetrics(&metrics));
+  ASSERT_EQ(0, metrics.total_server_normal_tls_connections_)
+    << "Client should have 0 server normal TLS connections";
+  ASSERT_EQ(1, metrics.total_client_normal_tls_connections_)
+    << "Client should have 1 client normal TLS connections";
 }
 
 } // namespace rpc

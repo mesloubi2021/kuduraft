@@ -68,6 +68,11 @@ struct ReactorMetrics {
   uint64_t total_client_connections_;
   // Total number of server RPC connections opened during Reactor's lifetime.
   uint64_t total_server_connections_;
+
+  // Total number of client normal TLS RPC connections opened during Reactor's lifetime.
+  uint64_t total_client_normal_tls_connections_;
+  // Total number of server normal TLS RPC connections opened during Reactor's lifetime.
+  uint64_t total_server_normal_tls_connections_;
 };
 
 // A task which can be enqueued to run on the reactor thread.
@@ -150,6 +155,8 @@ class ReactorThread {
   // Add any connections on this reactor thread into the given status dump.
   Status DumpRunningRpcs(const DumpRunningRpcsRequestPB& req,
                          DumpRunningRpcsResponsePB* resp);
+
+  void IncrementNormalTLSConnections(bool is_server);
 
   // Shuts down a reactor thread, optionally waiting for it to exit.
   // Reactor::Shutdown() must have been called already.
@@ -317,6 +324,12 @@ class ReactorThread {
 
   // Total number of server connections opened during Reactor's lifetime.
   uint64_t total_server_conns_cnt_;
+
+  // Total number of client normal TLS connections opened during Reactor's lifetime.
+  uint64_t total_client_normal_tls_conns_cnt_;
+
+  // Total number of server normal TLS connections opened during Reactor's lifetime.
+  uint64_t total_server_normal_tls_conns_cnt_;
 
   // Set prior to calling epoll and then reset back to -1 after each invocation
   // completes. Used for accounting total_poll_cycles_.

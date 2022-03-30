@@ -95,6 +95,12 @@ class ServerNegotiation {
     return tls_negotiated_;
   }
 
+  // Returns true if normal TLS was negotiated.
+  // Must be called after Negotiate().
+  bool normal_tls_negotiated() const {
+    return normal_tls_negotiated_;
+  }
+
   // Returns the set of RPC system features supported by the remote client.
   // Must be called after Negotiate().
   std::set<RpcFeatureFlag> client_features() const {
@@ -241,6 +247,7 @@ class ServerNegotiation {
   security::TlsHandshake tls_handshake_;
   const RpcEncryption encryption_;
   bool tls_negotiated_;
+  bool normal_tls_negotiated_;
 
   // TSK state.
   const security::TokenVerifier* token_verifier_;

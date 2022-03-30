@@ -165,6 +165,7 @@ ServerNegotiation::ServerNegotiation(unique_ptr<Socket> socket,
       tls_context_(tls_context),
       encryption_(encryption),
       tls_negotiated_(false),
+      normal_tls_negotiated_(false),
       token_verifier_(token_verifier),
       negotiated_authn_(AuthenticationType::INVALID),
       negotiated_mech_(SaslMechanism::INVALID),
@@ -343,6 +344,7 @@ Status ServerNegotiation::HandleTLS() {
   }
 
   tls_negotiated_ = true;
+  normal_tls_negotiated_ = true;
 
   return Status::OK();
 }
