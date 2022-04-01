@@ -319,20 +319,22 @@ Status TlsContext::AddTrustedCertificateUnlocked(const Cert& cert, bool use_new_
 }
 
 Status TlsContext::DumpCertsInfo(std::vector<std::string> *certs_info) const {
+  SCOPED_OPENSSL_NO_PENDING_ERRORS;
+  shared_lock<RWMutex> lock(lock_);
   X509 *x509 = SSL_CTX_get0_certificate(ctx_.get());
 
-  RETURN_NOT_OK(DumpTrustedCerts(/*der_or_str = */false, certs_info));
+  RETURN_NOT_OK(DumpTrustedCertsUnlocked(/*der_or_str = */false, certs_info));
 
   if (x509) {
     std::string fields;
-    DumpCertFields(x509, &fields);
+    DumpCertFieldsUnlocked(x509, &fields);
     certs_info->push_back(fields);
   }
 
   return Status::OK();
 }
 
-void TlsContext::DumpCertFields(X509 *x509, std::string *cert_details) {
+void TlsContext::DumpCertFieldsUnlocked(X509 *x509, std::string *cert_details) {
   const ASN1_TIME* notAfter = X509_get0_notAfter(x509);
   int remaining_days_a = 0, remaining_seconds_a = 0;
   int  result = ASN1_TIME_diff(&remaining_days_a, &remaining_seconds_a, NULL, notAfter);
@@ -350,10 +352,7 @@ void TlsContext::DumpCertFields(X509 *x509, std::string *cert_details) {
       remaining_days_b, remaining_seconds_b);
 }
 
-Status TlsContext::DumpTrustedCerts(bool der_or_str, vector<string>* cert_ders) const {
-  SCOPED_OPENSSL_NO_PENDING_ERRORS;
-  shared_lock<RWMutex> lock(lock_);
-
+Status TlsContext::DumpTrustedCertsUnlocked(bool der_or_str, vector<string>* cert_ders) const {
   vector<string> ret;
   auto* cert_store = SSL_CTX_get_cert_store(ctx_.get());
 
@@ -389,7 +388,7 @@ Status TlsContext::DumpTrustedCerts(bool der_or_str, vector<string>* cert_ders) 
       ret.emplace_back(std::move(der));
     } else {
       string fields;
-      DumpCertFields(x509, &fields);
+      DumpCertFieldsUnlocked(x509, &fields);
       ret.emplace_back(std::move(fields));
     }
   }

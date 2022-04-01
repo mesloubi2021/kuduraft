@@ -123,7 +123,7 @@ class TlsContext {
   // @param der_or_str = true, dump the certificate into DER format
   // @param der_or_str = false, dump some fields of the certificate
   // for debugging.
-  Status DumpTrustedCerts(bool der_or_str,
+  Status DumpTrustedCertsUnlocked(bool der_or_str,
       std::vector<std::string>* cert_ders) const WARN_UNUSED_RESULT;
 
   // Dump all the certs in SSL context. This includes both the CA
@@ -132,7 +132,7 @@ class TlsContext {
   Status DumpCertsInfo(std::vector<std::string> *certs_info) const;
 
   // Static helper function to dump Issuer, Subject and Validity times.
-  static void DumpCertFields(X509 *x509, std::string *cert_details);
+  static void DumpCertFieldsUnlocked(X509 *x509, std::string *cert_details);
 
   // Uses 'cert' and 'key' as the cert and key for use with TLS connections.
   //
