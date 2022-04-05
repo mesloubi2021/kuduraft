@@ -79,6 +79,57 @@ void TlsHandshake::SetSSLVerify() {
   SSL_set_verify(ssl_.get(), ssl_mode, /* callback = */nullptr);
 }
 
+// Perform a normal TLS handshake
+Status TlsHandshake::SSLHandshake(std::unique_ptr<Socket>* socket, bool is_server) {
+  SCOPED_OPENSSL_NO_PENDING_ERRORS;
+  if (!has_started_) {
+    SetSSLVerify();
+    has_started_ = true;
+  }
+  CHECK(ssl_);
+
+  // Clear the no TLSv1.3 option from ssl handle.
+  // The option is added by default in TlsContext.
+  SSL_clear_options(ssl_.get(), SSL_OP_NO_TLSv1_3);
+
+  int fd = (*socket)->Release();
+
+  if (SSL_set_fd(ssl_.get(), fd) != 1) {
+    return Status::RuntimeError("SSL_set_fd error", GetOpenSSLErrors());
+  }
+
+  if (is_server) {
+    if (SSL_accept(ssl_.get()) != 1) {
+      return Status::RuntimeError("SSL_accept error", GetOpenSSLErrors());
+    }
+  } else {
+    if (SSL_connect(ssl_.get()) != 1) {
+      return Status::RuntimeError("SSL_connect error", GetOpenSSLErrors());
+    }
+  }
+
+  RETURN_NOT_OK(GetCerts());
+  RETURN_NOT_OK(Verify(**socket));
+
+  // Get selected ALPN
+  const unsigned char* data{nullptr};
+  unsigned int len{0};
+  SSL_get0_alpn_selected(ssl_.get(), &data, &len);
+  if (data && len > 0) {
+    selected_alpn_ = std::string((const char*)data, (size_t)len);
+  }
+
+  // Transfer the SSL instance to the socket.
+  socket->reset(new TlsSocket(fd, std::move(ssl_)));
+
+  return Status::OK();
+}
+
+// Get selected ALPN
+std::string TlsHandshake::GetSelectedAlpn() {
+  return selected_alpn_;
+}
+
 Status TlsHandshake::Continue(const string& recv, string* send) {
   SCOPED_OPENSSL_NO_PENDING_ERRORS;
   if (!has_started_) {

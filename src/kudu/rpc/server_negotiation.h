@@ -95,6 +95,12 @@ class ServerNegotiation {
     return tls_negotiated_;
   }
 
+  // Returns true if normal TLS was negotiated.
+  // Must be called after Negotiate().
+  bool normal_tls_negotiated() const {
+    return normal_tls_negotiated_;
+  }
+
   // Returns the set of RPC system features supported by the remote client.
   // Must be called after Negotiate().
   std::set<RpcFeatureFlag> client_features() const {
@@ -137,6 +143,9 @@ class ServerNegotiation {
   // another non-OK status.
   Status Negotiate() WARN_UNUSED_RESULT;
 
+  // Perform normal TLS handshake
+  Status HandleTLS() WARN_UNUSED_RESULT;
+
   // SASL callback for plugin options, supported mechanisms, etc.
   // Returns SASL_FAIL if the option is not handled, which does not fail the handshake.
   int GetOptionCb(const char* plugin_name, const char* option,
@@ -167,6 +176,10 @@ class ServerNegotiation {
   // Encode and send the specified RPC error message to the client.
   // Calls Status.ToString() for the embedded error message.
   Status SendError(ErrorStatusPB::RpcErrorCodePB code, const Status& err) WARN_UNUSED_RESULT;
+
+  // Peek into the first data packet from the client to determine
+  // whether it is a TLS client hello packet.
+  bool LooksLikeTLS();
 
   // Parse and validate connection header.
   Status ValidateConnectionHeader(faststring* recv_buf) WARN_UNUSED_RESULT;
@@ -234,6 +247,7 @@ class ServerNegotiation {
   security::TlsHandshake tls_handshake_;
   const RpcEncryption encryption_;
   bool tls_negotiated_;
+  bool normal_tls_negotiated_;
 
   // TSK state.
   const security::TokenVerifier* token_verifier_;

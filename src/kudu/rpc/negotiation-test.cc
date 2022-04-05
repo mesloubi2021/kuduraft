@@ -85,6 +85,7 @@ DEFINE_bool(is_test_child, false,
             "See TestDisableInit.");
 DECLARE_bool(rpc_encrypt_loopback_connections);
 DECLARE_bool(rpc_trace_negotiation);
+DECLARE_bool(use_normal_tls);
 
 using std::string;
 using std::thread;
@@ -113,6 +114,7 @@ struct EndpointConfig {
   // For the server, whether the server has the TSK.
   bool token;
   RpcEncryption encryption;
+  bool enable_normal_tls;
 };
 std::ostream& operator<<(std::ostream& o, EndpointConfig config) {
   auto bool_string = [] (bool b) { return b ? "true" : "false"; };
@@ -195,6 +197,10 @@ TEST_P(TestNegotiation, TestNegotiation) {
   ASSERT_OK(server_tls_context.Init());
   ASSERT_OK(ConfigureTlsContext(desc.client.pki, ca_cert, ca_key, &client_tls_context));
   ASSERT_OK(ConfigureTlsContext(desc.server.pki, ca_cert, ca_key, &server_tls_context));
+
+  FLAGS_use_normal_tls = desc.client.enable_normal_tls;
+  client_tls_context.SetEnableNormalTLS(desc.client.enable_normal_tls);
+  server_tls_context.SetEnableNormalTLS(desc.server.enable_normal_tls);
 
   FLAGS_rpc_encrypt_loopback_connections = desc.rpc_encrypt_loopback;
 
@@ -392,6 +398,7 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
                         TestNegotiation,
                         ::testing::Values(
 
+        // 0
         // client: no authn/mechs
         // server: no authn/mechs
         NegotiationDescriptor {
@@ -400,12 +407,14 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
             {},
             false,
             RpcEncryption::OPTIONAL,
+            false,
           },
           EndpointConfig {
             PkiConfig::NONE,
             {},
             false,
             RpcEncryption::OPTIONAL,
+            false,
           },
           false,
           false,
@@ -416,6 +425,7 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
           false,
         },
 
+        // 1
         // client: PLAIN
         // server: no authn/mechs
         NegotiationDescriptor {
@@ -424,12 +434,14 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
             { SaslMechanism::PLAIN },
             false,
             RpcEncryption::OPTIONAL,
+            false,
           },
           EndpointConfig {
             PkiConfig::NONE,
             {},
             false,
             RpcEncryption::OPTIONAL,
+            false,
           },
           false,
           false,
@@ -440,6 +452,7 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
           false,
         },
 
+        // 2
         // client: PLAIN
         // server: PLAIN
         NegotiationDescriptor {
@@ -447,13 +460,15 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
             PkiConfig::NONE,
             { SaslMechanism::PLAIN },
             false,
-            RpcEncryption::OPTIONAL
+            RpcEncryption::OPTIONAL,
+            false,
           },
           EndpointConfig {
             PkiConfig::NONE,
             { SaslMechanism::PLAIN },
             false,
             RpcEncryption::DISABLED,
+            false,
           },
           false,
           false,
@@ -464,6 +479,7 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
           false,
         },
 
+        // 3
         // client: GSSAPI
         // server: GSSAPI
         NegotiationDescriptor {
@@ -472,12 +488,14 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
             { SaslMechanism::GSSAPI },
             false,
             RpcEncryption::OPTIONAL,
+            false,
           },
           EndpointConfig {
             PkiConfig::NONE,
             { SaslMechanism::GSSAPI },
             false,
             RpcEncryption::DISABLED,
+            false,
           },
           false,
           false,
@@ -488,6 +506,7 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
           false,
         },
 
+        // 4
         // client: GSSAPI, PLAIN
         // server: GSSAPI, PLAIN
         NegotiationDescriptor {
@@ -496,12 +515,14 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
             { SaslMechanism::GSSAPI, SaslMechanism::PLAIN },
             false,
             RpcEncryption::OPTIONAL,
+            false,
           },
           EndpointConfig {
             PkiConfig::NONE,
             { SaslMechanism::GSSAPI, SaslMechanism::PLAIN },
             false,
             RpcEncryption::DISABLED,
+            false,
           },
           false,
           false,
@@ -512,6 +533,7 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
           false,
         },
 
+        // 5
         // client: GSSAPI, PLAIN
         // server: GSSAPI
         NegotiationDescriptor {
@@ -520,12 +542,14 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
             { SaslMechanism::GSSAPI, SaslMechanism::PLAIN },
             false,
             RpcEncryption::OPTIONAL,
+            false,
           },
           EndpointConfig {
             PkiConfig::NONE,
             { SaslMechanism::GSSAPI },
             false,
             RpcEncryption::DISABLED,
+            false,
           },
           false,
           false,
@@ -536,6 +560,7 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
           false,
         },
 
+        // 6
         // client: PLAIN
         // server: GSSAPI
         NegotiationDescriptor {
@@ -544,12 +569,14 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
             { SaslMechanism::PLAIN },
             false,
             RpcEncryption::OPTIONAL,
+            false,
           },
           EndpointConfig {
             PkiConfig::NONE,
             { SaslMechanism::GSSAPI },
             false,
             RpcEncryption::DISABLED,
+            false,
           },
           false,
           false,
@@ -560,6 +587,7 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
           false,
         },
 
+        // 7
         // client: GSSAPI,
         // server: GSSAPI, self-signed cert
         // loopback encryption
@@ -569,12 +597,14 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
             { SaslMechanism::GSSAPI },
             false,
             RpcEncryption::OPTIONAL,
+            false,
           },
           EndpointConfig {
             PkiConfig::SELF_SIGNED,
             { SaslMechanism::GSSAPI },
             false,
             RpcEncryption::OPTIONAL,
+            false,
           },
           false,
           true,
@@ -585,6 +615,7 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
           true,
         },
 
+        // 8
         // client: GSSAPI, signed-cert
         // server: GSSAPI, self-signed cert
         // This tests that the server will not advertise CERTIFICATE authentication,
@@ -595,12 +626,14 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
             { SaslMechanism::GSSAPI },
             false,
             RpcEncryption::OPTIONAL,
+            false,
           },
           EndpointConfig {
             PkiConfig::SELF_SIGNED,
             { SaslMechanism::GSSAPI },
             false,
             RpcEncryption::OPTIONAL,
+            false,
           },
           false,
           false,
@@ -611,6 +644,7 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
           true,
         },
 
+        // 9
         // client: PLAIN,
         // server: PLAIN, self-signed cert
         NegotiationDescriptor {
@@ -619,12 +653,14 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
             { SaslMechanism::PLAIN },
             false,
             RpcEncryption::OPTIONAL,
+            false,
           },
           EndpointConfig {
             PkiConfig::SELF_SIGNED,
             { SaslMechanism::PLAIN },
             false,
             RpcEncryption::OPTIONAL,
+            false,
           },
           false,
           false,
@@ -635,6 +671,7 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
           true,
         },
 
+        // 10
         // client: signed-cert
         // server: signed-cert
         NegotiationDescriptor {
@@ -643,12 +680,14 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
             { SaslMechanism::GSSAPI },
             false,
             RpcEncryption::OPTIONAL,
+            false,
           },
           EndpointConfig {
             PkiConfig::SIGNED,
             { SaslMechanism::GSSAPI },
             false,
             RpcEncryption::OPTIONAL,
+            false,
           },
           false,
           false,
@@ -659,6 +698,7 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
           true,
         },
 
+        // 11
         // client: token, trusted cert
         // server: token, signed-cert, GSSAPI
         NegotiationDescriptor {
@@ -667,12 +707,14 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
             { },
             true,
             RpcEncryption::OPTIONAL,
+            false,
           },
           EndpointConfig {
             PkiConfig::SIGNED,
             { SaslMechanism::PLAIN },
             true,
             RpcEncryption::OPTIONAL,
+            false,
           },
           false,
           false,
@@ -683,6 +725,7 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
           true,
         },
 
+        // 12
         // client: PLAIN, token
         // server: PLAIN, token, signed cert
         // Test that the client won't negotiate token authn if it doesn't have a
@@ -694,12 +737,14 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
             { SaslMechanism::PLAIN },
             true,
             RpcEncryption::OPTIONAL,
+            false,
           },
           EndpointConfig {
             PkiConfig::SIGNED,
             { SaslMechanism::PLAIN },
             true,
             RpcEncryption::OPTIONAL,
+            false,
           },
           false,
           false,
@@ -710,6 +755,7 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
           true,
         },
 
+        // 13
         // client: PLAIN, GSSAPI, signed-cert, token
         // server: PLAIN, GSSAPI, signed-cert, token
         NegotiationDescriptor {
@@ -718,12 +764,14 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
             { SaslMechanism::PLAIN, SaslMechanism::GSSAPI },
             true,
             RpcEncryption::OPTIONAL,
+            false,
           },
           EndpointConfig {
             PkiConfig::SIGNED,
             { SaslMechanism::PLAIN, SaslMechanism::GSSAPI },
             true,
             RpcEncryption::OPTIONAL,
+            false,
           },
           false,
           false,
@@ -734,6 +782,7 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
           true,
         },
 
+        // 14
         // client: PLAIN, TLS disabled
         // server: PLAIN, TLS required
         NegotiationDescriptor {
@@ -742,12 +791,14 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
             { SaslMechanism::PLAIN },
             false,
             RpcEncryption::DISABLED,
+            false,
           },
           EndpointConfig {
             PkiConfig::SIGNED,
             { SaslMechanism::PLAIN },
             false,
             RpcEncryption::REQUIRED,
+            false,
           },
           false,
           false,
@@ -758,6 +809,7 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
           true,
         },
 
+        // 15
         // client: PLAIN, TLS required
         // server: PLAIN, TLS disabled
         NegotiationDescriptor {
@@ -766,12 +818,14 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
             { SaslMechanism::PLAIN },
             false,
             RpcEncryption::REQUIRED,
+            false,
           },
           EndpointConfig {
             PkiConfig::SIGNED,
             { SaslMechanism::PLAIN },
             false,
             RpcEncryption::DISABLED,
+            false,
           },
           false,
           false,
@@ -782,6 +836,7 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
           true,
         },
 
+        // 16
         // client: GSSAPI, TLS required, externally-signed cert
         // server: GSSAPI, TLS required, externally-signed cert
         NegotiationDescriptor {
@@ -790,12 +845,14 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
             { SaslMechanism::GSSAPI },
             false,
             RpcEncryption::REQUIRED,
+            false,
           },
           EndpointConfig {
             PkiConfig::EXTERNALLY_SIGNED,
             { SaslMechanism::GSSAPI },
             false,
             RpcEncryption::REQUIRED,
+            false,
           },
           false,
           false,
@@ -806,6 +863,7 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
           true,
         },
 
+        // 17
         // client: GSSAPI, TLS optional, externally-signed cert
         // server: GSSAPI, TLS required, signed cert
         NegotiationDescriptor {
@@ -814,12 +872,14 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
             { SaslMechanism::GSSAPI },
             false,
             RpcEncryption::OPTIONAL,
+            false,
           },
           EndpointConfig {
             PkiConfig::SIGNED,
             { SaslMechanism::GSSAPI },
             false,
             RpcEncryption::REQUIRED,
+            false,
           },
           false,
           false,
@@ -830,6 +890,7 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
           true,
         },
 
+        // 18
         // client: GSSAPI, TLS required
         // server: GSSAPI, TLS required, externally-signed cert
         NegotiationDescriptor {
@@ -838,12 +899,14 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
             { SaslMechanism::GSSAPI },
             false,
             RpcEncryption::REQUIRED,
+            false,
           },
           EndpointConfig {
             PkiConfig::EXTERNALLY_SIGNED,
             { SaslMechanism::GSSAPI },
             false,
             RpcEncryption::REQUIRED,
+            false,
           },
           false,
           false,
@@ -854,6 +917,7 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
           true,
         },
 
+        // 19
         // client: GSSAPI, PLAIN, TLS required, externally-signed cert
         // server: PLAIN, TLS required, externally-signed cert
         NegotiationDescriptor {
@@ -862,12 +926,14 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
             { SaslMechanism::GSSAPI, SaslMechanism::PLAIN },
             false,
             RpcEncryption::REQUIRED,
+            false,
           },
           EndpointConfig {
             PkiConfig::EXTERNALLY_SIGNED,
             { SaslMechanism::PLAIN },
             false,
             RpcEncryption::REQUIRED,
+            false,
           },
           false,
           false,
@@ -878,6 +944,7 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
           true,
         },
 
+        // 20
         // client: GSSAPI, TLS disabled, signed cert
         // server: GSSAPI, TLS required, externally-signed cert
         NegotiationDescriptor {
@@ -886,12 +953,14 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
             { SaslMechanism::GSSAPI },
             false,
             RpcEncryption::DISABLED,
+            false,
           },
           EndpointConfig {
             PkiConfig::EXTERNALLY_SIGNED,
             { SaslMechanism::GSSAPI },
             false,
             RpcEncryption::REQUIRED,
+            false,
           },
           false,
           false,
@@ -902,6 +971,7 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
           true,
         },
 
+        // 21
         // client: GSSAPI, TLS required, signed cert
         // server: GSSAPI, TLS required, externally-signed cert
         NegotiationDescriptor {
@@ -910,12 +980,14 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
             { SaslMechanism::GSSAPI },
             false,
             RpcEncryption::REQUIRED,
+            false,
           },
           EndpointConfig {
             PkiConfig::EXTERNALLY_SIGNED,
             { SaslMechanism::GSSAPI },
             false,
             RpcEncryption::REQUIRED,
+            false,
           },
           false,
           false,
@@ -926,6 +998,7 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
           true,
         },
 
+        // 22
         // client: PLAIN
         // server: PLAIN
         // connection from public routable IP
@@ -934,13 +1007,15 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
                 PkiConfig::NONE,
                 { SaslMechanism::PLAIN },
                 false,
-                RpcEncryption::OPTIONAL
+                RpcEncryption::OPTIONAL,
+                false,
             },
             EndpointConfig {
                 PkiConfig::NONE,
                 { SaslMechanism::PLAIN },
                 false,
-                RpcEncryption::OPTIONAL
+                RpcEncryption::OPTIONAL,
+                false,
             },
             true,
             false,
@@ -951,6 +1026,7 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
             false,
         },
 
+        // 23
         // client: GSSAPI, TLS required, externally-signed cert
         // server: GSSAPI, TLS required, externally-signed cert
         // connection from public routable IP
@@ -960,12 +1036,14 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
                 { SaslMechanism::GSSAPI },
                 false,
                 RpcEncryption::REQUIRED,
+                false,
             },
             EndpointConfig {
                 PkiConfig::EXTERNALLY_SIGNED,
                 { SaslMechanism::GSSAPI },
                 false,
                 RpcEncryption::REQUIRED,
+                false,
             },
             true,
             // true as no longer a loopback connection.
@@ -975,6 +1053,168 @@ INSTANTIATE_TEST_CASE_P(NegotiationCombinations,
             AuthenticationType::SASL,
             SaslMechanism::GSSAPI,
             true,
+        },
+
+        // 24
+        // client:               signed-cert, normal TLS
+        // server: token, PLAIN, signed-cert, normal TLS
+        NegotiationDescriptor {
+          EndpointConfig {
+            PkiConfig::SIGNED,
+            {},
+            false,
+            RpcEncryption::REQUIRED,
+            true, // enable_normal_tls
+          },
+          EndpointConfig {
+            PkiConfig::SIGNED,
+            { SaslMechanism::PLAIN },
+            true,
+            RpcEncryption::REQUIRED,
+            true, // enable_normal_tls
+          },
+          false,
+          true,
+          Status::OK(),
+          Status::OK(),
+          AuthenticationType::CERTIFICATE,
+          SaslMechanism::INVALID,
+          true,
+        },
+
+        // 25
+        // client:               signed-cert
+        // server: token, PLAIN, signed-cert, normal TLS
+        NegotiationDescriptor {
+          EndpointConfig {
+            PkiConfig::SIGNED,
+            {},
+            false,
+            RpcEncryption::REQUIRED,
+            false,
+          },
+          EndpointConfig {
+            PkiConfig::SIGNED,
+            { SaslMechanism::PLAIN },
+            true,
+            RpcEncryption::REQUIRED,
+            true, // enable_normal_tls
+          },
+          false,
+          true,
+          Status::OK(),
+          Status::OK(),
+          AuthenticationType::CERTIFICATE,
+          SaslMechanism::INVALID,
+          true,
+        },
+
+        // 26
+        // client:        PLAIN, signed-cert
+        // server: token, PLAIN, signed-cert, normal TLS
+        NegotiationDescriptor {
+          EndpointConfig {
+            PkiConfig::SIGNED,
+            { SaslMechanism::PLAIN },
+            false,
+            RpcEncryption::REQUIRED,
+            false,
+          },
+          EndpointConfig {
+            PkiConfig::SIGNED,
+            { SaslMechanism::PLAIN },
+            true,
+            RpcEncryption::REQUIRED,
+            true, // enable_normal_tls
+          },
+          false,
+          true,
+          Status::OK(),
+          Status::OK(),
+          AuthenticationType::CERTIFICATE,
+          SaslMechanism::INVALID,
+          true,
+        },
+
+        // 27
+        // client: token, PLAIN, signed-cert
+        // server: token, PLAIN, signed-cert, normal TLS
+        NegotiationDescriptor {
+          EndpointConfig {
+            PkiConfig::SIGNED,
+            { SaslMechanism::PLAIN },
+            true,
+            RpcEncryption::REQUIRED,
+            false,
+          },
+          EndpointConfig {
+            PkiConfig::SIGNED,
+            { SaslMechanism::PLAIN },
+            true,
+            RpcEncryption::REQUIRED,
+            true, // enable_normal_tls
+          },
+          false,
+          true,
+          Status::OK(),
+          Status::OK(),
+          AuthenticationType::CERTIFICATE,
+          SaslMechanism::INVALID,
+          true,
+        },
+
+        // 28
+        // client:        PLAIN
+        // server: token, PLAIN, signed-cert, normal TLS
+        NegotiationDescriptor {
+          EndpointConfig {
+            PkiConfig::NONE,
+            { SaslMechanism::PLAIN },
+            false,
+            RpcEncryption::REQUIRED,
+            false,
+          },
+          EndpointConfig {
+            PkiConfig::SIGNED,
+            { SaslMechanism::PLAIN },
+            true,
+            RpcEncryption::REQUIRED,
+            true, // enable_normal_tls
+          },
+          false,
+          true,
+          Status::OK(),
+          Status::OK(),
+          AuthenticationType::SASL,
+          SaslMechanism::PLAIN,
+          true,
+        },
+
+        // 29
+        // client: token,        trusted cert
+        // server: token, PLAIN, signed-cert, normal TLS
+        NegotiationDescriptor {
+          EndpointConfig {
+            PkiConfig::TRUSTED,
+            {},
+            true,
+            RpcEncryption::REQUIRED,
+            false,
+          },
+          EndpointConfig {
+            PkiConfig::SIGNED,
+            { SaslMechanism::PLAIN },
+            true,
+            RpcEncryption::REQUIRED,
+            true, // enable_normal_tls
+          },
+          false,
+          true,
+          Status::OK(),
+          Status::OK(),
+          AuthenticationType::TOKEN,
+          SaslMechanism::INVALID,
+          true,
         }
 ));
 

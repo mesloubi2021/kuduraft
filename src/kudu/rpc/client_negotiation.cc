@@ -65,6 +65,10 @@ DECLARE_bool(rpc_encrypt_loopback_connections);
 // externally signed (not by internal CA)
 DECLARE_bool(rpc_allow_external_cert_authentication);
 
+// Initiate normal TLS handshake from the client
+DEFINE_bool(use_normal_tls, false,
+    "Whether to initiate normal TLS handshake.");
+
 namespace kudu {
 namespace rpc {
 
@@ -120,6 +124,7 @@ ClientNegotiation::ClientNegotiation(unique_ptr<Socket> socket,
       tls_context_(tls_context),
       encryption_(encryption),
       tls_negotiated_(false),
+      normal_tls_negotiated_(false),
       authn_token_(std::move(authn_token)),
       psecret_(nullptr, std::free),
       negotiated_authn_(AuthenticationType::INVALID),
@@ -165,6 +170,16 @@ Status ClientNegotiation::Negotiate(unique_ptr<ErrorStatusPB>* rpc_error) {
 
   // Ensure we can use blocking calls on the socket during negotiation.
   RETURN_NOT_OK(CheckInBlockingMode(socket_.get()));
+
+  // Step 0: Perform normal TLS handshake if enabled
+  if (tls_context_->GetEnableNormalTLS() && FLAGS_use_normal_tls) {
+    RETURN_NOT_OK(HandleTLS());
+    // Send connection context.
+    RETURN_NOT_OK(SendConnectionContext());
+
+    TRACE("Negotiation successful");
+    return Status::OK();
+  }
 
   // Step 1: send the connection header.
   RETURN_NOT_OK(SendConnectionHeader());
@@ -227,6 +242,43 @@ Status ClientNegotiation::Negotiate(unique_ptr<ErrorStatusPB>* rpc_error) {
   RETURN_NOT_OK(SendConnectionContext());
 
   TRACE("Negotiation successful");
+  return Status::OK();
+}
+
+Status ClientNegotiation::HandleTLS() {
+  if (encryption_ == RpcEncryption::DISABLED) {
+    return Status::NotSupported("RPC encryption is disabled.");
+  }
+
+  if (!tls_context_->has_signed_cert()) {
+    return Status::NotSupported("A signed certificate is not available.");
+  }
+
+  client_features_ = kSupportedClientRpcFeatureFlags;
+  client_features_.insert(TLS);
+  server_features_ = kSupportedServerRpcFeatureFlags;
+  server_features_.insert(TLS);
+  negotiated_authn_ = AuthenticationType::CERTIFICATE;
+
+  RETURN_NOT_OK(((security::TlsContext*)tls_context_)->SetSupportedAlpns(kAlpns, false));
+
+  RETURN_NOT_OK(tls_context_->CreateSSL(&tls_handshake_));
+
+  RETURN_NOT_OK(tls_handshake_.SSLHandshake(&socket_, false));
+
+  // Verify whether alpn is negotiated
+  auto selected_alpn = tls_handshake_.GetSelectedAlpn();
+  if (selected_alpn.empty()) {
+    return Status::RuntimeError("ALPN not negotiated");
+  }
+  if (std::find(std::begin(kAlpns), std::end(kAlpns), selected_alpn) ==
+      std::end(kAlpns)) {
+    return Status::RuntimeError("ALPN incorrectly negotiated", selected_alpn);
+  }
+
+  tls_negotiated_ = true;
+  normal_tls_negotiated_ = true;
+
   return Status::OK();
 }
 

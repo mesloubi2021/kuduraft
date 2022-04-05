@@ -82,5 +82,12 @@ Status CreateTestSSLCertWithChainSignedByRoot(const std::string& dir,
                                               std::string* key_file,
                                               std::string* ca_cert_file);
 
+Status CreateTestSSLCertForClientAndServer(const std::string& dir,
+                                      std::string* client_cert_file,
+                                      std::string* client_key_file,
+                                      std::string* server_cert_file,
+                                      std::string* server_key_file,
+                                      std::string* ca_cert_file);
+
 } // namespace security
 } // namespace kudu

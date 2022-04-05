@@ -165,6 +165,7 @@ ServerNegotiation::ServerNegotiation(unique_ptr<Socket> socket,
       tls_context_(tls_context),
       encryption_(encryption),
       tls_negotiated_(false),
+      normal_tls_negotiated_(false),
       token_verifier_(token_verifier),
       negotiated_authn_(AuthenticationType::INVALID),
       negotiated_mech_(SaslMechanism::INVALID),
@@ -211,6 +212,22 @@ Status ServerNegotiation::Negotiate() {
   RETURN_NOT_OK(CheckInBlockingMode(socket_.get()));
 
   faststring recv_buf;
+
+  // Step 0: Detect TLS client hello packet and perform normal TLS handshake
+  if (tls_context_->GetEnableNormalTLS() && LooksLikeTLS()) {
+    RETURN_NOT_OK(HandleTLS());
+    RETURN_NOT_OK(
+      AuthenticateByCertificate(
+        FLAGS_authenticate_via_CN ? CertValidationCheck::CERT_VALIDATION_COMMON_NAME :
+                                    CertValidationCheck::CERT_VALIDATION_USERID
+      )
+    );
+    // Receive connection context.
+    RETURN_NOT_OK(RecvConnectionContext(&recv_buf));
+
+    TRACE("Negotiation successful");
+    return Status::OK();
+  }
 
   // Step 1: Read the connection header.
   RETURN_NOT_OK(ValidateConnectionHeader(&recv_buf));
@@ -292,6 +309,43 @@ Status ServerNegotiation::Negotiate() {
   RETURN_NOT_OK(RecvConnectionContext(&recv_buf));
 
   TRACE("Negotiation successful");
+  return Status::OK();
+}
+
+Status ServerNegotiation::HandleTLS() {
+  if (encryption_ == RpcEncryption::DISABLED) {
+    return Status::NotSupported("RPC encryption is disabled.");
+  }
+
+  if (!tls_context_->has_signed_cert()) {
+    return Status::NotSupported("A signed certificate is not available.");
+  }
+
+  client_features_ = kSupportedClientRpcFeatureFlags;
+  client_features_.insert(TLS);
+  server_features_ = kSupportedServerRpcFeatureFlags;
+  server_features_.insert(TLS);
+  negotiated_authn_ = AuthenticationType::CERTIFICATE;
+
+  RETURN_NOT_OK(((security::TlsContext*)tls_context_)->SetSupportedAlpns(kAlpns, true));
+
+  RETURN_NOT_OK(tls_context_->CreateSSL(&tls_handshake_));
+
+  RETURN_NOT_OK(tls_handshake_.SSLHandshake(&socket_, true));
+
+  // Verify whether alpn is negotiated
+  auto selected_alpn = tls_handshake_.GetSelectedAlpn();
+  if (selected_alpn.empty()) {
+    return Status::RuntimeError("ALPN not negotiated");
+  }
+  if (std::find(std::begin(kAlpns), std::end(kAlpns), selected_alpn) ==
+      std::end(kAlpns)) {
+    return Status::RuntimeError("ALPN incorrectly negotiated", selected_alpn);
+  }
+
+  tls_negotiated_ = true;
+  normal_tls_negotiated_ = true;
+
   return Status::OK();
 }
 
@@ -389,6 +443,28 @@ Status ServerNegotiation::SendError(ErrorStatusPB::RpcErrorCodePB code, const St
   RETURN_NOT_OK(SendFramedMessageBlocking(socket(), header, msg, deadline_));
 
   return Status::OK();
+}
+
+bool ServerNegotiation::LooksLikeTLS() {
+  faststring recv_buf;
+  size_t num_read = 0;
+  recv_buf.resize(kTLSPeekCount);
+  uint8_t* bytes = recv_buf.data();
+  auto ret = socket_->Peek(bytes, kTLSPeekCount, &num_read, deadline_);
+  if (!ret.ok()) {
+    return false;
+  }
+  DCHECK_EQ(kTLSPeekCount, num_read);
+  // TLS starts with
+  // 0: 0x16 - handshake magic
+  // 1: 0x03 - SSL major version
+  // 2: 0x00 to 0x03 - minor version
+  // 3-4: Length
+  // 5: 0x01 - Handshake type (Client Hello)
+  if (bytes[0] != 0x16 || bytes[1] != 0x03 || bytes[5] != 0x01) {
+    return false;
+  }
+  return true;
 }
 
 Status ServerNegotiation::ValidateConnectionHeader(faststring* recv_buf) {

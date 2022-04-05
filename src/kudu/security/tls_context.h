@@ -195,6 +195,30 @@ class TlsContext {
   // Load the certificate authority (PEM encoded).
   Status LoadCertificateAuthority(const std::string& certificate_path) WARN_UNUSED_RESULT;
 
+  void SetEnableNormalTLS(bool enable) {
+    enable_normal_tls_ = enable;
+  }
+
+  bool GetEnableNormalTLS() const {
+    return enable_normal_tls_;
+  }
+
+  // Set ALPN protocols. ALPN is a mechanism to multiplex multiple protocols on
+  // the same server. And enforcing the protocol match between the client and the
+  // server can prevent the cross protocol attack. See https://alpaca-attack.com/.
+  Status SetSupportedAlpns(const std::vector<std::string>& alpns, bool is_server);
+
+  static int AlpnSelectCallback(
+    SSL* /* ssl */,
+    const unsigned char** out,
+    unsigned char* outlen,
+    const unsigned char* in,
+    unsigned int inlen,
+    void* data);
+
+  // Create openssl handle
+  Status CreateSSL(TlsHandshake* handshake) const WARN_UNUSED_RESULT;
+
   // Initiates a new TlsHandshake instance.
   Status InitiateHandshake(TlsHandshakeType handshake_type,
                            TlsHandshake* handshake) const WARN_UNUSED_RESULT;
@@ -231,6 +255,11 @@ class TlsContext {
   bool has_cert_;
   bool is_external_cert_;
   boost::optional<CertSignRequest> csr_;
+
+  bool enable_normal_tls_;
+
+  // alpn protocols in wire format
+  std::vector<unsigned char> alpns_;
 };
 
 } // namespace security

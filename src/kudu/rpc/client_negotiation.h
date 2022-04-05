@@ -94,6 +94,12 @@ class ClientNegotiation {
     return tls_negotiated_;
   }
 
+  // Returns true if normal TLS was negotiated.
+  // Must be called after Negotiate().
+  bool normal_tls_negotiated() const {
+    return normal_tls_negotiated_;
+  }
+
   // Returns the set of RPC system features supported by the remote server.
   // Must be called before Negotiate().
   std::set<RpcFeatureFlag> server_features() const {
@@ -128,6 +134,9 @@ class ClientNegotiation {
   // Returns OK on success, otherwise may return NotAuthorized, NotSupported, or
   // another non-OK status.
   Status Negotiate(std::unique_ptr<ErrorStatusPB>* rpc_error = nullptr);
+
+  // Perform normal TLS handshake
+  Status HandleTLS() WARN_UNUSED_RESULT;
 
   // SASL callback for plugin options, supported mechanisms, etc.
   // Returns SASL_FAIL if the option is not handled, which does not fail the handshake.
@@ -229,6 +238,7 @@ class ClientNegotiation {
   security::TlsHandshake tls_handshake_;
   const RpcEncryption encryption_;
   bool tls_negotiated_;
+  bool normal_tls_negotiated_;
 
   // TSK state.
   boost::optional<security::SignedTokenPB> authn_token_;

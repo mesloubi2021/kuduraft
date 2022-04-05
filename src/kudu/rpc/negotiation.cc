@@ -251,6 +251,11 @@ static Status DoClientNegotiation(Connection* conn,
   RETURN_NOT_OK(client_negotiation.Negotiate(rpc_error));
   RETURN_NOT_OK(DisableSocketTimeouts(client_negotiation.socket()));
 
+  // increment normal tls counter
+  if (client_negotiation.normal_tls_negotiated()) {
+    conn->reactor_thread()->IncrementNormalTLSConnections(false);
+  }
+
   // Transfer the negotiated socket and state back to the connection.
   conn->adopt_socket(client_negotiation.release_socket());
   conn->set_remote_features(client_negotiation.take_server_features());
@@ -305,6 +310,11 @@ static Status DoServerNegotiation(Connection* conn,
 
   RETURN_NOT_OK(server_negotiation.Negotiate());
   RETURN_NOT_OK(DisableSocketTimeouts(server_negotiation.socket()));
+
+  // increment normal tls counter
+  if (server_negotiation.normal_tls_negotiated()) {
+    conn->reactor_thread()->IncrementNormalTLSConnections(true);
+  }
 
   // Transfer the negotiated socket and state back to the connection.
   conn->adopt_socket(server_negotiation.release_socket());

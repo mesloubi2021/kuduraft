@@ -569,6 +569,37 @@ Status Socket::BlockingRecv(uint8_t *buf, size_t amt, size_t *nread, const MonoT
   return Status::OK();
 }
 
+Status Socket::Peek(uint8_t *buf, size_t amt, size_t *nread, const MonoTime& deadline) {
+  DCHECK_LE(amt, std::numeric_limits<int32_t>::max()) << "Reads > INT32_MAX not supported";
+  DCHECK(nread);
+  DCHECK_GE(fd_, 0);
+
+  MonoDelta timeout = deadline - MonoTime::Now();
+  if (PREDICT_FALSE(timeout.ToNanoseconds() <= 0)) {
+    return Status::TimedOut("");
+  }
+  RETURN_NOT_OK(SetRecvTimeout(timeout));
+
+  int res;
+  RETRY_ON_EINTR(res, recv(fd_, buf, amt, MSG_PEEK));
+  if (res <= 0) {
+    Sockaddr remote;
+    GetPeerAddress(&remote);
+    if (res == 0) {
+      string error_message = Substitute("recv got EOF from $0", remote.ToString());
+      return Status::NetworkError(error_message, Slice(), ESHUTDOWN);
+    }
+    int err = errno;
+    string error_message = Substitute("recv error from $0", remote.ToString());
+    return Status::NetworkError(error_message, ErrnoToString(err), err);
+  } else if (amt != res) {
+    string error_message = Substitute("Peek returned $0 of $1 bytes", amt, res);
+    return Status::NetworkError(error_message);
+  }
+  *nread = res;
+  return Status::OK();
+}
+
 Status Socket::SetTimeout(int opt, const char* optname, const MonoDelta& timeout) {
   if (PREDICT_FALSE(timeout.ToNanoseconds() < 0)) {
     return Status::InvalidArgument("Timeout specified as negative to SetTimeout",
