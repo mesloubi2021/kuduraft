@@ -88,6 +88,15 @@ vector<string> GenVoterUUIDs(int num_voters) {
 // LeaderElectionTest
 ////////////////////////////////////////
 
+class VoteLoggerImplTest : public VoteLoggerInterface{
+  public:
+    explicit VoteLoggerImplTest() {}
+    void logElectionStarted(const VoteRequestPB& voteRequest, const RaftConfigPB& config) {}
+    void logVoteReceived(const VoteResponsePB& voteResponse) {}
+    void logElectionDecided(const ElectionResult& electionResult) {}
+    void advanceEpoch(int64_t epoch) {}
+};
+
 typedef unordered_map<string, PeerProxy*> ProxyMap;
 
 // A proxy factory that serves proxies from a map.
@@ -244,7 +253,8 @@ scoped_refptr<LeaderElection> LeaderElectionTest::SetUpElectionWithHighTermVoter
                          MonoDelta::FromSeconds(kLeaderElectionTimeoutSecs),
                          std::bind(&LeaderElectionTest::ElectionCallback,
                                    this,
-                                   std::placeholders::_1)));
+                                   std::placeholders::_1),
+                         std::make_shared<VoteLoggerImplTest>()));
   return election;
 }
 
@@ -304,7 +314,8 @@ scoped_refptr<LeaderElection> LeaderElectionTest::SetUpElectionWithGrantDenyErro
                          MonoDelta::FromSeconds(kLeaderElectionTimeoutSecs),
                          std::bind(&LeaderElectionTest::ElectionCallback,
                                    this,
-                                   std::placeholders::_1)));
+                                   std::placeholders::_1),
+                         std::make_shared<VoteLoggerImplTest>()));
   return election;
 }
 
@@ -332,7 +343,8 @@ TEST_F(LeaderElectionTest, TestPerfectElection) {
                            MonoDelta::FromSeconds(kLeaderElectionTimeoutSecs),
                            std::bind(&LeaderElectionTest::ElectionCallback,
                                      this,
-                                     std::placeholders::_1)));
+                                     std::placeholders::_1),
+                           std::make_shared<VoteLoggerImplTest>()));
     election->Run();
     latch_.Wait();
 
@@ -462,7 +474,8 @@ TEST_F(LeaderElectionTest, TestFailToCreateProxy) {
                          MonoDelta::FromSeconds(kLeaderElectionTimeoutSecs),
                          std::bind(&LeaderElectionTest::ElectionCallback,
                                    this,
-                                   std::placeholders::_1)));
+                                   std::placeholders::_1),
+                         std::make_shared<VoteLoggerImplTest>()));
   election->Run();
   latch_.Wait();
   ASSERT_EQ(kElectionTerm, result_->vote_request.candidate_term());

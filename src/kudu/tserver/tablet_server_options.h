@@ -22,6 +22,7 @@
 
 #include "kudu/consensus/metadata.pb.h"
 #include "kudu/consensus/proxy_policy.h"
+#include "kudu/consensus/leader_election.h"
 #include "kudu/server/server_base_options.h"
 #include "kudu/util/net/net_util.h"
 
@@ -58,6 +59,8 @@ struct TabletServerOptions : public kudu::server::ServerBaseOptions {
   std::vector<KC::RaftPeerPB> bootstrap_tservers;
 
   std::shared_ptr<kudu::log::LogFactory> log_factory;
+
+  std::shared_ptr<kudu::consensus::VoteLoggerInterface> vote_logger;
 
   kudu::consensus::ConsensusRoundHandler *round_handler = nullptr;
 

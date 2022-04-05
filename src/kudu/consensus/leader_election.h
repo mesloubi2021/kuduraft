@@ -21,6 +21,7 @@
 #include <cstdint>
 #include <functional>
 #include <map>
+#include <memory>
 #include <string>
 #include <unordered_map>
 
@@ -420,7 +421,8 @@ class LeaderElection : public RefCountedThreadSafe<LeaderElection> {
                  VoteRequestPB request,
                  gscoped_ptr<VoteCounter> vote_counter,
                  MonoDelta timeout,
-                 ElectionDecisionCallback decision_callback);
+                 ElectionDecisionCallback decision_callback,
+                 std::shared_ptr<VoteLoggerInterface> vote_logger);
 
   // Run the election: send the vote request to followers.
   void Run();
@@ -512,6 +514,17 @@ class LeaderElection : public RefCountedThreadSafe<LeaderElection> {
 
   // The time when the election started
   MonoTime start_time_;
+
+  std::shared_ptr<VoteLoggerInterface> vote_logger_;
+};
+
+class VoteLoggerInterface {
+  public:
+    virtual ~VoteLoggerInterface() {};
+    virtual void logElectionStarted(const VoteRequestPB& voteRequest, const RaftConfigPB& config) = 0;
+    virtual void logVoteReceived(const VoteResponsePB& voteResponse) = 0;
+    virtual void logElectionDecided(const ElectionResult& electionResult) = 0;
+    virtual void advanceEpoch(int64_t epoch) = 0;
 };
 
 } // namespace consensus

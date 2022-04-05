@@ -657,7 +657,7 @@ Status RaftConsensus::StartElection(ElectionMode mode, ElectionContext context) 
     }
 
     RaftConfigPB active_config = cmeta_->ActiveConfig();
-    LOG_WITH_PREFIX_UNLOCKED(INFO) << "Starting " << mode_str << " with config: "
+    VLOG_WITH_PREFIX_UNLOCKED(1) << "Starting " << mode_str << " with config: "
                                    << SecureShortDebugString(active_config);
 
     int64_t candidate_term = CurrentTermUnlocked();
@@ -698,7 +698,7 @@ Status RaftConsensus::StartElection(ElectionMode mode, ElectionContext context) 
     // Vote for ourselves.
     bool duplicate;
     RETURN_NOT_OK(counter->RegisterVote(peer_uuid(), vote_info, &duplicate));
-    LOG_WITH_PREFIX_UNLOCKED(INFO) << "Self-Voted " << mode_str;
+    VLOG_WITH_PREFIX_UNLOCKED(1) << "Self-Voted " << mode_str;
     CHECK(!duplicate) << LogPrefixUnlocked()
                       << "Inexplicable duplicate self-vote for term "
                       << CurrentTermUnlocked();
@@ -733,7 +733,8 @@ Status RaftConsensus::StartElection(ElectionMode mode, ElectionContext context) 
         std::bind(&RaftConsensus::ElectionCallback,
                   shared_from_this(),
                   std::move(context),
-                  std::placeholders::_1)));
+                  std::placeholders::_1),
+                  vote_logger_));
   }
 
   // Start the election outside the lock.
@@ -3290,7 +3291,7 @@ void RaftConsensus::DoElectionCallback(
     return;
   }
 
-  LOG_WITH_PREFIX_UNLOCKED(INFO) << "Leader " << election_type << " won for term " << election_term;
+  VLOG_WITH_PREFIX_UNLOCKED(1) << "Leader " << election_type << " won for term " << election_term;
 
   if (was_pre_election) {
     // We just won the pre-election. So, we need to call a real election.
@@ -3889,6 +3890,9 @@ Status RaftConsensus::SetCurrentTermUnlocked(int64_t new_term,
   }
 
   ClearLeaderUnlocked();
+  if (vote_logger_) {
+    vote_logger_->advanceEpoch(new_term);
+  }
 
   // Trigger term advancement callback
   ScheduleTermAdvancementCallback(new_term);
@@ -4007,6 +4011,10 @@ void RaftConsensus::SetNoOpReceivedCallback(NoOpReceivedCallback norcb) {
 void RaftConsensus::SetLeaderDetectedCallback(LeaderDetectedCallback ldcb) {
   CHECK(ldcb);
   ldcb_ = std::move(ldcb);
+}
+
+void RaftConsensus::SetVoteLogger(std::shared_ptr<VoteLoggerInterface> vote_logger) {
+  vote_logger_ = std::move(vote_logger);
 }
 
 bool RaftConsensus::IsProxyRequest(const ConsensusRequestPB* request) const {
