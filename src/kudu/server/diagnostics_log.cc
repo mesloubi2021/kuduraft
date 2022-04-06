@@ -340,7 +340,7 @@ Status DiagnosticsLog::LogMetrics() {
   MetricJsonOptions opts;
   opts.include_raw_histograms = false;
 
-  opts.only_modified_in_or_after_epoch = metrics_epoch_;
+  opts.only_modified_in_or_after_epoch = 0;
 
   // We don't output any metrics which have never been incremented. Though
   // this seems redundant with the "only include changed metrics" above, it
