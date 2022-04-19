@@ -97,6 +97,7 @@ class PersistentVarsManager;
 class PendingRounds;
 struct ConsensusBootstrapInfo;
 struct ElectionResult;
+class VoteLoggerInterface;
 
 struct ConsensusOptions {
   std::string tablet_id;
@@ -1089,6 +1090,7 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   void SetTermAdvancementCallback(TermAdvancementCallback tacb);
   void SetNoOpReceivedCallback(NoOpReceivedCallback norcb);
   void SetLeaderDetectedCallback(LeaderDetectedCallback ldcb);
+  void SetVoteLogger(std::shared_ptr<VoteLoggerInterface> vote_logger);
 
   const ConsensusOptions options_;
 
@@ -1215,6 +1217,9 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
 
   // this is not expected to change after a create of Raft.
   bool disable_noop_;
+
+  // Vote logger for voting events
+  std::shared_ptr<VoteLoggerInterface> vote_logger_;
 
   // A flag to help us avoid taking a lock on the reactor thread if the object
   // is already in kShutdown state.

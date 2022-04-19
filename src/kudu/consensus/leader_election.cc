@@ -25,6 +25,7 @@
 
 #include <algorithm>
 #include <limits>
+#include <memory>
 #include <mutex>
 #include <ostream>
 #include <type_traits>
@@ -67,6 +68,10 @@ DEFINE_bool(trust_last_leader_entries, true,
 
 namespace kudu {
 namespace consensus {
+
+using std::vector;
+using strings::Substitute;
+
 namespace {
 
 // Comparator for PreviousVotePB
@@ -80,11 +85,18 @@ bool compareTerm_PreviousVotePB(
     int64_t a, const PreviousVotePB& b) {
   return a < b.election_term();
 }
-}
 
-using std::string;
-using std::vector;
-using strings::Substitute;
+std::string uuid2hostport(const std::string& uuid, const RaftConfigPB& config) {
+  for (const RaftPeerPB& peer : config.peers()) {
+    if (peer.has_last_known_addr()) {
+      if (uuid == peer.permanent_uuid()) {
+        return Substitute("$0:$1($2)", peer.hostname(), peer.last_known_addr().port(), uuid);
+      }
+    }
+  }
+  return "";
+}
+}
 
 ///////////////////////////////////////////////////
 // VoteCounter & FlexibleVoteCounter
@@ -109,7 +121,7 @@ Status VoteCounter::RegisterVote(
     // Detect changed votes.
     const VoteInfo& prior_vote_info = votes_.at(voter_uuid);
     if (PREDICT_FALSE(prior_vote_info.vote != vote_info.vote)) {
-      string msg = Substitute(
+      std::string msg = Substitute(
           "Peer $0 voted a different way twice in the same election. "
           "First vote: $1, second vote: $2.",
           voter_uuid, prior_vote_info.vote, vote_info.vote);
@@ -1054,7 +1066,7 @@ std::pair<bool, bool> FlexibleVoteCounter::IsDynamicQuorumSatisfied() const {
       continuity_not_required) {
     CHECK(!last_known_leader.uuid().empty());
     CHECK(!last_known_leader_region.empty());
-    LOG(INFO)
+    VLOG_WITH_PREFIX(1)
         << "Election term immediately succeeds term of the last known leader."
         << " Election term: " << election_term_
         << " lkl_term: " << last_known_leader.election_term()
@@ -1158,7 +1170,7 @@ ElectionResult::ElectionResult(VoteRequestPB vote_request, ElectionVote decision
 // LeaderElection::VoterState
 ///////////////////////////////////////////////////
 
-string LeaderElection::VoterState::PeerInfo() const {
+std::string LeaderElection::VoterState::PeerInfo() const {
   std::string info = peer_uuid;
   if (proxy) {
     strings::SubstituteAndAppend(&info, " ($0)", proxy->PeerName());
@@ -1175,7 +1187,8 @@ LeaderElection::LeaderElection(RaftConfigPB config,
                                VoteRequestPB request,
                                gscoped_ptr<VoteCounter> vote_counter,
                                MonoDelta timeout,
-                               ElectionDecisionCallback decision_callback)
+                               ElectionDecisionCallback decision_callback,
+                               std::shared_ptr<VoteLoggerInterface> vote_logger)
     : has_responded_(false),
       config_(std::move(config)),
       proxy_factory_(proxy_factory),
@@ -1184,7 +1197,8 @@ LeaderElection::LeaderElection(RaftConfigPB config,
       timeout_(timeout),
       decision_callback_(std::move(decision_callback)),
       highest_voter_term_(0),
-      start_time_(MonoTime::Now()) {
+      start_time_(MonoTime::Now()),
+      vote_logger_(std::move(vote_logger)) {
 }
 
 LeaderElection::~LeaderElection() {
@@ -1197,7 +1211,7 @@ void LeaderElection::Run() {
   VLOG_WITH_PREFIX(1) << "Running leader election.";
 
   // Initialize voter state tracking.
-  vector<string> other_voter_uuids;
+  vector<std::string> other_voter_uuids;
   voter_state_.clear();
   for (const RaftPeerPB& peer : config_.peers()) {
     if (request_.candidate_uuid() == peer.permanent_uuid()) {
@@ -1263,12 +1277,9 @@ void LeaderElection::Run() {
     // Create a single message with comma separated peers
     if (pnum != 0) {
       msg.append(", ");
-      if (pnum % 3 == 0) {
-        msg.append("\n");
-      }
     }
     pnum++;
-    msg.append(state->PeerInfo());
+    msg.append(uuid2hostport(state->peer_uuid, config_));
 
     state->rpc.set_timeout(timeout_);
 
@@ -1288,6 +1299,8 @@ void LeaderElection::Run() {
   LOG_WITH_PREFIX(INFO) << "Requesting "
                         << (request_.is_pre_election() ? "pre-" : "")
                         << "vote from peers: " << msg;
+  if (vote_logger_)
+    vote_logger_->logElectionStarted(request_, config_);
 }
 
 void LeaderElection::CheckForDecision() {
@@ -1304,7 +1317,7 @@ void LeaderElection::CheckForDecision() {
       LOG_WITH_PREFIX(INFO) << "Election decided. Result: candidate "
                 << ((decision == VOTE_GRANTED) ? "won." : "lost.")
                 << " duration: " << election_duration.ToString();
-      string msg = (decision == VOTE_GRANTED) ?
+      std::string msg = (decision == VOTE_GRANTED) ?
           "achieved majority votes" : "could not achieve majority";
 
       bool is_candidate_removed = false;
@@ -1314,6 +1327,8 @@ void LeaderElection::CheckForDecision() {
 
       result_.reset(new ElectionResult(
             request_, decision, highest_voter_term_, msg, is_candidate_removed));
+      if (vote_logger_)
+        vote_logger_->logElectionDecided(*result_);
     }
     // Check whether to respond. This can happen as a result of either getting
     // a majority vote or of something invalidating the election, like
@@ -1371,6 +1386,8 @@ void LeaderElection::VoteResponseRpcCallback(const std::string& voter_uuid) {
         HandleVoteDeniedUnlocked(*state);
       }
     }
+    if (vote_logger_)
+      vote_logger_->logVoteReceived(state->response);
   }
 
   // Check for a decision outside the lock.
@@ -1423,7 +1440,7 @@ void LeaderElection::HandleHigherTermUnlocked(const VoterState& state) {
   DCHECK(lock_.is_locked());
   DCHECK_GT(state.response.responder_term(), election_term());
 
-  string msg = Substitute("Vote denied by peer $0 with higher term. Message: $1",
+  std::string msg = Substitute("Vote denied by peer $0 with higher term. Message: $1",
                           state.PeerInfo(),
                           StatusFromPB(state.response.consensus_error().status()).ToString());
   LOG_WITH_PREFIX(WARNING) << msg;
@@ -1451,7 +1468,7 @@ void LeaderElection::HandleVoteGrantedUnlocked(const VoterState& state) {
   }
   DCHECK(state.response.vote_granted());
 
-  LOG_WITH_PREFIX(INFO) << "Vote granted by peer " << state.PeerInfo();
+  LOG_WITH_PREFIX(INFO) << "Vote granted by peer " << uuid2hostport(state.peer_uuid, config_);
   RecordVoteUnlocked(state, VOTE_GRANTED);
 }
 
@@ -1465,7 +1482,7 @@ void LeaderElection::HandleVoteDeniedUnlocked(const VoterState& state) {
     return HandleHigherTermUnlocked(state);
   }
 
-  LOG_WITH_PREFIX(INFO) << "Vote denied by peer " << state.PeerInfo() << ". Message: "
+  LOG_WITH_PREFIX(INFO) << "Vote denied by peer " << uuid2hostport(state.peer_uuid, config_) << ". Message: "
             << StatusFromPB(state.response.consensus_error().status()).ToString();
   RecordVoteUnlocked(state, VOTE_DENIED);
 }

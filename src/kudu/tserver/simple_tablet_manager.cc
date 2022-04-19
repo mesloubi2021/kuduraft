@@ -482,6 +482,9 @@ Status TSTabletManager::SetupRaft() {
   if (server_->opts().disable_noop) {
     consensus_->DisableNoOpEntries();
   }
+  if (server_->opts().vote_logger) {
+    consensus_->SetVoteLogger(server_->opts().vote_logger);
+  }
 
   // set_state(INITIALIZED);
   // SetStatusMessage("Initialized. Waiting to start...");
