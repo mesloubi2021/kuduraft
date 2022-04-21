@@ -3870,6 +3870,9 @@ Status RaftConsensus::SetCurrentTermBootstrap(int64_t new_term) {
   }
   cmeta_->set_current_term(new_term);
   CHECK_OK(cmeta_->Flush());
+  if (vote_logger_) {
+    vote_logger_->advanceEpoch(new_term);
+  }
   return Status::OK();
 }
 
