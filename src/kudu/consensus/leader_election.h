@@ -18,6 +18,7 @@
 #ifndef KUDU_CONSENSUS_LEADER_ELECTION_H
 #define KUDU_CONSENSUS_LEADER_ELECTION_H
 
+#include <chrono>
 #include <cstdint>
 #include <functional>
 #include <map>
@@ -201,11 +202,27 @@ class FlexibleVoteCounter : public VoteCounter {
   std::vector<std::pair<bool, bool> > IsMajoritySatisfiedInRegions(
       const std::vector<std::string>& regions) const;
 
+  // Given a set of regions, returns a pair of booleans:
+  // 1. if the majority is satisfied in all regions
+  // 2. if the majority can be satisfied all regions
+  std::pair<bool, bool> IsMajoritySatisfiedInAllRegions(
+      const std::set<std::string>& leader_regions) const;
+
   // For the region provided, returns a pair of booleans representing:
   // 1. if the majority in region is satisfied in the current state
   // 2. if the majority in region can still be satisfied in the current state
   std::pair<bool, bool> IsMajoritySatisfiedInRegion(
       const std::string& region) const;
+
+  // Returns a pair of booleans:
+  // 1. if the majority is satisfied in a majority of regions
+  // 2. if the majority can be satisfied in a majority of regions
+  std::pair<bool, bool> IsMajoritySatisfiedInMajorityOfRegions() const;
+
+  // Checks all majorities that need to be satisfied according to gflags
+  std::pair<bool, bool>
+  AreMajoritiesSatisfied(const std::set<std::string>& last_known_leader_regions,
+                         const std::string& candidate_region) const;
 
   // For the static modes (STATIC_DISJUNCTION & STATIC_CONJUNCTION), return
   // a pair of booleans representing:
@@ -218,18 +235,6 @@ class FlexibleVoteCounter : public VoteCounter {
   // 1. if the quorum is satisfied in the current state
   // 2. if the quorum can still be satisfied in the current state
   std::pair<bool, bool> IsPessimisticQuorumSatisfied() const;
-
-  // Returns a pair of booleans:
-  // 1. if the majority is satisfied in a majority of regions
-  // 2. if the majority can be satisfied in a majority of regions
-  std::pair<bool, bool> IsMajoritySatisfiedInMajorityOfRegions() const;
-
-  // Given a set of potential leader regions, returns a pair of booleans:
-  // 1. if the majority is satisfied in all regions
-  // 2. if the majority can be satisfied in one of the regions
-  std::pair<bool, bool>
-  IsMajoritySatisfiedInPotentialLeaderRegions(
-      const std::set<std::string>& leader_regions) const;
 
   // Figure out if `vote_count` satisfies the majority
   // in `region`.
@@ -254,6 +259,10 @@ class FlexibleVoteCounter : public VoteCounter {
   DoHistoricalVotesSatisfyMajorityInMajorityOfRegions(
       const RegionToVoterSet& region_to_voter_set,
       const std::map<std::string, int32_t>& region_pruned_counts) const;
+
+  // Return the last known leader. If crowdsourcing is not enabled it just
+  // returns what's known locally, otherwise it uses CrowdsouceLastKnownLeader()
+  void GetLastKnownLeader(LastKnownLeaderPB* last_known_leader) const;
 
   // Crowdsource last known leader regions from the votes that have been
   // received so far. This is used as an optimization.
@@ -315,7 +324,8 @@ class FlexibleVoteCounter : public VoteCounter {
   // potentially have the current leader.
   std::pair<bool, bool> ComputeElectionResultFromVotingHistory(
       const LastKnownLeaderPB& last_known_leader,
-      const std::string& last_known_leader_region) const;
+      const std::string& last_known_leader_region,
+      const std::string& candidate_region) const;
 
   // For the dynamic mode (SINGLE_REGION_DYNAMIC), return
   // a pair of booleans representing:
@@ -355,6 +365,9 @@ class FlexibleVoteCounter : public VoteCounter {
 
   // UUID to last term pruned mapping.
   std::map<std::string, int64_t> uuid_to_last_term_pruned_;
+
+  // Time when vote counter object was created
+  std::chrono::time_point<std::chrono::system_clock> creation_time_;
 
   DISALLOW_COPY_AND_ASSIGN(FlexibleVoteCounter);
 };
