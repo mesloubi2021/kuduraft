@@ -65,6 +65,9 @@ DEFINE_bool(trust_last_leader_entries, true,
             " if it has sent votes and had ever received AppendEntries from that leader"
             " So if a CANDIDATE has heard from all voters, it can make decisions on the last known"
             " leader from the ring");
+DEFINE_int32(wait_for_pessimistic_quorum_secs, 10,
+             "Secs to wait for pessimistic quorum to be satisfied before "
+             "trying the voter history method");
 
 namespace kudu {
 namespace consensus {
@@ -249,7 +252,9 @@ FlexibleVoteCounter::FlexibleVoteCounter(
     election_term_(election_term),
     adjust_voter_distribution_(adjust_voter_distribution),
     last_known_leader_(last_known_leader),
-    config_(std::move(config)) {
+    config_(std::move(config)),
+    creation_time_(std::chrono::system_clock::now()) {
+
   num_voters_ = 0;
 
   // Computes voter distribution and uuid to region map.
@@ -386,6 +391,11 @@ FlexibleVoteCounter::IsMajoritySatisfiedInRegions(
   std::vector<std::pair<bool, bool> > results;
 
   for (const std::string& region : regions) {
+    if (region.empty()) {
+      results.push_back(std::move(std::make_pair<>(false, false)));
+      continue;
+    }
+
     bool quorum_satisfied = true;
     bool quorum_satisfaction_possible = true;
 
@@ -429,7 +439,7 @@ FlexibleVoteCounter::IsMajoritySatisfiedInRegion(
   // regions and then provides quorum satisfaction information corresponding
   // to each region. Each pair of booleans represent if the quorum is already
   // satisfied and if it can be specified in a given region.
-  const std::vector<std::pair<bool, bool> >& results =
+  const std::vector<std::pair<bool, bool>>& results =
       IsMajoritySatisfiedInRegions({region});
   CHECK_EQ(1, results.size());
   return results.at(0);
@@ -507,28 +517,12 @@ FlexibleVoteCounter::IsPessimisticQuorumSatisfied() const {
   VLOG_WITH_PREFIX(3) << "Checking if pessimistic quorum is satisfied.";
 
   // Fetching all regions.
-  std::vector<std::string> regions;
+  std::set<std::string> regions;
   for (const std::pair<std::string, int>& region_count_pair :
       voter_distribution_) {
-    regions.push_back(region_count_pair.first);
+    regions.insert(region_count_pair.first);
   }
-
-  // Getting quorum satisfaction for individual regions.
-  std::vector<std::pair<bool, bool> > results =
-      IsMajoritySatisfiedInRegions(regions);
-
-  CHECK_EQ(results.size(), regions.size());
-
-  // Computing the final value.
-  bool quorum_satisfied = true;
-  bool quorum_satisfaction_possible = true;
-
-  for (const std::pair<bool, bool>& result : results) {
-    quorum_satisfied = quorum_satisfied && result.first;
-    quorum_satisfaction_possible =
-        quorum_satisfaction_possible && result.second;
-  }
-  return std::make_pair<>(quorum_satisfied, quorum_satisfaction_possible);
+  return IsMajoritySatisfiedInAllRegions(regions);
 }
 
 std::pair<bool, bool>
@@ -565,15 +559,13 @@ FlexibleVoteCounter::IsMajoritySatisfiedInMajorityOfRegions() const {
       satisfaction_possible_count >= num_majority_regions);
 }
 
-std::pair<bool, bool>
-FlexibleVoteCounter::IsMajoritySatisfiedInPotentialLeaderRegions(
-    const std::set<std::string>& leader_regions) const {
-  CHECK(!leader_regions.empty());
-  std::vector<std::string> leader_regions_vector(
-      leader_regions.begin(), leader_regions.end());
+std::pair<bool, bool> FlexibleVoteCounter::IsMajoritySatisfiedInAllRegions(
+    const std::set<std::string>& regions) const {
+  CHECK(!regions.empty());
+  std::vector<std::string> region_vector(regions.begin(), regions.end());
   const std::vector<std::pair<bool, bool> >& results =
-      IsMajoritySatisfiedInRegions(leader_regions_vector);
-  CHECK_EQ(results.size(), leader_regions.size());
+      IsMajoritySatisfiedInRegions(region_vector);
+  CHECK_EQ(results.size(), regions.size());
 
   bool quorum_satisfied = true;
   bool quorum_satisfaction_possible = true;
@@ -581,7 +573,7 @@ FlexibleVoteCounter::IsMajoritySatisfiedInPotentialLeaderRegions(
   for (const std::pair<bool, bool>& result : results) {
     quorum_satisfied = quorum_satisfied && result.first;
     quorum_satisfaction_possible =
-        quorum_satisfaction_possible || result.second;
+        quorum_satisfaction_possible && result.second;
   }
   return std::make_pair<>(quorum_satisfied, quorum_satisfaction_possible);
 }
@@ -802,18 +794,6 @@ void FlexibleVoteCounter::AppendPotentialLeaderUUID(
   bool quorum_satisfied = true;
   bool quorum_satisfaction_possible = true;
 
-  if (FLAGS_srd_strict_leader_election_quorum) {
-    std::pair<bool, bool> mom =
-        DoHistoricalVotesSatisfyMajorityInMajorityOfRegions(
-            region_to_voter_set, region_pruned_counts);
-    quorum_satisfied = mom.first;
-    quorum_satisfaction_possible = mom.second;
-    VLOG_WITH_PREFIX(3)
-        << "Majority of majority result. Quorum satisfied: "
-        << quorum_satisfied << " . Quorum satisfaction possible: "
-        << quorum_satisfaction_possible;
-  }
-
   for (const std::string& leader_region : leader_regions) {
     int32_t pruned_count =
         FindWithDefault(region_pruned_counts, leader_region, 0);
@@ -925,7 +905,8 @@ PotentialNextLeadersResponse FlexibleVoteCounter::GetPotentialNextLeaders(
 
 std::pair<bool, bool> FlexibleVoteCounter::ComputeElectionResultFromVotingHistory(
     const LastKnownLeaderPB& last_known_leader,
-    const std::string& last_known_leader_region) const {
+    const std::string& last_known_leader_region,
+    const std::string& candidate_region) const {
   VLOG_WITH_PREFIX(3)
       << "Attempting to compute election result from voting history.";
   int64_t term_it = last_known_leader.election_term();
@@ -967,17 +948,9 @@ std::pair<bool, bool> FlexibleVoteCounter::ComputeElectionResultFromVotingHistor
             << JoinStringsIterator(
                 r.potential_leader_regions.begin(),
                 r.potential_leader_regions.end(), ", ");
-        std::pair<bool, bool> result =
-            IsMajoritySatisfiedInPotentialLeaderRegions(
-                r.potential_leader_regions);
-        if (FLAGS_srd_strict_leader_election_quorum) {
-          std::pair<bool, bool> majority_result =
-              IsMajoritySatisfiedInMajorityOfRegions();
-          return std::make_pair<>(
-              result.first && majority_result.first,
-              result.second && majority_result.second);
-        }
-        return result;
+
+        return AreMajoritiesSatisfied(r.potential_leader_regions,
+                                      candidate_region);
       }
       case PotentialNextLeadersResponse::ERROR:
         // Declare undecided election in case of an error.
@@ -1003,27 +976,53 @@ std::pair<bool, bool> FlexibleVoteCounter::ComputeElectionResultFromVotingHistor
   return std::make_pair<>(false, true);
 }
 
+void FlexibleVoteCounter::GetLastKnownLeader(
+    LastKnownLeaderPB* last_known_leader) const {
+  last_known_leader->CopyFrom(last_known_leader_);
+  if (FLAGS_crowdsource_last_known_leader) {
+    CrowdsourceLastKnownLeader(last_known_leader);
+  }
+}
+
+std::pair<bool, bool> FlexibleVoteCounter::AreMajoritiesSatisfied(
+    const std::set<std::string>& last_known_leader_regions,
+    const std::string& candidate_region) const {
+  std::pair<bool, bool> result =
+      IsMajoritySatisfiedInAllRegions(last_known_leader_regions);
+
+  // Case: We require majority of majority to win the election
+  if (FLAGS_srd_strict_leader_election_quorum) {
+    std::pair<bool, bool> majority_result =
+        IsMajoritySatisfiedInMajorityOfRegions();
+    result = std::make_pair<>(result.first && majority_result.first,
+                              result.second && majority_result.second);
+  }
+
+  // Case: We require majority from candidate region to win the election
+  if (FLAGS_include_candidate_region &&
+      last_known_leader_regions.find(candidate_region) ==
+          last_known_leader_regions.end()) {
+    std::pair<bool, bool> candidate_result =
+        IsMajoritySatisfiedInRegion(candidate_region);
+    result = std::make_pair<>(result.first && candidate_result.first,
+                              result.second && candidate_result.second);
+  }
+
+  return result;
+}
+
 std::pair<bool, bool> FlexibleVoteCounter::IsDynamicQuorumSatisfied() const {
   CHECK(config_.commit_rule().mode() == QuorumMode::SINGLE_REGION_DYNAMIC);
 
-  // Step 1: Check if pessimistic quorum is satisfied.
-  std::pair<bool, bool> presult = IsPessimisticQuorumSatisfied();
-
   LastKnownLeaderPB last_known_leader;
-  last_known_leader.CopyFrom(last_known_leader_);
+  GetLastKnownLeader(&last_known_leader);
 
-  // Step 2: Crowdsource last known leader information from the responding
-  // voters.
-  if (FLAGS_crowdsource_last_known_leader) {
-    CrowdsourceLastKnownLeader(&last_known_leader);
-
-    // Declare loss early upon discovering leader in higher term.
-    if (election_term_ <= last_known_leader.election_term()) {
-      VLOG_WITH_PREFIX(1)
-          << "Declaring election loss because a new leader "
-          << "has been found in the crowd sourcing phase.";
-      return std::make_pair<>(false, false);
-    }
+  // Declare loss early upon discovering leader in higher term.
+  if (election_term_ <= last_known_leader.election_term()) {
+    VLOG_WITH_PREFIX(1)
+        << "Declaring election loss because a new leader "
+        << "has been found in the crowd sourcing phase.";
+    return std::make_pair<>(false, false);
   }
 
   // This could be empty as a Last known leader could no more
@@ -1031,16 +1030,19 @@ std::pair<bool, bool> FlexibleVoteCounter::IsDynamicQuorumSatisfied() const {
   std::string last_known_leader_region(
       DetermineRegionForUUID(last_known_leader.uuid()));
 
+  // Step 1: Check if pessimistic quorum is satisfied.
+  std::pair<bool, bool> pessimistic_result = IsPessimisticQuorumSatisfied();
+
   // Return pessimistic quorum result if the pessimistic quorum is satisfied or
   // if the pessimistic quorum cannot be satisfied and we depend on the
   // knowledge of the last leader without having it (eg. during bootstrap), we
   // should declare having lost the election or having insufficient votes to make
   // a decision.
-  if (presult.first || last_known_leader_region.empty()) {
+  if (pessimistic_result.first || last_known_leader_region.empty()) {
     VLOG_WITH_PREFIX(3)
         << "Election status returned from pessimistic quorum check. "
         << "Last known leader region: " << last_known_leader_region;
-    return presult;
+    return pessimistic_result;
   }
 
   // candidate_region is expected to be valid, because Raft Consensus
@@ -1048,8 +1050,9 @@ std::pair<bool, bool> FlexibleVoteCounter::IsDynamicQuorumSatisfied() const {
   std::string candidate_region(
       DetermineRegionForUUID(candidate_uuid_));
 
-  // Step 3: Check if last known leader's quorum is satisfied and we directly
+  // Step 2: Check if last known leader's quorum is satisfied and we directly
   // succeed term.
+  //
   // Since pessimistic quorum is not satisfied, we have to intersect with last
   // known leader region to guarantee longest log in next LEADER.
   // However if there is a period of confusion after there was a stable LEADER,
@@ -1059,63 +1062,68 @@ std::pair<bool, bool> FlexibleVoteCounter::IsDynamicQuorumSatisfied() const {
   // that its crowdsourced last known leader is the correct one. So if there
   // is no term continuity, it only means that there was no leader during the
   // period of confusion
+  //
+  // NOTE: Currently continuity_not_required is always false because
+  // FLAGS_trust_last_leader_entries is not being used
   bool continuity_not_required =
       FLAGS_crowdsource_last_known_leader && FLAGS_trust_last_leader_entries &&
       AreAllVotesIn() && !last_known_leader.uuid().empty();
-  if ((election_term_ == last_known_leader.election_term() + 1) ||
-      continuity_not_required) {
+
+  bool is_continuous = election_term_ == last_known_leader.election_term() + 1;
+
+  std::pair<bool, bool> result = std::make_pair<>(true, true);
+
+  if (is_continuous || continuity_not_required) {
     CHECK(!last_known_leader.uuid().empty());
     CHECK(!last_known_leader_region.empty());
     VLOG_WITH_PREFIX(1)
-        << "Election term immediately succeeds term of the last known leader."
+        << "Election term immediately succeeds term of the last known leader"
+        << " or continuity in terms is not required."
         << " Election term: " << election_term_
-        << " lkl_term: " << last_known_leader.election_term()
+        << " lkl term: " << last_known_leader.election_term()
         << " lkl uuid: " << last_known_leader.uuid()
         << " lkl region: " << last_known_leader_region
         << " continuity_not_required: " << continuity_not_required;
-    std::pair<bool, bool> result =
-        IsMajoritySatisfiedInRegion(last_known_leader_region);
-    if (FLAGS_srd_strict_leader_election_quorum) {
-      std::pair<bool, bool> majority_result =
-          IsMajoritySatisfiedInMajorityOfRegions();
-      result = std::make_pair<>(
-          result.first && majority_result.first,
-          result.second && majority_result.second);
+    result =
+        AreMajoritiesSatisfied({last_known_leader_region}, candidate_region);
+  } else {
+    // Case: If we're here there is discontinuity in terms
+
+    // Step 4.1: If pessimistic quorum satisfaction is possible we wait for
+    // FLAGS_wait_for_pessimistic_quorum_secs secs for it to be satisfied
+    auto now = std::chrono::system_clock::now();
+    long time_elapsed_secs =
+        std::chrono::duration_cast<std::chrono::seconds>(now - creation_time_)
+            .count();
+    if (pessimistic_result.second &&
+        time_elapsed_secs < FLAGS_wait_for_pessimistic_quorum_secs) {
+      return pessimistic_result;
     }
-    if (FLAGS_include_candidate_region &&
-        candidate_region != last_known_leader_region) {
-      std::pair<bool, bool> cresult =
-          IsMajoritySatisfiedInRegion(candidate_region);
-      result = std::make_pair<>(
-          result.first && cresult.first,
-          result.second && cresult.second);
-    }
-    return result;
+
+    // Step 4.2: We come here if either pessimistic quorum satisfaction is not
+    // possible or we've waited long enough
+    // (FLAGS_wait_for_pessimistic_quorum_secs) for it to be satisfied.
+    //
+    // Find possible leader regions at every term greater than last known
+    // leader's term. Computes possible successor regions until next term is the
+    // current election's term or the quorum converges to pessimistic quorum.
+    //
+    // If we come here, it is guaranteed that none of the current votes that we
+    // have received (including our own) help us figure out last known LEADER,
+    // or we are running an election where there has been a period of confusion,
+    // i.e. we are running an election at a term which does not immediately
+    // follow Last Known Leader. This is not expected to happen due to PreVote
+    // being used all the time, but in some cases ForcedElections
+    // (StartElection) with failure can lead to analysis paralysis term.
+    //
+    // So our hail mary is: If by analyzing the votes, we can find potential
+    // leader regions, we can intersect with those potential regions in the hope
+    // that it will be less than pessimistic quorum.
+    result = ComputeElectionResultFromVotingHistory(
+        last_known_leader, last_known_leader_region, candidate_region);
   }
 
-  // If we come here, it is guaranteed that none of the current votes that
-  // we have received (including our own) help us figure out last known
-  // LEADER, or we are running an election where there has been a period
-  // of confusion, i.e. we are running an election at a term which does not
-  // immediately follow Last Known Leader. This is not expected to happen
-  // due to PreVote being used all the time, but in some cases ForcedElections
-  // (StartElection) with failure can lead to analysis paralysis term.
-  //
-  // So our hail mary is: If by analyzing the votes, we can find potential
-  // leader regions, we can intersect with those potential regions in the
-  // hope that it will be less than pessimistic quorum.
-  //
-  // Step 4: Find possible leader regions at every term greater than last
-  // known leader's term. Computes possible successor regions until next term
-  // is the current election's term or the quorum converges to pessimistic
-  // quorum.
-  //
-  // TODO (anirbanr-fb) - This needs to be evaluated from the standpoint
-  // of success depending on votes from both leader region and candidate
-  // region. Postponing since it is relatively complicated logic here, and
-  // the current angle of attack might not work.
-  return ComputeElectionResultFromVotingHistory(
-      last_known_leader, last_known_leader_region);
+  return result;
 }
 
 std::pair<bool, bool> FlexibleVoteCounter::GetQuorumState() const {
