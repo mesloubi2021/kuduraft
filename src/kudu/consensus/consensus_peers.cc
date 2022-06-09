@@ -98,6 +98,9 @@ TAG_FLAG(raft_proxy_max_hops, advanced);
 
 DECLARE_int32(raft_heartbeat_interval_ms);
 
+DEFINE_int32(proxy_batch_duration_ms, 0,
+             "Time (in ms) to wait before reading ops for proxy requests");
+
 using kudu::pb_util::SecureShortDebugString;
 using kudu::rpc::Messenger;
 using kudu::rpc::PeriodicTimer;
@@ -151,6 +154,7 @@ Peer::Peer(RaftPeerPB peer_pb,
       queue_(queue),
       peer_proxy_pool_(peer_proxy_pool),
       failed_attempts_(0),
+      last_request_time_(MonoTime::Now()),
       messenger_(std::move(messenger)),
       raft_pool_token_(raft_pool_token) {
   request_pending_ = false;
@@ -169,7 +173,7 @@ Status Peer::Init() {
       messenger_,
       [w]() {
         if (auto p = w.lock()) {
-          p->SignalRequest(true);
+          p->SignalRequest(true, true);
         }
       },
       MonoDelta::FromMilliseconds(FLAGS_raft_heartbeat_interval_ms));
@@ -177,7 +181,7 @@ Status Peer::Init() {
   return Status::OK();
 }
 
-Status Peer::SignalRequest(bool even_if_queue_empty) {
+Status Peer::SignalRequest(bool even_if_queue_empty, bool from_heartbeater) {
   // Only allow one request at a time. No sense waking up the
   // raft thread pool if the task will just abort anyway.
   //
@@ -198,16 +202,41 @@ Status Peer::SignalRequest(bool even_if_queue_empty) {
   // Capture a weak_ptr reference into the submitted functor so that we can
   // safely handle the functor outliving its peer.
   weak_ptr<Peer> w_this = shared_from_this();
-  RETURN_NOT_OK(raft_pool_token_->SubmitFunc([even_if_queue_empty, w_this]() {
+  RETURN_NOT_OK(raft_pool_token_->SubmitFunc(
+        [even_if_queue_empty, from_heartbeater, w_this]() {
     if (auto p = w_this.lock()) {
-      p->SendNextRequest(even_if_queue_empty);
+      p->SendNextRequest(even_if_queue_empty, from_heartbeater);
     }
   }));
   return Status::OK();
 }
 
-void Peer::SendNextRequest(bool even_if_queue_empty) {
+bool Peer::ProxyBatchDurationHasPassed() {
+  if (FLAGS_proxy_batch_duration_ms == 0) {
+    return true;
+  }
+
+  const bool has_duration_passed = MonoTime::Now() - last_request_time_ >=
+    MonoDelta::FromMilliseconds(FLAGS_proxy_batch_duration_ms);
+
+  // We update cached proxied status when batch duration has passed (or it's not
+  // populated yet), this means we could be looking at stale info for
+  // FLAGS_proxy_batch_duration_ms
+  if (has_duration_passed || !cached_is_peer_proxied_ == -1) {
+    const std::string& uuid = peer_pb_.permanent_uuid();
+    std::string next_hop_uuid;
+    // TODO: The routing table is consulted again in RequestForPeer(), ideally we
+    // can do it once
+    queue_->GetNextRoutingHopFromLeader(uuid, &next_hop_uuid);
+    cached_is_peer_proxied_ = next_hop_uuid != uuid;
+  }
+
+  return !cached_is_peer_proxied_ || has_duration_passed;
+}
+
+void Peer::SendNextRequest(bool even_if_queue_empty, bool from_heartbeater) {
   std::unique_lock<simple_spinlock> l(peer_lock_);
+
   if (PREDICT_FALSE(closed_)) {
     return;
   }
@@ -239,6 +268,10 @@ void Peer::SendNextRequest(bool even_if_queue_empty) {
     return;
   }
 
+  if (!from_heartbeater && !ProxyBatchDurationHasPassed()) {
+    return;
+  }
+
   // The peer has no pending request nor is sending: send the request.
   bool needs_tablet_copy = false;
 
@@ -251,6 +284,8 @@ void Peer::SendNextRequest(bool even_if_queue_empty) {
   bool read_ops = (failed_attempts_ <= 0);
 
   request_pending_ = true;
+
+  last_request_time_ = MonoTime::Now();
 
   // The next hop to route to to ship messages to this peer. This could be
   // different than the peer_uuid when proxy is enabled
