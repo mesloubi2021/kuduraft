@@ -206,6 +206,7 @@ class ReactorThread {
  private:
   friend class AssignOutboundCallTask;
   friend class CancellationTask;
+  friend class ResetConnectionsTask;
   friend class RegisterConnectionTask;
   friend class DelayedTask;
 
@@ -274,6 +275,9 @@ class ReactorThread {
 
   // Register a new connection.
   void RegisterConnection(scoped_refptr<Connection> conn);
+
+  // Manually destroy all connections so they can be recreated.
+  void ResetAllConnections();
 
   // Actually perform shutdown of the thread, tearing down any connections,
   // etc. This is called from within the thread.
@@ -383,6 +387,9 @@ class Reactor {
 
   // Queue a new reactor task to cancel an outbound call.
   void QueueCancellation(const std::shared_ptr<OutboundCall> &call);
+
+  // Queues a task to reset this reactor's connections
+  void QueueResetConnections();
 
   // Schedule the given task's Run() method to be called on the
   // reactor thread.
