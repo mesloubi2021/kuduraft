@@ -83,7 +83,7 @@ class Peer : public std::enable_shared_from_this<Peer> {
   // 'even_if_queue_empty' indicates whether the peer should force
   // send the request even if the queue is empty. This is used for
   // status-only requests.
-  Status SignalRequest(bool even_if_queue_empty = false);
+  Status SignalRequest(bool even_if_queue_empty = false, bool from_heartbeater = false);
 
   // Synchronously starts a leader election on this peer.
   // This method is ad hoc, using this instance's PeerProxy to send the
@@ -133,7 +133,7 @@ class Peer : public std::enable_shared_from_this<Peer> {
        std::shared_ptr<PeerProxy> proxy,
        std::shared_ptr<rpc::Messenger> messenger);
 
-  void SendNextRequest(bool even_if_queue_empty);
+  void SendNextRequest(bool even_if_queue_empty, bool from_heartbeater = false);
 
   // Signals that a response was received from the peer.
   //
@@ -160,6 +160,11 @@ class Peer : public std::enable_shared_from_this<Peer> {
   // Signals there was an error sending the request to the peer.
   void ProcessResponseError(const Status& status);
 
+  // Has FLAGS_proxy_batch_duration_ms passed since the last request was sent?
+  // Only relavant for proxied peers
+  // We don't send requests to proxied peers until the batch duration has passed
+  bool ProxyBatchDurationHasPassed();
+
   std::string LogPrefixUnlocked() const;
 
   const std::string& tablet_id() const { return tablet_id_; }
@@ -174,6 +179,9 @@ class Peer : public std::enable_shared_from_this<Peer> {
   PeerMessageQueue* queue_;
   PeerProxyPool* peer_proxy_pool_;
   uint64_t failed_attempts_;
+
+  // Time when the last request was sent
+  MonoTime last_request_time_;
 
   // The latest consensus update request and response.
   ConsensusRequestPB request_;
@@ -208,6 +216,10 @@ class Peer : public std::enable_shared_from_this<Peer> {
   std::atomic<bool> request_pending_;
   bool closed_ = false;
   bool has_sent_first_request_ = false;
+  // Cached state of whether this peer is proxied thru another peer. This info
+  // can be stale, consult the PeerMessageQueue to get the upto date info
+  // -1 means we've not inited the variable, 0 means false, 1 means true
+  std::atomic<int> cached_is_peer_proxied_{-1};
 
 };
 
