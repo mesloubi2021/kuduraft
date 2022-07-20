@@ -199,6 +199,12 @@ Status Peer::SignalRequest(bool even_if_queue_empty, bool from_heartbeater) {
     return Status::IllegalState("Peer was closed.");
   }
 
+  // For proxied peers we only send requests every FLAGS_proxy_batch_duration_ms
+  // milliseconds
+  if (!from_heartbeater && !ProxyBatchDurationHasPassed()) {
+    return Status::OK();
+  }
+
   // Capture a weak_ptr reference into the submitted functor so that we can
   // safely handle the functor outliving its peer.
   weak_ptr<Peer> w_this = shared_from_this();
@@ -222,7 +228,7 @@ bool Peer::ProxyBatchDurationHasPassed() {
   // We update cached proxied status when batch duration has passed (or it's not
   // populated yet), this means we could be looking at stale info for
   // FLAGS_proxy_batch_duration_ms
-  if (has_duration_passed || !cached_is_peer_proxied_ == -1) {
+  if (has_duration_passed || cached_is_peer_proxied_ == -1) {
     const std::string& uuid = peer_pb_.permanent_uuid();
     std::string next_hop_uuid;
     // TODO: The routing table is consulted again in RequestForPeer(), ideally we
@@ -231,7 +237,7 @@ bool Peer::ProxyBatchDurationHasPassed() {
     cached_is_peer_proxied_ = next_hop_uuid != uuid;
   }
 
-  return !cached_is_peer_proxied_ || has_duration_passed;
+  return cached_is_peer_proxied_ != 1 || has_duration_passed;
 }
 
 void Peer::SendNextRequest(bool even_if_queue_empty, bool from_heartbeater) {
