@@ -3761,6 +3761,109 @@ Status RaftConsensus::GetVoterDistribution(std::map<std::string, int32> *vd) con
   return cmeta_->voter_distribution(vd);
 }
 
+Status RaftConsensus::ChangeQuorumType(QuorumType type) {
+  TRACE_EVENT2("consensus", "RaftConsensus::ChangeQuorumTYpe", "peer",
+               peer_uuid(), "tablet", options_.tablet_id);
+  ThreadRestrictions::AssertWaitAllowed();
+  LockGuard l(lock_);
+
+  Status s = CheckNoConfigChangePendingUnlocked();
+  RETURN_NOT_OK(s);
+
+  RaftConfigPB config = cmeta_->ActiveConfig();
+  if (type == QuorumType::QUORUM_ID) {
+    for (const auto& peer : config.peers()) {
+      if (!peer.has_attrs() || !peer.attrs().has_quorum_id()
+          || peer.attrs().quorum_id() == "") {
+        return Status::ConfigurationError(Substitute(
+          "Unable to change QuorumType to QuorumId. "
+          "No quorum_id found for peer $0", peer.permanent_uuid()));
+
+      }
+    }
+  }
+
+  if (!config.has_commit_rule()) {
+    return Status::ConfigurationError("Unable to change QuorumType to QuorumId. "
+      "Commit rule does not exist.");
+  }
+
+  config.mutable_commit_rule()->set_quorum_type(type);
+
+  cmeta_->set_active_config(std::move(config));
+  CHECK_OK(cmeta_->Flush());
+
+  if (cmeta_->active_role() == RaftPeerPB::LEADER) {
+      RETURN_NOT_OK(RefreshConsensusQueueAndPeersUnlocked());
+  }
+
+  std::string type_string = type == QuorumType::QUORUM_ID ? "QuorumID" : "Region";
+  LOG(INFO) << "Change QuorumType to " << type_string;
+  return Status::OK();
+}
+
+QuorumType RaftConsensus::GetQuorumType() const {
+  ThreadRestrictions::AssertWaitAllowed();
+  LockGuard l(lock_);
+  return cmeta_->ActiveConfig().has_commit_rule() &&
+         cmeta_->ActiveConfig().commit_rule().has_quorum_type()
+         ? cmeta_->ActiveConfig().commit_rule().quorum_type()
+         : QuorumType::REGION;
+}
+
+Status RaftConsensus::SetPeerQuorumIds(std::map<std::string, std::string> uuid2quorum_ids,
+                                       bool force) {
+  TRACE_EVENT2("consensus", "RaftConsensus::SetPeerQuorumIds", "peer",
+              peer_uuid(), "tablet", options_.tablet_id);
+  ThreadRestrictions::AssertWaitAllowed();
+  LockGuard l(lock_);
+
+  if (!force && cmeta_->ActiveConfig().has_commit_rule() &&
+      cmeta_->ActiveConfig().commit_rule().has_quorum_type() &&
+      cmeta_->ActiveConfig().commit_rule().quorum_type() == QuorumType::QUORUM_ID) {
+    return Status::InvalidArgument("Peer quorum ids cannot be changed when in use."
+                           "To force a change: set force to true.");
+  }
+
+  if (!force) {
+    Status s = CheckNoConfigChangePendingUnlocked();
+    RETURN_NOT_OK(s);
+  }
+
+  RaftConfigPB config = cmeta_->ActiveConfig();
+  google::protobuf::RepeatedPtrField<RaftPeerPB> modified_peers;
+  for (auto peer : config.peers()) {
+    auto it = uuid2quorum_ids.find(peer.permanent_uuid());
+    if (it == uuid2quorum_ids.end()) {
+      // for force = false, we do not allow a voter without quorum_id assigned
+      if (peer.has_member_type() && peer.member_type() == RaftPeerPB::VOTER && !force) {
+        return Status::ConfigurationError(Substitute(
+          "Failed to update quorum_id. "
+          "No quorum_id found for peer $0", peer.permanent_uuid()));
+      }
+    } else {
+      // If uuid is found, we set corresponding quorun_id
+      peer.mutable_attrs()->set_quorum_id(it->second);
+    }
+
+    // We must add every peer, so we do not remove any peer by accident
+    *modified_peers.Add() = std::move(peer);
+  }
+
+  config.mutable_peers()->Swap(&modified_peers);
+
+  cmeta_->set_active_config(std::move(config));
+  CHECK_OK(cmeta_->Flush());
+
+  if (cmeta_->active_role() == RaftPeerPB::LEADER) {
+      RETURN_NOT_OK(RefreshConsensusQueueAndPeersUnlocked());
+  }
+
+  LOG(INFO) << "Successfully changed quorum_id. New active config: "
+    << SecureShortDebugString(cmeta_->ActiveConfig());
+  return Status::OK();
+}
+
 Status RaftConsensus::SetCommittedConfigUnlocked(const RaftConfigPB& config_to_commit) {
   TRACE_EVENT0("consensus", "RaftConsensus::SetCommittedConfigUnlocked");
   DCHECK(lock_.is_locked());
