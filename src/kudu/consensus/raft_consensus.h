@@ -492,6 +492,7 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   ProxyTopologyPB GetProxyTopology() const;
 
   // On a live Raft Instance to use quorum_id instead of region for flexiraft
+  // dynamic mode
   Status ChangeQuorumType(QuorumType type);
 
   // Get QuorumType from committed config
@@ -544,6 +545,9 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
 
   // relevant for Flexi-Raft
   std::string peer_region() const;
+
+  // It is own peer region or quorum_id
+  std::string peer_quorum_id() const;
 
   // Returns the id of the tablet whose updates this consensus instance helps coordinate.
   // Thread-safe.
@@ -1111,7 +1115,7 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   const ConsensusOptions options_;
 
   // Information about the local peer, including the local UUID.
-  const RaftPeerPB local_peer_pb_;
+  RaftPeerPB local_peer_pb_;
 
   // Consensus metadata service.
   const scoped_refptr<ConsensusMetadataManager> cmeta_manager_;

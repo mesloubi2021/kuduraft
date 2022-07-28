@@ -42,6 +42,7 @@
 #include "kudu/common/timestamp.h"
 #include "kudu/consensus/consensus.pb.h"
 #include "kudu/consensus/log.h"
+#include "kudu/consensus/metadata.pb.h"
 #include "kudu/consensus/opid_util.h"
 #include "kudu/consensus/quorum_util.h"
 #include "kudu/consensus/routing.h"
@@ -1212,16 +1213,13 @@ int64_t PeerMessageQueue::ComputeNewWatermarkDynamicMode(int64_t* watermark) {
   CHECK(queue_state_.active_config->commit_rule().mode() ==
       QuorumMode::SINGLE_REGION_DYNAMIC);
 
-  // Double check that the local leader has the proper metadata.
-  CHECK(local_peer_pb_.has_attrs() && local_peer_pb_.attrs().has_region());
+  const std::string& leader_quorum = getQuorumIdUsingCommitRule(local_peer_pb_);
 
-  const std::string& leader_region = local_peer_pb_.attrs().region();
-
-  // Compute the watermarks in leader region. As an example, at the end of this
-  // loop, watermarks_in_leader_region might have entries (3, 7, 5) which
-  // indicates that the leader region has 3 peers that have responded to OpId
+  // Compute the watermarks in leader quorum. As an example, at the end of this
+  // loop, watermarks_in_leader_quorum might have entries (3, 7, 5) which
+  // indicates that the leader quorum has 3 peers that have responded to OpId
   // indexes 3, 7 and 5 respectively
-  std::vector<int64_t> watermarks_in_leader_region;
+  std::vector<int64_t> watermarks_in_leader_quorum;
   for (const PeersMap::value_type& peer : peers_map_) {
     // Only voter members are considered for advancing watermark
     if (peer.second->peer_pb.member_type() != RaftPeerPB::VOTER) {
@@ -1231,16 +1229,21 @@ int64_t PeerMessageQueue::ComputeNewWatermarkDynamicMode(int64_t* watermark) {
     // Refer to the comment in AdvanceQueueWatermark method for why only
     // successful last exchanges are considered.
     if (peer.second->last_exchange_status == PeerStatus::OK) {
-      const string& peer_region = peer.second->peer_pb.attrs().region();
-      if (peer_region == leader_region) {
-        watermarks_in_leader_region.push_back(
+      const string& peer_quorum_id = getQuorumIdUsingCommitRule(peer.second->peer_pb);
+      if (peer_quorum_id == leader_quorum) {
+        watermarks_in_leader_quorum.push_back(
             peer.second->last_received.index());
       }
     }
   }
 
+  std::map<std::string, int> voter_distribution;
+
+  // Compute total number of voters in each region.
+  GetVoterDistributionForQuorumId(*(queue_state_.active_config), &voter_distribution);
+
   int total_voters_from_voter_distribution =
-    FindOrDie(queue_state_.active_config->voter_distribution(), leader_region);
+    FindOrDie(voter_distribution, leader_quorum);
 
   // Compute number of voters in each region in the active config.
   // As voter distribution provided in topology config can lag,
@@ -1255,10 +1258,9 @@ int64_t PeerMessageQueue::ComputeNewWatermarkDynamicMode(int64_t* watermark) {
       continue;
     }
 
-    CHECK(peer_pb.has_permanent_uuid() && peer_pb.has_attrs() &&
-        peer_pb.attrs().has_region());
-    const std::string& peer_pb_region = peer_pb.attrs().region();
-    if (peer_pb_region != leader_region) {
+    CHECK(peer_pb.has_permanent_uuid());
+    const std::string& peer_pb_quorum_id = getQuorumIdUsingCommitRule(peer_pb);
+    if (peer_pb_quorum_id != leader_quorum) {
       // In dynamic mode, only the leader region matters
       continue;
     }
@@ -1283,24 +1285,24 @@ int64_t PeerMessageQueue::ComputeNewWatermarkDynamicMode(int64_t* watermark) {
   // Return without advancing the commit watermark, if majority in leader
   // region is not satisfied, ie. not enough number of replicas have responded
   // from that region.
-  if (watermarks_in_leader_region.size() < commit_req) {
+  if (watermarks_in_leader_quorum.size() < commit_req) {
     if (VLOG_IS_ON(3)) {
       VLOG_WITH_PREFIX_UNLOCKED(3)
           << "Watermarks size: "
-          << watermarks_in_leader_region.size()
+          << watermarks_in_leader_quorum.size()
           << ", Num peers required: " << commit_req
-          << ", Region: " << leader_region;
+          << ", Quorum: " << leader_quorum;
     }
     return *watermark;
   }
 
   // Sort the watermarks
   std::sort(
-      watermarks_in_leader_region.begin(), watermarks_in_leader_region.end());
+      watermarks_in_leader_quorum.begin(), watermarks_in_leader_quorum.end());
 
   int64_t old_watermark = *watermark;
-  *watermark = watermarks_in_leader_region[
-      watermarks_in_leader_region.size() - commit_req];
+  *watermark = watermarks_in_leader_quorum[
+      watermarks_in_leader_quorum.size() - commit_req];
   return old_watermark;
 }
 
@@ -1382,12 +1384,12 @@ void PeerMessageQueue::AdvanceMajorityReplicatedWatermarkFlexiRaft(
   int64_t old_watermark = -1;
   if (queue_state_.active_config->commit_rule().mode() ==
       QuorumMode::SINGLE_REGION_DYNAMIC) {
-    const std::string& leader_region = local_peer_pb_.attrs().region();
-    const std::string& peer_region = who_caused->peer_pb.attrs().region();
+    const std::string& leader_quorum = getQuorumIdUsingCommitRule(local_peer_pb_);
+    const std::string& peer_quorum = getQuorumIdUsingCommitRule(who_caused->peer_pb);
 
     // In SINGLE_REGION_DYNAMIC mode, only an ack from the leader region can
     // advance the watermark. Skip this expensive operation otherwise
-    if (leader_region == peer_region) {
+    if (leader_quorum == peer_quorum) {
       old_watermark = ComputeNewWatermarkDynamicMode(watermark);
     }
   } else {
@@ -2168,6 +2170,27 @@ string PeerMessageQueue::QueueState::ToString() const {
       committed_index, OpIdToString(last_appended), last_idx_appended_to_leader, current_term,
       majority_size_, state, (mode == LEADER ? "LEADER" : "NON_LEADER"),
       active_config ? ", active raft config: " + SecureShortDebugString(*active_config) : "");
+}
+
+std::string PeerMessageQueue::getQuorumIdUsingCommitRule(const RaftPeerPB& peer) {
+  return GetQuorumId(peer, queue_state_.active_config->commit_rule());
+}
+
+void PeerMessageQueue::UpdatePeerQuorumIdUnlocked(
+    const std::map<std::string, std::string>& quorum_id_map) {
+  // Update quorum_ids in peers_map
+  for (const PeersMap::value_type& entry : peers_map_) {
+    auto it = quorum_id_map.find(entry.first);
+    if (it != quorum_id_map.end()) {
+      entry.second->peer_pb.mutable_attrs()->set_quorum_id(it->second);
+    }
+  }
+
+  // Update local peer's quorum id
+  auto it = quorum_id_map.find(local_peer_pb_.permanent_uuid());
+  if (it != quorum_id_map.end()) {
+    local_peer_pb_.mutable_attrs()->set_quorum_id(it->second);
+  }
 }
 
 }  // namespace consensus
