@@ -66,6 +66,8 @@
 #include "kudu/util/random.h"
 #include "kudu/util/status_callback.h"
 
+DECLARE_int32(lag_threshold_for_request_vote);
+
 namespace kudu {
 
 typedef std::lock_guard<simple_spinlock> Lock;
@@ -893,6 +895,7 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // for testing.
   Status RequestVoteRespondVoteWitheld(const VoteRequestPB* request,
                                        const std::string& hostname_port,
+                                       const std::string& withhold_reason,
                                        VoteResponsePB* response);
 
   // Respond to VoteRequest that the vote was not granted because we believe
