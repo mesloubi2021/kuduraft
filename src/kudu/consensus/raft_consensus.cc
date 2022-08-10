@@ -193,6 +193,9 @@ DEFINE_bool(raft_enforce_rpc_token, false,
             "Should enforce that requests and reponses to this instance must "
             "have a matching token as what we have stored.");
 
+DEFINE_int32(lag_threshold_for_request_vote, -1,
+             "The threshold beyond which a VOTER will not give votes to CANDIDATE. -1 to turn it OFF");
+
 // Metrics
 // ---------
 METRIC_DEFINE_counter(server, raft_log_truncation_counter,
@@ -2082,15 +2085,19 @@ Status RaftConsensus::RequestVote(const VoteRequestPB* request,
   std::string hostname_port("[NOT-IN-CONFIG]");
   response->mutable_voter_context()->set_is_candidate_removed(false);
 
-  if (!cmeta_->IsMemberInConfigWithDetail(request->candidate_uuid(), ACTIVE_CONFIG, &hostname_port)) {
+  // to be used later for lag check.
+  std::string candidate_region;
+  bool is_candidate_voter = false;
+
+  // Check if the CANDIDATE is in current config.
+  if (!cmeta_->IsMemberInConfigWithDetail(request->candidate_uuid(), ACTIVE_CONFIG,
+      &hostname_port, &is_candidate_voter, &candidate_region)) {
     LOG_WITH_PREFIX_UNLOCKED(INFO) << "Handling vote request from an unknown peer "
                                    << request->candidate_uuid();
     if (cmeta_->IsPeerRemoved(request->candidate_uuid())) {
       response->mutable_voter_context()->set_is_candidate_removed(true);
     }
   }
-
-
 
   // If we've heard recently from the leader, then we should ignore the request.
   // It might be from a "disruptive" server. This could happen in a few cases:
@@ -2114,7 +2121,8 @@ Status RaftConsensus::RequestVote(const VoteRequestPB* request,
                                    << request->candidate_uuid()
                                    << " " << hostname_port
                                    << " for testing.";
-    return RequestVoteRespondVoteWitheld(request, hostname_port, response);
+    return RequestVoteRespondVoteWitheld(request, hostname_port,
+        "votes are being witheld for testing", response);
   }
 
   if (!request->ignore_live_leader() && MonoTime::Now() < withhold_votes_until_) {
@@ -2141,8 +2149,46 @@ Status RaftConsensus::RequestVote(const VoteRequestPB* request,
 
   // Candidate must have last-logged OpId at least as large as our own to get
   // our vote.
+
+  // New Non Standard Voting Heuristic: In Flexi Raft, since quorum sizes are typically
+  // small, we have much lesser tolerance for failed nodes. A partially failed
+  // node can be a node which is lagging (say) 10 million opids behind the CANDIDATE.
+  // In normal raft, it will give votes to the CANDIDATE, but if the VOTER is
+  // in same region as CANDIDATE, the VOTER will also soon be part of the write
+  // quorum for the No-Op and needs to be caught up. Hence giving VOTES eagerly
+  // when SELF is much much behind the CANDIDATE, will not help No-Op commit.
+  // So we add another heuristic to address this. Here is how it works
+  // 1. It withholds votes if SELF is much behind CANDIDATE.
+  // 2. Only applies to flexi raft Single Region dynamic mode
+  // 3. Heuristic has a kill switch
+  // 4. Only applies to VOTERs which are in the same region as CANDIDATE
+  bool check_srd_lag = false;
+  if ((FLAGS_lag_threshold_for_request_vote != -1) && FLAGS_enable_flexi_raft) {
+    const RaftConfigPB& committed_config = cmeta_->CommittedConfig();
+    // single region dynamic mode, where quorum is in LEADER's region.
+    bool srd_mode = committed_config.has_commit_rule() &&
+        (committed_config.commit_rule().mode() == QuorumMode::SINGLE_REGION_DYNAMIC);
+    check_srd_lag = srd_mode && !candidate_region.empty() &&
+        (peer_region() == candidate_region);
+  }
+
+  // Regular Raft protocol: Give vote if CANDIDATE is ahead of VOTER.
   bool vote_yes = !OpIdLessThan(request->candidate_status().last_received(),
                                 local_last_logged_opid);
+  // MODIFIED heuristic explained above.
+  if (vote_yes && check_srd_lag) {
+    int64_t lag = (request->candidate_status().last_received().index() -
+        local_last_logged_opid.index());
+    if (lag > FLAGS_lag_threshold_for_request_vote) {
+      return RequestVoteRespondVoteWitheld(request, hostname_port,
+          strings::Substitute("votes are being witheld for huge lag "
+              "$0 > $1, candidate at: $2, voter at: $3",
+              lag, FLAGS_lag_threshold_for_request_vote,
+              SecureShortDebugString(request->candidate_status().last_received()),
+              SecureShortDebugString(local_last_logged_opid)),
+          response);
+    }
+  }
 
   // Record the term advancement if necessary. We don't do so in the case of
   // pre-elections because it's possible that the node who called the pre-election
@@ -2855,16 +2901,17 @@ Status RaftConsensus::RequestVoteRespondLastOpIdTooOld(const OpId& local_last_lo
 
 Status RaftConsensus::RequestVoteRespondVoteWitheld(const VoteRequestPB* request,
                                                     const std::string& hostname_port,
+                                                    const std::string& withhold_reason,
                                                     VoteResponsePB* response) {
   FillVoteResponseVoteDenied(ConsensusErrorPB::UNKNOWN, response);
-  string msg = Substitute("$0: Denying $1 to candidate $2 $3 for term $4 because "
-                          "votes are being witheld for testing. "
-                          "Candidate context: $5.",
+  string msg = Substitute("$0: Denying $1 to candidate $2 $3 for term $4 "
+                          "because of reason: $5. Candidate context: $6.",
                           GetRequestVoteLogPrefixUnlocked(*request),
                           (request->is_pre_election() ? "pre-vote" : "vote"),
                           hostname_port,
                           request->candidate_uuid(),
                           request->candidate_term(),
+                          withhold_reason,
                           GetCandidateContextString(request));
   LOG(INFO) << msg;
   StatusToPB(Status::InvalidArgument(msg), response->mutable_consensus_error()->mutable_status());
