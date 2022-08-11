@@ -419,7 +419,7 @@ FlexibleVoteCounter::IsMajoritySatisfiedInRegions(
           << " but majority requirement is: " << region_majority_size;
       quorum_satisfied = false;
     }
-    if (regional_no_count + region_majority_size > total_region_count) {
+    if (!quorum_satisfied && regional_no_count + region_majority_size > total_region_count) {
       VLOG_WITH_PREFIX(2) << "Quorum satisfaction not possible in region: "
                           << region << " because of excessive no votes: "
                           << regional_no_count
