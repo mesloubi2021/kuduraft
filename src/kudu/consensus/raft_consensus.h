@@ -59,6 +59,7 @@
 #endif
 
 #include "kudu/util/atomic.h"
+#include "kudu/util/faststring.h"
 #include "kudu/util/locks.h"
 #include "kudu/util/make_shared.h"
 #include "kudu/util/metrics.h"
@@ -837,6 +838,10 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // that uses transactions, delegates to StartConsensusOnlyRoundUnlocked().
   Status StartFollowerTransactionUnlocked(const ReplicateRefPtr& msg);
 
+  // Just like StartFollowerTransactionUnlocked() above but with msg wrapper as
+  // input
+  Status StartFollowerTransactionUnlocked(const ReplicateMsgWrapper& msg_wrapper);
+
   // Returns true if this node is the only voter in the Raft configuration.
   bool IsSingleVoterConfig() const;
 
@@ -1266,6 +1271,9 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   scoped_refptr<Counter> raft_proxy_num_requests_unknown_dest_;
   scoped_refptr<Counter> raft_proxy_num_requests_log_read_timeout_;
   scoped_refptr<Counter> raft_proxy_num_requests_hops_remaining_exhausted_;
+
+  const CompressionCodec* codec_ = nullptr;
+  faststring compression_buffer_;
 
   DISALLOW_COPY_AND_ASSIGN(RaftConsensus);
 };

@@ -69,6 +69,7 @@ class ConsensusRequestPB;
 class ConsensusResponsePB;
 class ConsensusStatusPB;
 class PeerMessageQueueObserver;
+class ReplicateMsgWrapper;
 #ifdef FB_DO_NOT_REMOVE
 class StartTabletCopyRequestPB;
 #endif
@@ -250,6 +251,9 @@ class PeerMessageQueue {
   // with concurrent Append calls.
   Status AppendOperation(const ReplicateRefPtr& msg);
 
+  // Just like AppendOperation() above but with msg wrapper as input
+  Status AppendOperation(const ReplicateMsgWrapper& msg_wrappers);
+
   // Appends a vector of messages to be replicated to the peers.
   // Returns OK unless the message could not be added to the queue for some
   // reason (e.g. the queue reached max size), calls 'log_append_callback' when
@@ -259,6 +263,10 @@ class PeerMessageQueue {
   // This is thread-safe against all of the read methods, but not thread-safe
   // with concurrent Append calls.
   Status AppendOperations(const std::vector<ReplicateRefPtr>& msgs,
+                          const StatusCallback& log_append_callback);
+
+  // Just like AppendOperations() above but with msg wrappers as input
+  Status AppendOperations(const std::vector<ReplicateMsgWrapper>& msgs,
                           const StatusCallback& log_append_callback);
 
   // Truncate all operations coming after 'index'. Following this, the 'last_appended'

@@ -44,6 +44,7 @@
 #include "kudu/consensus/log.h"
 #include "kudu/consensus/opid_util.h"
 #include "kudu/consensus/quorum_util.h"
+#include "kudu/consensus/replicate_msg_wrapper.h"
 #include "kudu/consensus/routing.h"
 #include "kudu/consensus/time_manager.h"
 #include "kudu/gutil/bind.h"
@@ -480,6 +481,63 @@ Status PeerMessageQueue::AppendOperations(const vector<ReplicateRefPtr>& msgs,
   // which also needs queue_lock_.
   lock.unlock();
   RETURN_NOT_OK(log_cache_.AppendOperations(msgs,
+                                            Bind(&PeerMessageQueue::LocalPeerAppendFinished,
+                                                 Unretained(this),
+                                                 last_id,
+                                                 log_append_callback)));
+  lock.lock();
+  DCHECK(last_id.IsInitialized());
+  queue_state_.last_appended = last_id;
+  UpdateMetricsUnlocked();
+
+  return Status::OK();
+}
+
+Status PeerMessageQueue::AppendOperation(const ReplicateMsgWrapper& msg_wrapper) {
+  return AppendOperations({ msg_wrapper }, Bind(CrashIfNotOkStatusCB,
+                                        "Enqueued replicate operation failed to write to WAL"));
+}
+
+Status PeerMessageQueue::AppendOperations(const vector<ReplicateMsgWrapper>& msg_wrappers,
+                                          const StatusCallback& log_append_callback) {
+
+  DFAKE_SCOPED_LOCK(append_fake_lock_);
+  std::unique_lock<simple_spinlock> lock(queue_lock_);
+
+  OpId last_id = msg_wrappers.back().GetOrigMsg()->get()->id();
+
+  // "Snoop" on the appended operations to watch for term changes (as follower)
+  // and to determine the first index in our term (as leader).
+  //
+  // TODO: it would be a cleaner design to explicitly set the first index in the
+  // leader term as part of SetLeaderMode(). However, we are currently also
+  // using that method to handle refreshing the peer list during configuration
+  // changes, so the refactor isn't trivial.
+  for (const auto& msg_wrapper : msg_wrappers) {
+    const auto& id = msg_wrapper.GetOrigMsg()->get()->id();
+    if (id.term() > queue_state_.current_term) {
+      queue_state_.current_term = id.term();
+      queue_state_.first_index_in_current_term = id.index();
+    } else if (id.term() == queue_state_.current_term &&
+               queue_state_.first_index_in_current_term == boost::none) {
+      queue_state_.first_index_in_current_term = id.index();
+    }
+  }
+
+  // Update safe time in the TimeManager if we're leader.
+  // This will 'unpin' safe time advancement, which had stopped since we assigned a timestamp to
+  // the message.
+  // Until we have leader leases, replicas only call this when the message is committed.
+  if (queue_state_.mode == LEADER) {
+    time_manager_->AdvanceSafeTimeWithMessage(*msg_wrappers.back().GetOrigMsg()->get());
+  }
+
+  // Unlock ourselves during Append to prevent a deadlock: it's possible that
+  // the log buffer is full, in which case AppendOperations would block. However,
+  // for the log buffer to empty, it may need to call LocalPeerAppendFinished()
+  // which also needs queue_lock_.
+  lock.unlock();
+  RETURN_NOT_OK(log_cache_.AppendOperations(msg_wrappers,
                                             Bind(&PeerMessageQueue::LocalPeerAppendFinished,
                                                  Unretained(this),
                                                  last_id,
