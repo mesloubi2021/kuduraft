@@ -28,6 +28,7 @@
 #include <cmath>
 #include <cstdint>
 #include <functional>
+#include <glog/logging.h>
 #include <iterator>
 #include <memory>
 #include <mutex>
@@ -188,6 +189,8 @@ DEFINE_bool(enable_flexi_raft, false,
 
 DEFINE_bool(track_removed_peers, true,
             "Should peers removed from the config be tracked for using it in RequestVote()");
+DEFINE_bool(allow_multiple_backed_by_db_per_quorum, false,
+            "Can multiple backed_by_db instances be added to the same quorum");
 
 DEFINE_bool(raft_enforce_rpc_token, false,
             "Should enforce that requests and reponses to this instance must "
@@ -639,7 +642,8 @@ Status RaftConsensus::StartElection(ElectionMode mode, ElectionContext context) 
 
     // In flexi raft mode, we want to start elections only in Candidate
     // regions which have voter_distribution Information.
-    if (FLAGS_enable_flexi_raft) {
+    // It can be skipped when using quorum_id
+    if (FLAGS_enable_flexi_raft && !IsUseQuorumId(cmeta_->ActiveConfig().commit_rule())) {
       const auto& vd_map = cmeta_->ActiveConfig().voter_distribution();
       if (PREDICT_FALSE(vd_map.find(peer_region()) == vd_map.end())) {
         return Status::IllegalState(strings::Substitute(
@@ -2385,6 +2389,31 @@ Status RaftConsensus::CheckBulkConfigChangeAndGetNewConfigUnlocked(
             return Status::InvalidArgument("peer must have last_known_addr specified",
                                            SecureShortDebugString(req));
           }
+          if (peer.member_type() != RaftPeerPB::VOTER && peer.has_attrs() &&
+              peer.attrs().has_quorum_id() && peer.attrs().quorum_id() != "") {
+            return Status::InvalidArgument("Non-voter must not have quorum_id",
+                                           SecureShortDebugString(req));
+          }
+
+          // In quorum_id is enabled, we have an option to disallow multiple MySQL instances
+          // being added to the same quorum
+          if (FLAGS_enable_flexi_raft && IsUseQuorumId(committed_config.commit_rule()) &&
+              !FLAGS_allow_multiple_backed_by_db_per_quorum) {
+            std::string leader_uuid_unused;
+            // A map from quorum id to actual number of backed_by_db voters in config
+            std::map<std::string, int> actual_bbd_voter_counts;
+            GetActualVoterCountsFromConfig(committed_config, leader_uuid_unused,
+              &actual_bbd_voter_counts, /* leader_quorum_id */ nullptr,
+              /* backed_by_db_only */ true);
+            std::string peer_quorum_id = GetQuorumId(peer, /* use_quorum_id */ true);
+            int count = FindWithDefault(actual_bbd_voter_counts, peer_quorum_id, 0);
+            if (count >= 1) {
+              return Status::AlreadyPresent("Not allow multiple backed_by_db instance "
+                                            "added to the same quorum.",
+                                            SecureShortDebugString(req));
+            }
+          }
+
           if (peer.member_type() == RaftPeerPB::VOTER) {
             num_voters_modified++;
           }
@@ -2420,15 +2449,16 @@ Status RaftConsensus::CheckBulkConfigChangeAndGetNewConfigUnlocked(
             // requirement, because it gives flexibility to automation to replace nodes without
             // impacting the write availability.
             if (FLAGS_enable_flexi_raft) {
-              const auto& vd_map = committed_config.voter_distribution();
+              std::map<std::string, int> vd_map;
+              GetVoterDistributionForQuorumId(committed_config, &vd_map);
 
-              std::map<std::string, int> voters_in_config_per_region;
-              std::string unused_leader_region;
+              std::map<std::string, int> voters_in_config_per_quorum;
+              std::string unused_leader_quorum;
               std::string unused_leader_uuid;
               // Get number of voters in each region
-              GetRegionalCountsFromConfig(
-                  committed_config, unused_leader_uuid, &voters_in_config_per_region,
-                  &unused_leader_region);
+              GetActualVoterCountsFromConfig(
+                  committed_config, unused_leader_uuid, &voters_in_config_per_quorum,
+                  &unused_leader_quorum);
 
               // single region dynamic mode.
               bool srd_mode = committed_config.has_commit_rule() &&
@@ -2439,25 +2469,25 @@ Status RaftConsensus::CheckBulkConfigChangeAndGetNewConfigUnlocked(
                 }
 
                 // Zeroed in on the peer we are about to remove.
-                const std::string& region = peer.attrs().region();
+                const std::string& quorum_id = GetQuorumId(peer, cmeta_->ActiveConfig().commit_rule());
 
                 // In SINGLE REGION DYANMIC mode, we only do this extra check
                 // in current LEADER region. the local peer is the LEADER
                 // because of CheckActiveLeaderUnlocked above
-                if (srd_mode && region != peer_region()) {
+                if (srd_mode && quorum_id != peer_quorum_id()) {
                   break;
                 }
-                int current_count = voters_in_config_per_region[region];
+                int current_count = voters_in_config_per_quorum[quorum_id];
                 // reduce count by 1
                 int future_count = current_count - 1;
-                auto vd_itr = vd_map.find(region);
+                auto vd_itr = vd_map.find(quorum_id);
                 if (vd_itr != vd_map.end()) {
                   int expected_voters = (*vd_itr).second;
                   int quorum = MajoritySize(expected_voters);
                   if (future_count < quorum) {
-                    return Status::InvalidArgument(strings::Substitute("Cannot remove a voter in region: $0"
+                    return Status::InvalidArgument(strings::Substitute("Cannot remove a voter in quorum: $0"
                         " which will make future voter count: $1 dip below expected voters: $2",
-                        region, future_count, quorum));
+                        quorum_id, future_count, quorum));
                   }
                 }
                 break;
@@ -3152,6 +3182,10 @@ std::string RaftConsensus::peer_region() const {
   }
 
   return local_peer_pb_.attrs().region();
+}
+
+std::string RaftConsensus::peer_quorum_id() const {
+  return GetQuorumId(local_peer_pb_, cmeta_->ActiveConfig().commit_rule());
 }
 
 std::pair<string, unsigned int> RaftConsensus::peer_hostport() const {
@@ -3865,8 +3899,13 @@ Status RaftConsensus::ChangeQuorumType(QuorumType type) {
   RaftConfigPB config = cmeta_->ActiveConfig();
   if (type == QuorumType::QUORUM_ID) {
     for (const auto& peer : config.peers()) {
-      if (!peer.has_attrs() || !peer.attrs().has_quorum_id()
-          || peer.attrs().quorum_id() == "") {
+          // We only check voter
+      if (peer.has_member_type() &&
+          peer.member_type() == RaftPeerPB::VOTER &&
+          // Peer quorum_id can not be null or empty
+          !(peer.has_attrs() &&
+          peer.attrs().has_quorum_id() &&
+          peer.attrs().quorum_id() != "")) {
         return Status::ConfigurationError(Substitute(
           "Unable to change QuorumType to QuorumId. "
           "No quorum_id found for peer $0", peer.permanent_uuid()));
@@ -3922,20 +3961,24 @@ Status RaftConsensus::SetPeerQuorumIds(std::map<std::string, std::string> uuid2q
     RETURN_NOT_OK(s);
   }
 
+  // Step 1: Update peers quorum_id in active config
   RaftConfigPB config = cmeta_->ActiveConfig();
   google::protobuf::RepeatedPtrField<RaftPeerPB> modified_peers;
   for (auto peer : config.peers()) {
-    auto it = uuid2quorum_ids.find(peer.permanent_uuid());
-    if (it == uuid2quorum_ids.end()) {
-      // for force = false, we do not allow a voter without quorum_id assigned
-      if (peer.has_member_type() && peer.member_type() == RaftPeerPB::VOTER && !force) {
-        return Status::ConfigurationError(Substitute(
-          "Failed to update quorum_id. "
-          "No quorum_id found for peer $0", peer.permanent_uuid()));
+    if (peer.has_member_type() && peer.has_member_type() == RaftPeerPB::VOTER) {
+      // We only update quorum_id on voters
+      auto it = uuid2quorum_ids.find(peer.permanent_uuid());
+      if (it == uuid2quorum_ids.end()) {
+        // for force = false, we do not allow a voter without quorum_id assigned
+        if (!force) {
+          return Status::ConfigurationError(Substitute(
+            "Failed to update quorum_id. "
+            "No quorum_id found for peer $0", peer.permanent_uuid()));
+        }
+      } else {
+        // If uuid is found, we set corresponding quorun_id
+        peer.mutable_attrs()->set_quorum_id(it->second);
       }
-    } else {
-      // If uuid is found, we set corresponding quorun_id
-      peer.mutable_attrs()->set_quorum_id(it->second);
     }
 
     // We must add every peer, so we do not remove any peer by accident
@@ -3947,6 +3990,16 @@ Status RaftConsensus::SetPeerQuorumIds(std::map<std::string, std::string> uuid2q
   cmeta_->set_active_config(std::move(config));
   CHECK_OK(cmeta_->Flush());
 
+  // Step 2: Update this peer's own quorum_id
+  if (IsVoterRole(role())) {
+    auto it = uuid2quorum_ids.find(local_peer_pb_.permanent_uuid());
+    if (it != uuid2quorum_ids.end()) {
+      local_peer_pb_.mutable_attrs()->set_quorum_id(it->second);
+    }
+  }
+
+  // Step 3: Update peer quorum_id in consensus queue
+  queue_->UpdatePeerQuorumIdUnlocked(uuid2quorum_ids);
   if (cmeta_->active_role() == RaftPeerPB::LEADER) {
       RETURN_NOT_OK(RefreshConsensusQueueAndPeersUnlocked());
   }

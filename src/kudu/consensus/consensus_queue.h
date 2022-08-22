@@ -442,6 +442,9 @@ class PeerMessageQueue {
     adjust_voter_distribution_ = val;
   }
 
+  // Update quorum id in peers_map
+  void UpdatePeerQuorumIdUnlocked(const std::map<std::string, std::string>& quorum_id_map);
+
  private:
   FRIEND_TEST(ConsensusQueueTest, TestQueueAdvancesCommittedIndex);
   FRIEND_TEST(ConsensusQueueTest, TestQueueMovesWatermarksBackward);
@@ -670,9 +673,9 @@ class PeerMessageQueue {
       int64_t* watermark, const OpId& replicated_before,
       const OpId& replicated_after, const TrackedPeer* who_caused);
 
-  // Fetches the data commit quorum as a mapping from region to count of
-  // votes required.
-  void GetDataCommitQuorum(std::map<std::string, int>*) const;
+  // return the region of peer or quorum_id of peer based on use_quorum_id
+  // in commit rule
+  std::string getQuorumIdUsingCommitRule(const RaftPeerPB& peer);
 
   std::vector<PeerMessageQueueObserver*> observers_;
 
@@ -680,7 +683,7 @@ class PeerMessageQueue {
   std::unique_ptr<ThreadPoolToken> raft_pool_observers_token_;
 
   // PB containing identifying information about the local peer.
-  const RaftPeerPB local_peer_pb_;
+  RaftPeerPB local_peer_pb_;
 
   std::shared_ptr<RoutingTableContainer> routing_table_container_;
 

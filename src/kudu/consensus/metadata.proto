@@ -49,7 +49,8 @@ message RaftPeerAttrsPB {
   // The mysql/bls server id
   optional uint32 server_id = 6 [ default = 0 ];
 
-  // Define which quorum the peer belongs to in Flexiraft under use_quorum_id
+  // Define which quorum the peer belongs to in Flexiraft when using
+  // QuorumType::QUORUM_ID
   optional string quorum_id = 7;
 }
 
