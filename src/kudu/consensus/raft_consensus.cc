@@ -3965,7 +3965,7 @@ Status RaftConsensus::SetPeerQuorumIds(std::map<std::string, std::string> uuid2q
   RaftConfigPB config = cmeta_->ActiveConfig();
   google::protobuf::RepeatedPtrField<RaftPeerPB> modified_peers;
   for (auto peer : config.peers()) {
-    if (peer.has_member_type() && peer.has_member_type() == RaftPeerPB::VOTER) {
+    if (peer.has_member_type() && peer.member_type() == RaftPeerPB::VOTER) {
       // We only update quorum_id on voters
       auto it = uuid2quorum_ids.find(peer.permanent_uuid());
       if (it == uuid2quorum_ids.end()) {
@@ -3991,7 +3991,8 @@ Status RaftConsensus::SetPeerQuorumIds(std::map<std::string, std::string> uuid2q
   CHECK_OK(cmeta_->Flush());
 
   // Step 2: Update this peer's own quorum_id
-  if (IsVoterRole(role())) {
+  if (local_peer_pb_.has_member_type() &&
+      local_peer_pb_.member_type() == RaftPeerPB::VOTER) {
     auto it = uuid2quorum_ids.find(local_peer_pb_.permanent_uuid());
     if (it != uuid2quorum_ids.end()) {
       local_peer_pb_.mutable_attrs()->set_quorum_id(it->second);
