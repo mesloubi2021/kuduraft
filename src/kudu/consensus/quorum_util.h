@@ -184,6 +184,9 @@ std::string GetQuorumId(const RaftPeerPB& peer, const CommitRulePB& commit_rule)
 // Return quorum_id or region based on whether use quorum_id
 std::string GetQuorumId(const RaftPeerPB& peer, bool use_quorum_id);
 
+// Return true of the peer has a non-empty quorum_id
+bool PeerHasValidQuorumId(const RaftPeerPB& peer);
+
 }  // namespace consensus
 }  // namespace kudu
 

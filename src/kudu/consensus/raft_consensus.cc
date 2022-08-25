@@ -189,6 +189,7 @@ DEFINE_bool(enable_flexi_raft, false,
 
 DEFINE_bool(track_removed_peers, true,
             "Should peers removed from the config be tracked for using it in RequestVote()");
+
 DEFINE_bool(allow_multiple_backed_by_db_per_quorum, false,
             "Can multiple backed_by_db instances be added to the same quorum");
 
@@ -2389,10 +2390,19 @@ Status RaftConsensus::CheckBulkConfigChangeAndGetNewConfigUnlocked(
             return Status::InvalidArgument("peer must have last_known_addr specified",
                                            SecureShortDebugString(req));
           }
-          if (peer.member_type() != RaftPeerPB::VOTER && peer.has_attrs() &&
-              peer.attrs().has_quorum_id() && peer.attrs().quorum_id() != "") {
-            return Status::InvalidArgument("Non-voter must not have quorum_id",
+          if (peer.has_member_type() && peer.member_type() == RaftPeerPB::VOTER) {
+            if (FLAGS_enable_flexi_raft && IsUseQuorumId(committed_config.commit_rule())) {
+              if (!PeerHasValidQuorumId(peer)) {
+                return Status::InvalidArgument("Peer must have a non-empty quorum_id in "
+                                                "QuorumId type quorum",
+                                                SecureShortDebugString(req));
+              }
+            }
+          } else {
+            if (PeerHasValidQuorumId(peer)) {
+              return Status::InvalidArgument("Non-voter must not have quorum_id",
                                            SecureShortDebugString(req));
+            }
           }
 
           // In quorum_id is enabled, we have an option to disallow multiple MySQL instances
@@ -3903,9 +3913,7 @@ Status RaftConsensus::ChangeQuorumType(QuorumType type) {
       if (peer.has_member_type() &&
           peer.member_type() == RaftPeerPB::VOTER &&
           // Peer quorum_id can not be null or empty
-          !(peer.has_attrs() &&
-          peer.attrs().has_quorum_id() &&
-          peer.attrs().quorum_id() != "")) {
+          !PeerHasValidQuorumId(peer)) {
         return Status::ConfigurationError(Substitute(
           "Unable to change QuorumType to QuorumId. "
           "No quorum_id found for peer $0", peer.permanent_uuid()));
