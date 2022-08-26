@@ -1010,5 +1010,10 @@ std::string GetQuorumId(const RaftPeerPB& peer, const CommitRulePB& commit_rule)
   return GetQuorumId(peer, IsUseQuorumId(commit_rule));
 }
 
+bool PeerHasValidQuorumId(const RaftPeerPB &peer) {
+  return peer.has_attrs() && peer.attrs().has_quorum_id() &&
+         !peer.attrs().quorum_id().empty();
+}
+
 }  // namespace consensus
 }  // namespace kudu
