@@ -59,6 +59,7 @@
 #include "kudu/consensus/persistent_vars_manager.h"
 #include "kudu/consensus/persistent_vars.pb.h"
 #include "kudu/consensus/quorum_util.h"
+#include "kudu/consensus/replicate_msg_wrapper.h"
 #include "kudu/consensus/routing.h"
 #include "kudu/consensus/time_manager.h"
 #include "kudu/gutil/bind.h"
@@ -74,6 +75,8 @@
 #include "kudu/rpc/periodic.h"
 #include "kudu/rpc/rpc_context.h"
 #include "kudu/util/async_util.h"
+#include "kudu/util/compression/compression_codec.h"
+#include "kudu/util/compression/compression.pb.h"
 #include "kudu/util/crc.h"
 #include "kudu/util/debug/trace_event.h"
 #include "kudu/util/flag_tags.h"
@@ -1056,9 +1059,12 @@ Status RaftConsensus::AppendNewRoundToQueueUnlocked(const scoped_refptr<Consensu
   }
   RETURN_NOT_OK(AddPendingOperationUnlocked(round));
 
+  ReplicateMsgWrapper msg_wrapper(round->replicate_scoped_refptr(), codec_);
+  RETURN_NOT_OK(msg_wrapper.Init(&compression_buffer_));
+
   // The only reasons for a bad status would be if the log itself were shut down,
   // or if we had an actual IO error, which we currently don't handle.
-  CHECK_OK_PREPEND(queue_->AppendOperation(round->replicate_scoped_refptr()),
+  CHECK_OK_PREPEND(queue_->AppendOperation(msg_wrapper),
                    Substitute("$0: could not append to queue", LogPrefixUnlocked()));
   return Status::OK();
 }
@@ -1349,6 +1355,14 @@ Status RaftConsensus::Update(const ConsensusRequestPB* request,
 // Helper function to check if the op is a non-Transaction op.
 static bool IsConsensusOnlyOperation(OperationType op_type) {
   return op_type == NO_OP || op_type == CHANGE_CONFIG_OP;
+}
+
+Status RaftConsensus::StartFollowerTransactionUnlocked(
+    const ReplicateMsgWrapper& msg_wrapper) {
+  if (!msg_wrapper.GetUncompressedMsg()) {
+    return Status::IllegalState("Rejected: Msg wrapper is null");
+  }
+  return StartFollowerTransactionUnlocked(msg_wrapper.GetUncompressedMsg());
 }
 
 Status RaftConsensus::StartFollowerTransactionUnlocked(const ReplicateRefPtr& msg) {
@@ -1830,6 +1844,8 @@ Status RaftConsensus::UpdateReplica(const ConsensusRequestPB* request,
       }
     }
 
+    std::vector<ReplicateMsgWrapper> msg_wrappers;
+
     // This is a best-effort way of isolating safe and expected failures
     // from true warnings.
     bool expected_rotation_delay = false;
@@ -1848,7 +1864,13 @@ Status RaftConsensus::UpdateReplica(const ConsensusRequestPB* request,
       if (op_type == NO_OP) {
         new_leader_detected_failsafe_ = false;
       }
-      prepare_status = StartFollowerTransactionUnlocked(*iter);
+
+      ReplicateMsgWrapper msg_wrapper(*iter, codec_);
+      prepare_status = msg_wrapper.Init(&compression_buffer_);
+      if (prepare_status.ok()) {
+        prepare_status = StartFollowerTransactionUnlocked(msg_wrapper);
+      }
+
       if (PREDICT_FALSE(!prepare_status.ok())) {
         expected_rotation_delay = prepare_status.IsIllegalState() &&
             (prepare_status.ToString().find(
@@ -1859,6 +1881,7 @@ Status RaftConsensus::UpdateReplica(const ConsensusRequestPB* request,
       // Once we have that functionality we'll have to revisit this.
       CHECK_OK(time_manager_->MessageReceivedFromLeader(*(*iter)->get()));
       ++iter;
+      msg_wrappers.push_back(msg_wrapper);
     }
 
     // If we stopped before reaching the end we failed to prepare some message(s) and need
@@ -1916,7 +1939,7 @@ Status RaftConsensus::UpdateReplica(const ConsensusRequestPB* request,
       //
       // Since we've prepared, we need to be able to append (or we risk trying to apply
       // later something that wasn't logged). We crash if we can't.
-      CHECK_OK(queue_->AppendOperations(messages, sync_status_cb));
+      CHECK_OK(queue_->AppendOperations(msg_wrappers, sync_status_cb));
     } else {
       last_from_leader = *deduped_req.preceding_opid;
     }
@@ -4592,7 +4615,25 @@ void RaftConsensus::HandleProxyRequest(const ConsensusRequestPB* request,
 
 Status RaftConsensus::SetCompressionCodec(const std::string& codec) {
   LockGuard l(lock_);
-  return queue_->log_cache()->SetCompressionCodec(codec);
+  if (codec.empty()) {
+    LOG(INFO) << "Disabling compression";
+    codec_ = nullptr;
+  } else {
+    const CompressionCodec* comp_codec = nullptr;
+    auto codec_type = GetCompressionCodecType(codec);
+    if (codec_type != NO_COMPRESSION) {
+      auto status = GetCompressionCodec(codec_type, &comp_codec);
+      if (!status.ok()) {
+        LOG(ERROR) << "Failed to set compression codec";
+        return status;
+      }
+    }
+
+    LOG(INFO) << "Updating compression codec to: " << codec;
+    codec_ = comp_codec;
+  }
+  queue_->log_cache()->SetCompressionCodec(codec_);
+  return Status::OK();
 }
 
 Status RaftConsensus::EnableCompressionOnCacheMiss(bool enable) {
