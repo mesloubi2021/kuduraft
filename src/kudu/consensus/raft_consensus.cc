@@ -2507,7 +2507,7 @@ Status RaftConsensus::CheckBulkConfigChangeAndGetNewConfigUnlocked(
                 // In SINGLE REGION DYANMIC mode, we only do this extra check
                 // in current LEADER region. the local peer is the LEADER
                 // because of CheckActiveLeaderUnlocked above
-                if (srd_mode && quorum_id != peer_quorum_id()) {
+                if (srd_mode && quorum_id != peer_quorum_id(/* need_lock */ false)) {
                   break;
                 }
                 int current_count = voters_in_config_per_quorum[quorum_id];
@@ -3217,8 +3217,14 @@ std::string RaftConsensus::peer_region() const {
   return local_peer_pb_.attrs().region();
 }
 
-std::string RaftConsensus::peer_quorum_id() const {
-  return GetQuorumId(local_peer_pb_, cmeta_->ActiveConfig().commit_rule());
+
+std::string RaftConsensus::peer_quorum_id(bool need_lock) const {
+  if (need_lock) {
+    LockGuard l(lock_);
+  }
+  return cmeta_->ActiveConfig().has_commit_rule() ?
+      GetQuorumId(local_peer_pb_, cmeta_->ActiveConfig().commit_rule()) :
+      "";
 }
 
 std::pair<string, unsigned int> RaftConsensus::peer_hostport() const {
