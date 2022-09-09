@@ -559,7 +559,7 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   std::string peer_region() const;
 
   // It is own peer region or quorum_id
-  std::string peer_quorum_id() const;
+  std::string peer_quorum_id(bool need_lock = true) const;
 
   // Returns the id of the tablet whose updates this consensus instance helps coordinate.
   // Thread-safe.
