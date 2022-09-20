@@ -328,6 +328,15 @@ Status RaftConsensus::Init() {
     CHECK_OK(persistent_vars_->Flush());
   }
 
+  for (const auto& peer : cmeta_->ActiveConfig().peers()) {
+    if (peer.has_permanent_uuid() && local_peer_pb_.has_permanent_uuid() &&
+        peer.permanent_uuid() == local_peer_pb_.permanent_uuid() &&
+        peer.has_attrs() && local_peer_pb_.has_attrs() &&
+        peer.attrs().has_quorum_id()) {
+      local_peer_pb_.mutable_attrs()->set_quorum_id(peer.attrs().quorum_id());
+    }
+  }
+
   // Durable routing table is persisted - hence better to manage it through
   // consensus_meta_manager.
   std::shared_ptr<DurableRoutingTable> drt;
