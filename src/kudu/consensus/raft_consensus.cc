@@ -2397,6 +2397,8 @@ Status RaftConsensus::CheckBulkConfigChangeAndGetNewConfigUnlocked(
       }
 
       const string& server_uuid = peer.permanent_uuid();
+      bool peer_bbd = peer.has_attrs() && peer.attrs().has_backing_db_present() &&
+          peer.attrs().backing_db_present();
       switch (type) {
         case ADD_PEER:
           // Ensure the peer we are adding is not already a member of the configuration.
@@ -2431,7 +2433,7 @@ Status RaftConsensus::CheckBulkConfigChangeAndGetNewConfigUnlocked(
           // In quorum_id is enabled, we have an option to disallow multiple MySQL instances
           // being added to the same quorum
           if (FLAGS_enable_flexi_raft && IsUseQuorumId(committed_config.commit_rule()) &&
-              !FLAGS_allow_multiple_backed_by_db_per_quorum) {
+              !FLAGS_allow_multiple_backed_by_db_per_quorum && peer_bbd) {
             std::string leader_uuid_unused;
             // A map from quorum id to actual number of backed_by_db voters in config
             std::map<std::string, int> actual_bbd_voter_counts;
