@@ -22,7 +22,7 @@
 
 #include "kudu/fs/fs_manager.h"
 #ifdef FB_DO_NOT_REMOVE
-#include "kudu/server/webserver_options.h"
+#include "kudu/server/webserver_options.h" // @manual
 #endif
 #include "kudu/server/rpc_server.h"
 

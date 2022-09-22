@@ -25,7 +25,7 @@
 #include <glog/logging.h>
 
 #ifdef FB_DO_NOT_REMOVE
-#include "kudu/cfile/block_cache.h"
+#include "kudu/cfile/block_cache.h" // @manual
 #endif
 #include "kudu/consensus/consensus.service.h"
 #include "kudu/fs/error_manager.h"
@@ -36,15 +36,15 @@
 #include "kudu/rpc/service_if.h"
 #include "kudu/rpc/service_pool.h"
 #ifdef FB_DO_NOT_REMOVE
-#include "kudu/tserver/heartbeater.h"
-#include "kudu/tserver/scanners.h"
-#include "kudu/tserver/tablet_copy_service.h"
+#include "kudu/tserver/heartbeater.h" // @manual
+#include "kudu/tserver/scanners.h" // @manual
+#include "kudu/tserver/tablet_copy_service.h" // @manual
 #endif
 #include "kudu/tserver/consensus_service.h"
 #include "kudu/tserver/simple_tablet_manager.h"
 #ifdef FB_DO_NOT_REMOVE
-#include "kudu/tserver/tserver_path_handlers.h"
-#include "kudu/util/maintenance_manager.h"
+#include "kudu/tserver/tserver_path_handlers.h" // @manual
+#include "kudu/util/maintenance_manager.h" // @manual
 #endif
 #include "kudu/util/net/net_util.h"
 #include "kudu/util/status.h"

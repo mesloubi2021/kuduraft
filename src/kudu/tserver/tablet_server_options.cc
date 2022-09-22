@@ -26,7 +26,7 @@
 #include "kudu/consensus/raft_consensus.h"
 #include "kudu/gutil/macros.h"
 #ifdef FB_DO_NOT_REMOVE
-#include "kudu/master/master.h"
+#include "kudu/master/master.h" // @manual
 #endif
 #include "kudu/server/rpc_server.h"
 #include "kudu/tserver/tablet_server.h"

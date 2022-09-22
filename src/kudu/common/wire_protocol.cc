@@ -33,18 +33,18 @@
 #include <glog/logging.h>
 
 #ifdef FB_DO_NOT_REMOVE
-#include "kudu/common/columnblock.h"
-#include "kudu/common/column_predicate.h"
-#include "kudu/common/common.pb.h"
-#include "kudu/common/row.h"
-#include "kudu/common/rowblock.h"
-#include "kudu/common/schema.h"
-#include "kudu/common/types.h"
+#include "kudu/common/columnblock.h" // @manual
+#include "kudu/common/column_predicate.h" // @manual
+#include "kudu/common/common.pb.h" // @manual
+#include "kudu/common/row.h" // @manual
+#include "kudu/common/rowblock.h" // @manual
+#include "kudu/common/schema.h" // @manual
+#include "kudu/common/types.h" // @manual
 #endif
 
 #include "kudu/common/wire_protocol.pb.h"
 #ifdef FB_DO_NOT_REMOVE
-#include "kudu/consensus/metadata.pb.h"
+#include "kudu/consensus/metadata.pb.h" // @manual
 #endif
 #include "kudu/gutil/fixedarray.h"
 #include "kudu/gutil/port.h"

@@ -27,7 +27,7 @@ typedef int64_t Atomic64;
 #define BASE_HAS_ATOMIC64 1  // Use only in tests and base/atomic*
 #endif
 
-#include <libkern/OSAtomic.h>
+#include <libkern/OSAtomic.h> // @manual
 
 #if !defined(__LP64__) && defined(__ppc__)
 

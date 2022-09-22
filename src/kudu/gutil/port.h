@@ -73,12 +73,12 @@ typedef unsigned long ulong;
 #elif defined OS_FREEBSD
 
 // _BIG_ENDIAN
-#include <machine/endian.h>
+#include <machine/endian.h> // @manual
 
 #elif defined OS_SOLARIS
 
 // _BIG_ENDIAN
-#include <sys/isa_defs.h>
+#include <sys/isa_defs.h> // @manual
 
 // Solaris doesn't define sig_t (function taking an int, returning void)
 typedef void (*sig_t)(int);
@@ -88,13 +88,13 @@ typedef void (*sig_t)(int);
 #define strtouq strtoull
 
 // It doesn't define the posix-standard(?) u_int_16
-#include <sys/int_types.h>  // NOLINT(build/include)
+#include <sys/int_types.h> // @manual // NOLINT(build/include)
 typedef uint16_t u_int16_t;
 
 #elif defined __APPLE__
 
 // BIG_ENDIAN
-#include <machine/endian.h>  // NOLINT(build/include)
+#include <machine/endian.h> // @manual // NOLINT(build/include)
 /* Let's try and follow the Linux convention */
 #define __BYTE_ORDER  BYTE_ORDER
 #define __LITTLE_ENDIAN LITTLE_ENDIAN
@@ -787,9 +787,9 @@ struct AlignType { typedef char result[Size]; };
 // Truncating from double to float is ok
 #pragma warning(disable : 4305 )
 
-#include <winsock2.h>
 #include <assert.h>
 #include <windows.h>
+#include <winsock2.h> // @manual
 #undef ERROR
 
 #include <float.h>  // for nextafter functionality on windows
@@ -989,8 +989,8 @@ typedef short int16_t;
 
 #endif  // _MSC_VER
 
-#ifdef STL_MSVC  // not always the same as _MSC_VER
-#include "kudu/base/port_hash.h"
+#ifdef STL_MSVC // not always the same as _MSC_VER
+#include "kudu/base/port_hash.h" // @manual
 #else
 struct PortableHashBase { };
 #endif

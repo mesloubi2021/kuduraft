@@ -25,7 +25,7 @@
 #include "kudu/gutil/macros.h"
 #include "kudu/gutil/port.h"
 #else
-#include "kudu/client/stubs.h"
+#include "kudu/client/stubs.h" // @manual
 #endif
 
 #include "kudu/util/kudu_export.h"

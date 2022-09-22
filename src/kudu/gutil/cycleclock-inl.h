@@ -48,7 +48,7 @@
 
 // ----------------------------------------------------------------
 #if defined(__APPLE__)
-#include <mach/mach_time.h>
+#include <mach/mach_time.h> // @manual
 inline int64 CycleClock::Now() {
   // this goes at the top because we need ALL Macs, regardless of
   // architecture, to return the number of "mach time units" that
@@ -148,7 +148,7 @@ inline int64 CycleClock::Now() {
 
 // ----------------------------------------------------------------
 #elif defined(ARMV6)  // V6 is the earliest arm that has a standard cyclecount
-#include "kudu/gutil/sysinfo.h"
+#include "kudu/gutil/sysinfo.h" // @manual
 inline int64 CycleClock::Now() {
   uint32 pmccntr;
   uint32 pmuseren;
@@ -171,7 +171,7 @@ inline int64 CycleClock::Now() {
 
 // ----------------------------------------------------------------
 #elif defined(ARMV3)
-#include "kudu/gutil/sysinfo.h"   // for CyclesPerSecond()
+#include "kudu/gutil/sysinfo.h" // @manual  // for CyclesPerSecond()
 inline int64 CycleClock::Now() {
   struct timeval tv;
   gettimeofday(&tv, NULL);
@@ -181,7 +181,7 @@ inline int64 CycleClock::Now() {
 
 // ----------------------------------------------------------------
 #elif defined(__mips__)
-#include "kudu/gutil/sysinfo.h"
+#include "kudu/gutil/sysinfo.h" // @manual
 inline int64 CycleClock::Now() {
   // mips apparently only allows rdtsc for superusers, so we fall
   // back to gettimeofday.  It's possible clock_gettime would be better.

@@ -19,7 +19,7 @@
 
 #include <semaphore.h>
 #if defined(__APPLE__)
-#include <dispatch/dispatch.h>
+#include <dispatch/dispatch.h> // @manual
 #include "kudu/util/atomic.h"
 #endif  // define(__APPLE__)
 

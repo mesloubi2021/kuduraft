@@ -25,7 +25,7 @@
 #include <string>
 
 #include <glog/logging.h>
-#include <thrift/transport/TTransport.h>
+#include <thrift/transport/TTransport.h> // @manual
 
 #include "kudu/gutil/endian.h"
 #include "kudu/gutil/port.h"

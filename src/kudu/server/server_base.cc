@@ -35,7 +35,7 @@
 #include "kudu/clock/hybrid_clock.h"
 #include "kudu/clock/logical_clock.h"
 #ifdef FB_DO_NOT_REMOVE
-#include "kudu/codegen/compilation_manager.h"
+#include "kudu/codegen/compilation_manager.h" // @manual
 #endif
 #include "kudu/common/timestamp.h"
 #include "kudu/common/wire_protocol.h"
@@ -53,24 +53,24 @@
 #include "kudu/rpc/service_pool.h"
 #include "kudu/security/init.h"
 #ifdef FB_DO_NOT_REMOVE
-#include "kudu/security/security_flags.h"
-#include "kudu/server/default_path_handlers.h"
+#include "kudu/security/security_flags.h" // @manual
+#include "kudu/server/default_path_handlers.h" // @manual
 #endif
 #include "kudu/server/diagnostics_log.h"
 #ifdef FB_DO_NOT_REMOVE
-#include "kudu/server/generic_service.h"
+#include "kudu/server/generic_service.h" // @manual
 #endif
 #include "kudu/server/glog_metrics.h"
 #include "kudu/server/rpc_server.h"
 #ifdef FB_DO_NOT_REMOVE
-#include "kudu/server/rpcz-path-handler.h"
+#include "kudu/server/rpcz-path-handler.h" // @manual
 #endif
 #include "kudu/server/server_base.pb.h"
 #include "kudu/server/server_base_options.h"
 #ifdef FB_DO_NOT_REMOVE
-#include "kudu/server/tcmalloc_metrics.h"
-#include "kudu/server/tracing_path_handlers.h"
-#include "kudu/server/webserver.h"
+#include "kudu/server/tcmalloc_metrics.h" // @manual
+#include "kudu/server/tracing_path_handlers.h" // @manual
+#include "kudu/server/webserver.h" // @manual
 #endif
 #include "kudu/util/atomic.h"
 #include "kudu/util/env.h"

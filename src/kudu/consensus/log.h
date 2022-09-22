@@ -38,7 +38,7 @@
 #include <gtest/gtest_prod.h>
 
 #ifdef FB_DO_NOT_REMOVE
-#include "kudu/common/schema.h"
+#include "kudu/common/schema.h" // @manual
 #endif
 #include "kudu/consensus/consensus.pb.h"
 #include "kudu/consensus/log.pb.h"

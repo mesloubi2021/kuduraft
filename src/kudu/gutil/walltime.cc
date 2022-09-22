@@ -30,8 +30,8 @@
 #include <string.h>
 
 #if defined(__APPLE__)
-#include <mach/clock.h>
-#include <mach/mach.h>
+#include <mach/clock.h> // @manual
+#include <mach/mach.h> // @manual
 #endif  // defined(__APPLE__)
 
 #if defined(__APPLE__)

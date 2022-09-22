@@ -23,9 +23,9 @@
 #include <time.h>
 #include <string>
 #if defined(__APPLE__)
-#include <mach/clock.h>
-#include <mach/mach.h>
-#include <mach/thread_info.h>
+#include <mach/clock.h> // @manual
+#include <mach/mach.h> // @manual
+#include <mach/thread_info.h> // @manual
 #endif  // defined(__APPLE__)
 
 #include "kudu/gutil/macros.h"

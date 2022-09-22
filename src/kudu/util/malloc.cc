@@ -19,7 +19,7 @@
 #if defined(__linux__)
 #include <malloc.h>
 #else
-#include <malloc/malloc.h>
+#include <malloc/malloc.h> // @manual
 #endif // defined(__linux__)
 
 namespace kudu {

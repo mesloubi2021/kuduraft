@@ -152,9 +152,9 @@ inline int Bits::FindLSBSetNonZero64(uint64 n) {
   return __builtin_ctzll(n);
 }
 #elif defined(_MSC_VER)
-#include "kudu/gutil/bits-internal-windows.h"
+#include "kudu/gutil/bits-internal-windows.h" // @manual
 #else
-#include "kudu/gutil/bits-internal-unknown.h"
+#include "kudu/gutil/bits-internal-unknown.h" // @manual
 #endif
 
 inline int Bits::CountOnesInByte(unsigned char n) {

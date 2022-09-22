@@ -103,7 +103,7 @@ extern "C" {
 
 #ifdef __mips__
 /* Include definitions of the ABI currently in use.                          */
-#include <sgidefs.h>
+#include <sgidefs.h> // @manual
 #endif
 
 #endif

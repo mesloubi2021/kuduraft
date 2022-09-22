@@ -25,14 +25,14 @@
 #include <string>
 
 #if defined(__APPLE__)
-#include <mach/clock.h>
-#include <mach/mach.h>
-#include <mach/mach_time.h>
+#include <mach/clock.h> // @manual
+#include <mach/mach.h> // @manual
+#include <mach/mach_time.h> // @manual
 
-#include <glog/logging.h>
+#include <glog/logging.h> // @manual
 
-#include "kudu/gutil/once.h"
-#endif  // #if defined(__APPLE__)
+#include "kudu/gutil/once.h" // @manual
+#endif // #if defined(__APPLE__)
 
 #include "kudu/gutil/integral_types.h"
 

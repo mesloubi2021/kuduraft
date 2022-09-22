@@ -66,8 +66,8 @@
 #include "kudu/util/trace.h"
 
 #if defined(__APPLE__)
-#include <mach-o/dyld.h>
-#include <sys/sysctl.h>
+#include <mach-o/dyld.h> // @manual
+#include <sys/sysctl.h> // @manual
 #else
 #include <linux/falloc.h>
 #include <linux/fiemap.h>

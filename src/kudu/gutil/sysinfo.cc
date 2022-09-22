@@ -36,17 +36,17 @@
 #include <fcntl.h>    // for open()
 #include <unistd.h>   // for read()
 
-#if defined __MACH__          // Mac OS X, almost certainly
-#include <sys/sysctl.h>       // how we figure out numcpu's on OS X
+#if defined __MACH__              // Mac OS X, almost certainly
+#include <sys/sysctl.h> // @manual// how we figure out numcpu's on OS X
 #include <sys/types.h>
 #elif defined __FreeBSD__
-#include <sys/sysctl.h>
-#elif defined __sun__         // Solaris
-#include <procfs.h>           // for, e.g., prmap_t
+#include <sys/sysctl.h> // @manual
+#elif defined __sun__             // Solaris
+#include <procfs.h> // @manual    // for, e.g., prmap_t
 #elif defined(PLATFORM_WINDOWS)
-#include <process.h>          // for getpid() (actually, _getpid())
-#include <shlwapi.h>          // for SHGetValueA()
-#include <tlhelp32.h>         // for Module32First()
+#include <process.h> // @manual   // for getpid() (actually, _getpid())
+#include <shlwapi.h> // @manual        // for SHGetValueA()
+#include <tlhelp32.h> // @manual  // for Module32First()
 #endif
 
 #include "kudu/gutil/sysinfo.h"

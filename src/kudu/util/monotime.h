@@ -30,7 +30,7 @@
 #else
 // This is a poor module interdependency, but the stubs are header-only and
 // it's only for exported header builds, so we'll make an exception.
-#include "kudu/client/stubs.h"
+#include "kudu/client/stubs.h" // @manual
 #endif
 
 #include "kudu/util/kudu_export.h"

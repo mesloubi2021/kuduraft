@@ -18,7 +18,7 @@
 #include "kudu/gutil/template_util.h"
 
 #if defined(OS_WIN)
-#include "kudu/gutil/bind_internal_win.h"
+#include "kudu/gutil/bind_internal_win.h" // @manual
 #endif
 
 // During Chromium import, WeakPtr-related code was removed.

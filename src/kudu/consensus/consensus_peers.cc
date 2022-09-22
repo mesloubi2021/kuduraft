@@ -53,7 +53,7 @@
 #include "kudu/rpc/response_callback.h"
 #include "kudu/rpc/rpc_controller.h"
 #ifdef FB_DO_NOT_REMOVE
-#include "kudu/tserver/tserver.pb.h"
+#include "kudu/tserver/tserver.pb.h" // @manual
 #endif
 #include "kudu/util/fault_injection.h"
 #include "kudu/util/flag_tags.h"

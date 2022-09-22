@@ -54,8 +54,8 @@
 #include "kudu/gutil/ref_counted.h"
 
 #ifdef FB_DO_NOT_REMOVE
-#include "kudu/tablet/metadata.pb.h"
-#include "kudu/tserver/tserver.pb.h"
+#include "kudu/tablet/metadata.pb.h" // @manual
+#include "kudu/tserver/tserver.pb.h" // @manual
 #endif
 
 #include "kudu/util/atomic.h"
