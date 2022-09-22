@@ -17,6 +17,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+from builtins import range
+from builtins import object
 import argparse
 import errno
 import fcntl

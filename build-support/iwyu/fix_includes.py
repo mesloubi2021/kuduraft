@@ -14,6 +14,9 @@
 
 from __future__ import print_function
 
+from builtins import next
+from builtins import range
+from builtins import object
 """Update files with the 'correct' #include and forward-declare lines.
 
 Given the output of include_what_you_use on stdin -- when run at the
@@ -169,7 +172,7 @@ _IWYU_PRAGMA_KEEP_RE = re.compile(r'IWYU pragma:\s+keep')
 # Adapt Python 2 iterators to Python 3 syntax
 if sys.version_info[0] < 3:
   def next(i):
-    return i.next()
+    return i.__next__()
 
 
 class OrderedSet(object):
@@ -194,7 +197,7 @@ class OrderedSet(object):
     return OrderedSet(diff_values)
 
   def __iter__(self):
-    return self.storage.keys().__iter__()
+    return list(self.storage.keys()).__iter__()
 
   def __contains__(self, value):
     return value in self.storage
@@ -350,7 +353,7 @@ class IWYUOutputParser(object):
     if not line:             # just ignore blank lines
       return True
 
-    for (section_re, section_name) in self._RE_TO_NAME.items():
+    for (section_re, section_name) in list(self._RE_TO_NAME.items()):
       m = section_re.search(line)
       if m:
         # Check or set the filename (if the re has a group, it's for filename).
@@ -2155,7 +2158,7 @@ def ParseAndMergeIWYUOutput(f, files_to_process, flags):
       # Mark that we're skipping this file by setting the record to None
       iwyu_output_records[filename] = None
 
-  return [ior for ior in iwyu_output_records.values() if ior]
+  return [ior for ior in list(iwyu_output_records.values()) if ior]
 
 
 def ProcessIWYUOutput(f, files_to_process, flags):

@@ -75,6 +75,7 @@ Example usage with CMake:
 See iwyu_tool.py -h for more details on command-line arguments.
 """
 
+from builtins import range
 import argparse
 import json
 import multiprocessing
@@ -99,7 +100,7 @@ END_RE = re.compile(r'^---$')
 LINES_RE = re.compile(r'^- (.*?)  // lines ([0-9]+)-[0-9]+$')
 
 
-GENERAL, ADD, REMOVE, LIST = range(4)
+GENERAL, ADD, REMOVE, LIST = list(range(4))
 
 
 def clang_formatter(output):
@@ -302,7 +303,7 @@ def _bootstrap():
     parser.add_argument('-v', '--verbose', action='store_true',
                         help='Print IWYU commands')
     parser.add_argument('-o', '--output-format', type=str,
-                        choices=FORMATTERS.keys(), default=DEFAULT_FORMAT,
+                        choices=list(FORMATTERS.keys()), default=DEFAULT_FORMAT,
                         help='Output format (default: %s)' % DEFAULT_FORMAT)
     parser.add_argument('-p', metavar='<build-path>', required=True,
                         help='Compilation database path', dest='dbpath')

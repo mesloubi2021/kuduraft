@@ -20,6 +20,7 @@
 # Script which parses a test log for 'metrics: ' lines emited by
 # TimeSeriesCollector, and constructs a graph from them
 
+from builtins import str
 import os
 import re
 import simplejson
@@ -60,7 +61,7 @@ def parse_data_from(stream, scope):
 def get_keys(raw_data):
   keys = set()
   for row in raw_data:
-    keys.update(row.keys())
+    keys.update(list(row.keys()))
   return keys
 
 def main():

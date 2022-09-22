@@ -18,7 +18,9 @@
 # under the License.
 
 from __future__ import print_function
-from cStringIO import StringIO
+from future import standard_library
+standard_library.install_aliases()
+from io import StringIO
 import glob
 import json
 import logging
@@ -132,7 +134,7 @@ def _run_iwyu_tool(paths):
        _RE_CLANG_ERROR.search(output):
       crash(output)
     return output
-  except subprocess.CalledProcessError, e:
+  except subprocess.CalledProcessError as e:
     crash(e.output)
 
 

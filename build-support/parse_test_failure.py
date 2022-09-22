@@ -20,6 +20,7 @@
 # This script parses a test log (provided on stdin) and returns
 # a summary of the error which caused the test to fail.
 
+from builtins import object
 from xml.sax.saxutils import quoteattr
 import argparse
 import os

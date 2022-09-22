@@ -20,6 +20,7 @@
 # This script generates a header file which contains definitions
 # for the current Kudu build (eg timestamp, git hash, etc)
 
+from builtins import str
 import hashlib
 import logging
 import optparse

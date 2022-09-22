@@ -25,7 +25,11 @@ which is edited based on whatever metrics you'd like to extract. The set
 of metrics described below are just a starting point to work from.
 Uncomment the ones you are interested in, or add new ones.
 """
+from __future__ import division
 
+from builtins import str
+from builtins import zip
+from past.utils import old_div
 from collections import defaultdict
 import gzip
 try:
@@ -99,7 +103,7 @@ def strip_metric(m):
     return m['value']
 
   if 'counts' in m:
-    return dict(zip(m.get('values', []), m.get('counts')))
+    return dict(list(zip(m.get('values', []), m.get('counts'))))
   return NaN
 
 
@@ -147,7 +151,7 @@ def aggregate_metrics(metric_to_eid_to_vals):
           ret[metric_name] = vals.copy()
         else:
           # Otherwise, add the counts to what's there.
-          for val, count in vals.iteritems():
+          for val, count in list(vals.items()):
             if val in ret[metric_name]:
               ret[metric_name][val] += count
             else:
@@ -173,8 +177,8 @@ def histogram_stats(aggregated_prev, aggregated_cur, m):
 
   # Determine the total count we should expect between the current and previous
   # snapshots.
-  delta_total = sum([val for _, val in cur.iteritems()]) - \
-      sum([val for _, val in prev.iteritems()])
+  delta_total = sum([val for _, val in list(cur.items())]) - \
+      sum([val for _, val in list(prev.items())])
 
   if delta_total == 0:
     return UNKNOWN_PERCENTILES
@@ -184,7 +188,7 @@ def histogram_stats(aggregated_prev, aggregated_cur, m):
 
   # Iterate over all of the buckets for the current and previous snapshots,
   # summing them up, and assigning percentiles to the bucket as appropriate.
-  for cur_val, cur_count in sorted(aggregated_cur[m].iteritems()):
+  for cur_val, cur_count in sorted(aggregated_cur[m].items()):
     prev_count = prev.get(cur_val, 0)
     delta_count = cur_count - prev_count
     cum_count += delta_count
@@ -231,15 +235,15 @@ def process(aggregated_prev, aggregated_cur):
     else:
       calc_vals.append(0)
 
-  calc_vals.extend((delta(aggregated_prev, aggregated_cur, metric))/delta_ts \
+  calc_vals.extend(old_div((delta(aggregated_prev, aggregated_cur, metric)),delta_ts) \
       for metric, _ in RATE_METRICS)
   for metric, _ in HISTOGRAM_METRICS:
     stats = histogram_stats(aggregated_prev, aggregated_cur, metric)
     calc_vals.extend([stats['p50'], stats['p95'], stats['p99'], stats['p999'], stats['max']])
 
-  print (aggregated_cur['ts'] + aggregated_prev['ts'])/2, \
+  print(old_div((aggregated_cur['ts'] + aggregated_prev['ts']),2), \
         cache_ratio, \
-        " ".join(str(x) for x in calc_vals)
+        " ".join(str(x) for x in calc_vals))
   return aggregated_cur
 
 def main(argv):
@@ -254,7 +258,7 @@ def main(argv):
     simple_headers.append(header + "_p999")
     simple_headers.append(header + "_max")
 
-  print "time cache_hit_ratio", " ".join(simple_headers)
+  print("time cache_hit_ratio", " ".join(simple_headers))
 
   for path in sorted(argv[1:]):
     if path.endswith(".gz"):
@@ -284,7 +288,7 @@ def main(argv):
       data['ts'] = ts
       if prev_data:
         # Copy missing metrics from prev_data.
-        for m, prev_eid_to_vals in prev_data.iteritems():
+        for m, prev_eid_to_vals in list(prev_data.items()):
           if m is 'ts':
             continue
           # The metric was missing entirely; copy it over.
@@ -293,7 +297,7 @@ def main(argv):
           else:
             # If the metric was missing for a specific entity, copy the metric
             # from the previous snapshot.
-            for eid, prev_vals in prev_eid_to_vals.iteritems():
+            for eid, prev_vals in list(prev_eid_to_vals.items()):
               if eid not in data[m]:
                 data[m][eid] = prev_vals
 

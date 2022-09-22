@@ -1,3 +1,4 @@
+from __future__ import division
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -15,6 +16,9 @@
 # specific language governing permissions and limitations
 # under the License.
 
+from builtins import range
+from past.utils import old_div
+from builtins import object
 import sys, os
 
 import re
@@ -135,7 +139,7 @@ class KuduReader(object):
             time_info = (startTime, endTime, step)
             
             # 3. Create array of output points
-            number_points = int(math.ceil((endTime - startTime) / step))
+            number_points = int(math.ceil(old_div((endTime - startTime), step)))
             datapoints = [None for i in range(number_points)]
             
             # 4. Fill array of output points
@@ -299,6 +303,6 @@ class KuduFinder(object):
         try:
           for node in self._find_nodes_from_pattern(self.kudu_table, query.pattern):
               yield node
-        except Exception, e:
+        except Exception as e:
           log.exception(e)
           raise

@@ -47,6 +47,13 @@
 #     $ pip install cherrypy
 #     $ pip install MySQL-python
 
+from __future__ import division
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import range
+from builtins import object
+from past.utils import old_div
 import boto
 import cherrypy
 import gzip
@@ -56,14 +63,14 @@ import logging
 import MySQLdb
 import os
 import parse_test_failure
-from StringIO import StringIO
+from io import StringIO
 import threading
 import uuid
 
 def percent_rate(num, denom):
   if denom == 0:
     return 0
-  return num/denom * 100
+  return old_div(num,denom) * 100
 
 
 class TRServer(object):
@@ -281,7 +288,7 @@ class TRServer(object):
       failures_2day = sum(r['num_failures'] for r in test_rows if r['days_ago'] < 2)
 
       # Compute a sparkline (percentage failure for each day)
-      sparkline = [0 for x in xrange(8)]
+      sparkline = [0 for x in range(8)]
       for r in test_rows:
         if r['num_runs'] > 0:
           percent = float(r['num_failures']) / r['num_runs'] * 100

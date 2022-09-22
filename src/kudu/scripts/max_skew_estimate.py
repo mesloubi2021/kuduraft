@@ -20,6 +20,9 @@
 # The purpose of this script is to estimate the distribution of the maximum
 # skew produced by Kudu's "power of two choices" placement algorithm,
 # which is used to place replicas on tablet servers (at least in Kudu <= 1.7).
+from __future__ import division
+from builtins import range
+from past.utils import old_div
 import math
 import random
 import sys
@@ -28,7 +31,7 @@ import sys
 def reservoir_sample(n, sample_size, avoid):
     result = list()
     k = 0
-    for i in xrange(n):
+    for i in range(n):
         if i in avoid:
             continue
         k += 1
@@ -59,11 +62,11 @@ def select_replica(num_servers, avoid, counts):
 # 'data' must be sorted.
 def percentile(data, percentile):
     size = len(data)
-    return data[int(math.ceil((size * percentile) / 100)) - 1]
+    return data[int(math.ceil(old_div((size * percentile), 100))) - 1]
 
 def generate_max_skew(num_servers, num_tablets, rf):
-    counts = {i : 0 for i in xrange(num_servers)}
-    for t in xrange(num_tablets):
+    counts = {i : 0 for i in range(num_servers)}
+    for t in range(num_tablets):
         avoid = set()
         for r in range(rf):
             replica = select_replica(num_servers, avoid, counts)
@@ -74,13 +77,13 @@ def generate_max_skew(num_servers, num_tablets, rf):
 def main():
     args = sys.argv
     if len(args) != 5:
-        print "max_skew_estimate.py <num trials> <num servers> <num_tablets> <repl factor>"
+        print("max_skew_estimate.py <num trials> <num servers> <num_tablets> <repl factor>")
         sys.exit(1)
     num_trials, num_servers, num_tablets, rf = int(args[1]), int(args[2]), int(args[3]), int(args[4])
-    skews = [generate_max_skew(num_servers, num_tablets, rf) for _ in xrange(num_trials)]
+    skews = [generate_max_skew(num_servers, num_tablets, rf) for _ in range(num_trials)]
     skews.sort()
     for p in [5, 25, 50, 75, 99]:
-        print "%02d percentile: %d" % (p, percentile(skews, p))
+        print("%02d percentile: %d" % (p, percentile(skews, p)))
 
 if __name__ == "__main__":
     main()

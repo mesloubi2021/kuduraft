@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 ##############################################################################
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -53,5 +53,5 @@ for r in resources:
 if not all_ok:
     sys.exit(1)
 
-print 'OK'
+print('OK')
 sys.exit(0)

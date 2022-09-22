@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -22,6 +22,8 @@
 #
 # See dist_test.py --help for usage information.
 
+from builtins import str
+from builtins import object
 import argparse
 from collections import deque
 import glob
@@ -347,7 +349,7 @@ def create_archive_input(staging, execution,
              '-e', 'KUDU_ALLOW_SLOW_TESTS=%s' % os.environ.get('KUDU_ALLOW_SLOW_TESTS', 1),
              '-e', 'KUDU_COMPRESS_TEST_OUTPUT=%s' % \
                     os.environ.get('KUDU_COMPRESS_TEST_OUTPUT', 0)]
-  for k, v in execution.env.iteritems():
+  for k, v in list(execution.env.items()):
     if k == 'KUDU_TEST_TIMEOUT':
       # Currently we don't respect the test timeouts specified in ctest, since
       # we want to make sure that the dist-test task timeout and the
@@ -390,7 +392,7 @@ def create_task_json(staging,
   # Some versions of 'isolate batcharchive' directly list the items in
   # the dumped JSON. Others list it in an 'items' dictionary.
   items = inmap.get('items', inmap)
-  for k, v in items.iteritems():
+  for k, v in list(items.items()):
     # The key is 'foo-test.<shard>'. So, chop off the last component
     # to get the test name
     test_name = ".".join(k.split(".")[:-1])
@@ -582,7 +584,7 @@ def add_java_subparser(subparsers):
 
 
 def dump_base_deps(parser, options):
-  print json.dumps(get_base_deps())
+  print(json.dumps(get_base_deps()))
 
 
 def add_internal_commands(subparsers):

@@ -19,6 +19,8 @@
 
 from __future__ import print_function
 
+from future import standard_library
+standard_library.install_aliases()
 import hashlib
 import logging
 import os
@@ -29,7 +31,7 @@ import tempfile
 try:
   import urllib.request as urllib
 except ImportError:
-  import urllib
+  import urllib.request, urllib.parse, urllib.error
 
 from kudu_util import check_output, confirm_prompt, Colors, get_my_email, get_upstream_commit, \
   init_logging, ROOT
@@ -153,7 +155,7 @@ def run_rat(tarball_path):
     rat_jar_dest = "%s/%s" % (tmpdir_path, os.path.basename(rat_url))
 
     print("> Downloading RAT jar from " + rat_url)
-    urllib.urlretrieve(rat_url, rat_jar_dest)
+    urllib.request.urlretrieve(rat_url, rat_jar_dest)
 
     print("> Running RAT...")
     xml = subprocess.check_output(["java", "-jar", rat_jar_dest, "-x", tarball_path])
@@ -187,7 +189,7 @@ def main():
   run_rat(tarball_path)
 
   print(Colors.GREEN + "Release successfully generated!" + Colors.RESET)
-  print
+  print()
 
 
 if __name__ == "__main__":
