@@ -700,20 +700,28 @@ void RpcPeerProxy::UpdateAsync(const ConsensusRequestPB* request,
                                                ? request->raft_rpc_token()
                                                : boost::optional<std::string>();
   consensus_proxy_->UpdateConsensusAsync(
-      *request, response, controller,
-      [callback, response, request_token = std::move(rpc_token),
+      *request,
+      response,
+      controller,
+      [callback,
+       response,
+       controller,
+       request_token = std::move(rpc_token),
        mismatch_counter = num_rpc_token_mismatches_]() {
         // Should not need to lock here since only one request can happen at any
         // time
-        CheckAndEnforceResponseToken("UpdateAsync", response, request_token,
-                                     mismatch_counter);
+        if (controller->status().ok()) {
+          CheckAndEnforceResponseToken(
+              "UpdateAsync", response, request_token, mismatch_counter);
+        }
         callback();
       });
 }
 
-Status RpcPeerProxy::StartElection(const RunLeaderElectionRequestPB* request,
-                                 RunLeaderElectionResponsePB* response,
-                                 rpc::RpcController* controller) {
+Status RpcPeerProxy::StartElection(
+    const RunLeaderElectionRequestPB* request,
+    RunLeaderElectionResponsePB* response,
+    rpc::RpcController* controller) {
   controller->set_timeout(MonoDelta::FromMilliseconds(FLAGS_consensus_rpc_timeout_ms));
   return consensus_proxy_->RunLeaderElection(*request, response, controller);
 }
@@ -726,11 +734,21 @@ void RpcPeerProxy::RequestConsensusVoteAsync(const VoteRequestPB* request,
                                                ? request->raft_rpc_token()
                                                : boost::optional<std::string>();
   consensus_proxy_->RequestConsensusVoteAsync(
-      *request, response, controller,
-      [callback, response, request_token = std::move(rpc_token),
+      *request,
+      response,
+      controller,
+      [callback,
+       response,
+       controller,
+       request_token = std::move(rpc_token),
        mismatch_counter = num_rpc_token_mismatches_]() {
-        CheckAndEnforceResponseToken("RequestConsensusVoteAsync", response,
-                                     request_token, mismatch_counter);
+        if (controller->status().ok()) {
+          CheckAndEnforceResponseToken(
+              "RequestConsensusVoteAsync",
+              response,
+              request_token,
+              mismatch_counter);
+        }
         callback();
       });
 }
