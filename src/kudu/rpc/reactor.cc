@@ -167,7 +167,7 @@ Status ReactorThread::Init() {
   ev_set_invoke_pending_cb(loop_, &ReactorThread::InvokePendingCb);
 
   // Create Reactor thread.
-  return kudu::Thread::Create("reactor", "rpc reactor", &ReactorThread::RunThread, this, &thread_);
+  return kudu::Thread::Create("reactor", "rpc_reactor", &ReactorThread::RunThread, this, &thread_);
 }
 
 void ReactorThread::InvokePendingCb(struct ev_loop* loop) {

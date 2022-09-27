@@ -741,7 +741,7 @@ void ThreadPool::DispatchThread() {
 }
 
 Status ThreadPool::CreateThread() {
-  return kudu::Thread::Create("thread pool", strings::Substitute("$0 [worker]", name_),
+  return kudu::Thread::Create("thread pool", strings::Substitute("$0_[worker]", name_),
                               &ThreadPool::DispatchThread, this, nullptr);
 }
 
