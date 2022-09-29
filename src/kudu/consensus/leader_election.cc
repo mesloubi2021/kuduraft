@@ -687,7 +687,7 @@ Status FlexibleVoteCounter::ExtendNextLeaderRegions(
           "Potential next leader not in configuration");
     }
     next_leader_quorum_ids->insert(leader_quorum_id);
-    VLOG_WITH_PREFIX(3)
+    LOG_WITH_PREFIX(INFO)
         << "Potential next leader: " << leader_uuid
         << " in quorum:  " << leader_quorum_id;
   }
@@ -796,13 +796,8 @@ void FlexibleVoteCounter::AppendPotentialLeaderUUID(
     const std::set<std::string>& leader_regions,
     const RegionToVoterSet& region_to_voter_set,
     const std::map<std::string, int32_t>& region_pruned_counts,
-    std::set<std::string>* potential_leader_uuids,
-    std::set<std::string>* next_leader_regions) const {
-  CHECK(next_leader_regions);
+    std::set<std::string>* potential_leader_uuids) const {
   CHECK(potential_leader_uuids);
-
-  bool quorum_satisfied = true;
-  bool quorum_satisfaction_possible = true;
 
   for (const std::string& leader_region : leader_regions) {
     int32_t pruned_count =
@@ -813,14 +808,11 @@ void FlexibleVoteCounter::AppendPotentialLeaderUUID(
     std::pair<bool, bool> quorum_satisfaction_info =
         DoHistoricalVotesSatisfyMajorityInRegion(
             leader_region, vote_count, pruned_count);
-    if (quorum_satisfaction_info.first && quorum_satisfied) {
-      next_leader_regions->erase(leader_region);
+    if (quorum_satisfaction_info.first) {
       potential_leader_uuids->insert(candidate_uuid);
       VLOG_WITH_PREFIX(3)
-          << "Added potential leader UUID: " << candidate_uuid
-          << ". Erased leader region: " << leader_region;
-    } else if (quorum_satisfaction_info.second &&
-        quorum_satisfaction_possible) {
+          << "Added potential leader UUID: " << candidate_uuid;
+    } else if (quorum_satisfaction_info.second) {
       potential_leader_uuids->insert(candidate_uuid);
       VLOG_WITH_PREFIX(3)
           << "Added potential leader UUID: " << candidate_uuid;
@@ -881,7 +873,7 @@ PotentialNextLeadersResponse FlexibleVoteCounter::GetPotentialNextLeaders(
 
       AppendPotentialLeaderUUID(
           uuid, leader_regions, region_to_voter_set, region_pruned_counts,
-          &potential_leader_uuids, &next_leader_regions);
+          &potential_leader_uuids);
     }
 
     if (!potential_leader_uuids.empty()) {

@@ -299,16 +299,13 @@ class FlexibleVoteCounter : public VoteCounter {
   // `candidate_uuid` got in the past was enough for it to have won an
   // election in that term. The side effects of this function include updating
   // `potential_leader_uuids` to include `candidate_uuid` if it could have won
-  // an election in the past and removing regions from `next_leader_regions`
-  // which conclusively transferred leadership to some UUID in an
-  // intermediary term.
+  // an election in the past.
   void AppendPotentialLeaderUUID(
     const std::string& candidate_uuid,
     const std::set<std::string>& leader_regions,
     const RegionToVoterSet& region_to_voter_set,
     const std::map<std::string, int32_t>& region_pruned_counts,
-    std::set<std::string>* potential_leader_uuids,
-    std::set<std::string>* next_leader_regions) const;
+    std::set<std::string>* potential_leader_uuids) const;
 
   // Optimizer function which tries to recursively figure out the next leader
   // regions since the last term provided and the potential set of leaders regions
