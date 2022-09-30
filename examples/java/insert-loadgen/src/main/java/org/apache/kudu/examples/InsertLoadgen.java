@@ -22,7 +22,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.UUID;
-
 import org.apache.kudu.Schema;
 import org.apache.kudu.Type;
 import org.apache.kudu.client.Insert;
@@ -40,6 +39,7 @@ public class InsertLoadgen {
 
     /**
      * Instantiate a random data generator for a specific field.
+     *
      * @param index The numerical index of the column in the row schema
      * @param type The type of the data at index {@code index}
      */
@@ -50,8 +50,8 @@ public class InsertLoadgen {
     }
 
     /**
-     * Add random data to the given row for the column at index {@code index}
-     * of type {@code type}
+     * Add random data to the given row for the column at index {@code index} of type {@code type}
+     *
      * @param row The row to add the field to
      */
     void generateColumnData(PartialRow row) {
@@ -60,7 +60,7 @@ public class InsertLoadgen {
           row.addByte(index, (byte) rng.nextInt(Byte.MAX_VALUE));
           return;
         case INT16:
-          row.addShort(index, (short)rng.nextInt(Short.MAX_VALUE));
+          row.addShort(index, (short) rng.nextInt(Short.MAX_VALUE));
           return;
         case INT32:
           row.addInt(index, rng.nextInt(Integer.MAX_VALUE));

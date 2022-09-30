@@ -19,7 +19,6 @@ package org.apache.kudu.examples;
 
 import java.util.ArrayList;
 import java.util.List;
-
 import org.apache.kudu.ColumnSchema;
 import org.apache.kudu.Schema;
 import org.apache.kudu.Type;
@@ -49,14 +48,11 @@ public class Example {
   private static final Double DEFAULT_DOUBLE = 12.345;
   private static final String KUDU_MASTERS = System.getProperty("kuduMasters", "localhost:7051");
 
-  private static void createExampleTable(KuduClient client, String tableName)  throws KuduException {
+  private static void createExampleTable(KuduClient client, String tableName) throws KuduException {
     // Set up a simple schema.
     List<ColumnSchema> columns = new ArrayList<>(2);
-    columns.add(new ColumnSchema.ColumnSchemaBuilder("key", Type.INT32)
-        .key(true)
-        .build());
-    columns.add(new ColumnSchema.ColumnSchemaBuilder("value", Type.STRING).nullable(true)
-        .build());
+    columns.add(new ColumnSchema.ColumnSchemaBuilder("key", Type.INT32).key(true).build());
+    columns.add(new ColumnSchema.ColumnSchemaBuilder("value", Type.STRING).nullable(true).build());
     Schema schema = new Schema(columns);
 
     // Set up the partition schema, which distributes rows to different tablets by hash.
@@ -73,7 +69,8 @@ public class Example {
     System.out.println("Created table " + tableName);
   }
 
-  private static void insertRows(KuduClient client, String tableName, int numRows) throws KuduException {
+  private static void insertRows(KuduClient client, String tableName, int numRows)
+      throws KuduException {
     // Open the newly-created table and create a KuduSession.
     KuduTable table = client.openTable(tableName);
     KuduSession session = client.newSession();
@@ -115,7 +112,8 @@ public class Example {
     System.out.println("Inserted " + numRows + " rows");
   }
 
-  private static void scanTableAndCheckResults(KuduClient client, String tableName, int numRows) throws KuduException {
+  private static void scanTableAndCheckResults(KuduClient client, String tableName, int numRows)
+      throws KuduException {
     KuduTable table = client.openTable(tableName);
     Schema schema = table.getSchema();
 
@@ -125,20 +123,20 @@ public class Example {
     projectColumns.add("value");
     projectColumns.add("added");
     int lowerBound = 0;
-    KuduPredicate lowerPred = KuduPredicate.newComparisonPredicate(
-        schema.getColumn("key"),
-        ComparisonOp.GREATER_EQUAL,
-        lowerBound);
+    KuduPredicate lowerPred =
+        KuduPredicate.newComparisonPredicate(
+            schema.getColumn("key"), ComparisonOp.GREATER_EQUAL, lowerBound);
     int upperBound = numRows / 2;
-    KuduPredicate upperPred = KuduPredicate.newComparisonPredicate(
-        schema.getColumn("key"),
-        ComparisonOp.LESS,
-        upperBound);
-    KuduScanner scanner = client.newScannerBuilder(table)
-        .setProjectedColumnNames(projectColumns)
-        .addPredicate(lowerPred)
-        .addPredicate(upperPred)
-        .build();
+    KuduPredicate upperPred =
+        KuduPredicate.newComparisonPredicate(
+            schema.getColumn("key"), ComparisonOp.LESS, upperBound);
+    KuduScanner scanner =
+        client
+            .newScannerBuilder(table)
+            .setProjectedColumnNames(projectColumns)
+            .addPredicate(lowerPred)
+            .addPredicate(upperPred)
+            .build();
 
     // Check the correct number of values and null values are returned, and
     // that the default value was set for the new column on each row.
@@ -154,21 +152,28 @@ public class Example {
         }
         double added = result.getDouble("added");
         if (added != DEFAULT_DOUBLE) {
-          throw new RuntimeException("expected added=" + DEFAULT_DOUBLE +
-              " but got added= " + added);
+          throw new RuntimeException(
+              "expected added=" + DEFAULT_DOUBLE + " but got added= " + added);
         }
         resultCount++;
       }
     }
     int expectedResultCount = upperBound - lowerBound;
     if (resultCount != expectedResultCount) {
-      throw new RuntimeException("scan error: expected " + expectedResultCount +
-          " results but got " + resultCount + " results");
+      throw new RuntimeException(
+          "scan error: expected "
+              + expectedResultCount
+              + " results but got "
+              + resultCount
+              + " results");
     }
     int expectedNullCount = expectedResultCount / 2 + (numRows % 2 == 0 ? 1 : 0);
     if (nullCount != expectedNullCount) {
-      throw new RuntimeException("scan error: expected " + expectedNullCount +
-          " rows with value=null but found " + nullCount);
+      throw new RuntimeException(
+          "scan error: expected "
+              + expectedNullCount
+              + " rows with value=null but found "
+              + nullCount);
     }
     System.out.println("Scanned some rows and checked the results");
   }
