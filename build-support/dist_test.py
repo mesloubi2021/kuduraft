@@ -386,7 +386,7 @@ def create_task_json(staging,
   submitted multiple times. This can be useful for looping tests.
   """
   tasks = []
-  with file(staging.archive_dump_path(), "r") as isolate_dump:
+  with open(staging.archive_dump_path(), "r") as isolate_dump:
     inmap = json.load(isolate_dump)
 
   # Some versions of 'isolate batcharchive' directly list the items in
@@ -413,7 +413,7 @@ def create_task_json(staging,
     sys.exit(1)
   outmap = {"tasks": tasks}
 
-  with file(staging.tasks_json_path(), "wt") as f:
+  with open(staging.tasks_json_path(), "wt") as f:
     json.dump(outmap, f)
 
 
@@ -463,7 +463,7 @@ def get_flakies():
   path = os.getenv('KUDU_FLAKY_TEST_LIST')
   if not path:
     return set()
-  return set(l.strip() for l in file(path))
+  return set(l.strip() for l in open(path))
 
 def run_tests(parser, options):
   """

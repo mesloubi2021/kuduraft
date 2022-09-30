@@ -223,9 +223,6 @@ def cache_hit_ratio(aggregated_prev, aggregated_cur):
 
 def process(aggregated_prev, aggregated_cur):
   """ Process a pair of metric snapshots, outputting a line of TSV. """
-  if not aggregated_prev:
-    aggregated_prev = aggregate_metrics(prev)
-
   delta_ts = aggregated_cur['ts'] - aggregated_prev['ts']
   calc_vals = []
   cache_ratio = cache_hit_ratio(aggregated_prev, aggregated_cur)
@@ -264,7 +261,7 @@ def main(argv):
     if path.endswith(".gz"):
       f = gzip.GzipFile(path)
     else:
-      f = file(path)
+      f = open(path)
     for line_number, line in enumerate(f, start=1):
       # Only parse out the "metrics" lines.
       try:

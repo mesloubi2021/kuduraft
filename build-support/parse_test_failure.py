@@ -69,7 +69,7 @@ class LogParser(object):
   @staticmethod
   def _consume_rest(line_iter):
     """ Consume and return the rest of the lines in the iterator. """
-    return [l for l in line_iter]
+    return [line for line in line_iter]
 
   @staticmethod
   def _consume_until(line_iter, end_re):
@@ -87,7 +87,7 @@ class LogParser(object):
   @staticmethod
   def _remove_glog_lines(lines):
     """ Remove any lines from the list of strings which appear to be GLog messages. """
-    return [l for l in lines if not GLOG_LINE_RE.search(l)]
+    return [line for line in lines if not GLOG_LINE_RE.search(l)]
 
   def _record_error(self, error):
     if self._cur_test is None:
@@ -190,8 +190,8 @@ class LogParser(object):
       if m:
         error_signature = m.group(1) + "\n"
         remaining_lines = self._consume_rest(line_iter)
-        remaining_lines = [l for l in remaining_lines if STACKTRACE_ELEM_RE.search(l) and
-                           not IGNORED_STACKTRACE_ELEM_RE.search(l)]
+        remaining_lines = [line for line in remaining_lines if STACKTRACE_ELEM_RE.search(line) and
+                           not IGNORED_STACKTRACE_ELEM_RE.search(line)]
         error_signature += "\n".join(remaining_lines)
         self._record_error(error_signature)
 
@@ -290,7 +290,7 @@ class Test(unittest.TestCase):
       base, _ = os.path.splitext(child)
 
       p = LogParser()
-      p.parse_text(file(os.path.join(self._TEST_DIR, child)).read())
+      p.parse_text(open(os.path.join(self._TEST_DIR, child)).read())
       self._do_test(p.text_failure_summary(), base + "-out.txt")
       self._do_test(p.xml_failure_summary(), base + "-out.xml")
 
@@ -298,10 +298,10 @@ class Test(unittest.TestCase):
     path = os.path.join(self._TEST_DIR, filename)
     if self.regenerate:
       print("Regenerating %s" % path)
-      with file(path, "w") as f:
+      with open(path, "w") as f:
         f.write(got_value)
     else:
-      self.assertEquals(got_value, file(path).read())
+      self.assertEquals(got_value, open(path).read())
 
 
 def main():
@@ -313,7 +313,7 @@ def main():
   args = parser.parse_args()
 
   if args.path:
-    in_file = file(args.path)
+    in_file = open(args.path)
   else:
     in_file = sys.stdin
   log_text = in_file.read(MAX_MEMORY)

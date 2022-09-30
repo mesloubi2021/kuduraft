@@ -50,7 +50,7 @@ def is_elf_binary(path):
   if not os.path.isfile(path) or os.path.islink(path):
     return False
   try:
-    with file(path, "rb") as f:
+    with open(path, "rb") as f:
       magic = f.read(4)
       return magic == "\x7fELF"
   except:
@@ -108,9 +108,6 @@ def main():
   p.add_option("-e", "--env", dest="env", type="string", action="append",
                help="key=value pairs for environment variables",
                default=[])
-  p.add_option("--collect-tmpdir", dest="collect_tmpdir", action="store_true",
-               help="whether to collect the test tmpdir as an artifact if the test fails",
-               default=False)
   p.add_option("--test-language", dest="test_language", action="store",
                help="java or cpp",
                default="cpp")
@@ -174,7 +171,7 @@ def main():
     if not os.path.exists(test_tmpdir):
       os.makedirs(test_tmpdir)
     cmd = [find_java()] + args
-    stdout = stderr = file(os.path.join(test_logdir, "test-output.txt"), "w")
+    stdout = stderr = open(os.path.join(test_logdir, "test-output.txt"), "w")
   else:
     raise ValueError("invalid test language: " + options.test_language)
   logging.info("Running command: ", cmd)
@@ -182,8 +179,6 @@ def main():
   logging.info("Running with env: ", repr(env))
   rc = subprocess.call(cmd, env=env, stdout=stdout, stderr=stderr)
 
-  if rc != 0 and options.collect_tmpdir:
-    os.system("tar czf %s %s" % (os.path.join(test_dir, "..", "test-logs", "test_tmpdir.tgz"), test_tmpdir))
   sys.exit(rc)
 
 

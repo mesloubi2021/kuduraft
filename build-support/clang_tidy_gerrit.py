@@ -69,7 +69,7 @@ def run_tidy(sha="HEAD", is_rev_range=False):
                    "-DCLANG_TIDY"] + compile_flags.get_flags()
         return subprocess.check_output(
             cmdline,
-            stdin=file(patch_file.name),
+            stdin=open(patch_file.name),
             cwd=ROOT)
     pool = ThreadPool(multiprocessing.cpu_count())
     try:
