@@ -75,41 +75,41 @@ Example usage with CMake:
 See iwyu_tool.py -h for more details on command-line arguments.
 """
 
-from builtins import range
 import argparse
 import json
 import multiprocessing
-from multiprocessing.pool import ThreadPool
 import os
 import re
 import subprocess
 import sys
 import unittest
+from builtins import range
+from multiprocessing.pool import ThreadPool
 
 
 def iwyu_formatter(output):
-    """ Process iwyu's output, basically a no-op. """
-    print('\n'.join(output))
+    """Process iwyu's output, basically a no-op."""
+    print("\n".join(output))
 
 
-CORRECT_RE = re.compile(r'^\((.*?) has correct #includes/fwd-decls\)$')
-SHOULD_ADD_RE = re.compile(r'^(.*?) should add these lines:$')
-SHOULD_REMOVE_RE = re.compile(r'^(.*?) should remove these lines:$')
-FULL_LIST_RE = re.compile(r'The full include-list for (.*?):$')
-END_RE = re.compile(r'^---$')
-LINES_RE = re.compile(r'^- (.*?)  // lines ([0-9]+)-[0-9]+$')
+CORRECT_RE = re.compile(r"^\((.*?) has correct #includes/fwd-decls\)$")
+SHOULD_ADD_RE = re.compile(r"^(.*?) should add these lines:$")
+SHOULD_REMOVE_RE = re.compile(r"^(.*?) should remove these lines:$")
+FULL_LIST_RE = re.compile(r"The full include-list for (.*?):$")
+END_RE = re.compile(r"^---$")
+LINES_RE = re.compile(r"^- (.*?)  // lines ([0-9]+)-[0-9]+$")
 
 
 GENERAL, ADD, REMOVE, LIST = list(range(4))
 
 
 def clang_formatter(output):
-    """ Process iwyu's output into something clang-like. """
+    """Process iwyu's output into something clang-like."""
     state = (GENERAL, None)
     for line in output:
         match = CORRECT_RE.match(line)
         if match:
-            print('%s:1:1: note: #includes/fwd-decls are correct' % match.groups(1))
+            print("%s:1:1: note: #includes/fwd-decls are correct" % match.groups(1))
             continue
         match = SHOULD_ADD_RE.match(line)
         if match:
@@ -129,47 +129,44 @@ def clang_formatter(output):
         elif state[0] == GENERAL:
             print(line)
         elif state[0] == ADD:
-            print('%s:1:1: error: add the following line' % state[1])
+            print("%s:1:1: error: add the following line" % state[1])
             print(line)
         elif state[0] == REMOVE:
             match = LINES_RE.match(line)
-            line_no = match.group(2) if match else '1'
-            print('%s:%s:1: error: remove the following line' % (state[1], line_no))
+            line_no = match.group(2) if match else "1"
+            print("%s:%s:1: error: remove the following line" % (state[1], line_no))
             print(match.group(1))
 
 
-DEFAULT_FORMAT = 'iwyu'
-FORMATTERS = {
-    'iwyu': iwyu_formatter,
-    'clang': clang_formatter
-}
+DEFAULT_FORMAT = "iwyu"
+FORMATTERS = {"iwyu": iwyu_formatter, "clang": clang_formatter}
+
 
 def get_output(cwd, args):
-    """ Run the given command and return its output as a string. """
-    process = subprocess.Popen(args=args,
-                               cwd=cwd,
-                               stdout=subprocess.PIPE,
-                               stderr=subprocess.STDOUT)
+    """Run the given command and return its output as a string."""
+    process = subprocess.Popen(
+        args=args, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+    )
     return process.communicate()[0].decode("utf-8").splitlines()
 
 
 def run_iwyu(cwd, compile_command, iwyu_args, verbose):
-    """ Rewrite compile_command to an IWYU command, and run it. """
-    compiler, _, args = compile_command.partition(' ')
-    if compiler.endswith('cl.exe'):
+    """Rewrite compile_command to an IWYU command, and run it."""
+    compiler, _, args = compile_command.partition(" ")
+    if compiler.endswith("cl.exe"):
         # If the compiler name is cl.exe, let IWYU be cl-compatible
-        clang_args = ['--driver-mode=cl']
+        clang_args = ["--driver-mode=cl"]
     else:
         clang_args = []
 
     extra_args = []
     for a in iwyu_args:
-        extra_args += ['-Xiwyu', a]
+        extra_args += ["-Xiwyu", a]
 
-    cmd_args = ['include-what-you-use'] + clang_args + extra_args + args.split()
+    cmd_args = ["include-what-you-use"] + clang_args + extra_args + args.split()
 
     if verbose:
-        print('{}'.format(cmd_args))
+        print("{}".format(cmd_args))
 
     return get_output(cwd, cmd_args)
 
@@ -189,48 +186,52 @@ def workaround_parent_dir_relative_includes(cwd, command):
     Makefile generator always produces absolute paths to begin with.
     See https://gitlab.kitware.com/cmake/cmake/issues/17450
     """
+
     def subber(m):
         return m.group(1) + os.path.abspath(os.path.join(cwd, m.group(2)))
-    return re.sub(r'(-isystem |-I\s*)([^/\s]\S+)', subber, command)
+
+    return re.sub(r"(-isystem |-I\s*)([^/\s]\S+)", subber, command)
 
 
 class RelativeIncludeTest(unittest.TestCase):
     def test(self):
         f = workaround_parent_dir_relative_includes
-        self.assertEquals(f('/foo/bar', 'gcc -isystem relative/dir'),
-                          'gcc -isystem /foo/bar/relative/dir')
-        self.assertEquals(f('/foo/bar', 'gcc -I relative/dir'),
-                          'gcc -I /foo/bar/relative/dir')
-        self.assertEquals(f('/foo/bar', 'gcc -Irelative/dir'),
-                          'gcc -I/foo/bar/relative/dir')
+        self.assertEquals(
+            f("/foo/bar", "gcc -isystem relative/dir"),
+            "gcc -isystem /foo/bar/relative/dir",
+        )
+        self.assertEquals(
+            f("/foo/bar", "gcc -I relative/dir"), "gcc -I /foo/bar/relative/dir"
+        )
+        self.assertEquals(
+            f("/foo/bar", "gcc -Irelative/dir"), "gcc -I/foo/bar/relative/dir"
+        )
 
-        self.assertEquals(f('/foo/bar', 'gcc -isystem /abs/dir'),
-                          'gcc -isystem /abs/dir')
-        self.assertEquals(f('/foo/bar', 'gcc -I /abs/dir'),
-                          'gcc -I /abs/dir')
-        self.assertEquals(f('/foo/bar', 'gcc -I/abs/dir'),
-                          'gcc -I/abs/dir')
+        self.assertEquals(
+            f("/foo/bar", "gcc -isystem /abs/dir"), "gcc -isystem /abs/dir"
+        )
+        self.assertEquals(f("/foo/bar", "gcc -I /abs/dir"), "gcc -I /abs/dir")
+        self.assertEquals(f("/foo/bar", "gcc -I/abs/dir"), "gcc -I/abs/dir")
 
 
 def main(compilation_db_path, source_files, verbose, formatter, iwyu_args):
-    """ Entry point. """
+    """Entry point."""
     # Canonicalize compilation database path
     if os.path.isdir(compilation_db_path):
-        compilation_db_path = os.path.join(compilation_db_path,
-                                           'compile_commands.json')
+        compilation_db_path = os.path.join(compilation_db_path, "compile_commands.json")
 
     compilation_db_path = os.path.realpath(compilation_db_path)
     if not os.path.isfile(compilation_db_path):
-        print('ERROR: No such file or directory: \'%s\'' % compilation_db_path)
+        print("ERROR: No such file or directory: '%s'" % compilation_db_path)
         return 1
 
     # Read compilation db from disk
-    with open(compilation_db_path, 'r') as fileobj:
+    with open(compilation_db_path, "r") as fileobj:
         compilation_db = json.load(fileobj)
 
     # expand symlinks
     for entry in compilation_db:
-        entry['file'] = os.path.realpath(entry['file'])
+        entry["file"] = os.path.realpath(entry["file"])
 
     # Cross-reference source files with compilation database
     source_files = [os.path.realpath(s) for s in source_files]
@@ -242,19 +243,18 @@ def main(compilation_db_path, source_files, verbose, formatter, iwyu_args):
         # warn for the rest.
         entries = []
         for source in source_files:
-            matches = [e for e in compilation_db if e['file'] == source]
+            matches = [e for e in compilation_db if e["file"] == source]
             if matches:
                 entries.extend(matches)
             else:
-                print('WARNING: \'%s\' not found in compilation database.' %
-                      source)
+                print("WARNING: '%s' not found in compilation database." % source)
 
     # Run analysis
     def run_iwyu_task(entry):
-        cwd, compile_command = entry['directory'], entry['command']
-        compile_command = workaround_parent_dir_relative_includes(
-            cwd, compile_command)
+        cwd, compile_command = entry["directory"], entry["command"]
+        compile_command = workaround_parent_dir_relative_includes(cwd, compile_command)
         return run_iwyu(cwd, compile_command, iwyu_args, verbose)
+
     pool = ThreadPool(multiprocessing.cpu_count())
     try:
         for iwyu_output in pool.imap_unordered(run_iwyu_task, entries):
@@ -262,7 +262,7 @@ def main(compilation_db_path, source_files, verbose, formatter, iwyu_args):
     except KeyboardInterrupt as ki:
         sys.exit(1)
     except OSError as why:
-        print('ERROR: Failed to launch include-what-you-use: %s' % why)
+        print("ERROR: Failed to launch include-what-you-use: %s" % why)
         return 1
     finally:
         pool.terminate()
@@ -271,21 +271,22 @@ def main(compilation_db_path, source_files, verbose, formatter, iwyu_args):
 
 
 def _bootstrap():
-    """ Parse arguments and dispatch to main(). """
+    """Parse arguments and dispatch to main()."""
     # This hackery is necessary to add the forwarded IWYU args to the
     # usage and help strings.
     def customize_usage(parser):
-        """ Rewrite the parser's format_usage. """
+        """Rewrite the parser's format_usage."""
         original_format_usage = parser.format_usage
-        parser.format_usage = lambda: original_format_usage().rstrip() + \
-                              ' -- [<IWYU args>]' + os.linesep
+        parser.format_usage = (
+            lambda: original_format_usage().rstrip() + " -- [<IWYU args>]" + os.linesep
+        )
 
     def customize_help(parser):
-        """ Rewrite the parser's format_help. """
+        """Rewrite the parser's format_help."""
         original_format_help = parser.format_help
 
         def custom_help():
-            """ Customized help string, calls the adjusted format_usage. """
+            """Customized help string, calls the adjusted format_usage."""
             helpmsg = original_format_help()
             helplines = helpmsg.splitlines()
             helplines[0] = parser.format_usage().rstrip()
@@ -295,35 +296,58 @@ def _bootstrap():
 
     # Parse arguments
     parser = argparse.ArgumentParser(
-        description='Include-what-you-use compilation database driver.',
-        epilog='Assumes include-what-you-use is available on the PATH.')
+        description="Include-what-you-use compilation database driver.",
+        epilog="Assumes include-what-you-use is available on the PATH.",
+    )
     customize_usage(parser)
     customize_help(parser)
 
-    parser.add_argument('-v', '--verbose', action='store_true',
-                        help='Print IWYU commands')
-    parser.add_argument('-o', '--output-format', type=str,
-                        choices=list(FORMATTERS.keys()), default=DEFAULT_FORMAT,
-                        help='Output format (default: %s)' % DEFAULT_FORMAT)
-    parser.add_argument('-p', metavar='<build-path>', required=True,
-                        help='Compilation database path', dest='dbpath')
-    parser.add_argument('source', nargs='*',
-                        help='Zero or more source files to run IWYU on. '
-                        'Defaults to all in compilation database.')
+    parser.add_argument(
+        "-v", "--verbose", action="store_true", help="Print IWYU commands"
+    )
+    parser.add_argument(
+        "-o",
+        "--output-format",
+        type=str,
+        choices=list(FORMATTERS.keys()),
+        default=DEFAULT_FORMAT,
+        help="Output format (default: %s)" % DEFAULT_FORMAT,
+    )
+    parser.add_argument(
+        "-p",
+        metavar="<build-path>",
+        required=True,
+        help="Compilation database path",
+        dest="dbpath",
+    )
+    parser.add_argument(
+        "source",
+        nargs="*",
+        help="Zero or more source files to run IWYU on. "
+        "Defaults to all in compilation database.",
+    )
 
     def partition_args(argv):
-        """ Split around '--' into driver args and IWYU args. """
+        """Split around '--' into driver args and IWYU args."""
         try:
-            double_dash = argv.index('--')
-            return argv[:double_dash], argv[double_dash+1:]
+            double_dash = argv.index("--")
+            return argv[:double_dash], argv[double_dash + 1 :]
         except ValueError:
             return argv, []
+
     argv, iwyu_args = partition_args(sys.argv[1:])
     args = parser.parse_args(argv)
 
-    sys.exit(main(args.dbpath, args.source, args.verbose,
-                  FORMATTERS[args.output_format], iwyu_args))
+    sys.exit(
+        main(
+            args.dbpath,
+            args.source,
+            args.verbose,
+            FORMATTERS[args.output_format],
+            iwyu_args,
+        )
+    )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     _bootstrap()

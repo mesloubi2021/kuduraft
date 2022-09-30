@@ -15,19 +15,29 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from datetime import datetime
 import argparse
+from datetime import datetime
 
 import kudu
 from kudu.client import Partitioning
 
 
 # Parse arguments
-parser = argparse.ArgumentParser(description='Basic Example for Kudu Python.')
-parser.add_argument('--masters', '-m', nargs='+', default='localhost',
-                    help='The master address(es) to connect to Kudu.')
-parser.add_argument('--ports', '-p', nargs='+', default='7051',
-                    help='The master server port(s) to connect to Kudu.')
+parser = argparse.ArgumentParser(description="Basic Example for Kudu Python.")
+parser.add_argument(
+    "--masters",
+    "-m",
+    nargs="+",
+    default="localhost",
+    help="The master address(es) to connect to Kudu.",
+)
+parser.add_argument(
+    "--ports",
+    "-p",
+    nargs="+",
+    default="7051",
+    help="The master server port(s) to connect to Kudu.",
+)
 args = parser.parse_args()
 
 
@@ -36,51 +46,53 @@ client = kudu.connect(host=args.masters, port=args.ports)
 
 # Define a schema for a new table.
 builder = kudu.schema_builder()
-builder.add_column('key').type(kudu.int64).nullable(False).primary_key()
-builder.add_column('ts_val', type_=kudu.unixtime_micros, nullable=False, compression='lz4')
+builder.add_column("key").type(kudu.int64).nullable(False).primary_key()
+builder.add_column(
+    "ts_val", type_=kudu.unixtime_micros, nullable=False, compression="lz4"
+)
 schema = builder.build()
 
 # Define the partitioning schema.
-partitioning = Partitioning().add_hash_partitions(column_names=['key'], num_buckets=3)
+partitioning = Partitioning().add_hash_partitions(column_names=["key"], num_buckets=3)
 
 # Delete table if it already exists.
-if client.table_exists('python-example'):
-  client.delete_table('python-example')
+if client.table_exists("python-example"):
+    client.delete_table("python-example")
 
 # Create a new table.
-client.create_table('python-example', schema, partitioning)
+client.create_table("python-example", schema, partitioning)
 
 # Open a table.
-table = client.table('python-example')
+table = client.table("python-example")
 
 # Create a new session so that we can apply write operations.
 session = client.new_session()
 
 # Insert a row.
-op = table.new_insert({'key': 1, 'ts_val': datetime.utcnow()})
+op = table.new_insert({"key": 1, "ts_val": datetime.utcnow()})
 session.apply(op)
 
 # Upsert a row.
-op = table.new_upsert({'key': 2, 'ts_val': "2016-01-01T00:00:00.000000"})
+op = table.new_upsert({"key": 2, "ts_val": "2016-01-01T00:00:00.000000"})
 session.apply(op)
 
 # Update a row.
-op = table.new_update({'key': 1, 'ts_val': ("2017-01-01", "%Y-%m-%d")})
+op = table.new_update({"key": 1, "ts_val": ("2017-01-01", "%Y-%m-%d")})
 session.apply(op)
 
 # Delete a row.
-op = table.new_delete({'key': 2})
+op = table.new_delete({"key": 2})
 session.apply(op)
 
 # Flush write operations, if failures occur, print them.
 try:
-  session.flush()
+    session.flush()
 except kudu.KuduBadStatus:
-  print(session.get_pending_errors())
+    print(session.get_pending_errors())
 
 # Create a scanner and add a predicate.
 scanner = table.scanner()
-scanner.add_predicate(table['ts_val'] == datetime(2017, 1, 1))
+scanner.add_predicate(table["ts_val"] == datetime(2017, 1, 1))
 
 # Open scanner and print all tuples.
 # Note: This doesn't scale for large scans

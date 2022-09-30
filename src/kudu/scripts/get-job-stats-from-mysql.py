@@ -33,12 +33,13 @@
 # | curr_date    | timestamp    | NO   |     | CURRENT_TIMESTAMP |       |
 # +--------------+--------------+------+-----+-------------------+-------+
 
-import MySQLdb as mdb
-import sys
 import os
+import sys
+
+import MySQLdb as mdb
 
 if len(sys.argv) < 3:
-  sys.exit("usage: %s <workload> <days_count_to_fetch>" % sys.argv[0])
+    sys.exit("usage: %s <workload> <days_count_to_fetch>" % sys.argv[0])
 
 host = os.environ["MYSQLHOST"]
 user = os.environ["MYSQLUSER"]
@@ -47,12 +48,14 @@ db = os.environ["MYSQLDB"]
 
 con = mdb.connect(host, user, pwd, db)
 with con:
-  cur = con.cursor()
-  workload = sys.argv[1]
-  days = sys.argv[2]
-  cur.execute("select workload, runtime, build_number from kudu_perf_tpch where workload like %s AND curr_date >= DATE_SUB(NOW(), INTERVAL %s DAY) and runtime != 0 ORDER BY workload, build_number, curr_date", (workload, days))
-  rows = cur.fetchall()
-  print('workload', '\t', 'runtime', '\t', 'build_number')
-  for row in rows:
-    print(row[0], '\t', row[1], '\t', row[2])
-
+    cur = con.cursor()
+    workload = sys.argv[1]
+    days = sys.argv[2]
+    cur.execute(
+        "select workload, runtime, build_number from kudu_perf_tpch where workload like %s AND curr_date >= DATE_SUB(NOW(), INTERVAL %s DAY) and runtime != 0 ORDER BY workload, build_number, curr_date",
+        (workload, days),
+    )
+    rows = cur.fetchall()
+    print("workload", "\t", "runtime", "\t", "build_number")
+    for row in rows:
+        print(row[0], "\t", row[1], "\t", row[2])

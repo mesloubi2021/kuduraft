@@ -21,11 +21,13 @@
 # skew produced by Kudu's "power of two choices" placement algorithm,
 # which is used to place replicas on tablet servers (at least in Kudu <= 1.7).
 from __future__ import division
-from builtins import range
-from past.utils import old_div
+
 import math
 import random
 import sys
+from builtins import range
+
+from past.utils import old_div
 
 # Replicates Random::ReservoirSample from kudu/util/random.h.
 def reservoir_sample(n, sample_size, avoid):
@@ -43,20 +45,22 @@ def reservoir_sample(n, sample_size, avoid):
             result[j] = i
     return result
 
+
 # Follows CatalogManager::SelectReplica, which implements the power of two
 # choices selection algorithm, except we assume we always have a placement.
 def select_replica(num_servers, avoid, counts):
-  two_choices = reservoir_sample(num_servers, 2, avoid)
-  assert(len(two_choices) > 0)
-  assert(len(two_choices) <= 2)
-  if len(two_choices) == 1:
-      return two_choices[0]
-  else:
-      a, b = two_choices[0], two_choices[1]
-      if counts[a] < counts[b]:
-          return a
-      else:
-          return b
+    two_choices = reservoir_sample(num_servers, 2, avoid)
+    assert len(two_choices) > 0
+    assert len(two_choices) <= 2
+    if len(two_choices) == 1:
+        return two_choices[0]
+    else:
+        a, b = two_choices[0], two_choices[1]
+        if counts[a] < counts[b]:
+            return a
+        else:
+            return b
+
 
 # Quickly cribbed from https://stackoverflow.com/a/15589202.
 # 'data' must be sorted.
@@ -64,8 +68,9 @@ def percentile(data, percentile):
     size = len(data)
     return data[int(math.ceil(old_div((size * percentile), 100))) - 1]
 
+
 def generate_max_skew(num_servers, num_tablets, rf):
-    counts = {i : 0 for i in range(num_servers)}
+    counts = {i: 0 for i in range(num_servers)}
     for t in range(num_tablets):
         avoid = set()
         for r in range(rf):
@@ -74,17 +79,25 @@ def generate_max_skew(num_servers, num_tablets, rf):
             counts[replica] += 1
     return max(counts.values()) - min(counts.values())
 
+
 def main():
     args = sys.argv
     if len(args) != 5:
-        print("max_skew_estimate.py <num trials> <num servers> <num_tablets> <repl factor>")
+        print(
+            "max_skew_estimate.py <num trials> <num servers> <num_tablets> <repl factor>"
+        )
         sys.exit(1)
-    num_trials, num_servers, num_tablets, rf = int(args[1]), int(args[2]), int(args[3]), int(args[4])
+    num_trials, num_servers, num_tablets, rf = (
+        int(args[1]),
+        int(args[2]),
+        int(args[3]),
+        int(args[4]),
+    )
     skews = [generate_max_skew(num_servers, num_tablets, rf) for _ in range(num_trials)]
     skews.sort()
     for p in [5, 25, 50, 75, 99]:
         print("%02d percentile: %d" % (p, percentile(skews, p)))
 
+
 if __name__ == "__main__":
     main()
-

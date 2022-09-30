@@ -19,37 +19,41 @@
 
 import argparse
 import collections
-import compile_flags
 import json
 import logging
 import multiprocessing
-from multiprocessing.pool import ThreadPool
 import os
 import re
 import subprocess
 import sys
-import unittest
 import tempfile
+import unittest
+from multiprocessing.pool import ThreadPool
+
+import compile_flags
 
 from kudu_util import init_logging
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 CLANG_TIDY_DIFF = os.path.join(
-    ROOT, "thirdparty/installed/uninstrumented/share/clang/clang-tidy-diff.py")
-CLANG_TIDY = os.path.join(
-    ROOT, "thirdparty/clang-toolchain/bin/clang-tidy")
+    ROOT, "thirdparty/installed/uninstrumented/share/clang/clang-tidy-diff.py"
+)
+CLANG_TIDY = os.path.join(ROOT, "thirdparty/clang-toolchain/bin/clang-tidy")
 
-GERRIT_USER = 'tidybot'
-GERRIT_PASSWORD = os.getenv('TIDYBOT_PASSWORD')
+GERRIT_USER = "tidybot"
+GERRIT_PASSWORD = os.getenv("TIDYBOT_PASSWORD")
 
 GERRIT_URL = "https://gerrit.cloudera.org"
+
 
 def run_tidy(sha="HEAD", is_rev_range=False):
     diff_cmdline = ["git", "diff" if is_rev_range else "show", sha]
 
     # Figure out which paths changed in the given diff.
-    changed_paths = subprocess.check_output(diff_cmdline + ["--name-only", "--pretty=format:"]).splitlines()
+    changed_paths = subprocess.check_output(
+        diff_cmdline + ["--name-only", "--pretty=format:"]
+    ).splitlines()
     changed_paths = [p for p in changed_paths if p]
 
     # Produce a separate diff for each file and run clang-tidy-diff on it
@@ -60,17 +64,19 @@ def run_tidy(sha="HEAD", is_rev_range=False):
             "--src-prefix=%s/" % ROOT,
             "--dst-prefix=%s/" % ROOT,
             "--",
-            path]
+            path,
+        ]
         subprocess.check_call(cmd, stdout=patch_file, cwd=ROOT)
-        cmdline = [CLANG_TIDY_DIFF,
-                   "-clang-tidy-binary", CLANG_TIDY,
-                   "-p0",
-                   "--",
-                   "-DCLANG_TIDY"] + compile_flags.get_flags()
-        return subprocess.check_output(
-            cmdline,
-            stdin=open(patch_file.name),
-            cwd=ROOT)
+        cmdline = [
+            CLANG_TIDY_DIFF,
+            "-clang-tidy-binary",
+            CLANG_TIDY,
+            "-p0",
+            "--",
+            "-DCLANG_TIDY",
+        ] + compile_flags.get_flags()
+        return subprocess.check_output(cmdline, stdin=open(patch_file.name), cwd=ROOT)
+
     pool = ThreadPool(multiprocessing.cpu_count())
     try:
         return "".join(pool.imap(tidy_on_path, changed_paths))
@@ -86,7 +92,7 @@ def split_warnings(clang_output):
     for l in clang_output.splitlines():
         if l == "" or l == "No relevant changes found.":
             continue
-        if l.startswith(ROOT) and re.search(r'(warning|error): ', l):
+        if l.startswith(ROOT) and re.search(r"(warning|error): ", l):
             if accumulated:
                 yield accumulated
             accumulated = ""
@@ -98,34 +104,36 @@ def split_warnings(clang_output):
 def parse_clang_output(clang_output):
     ret = []
     for w in split_warnings(clang_output):
-        m = re.match(r"^(.+?):(\d+):\d+: ((?:warning|error): .+)$", w, re.MULTILINE | re.DOTALL)
+        m = re.match(
+            r"^(.+?):(\d+):\d+: ((?:warning|error): .+)$", w, re.MULTILINE | re.DOTALL
+        )
         if not m:
             raise Exception("bad warning: " + w)
         path, line, warning = m.groups()
-        ret.append(dict(
-            path=os.path.relpath(path, ROOT),
-            line=int(line),
-            warning=warning.strip()))
+        ret.append(
+            dict(
+                path=os.path.relpath(path, ROOT),
+                line=int(line),
+                warning=warning.strip(),
+            )
+        )
     return ret
+
 
 def create_gerrit_json_obj(parsed_warnings):
     comments = collections.defaultdict(lambda: [])
     for warning in parsed_warnings:
-        comments[warning['path']].append({
-            'line': warning['line'],
-            'message': warning['warning']
-            })
-    return {"comments": comments,
-            "notify": "OWNER",
-            "omit_duplicate_comments": "true"}
+        comments[warning["path"]].append(
+            {"line": warning["line"], "message": warning["warning"]}
+        )
+    return {"comments": comments, "notify": "OWNER", "omit_duplicate_comments": "true"}
 
 
 def get_gerrit_revision_url(git_ref):
     sha = subprocess.check_output(["git", "rev-parse", git_ref]).strip()
 
-    commit_msg = subprocess.check_output(
-        ["git", "show", sha])
-    matches = re.findall(r'^\s+Change-Id: (I.+)$', commit_msg, re.MULTILINE)
+    commit_msg = subprocess.check_output(["git", "show", sha])
+    matches = re.findall(r"^\s+Change-Id: (I.+)$", commit_msg, re.MULTILINE)
     if not matches:
         raise Exception("Could not find gerrit Change-Id for commit %s" % sha)
     if len(matches) != 1:
@@ -136,10 +144,13 @@ def get_gerrit_revision_url(git_ref):
 
 def post_comments(revision_url_base, gerrit_json_obj):
     import requests
-    r = requests.post(revision_url_base + "/review",
-                      auth=(GERRIT_USER, GERRIT_PASSWORD),
-                      data=json.dumps(gerrit_json_obj),
-                      headers={'Content-Type': 'application/json'})
+
+    r = requests.post(
+        revision_url_base + "/review",
+        auth=(GERRIT_USER, GERRIT_PASSWORD),
+        data=json.dumps(gerrit_json_obj),
+        headers={"Content-Type": "application/json"},
+    )
     print("Response:")
     print(r.headers)
     print(r.status_code)
@@ -147,8 +158,7 @@ def post_comments(revision_url_base, gerrit_json_obj):
 
 
 class TestClangTidyGerrit(unittest.TestCase):
-    TEST_INPUT = \
-"""
+    TEST_INPUT = """
 No relevant changes found.
 
 /home/todd/git/kudu/src/kudu/integration-tests/tablet_history_gc-itest.cc:579:55: warning: some warning [warning-name]
@@ -170,27 +180,39 @@ No relevant changes found.
             ROOT = save_root
         self.assertEqual(2, len(parsed))
 
-        self.assertEqual("src/kudu/integration-tests/tablet_history_gc-itest.cc", parsed[0]['path'])
-        self.assertEqual(579, parsed[0]['line'])
-        self.assertEqual("warning: some warning [warning-name]\n" +
-                         "   some example line of code",
-                         parsed[0]['warning'])
+        self.assertEqual(
+            "src/kudu/integration-tests/tablet_history_gc-itest.cc", parsed[0]["path"]
+        )
+        self.assertEqual(579, parsed[0]["line"])
+        self.assertEqual(
+            "warning: some warning [warning-name]\n" + "   some example line of code",
+            parsed[0]["warning"],
+        )
 
-        self.assertEqual("src/kudu/blah.cc", parsed[1]['path'])
-
+        self.assertEqual("src/kudu/blah.cc", parsed[1]["path"])
 
 
 if __name__ == "__main__":
     # Basic setup and argument parsing.
     init_logging()
     parser = argparse.ArgumentParser(
-        description="Run clang-tidy on a patch, optionally posting warnings as comments to gerrit")
-    parser.add_argument("-n", "--no-gerrit", action="store_true",
-                        help="Whether to run locally i.e. (no interaction with gerrit)")
-    parser.add_argument("--rev-range", action="store_true",
-                        default=False,
-                        help="Whether the revision specifies the 'rev..' range")
-    parser.add_argument('rev', help="The git revision (or range of revisions) to process")
+        description="Run clang-tidy on a patch, optionally posting warnings as comments to gerrit"
+    )
+    parser.add_argument(
+        "-n",
+        "--no-gerrit",
+        action="store_true",
+        help="Whether to run locally i.e. (no interaction with gerrit)",
+    )
+    parser.add_argument(
+        "--rev-range",
+        action="store_true",
+        default=False,
+        help="Whether the revision specifies the 'rev..' range",
+    )
+    parser.add_argument(
+        "rev", help="The git revision (or range of revisions) to process"
+    )
     args = parser.parse_args()
 
     if args.rev_range and not args.no_gerrit:

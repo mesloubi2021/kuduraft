@@ -17,12 +17,16 @@
 # specific language governing permissions and limitations
 # under the License.
 
-import MySQLdb as mdb
-import sys
 import os
+import sys
+
+import MySQLdb as mdb
 
 if len(sys.argv) < 6:
-  sys.exit("usage: %s <job_name> <build_number> <workload> <iteration> <runtime>" % sys.argv[0])
+    sys.exit(
+        "usage: %s <job_name> <build_number> <workload> <iteration> <runtime>"
+        % sys.argv[0]
+    )
 
 host = os.environ["MYSQLHOST"]
 user = os.environ["MYSQLUSER"]
@@ -32,13 +36,14 @@ db = os.environ["MYSQLDB"]
 con = mdb.connect(host, user, pwd, db)
 print("Connected to mysql")
 with con:
-  cur = con.cursor()
-  job_name = sys.argv[1]
-  build_number = sys.argv[2]
-  workload = sys.argv[3]
-  iteration = sys.argv[4]
-  runtime = sys.argv[5]
-  cur.execute("INSERT INTO kudu_perf_tpch VALUES(%s, %s, %s, %s, %s, DEFAULT)",
-              (job_name, build_number, workload, iteration, runtime))
-  rows = cur.fetchall()
-
+    cur = con.cursor()
+    job_name = sys.argv[1]
+    build_number = sys.argv[2]
+    workload = sys.argv[3]
+    iteration = sys.argv[4]
+    runtime = sys.argv[5]
+    cur.execute(
+        "INSERT INTO kudu_perf_tpch VALUES(%s, %s, %s, %s, %s, DEFAULT)",
+        (job_name, build_number, workload, iteration, runtime),
+    )
+    rows = cur.fetchall()

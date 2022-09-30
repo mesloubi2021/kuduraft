@@ -22,6 +22,7 @@ from os.path import join
 
 ROOT = join(os.path.dirname(__file__), "..")
 
+
 def get_flags():
     """
     Return the set of flags that are used during compilation.
@@ -30,31 +31,31 @@ def get_flags():
     not clear how to do so.
     """
     return [
-        '-x',
-        'c++',
-        '-DKUDU_HEADERS_NO_STUBS=1',
-        '-DKUDU_HEADERS_USE_RICH_SLICE=1',
-        '-DKUDU_HEADERS_USE_SHORT_STATUS_MACROS=1',
-        '-DKUDU_STATIC_DEFINE',
-        '-D__STDC_FORMAT_MACROS',
-        '-fno-strict-aliasing',
-        '-msse4.2',
-        '-Wall',
-        '-Wno-sign-compare',
-        '-Wno-deprecated',
-        '-pthread',
-        '-ggdb',
-        '-Qunused-arguments',
-        '-Wno-ambiguous-member-template',
-        '-std=c++11',
-        '-g',
-        '-fPIC',
-        '-I',
-        join(ROOT, 'src'),
-        '-I',
-        join(ROOT, 'build/latest/src'),
-        '-isystem',
-        join(ROOT, 'thirdparty/installed/common/include'),
-        '-isystem',
-        join(ROOT, 'thirdparty/installed/uninstrumented/include'),
+        "-x",
+        "c++",
+        "-DKUDU_HEADERS_NO_STUBS=1",
+        "-DKUDU_HEADERS_USE_RICH_SLICE=1",
+        "-DKUDU_HEADERS_USE_SHORT_STATUS_MACROS=1",
+        "-DKUDU_STATIC_DEFINE",
+        "-D__STDC_FORMAT_MACROS",
+        "-fno-strict-aliasing",
+        "-msse4.2",
+        "-Wall",
+        "-Wno-sign-compare",
+        "-Wno-deprecated",
+        "-pthread",
+        "-ggdb",
+        "-Qunused-arguments",
+        "-Wno-ambiguous-member-template",
+        "-std=c++11",
+        "-g",
+        "-fPIC",
+        "-I",
+        join(ROOT, "src"),
+        "-I",
+        join(ROOT, "build/latest/src"),
+        "-isystem",
+        join(ROOT, "thirdparty/installed/common/include"),
+        "-isystem",
+        join(ROOT, "thirdparty/installed/uninstrumented/include"),
     ]
