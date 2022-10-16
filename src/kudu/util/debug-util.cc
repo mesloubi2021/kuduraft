@@ -45,7 +45,11 @@
 #ifndef UNW_LOCAL_ONLY
 #define UNW_LOCAL_ONLY
 #endif
+#ifdef __aarch64__
+#include <libunwind-aarch64.h>
+#else
 #include <libunwind.h>
+#endif //__aarch64__
 #endif
 
 #include "kudu/gutil/basictypes.h"
@@ -165,6 +169,7 @@ class CompletionFlag {
     sys_futex(reinterpret_cast<int32_t*>(&complete_),
               FUTEX_WAKE | FUTEX_PRIVATE_FLAG,
               INT_MAX, // wake all
+              nullptr, nullptr,
               0 /* ignored */);
 #endif
   }
@@ -183,7 +188,7 @@ class CompletionFlag {
       sys_futex(reinterpret_cast<int32_t*>(&complete_),
                 FUTEX_WAIT | FUTEX_PRIVATE_FLAG,
                 0, // wait if value is still 0
-                reinterpret_cast<struct kernel_timespec *>(&ts));
+                reinterpret_cast<struct kernel_timespec *>(&ts), nullptr, 0);
 #else
       sched_yield();
 #endif

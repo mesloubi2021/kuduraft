@@ -76,6 +76,9 @@ class LOCKABLE SpinLock {
       SlowLock();
     }
     ANNOTATE_RWLOCK_ACQUIRED(this, 1);
+#ifdef __aarch64__
+    __asm__ __volatile__ ("dmb ish" ::: "memory");
+#endif //__aarch64__
   }
 
   // Try to acquire this SpinLock without blocking and return true if the
@@ -89,6 +92,9 @@ class LOCKABLE SpinLock {
     if (res) {
       ANNOTATE_RWLOCK_ACQUIRED(this, 1);
     }
+#ifdef __aarch64__
+    __asm__ __volatile__ ("dmb ish" ::: "memory");
+#endif //__aarch64__
     return res;
   }
 
@@ -105,6 +111,9 @@ class LOCKABLE SpinLock {
       // for the lock.
       SlowUnlock(wait_cycles);
     }
+#ifdef __aarch64__
+    __asm__ __volatile__ ("dmb ish" ::: "memory");
+#endif //__aarch64__
   }
 
   // Determine if the lock is held.  When the lock is held by the invoking
@@ -145,7 +154,7 @@ class SCOPED_LOCKABLE SpinLockHolder {
   inline ~SpinLockHolder() /*UNLOCK_FUNCTION()*/ { lock_->Unlock(); }
 };
 // Catch bug where variable name is omitted, e.g. SpinLockHolder (&lock);
-#define SpinLockHolder(x) KUDU_COMPILE_ASSERT(0, spin_lock_decl_missing_var_name)
+#define SpinLockHolder(x) COMPILE_ASSERT(0, spin_lock_decl_missing_var_name)
 
 } // namespace base
 

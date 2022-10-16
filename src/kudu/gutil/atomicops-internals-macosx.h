@@ -27,7 +27,12 @@ typedef int64_t Atomic64;
 #define BASE_HAS_ATOMIC64 1  // Use only in tests and base/atomic*
 #endif
 
-#include <libkern/OSAtomic.h> // @manual
+#include <libkern/OSAtomic.h>
+
+// Almost all OSAtomicXxx functions used in this header are marked
+// as deprecated since macOS 10.12.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
 #if !defined(__LP64__) && defined(__ppc__)
 
@@ -265,11 +270,15 @@ inline void NoBarrier_Store(volatile Atomic64* ptr, Atomic64 value) {
   *ptr = value;
 }
 
-// Issue the x86 "pause" instruction, which tells the CPU that we
-// are in a spinlock wait loop and should allow other hyperthreads
-// to run, not speculate memory access, etc.
+// Issue the x86 "pause" instruction (or "yield" on aarch64), which
+// tells the CPU that we are in a spinlock wait loop and should allow
+// other hyperthreads to run, not speculate memory access, etc.
 inline void PauseCPU() {
+#ifdef __aarch64__
+  __asm__ __volatile__("yield" : : : "memory");
+#else
   __asm__ __volatile__("pause" : : : "memory");
+#endif
 }
 
 inline void Acquire_Store(volatile Atomic64 *ptr, Atomic64 value) {
@@ -398,6 +407,8 @@ inline Atomic64 Release_Load(volatile const Atomic64 *ptr) {
 
 }   // namespace base::subtle
 }   // namespace base
+
+#pragma GCC diagnostic pop
 
 // NOTE(user): The following is also deprecated.  New callers should use
 // the base::subtle namespace.
