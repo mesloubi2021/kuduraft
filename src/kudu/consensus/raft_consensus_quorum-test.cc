@@ -1065,7 +1065,9 @@ TEST_F(RaftConsensusQuorumTest, TestRequestVote) {
   // Indicate that replicas should vote even if they think another leader is alive.
   // This will allow the rest of the requests in the test to go through.
   flush_count_before = flush_count();
+  // TODO(T135470632): Remove ignore_live_leader field
   request.set_ignore_live_leader(true);
+  request.set_mode(ElectionMode::ELECT_EVEN_IF_LEADER_IS_ALIVE);
   ASSERT_OK(peer->RequestVote(&request,
                               TabletVotingState(boost::none /* , tablet::TABLET_DATA_READY */),
                               &response));
@@ -1144,7 +1146,7 @@ TEST_F(RaftConsensusQuorumTest, TestRequestVote) {
   // request, even when they vote "yes".
   flush_count_before = flush_count();
   request.set_candidate_term(last_op_id.term() + 3);
-  request.set_is_pre_election(true);
+  request.set_mode(ElectionMode::PRE_ELECTION);
   response.Clear();
   ASSERT_OK(peer->RequestVote(&request,
                               TabletVotingState(boost::none /* , tablet::TABLET_DATA_READY */),
@@ -1156,7 +1158,7 @@ TEST_F(RaftConsensusQuorumTest, TestRequestVote) {
                                                    fs_managers_[0]->uuid()));
   ASSERT_EQ(0, flush_count() - flush_count_before)
       << "Pre-elections should not flush";
-  request.set_is_pre_election(false);
+  request.set_mode(ElectionMode::NORMAL_ELECTION);
 
   //
   // Ensure replicas vote no for an old op index.

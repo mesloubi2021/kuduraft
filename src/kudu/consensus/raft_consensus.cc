@@ -587,12 +587,16 @@ Status RaftConsensus::EmulateElection() {
 namespace {
 const char* ModeString(ElectionMode mode) {
   switch (mode) {
+    case ElectionMode::UNKNOWN_ELECTION_MODE:
+      return "unknown";
     case ElectionMode::NORMAL_ELECTION:
       return "leader election";
     case ElectionMode::PRE_ELECTION:
       return "pre-election";
     case ElectionMode::ELECT_EVEN_IF_LEADER_IS_ALIVE:
       return "forced leader election";
+    case ElectionMode::MOCK_ELECTION:
+      return "mock election";
   }
   __builtin_unreachable(); // silence gcc warnings
 }
@@ -737,7 +741,6 @@ Status RaftConsensus::StartElection(ElectionMode mode, ElectionContext context) 
     // for each of the specific peers.
     // NB: below dest_uuid is left unpopulated.
     VoteRequestPB request;
-    request.set_ignore_live_leader(mode == ELECT_EVEN_IF_LEADER_IS_ALIVE);
     request.set_candidate_uuid(peer_uuid());
     request.set_candidate_term(candidate_term);
     *request.mutable_candidate_context()->mutable_candidate_peer_pb() =
@@ -746,9 +749,30 @@ Status RaftConsensus::StartElection(ElectionMode mode, ElectionContext context) 
       request.set_raft_rpc_token(*rpc_token);
     }
 
-    if (mode == PRE_ELECTION) {
-      request.set_is_pre_election(true);
+    request.set_mode(mode);
+
+    // Since there will be older versions that still use the is_pre_election and
+    // ignore_live_leader fields, defensively, we will set these fields
+    // according to the mode to be backwards compatible. For MOCK_ELECTION mode,
+    // we will set is_pre_election=true so that defensively, it can be treated
+    // as a no-op election.
+    // TODO(T135470632): Remove setting deprecated fields for backwards
+    // compatibility
+    switch (mode) {
+      case PRE_ELECTION:
+        request.set_is_pre_election(true);
+        break;
+      case ELECT_EVEN_IF_LEADER_IS_ALIVE:
+        request.set_ignore_live_leader(true);
+        break;
+      case MOCK_ELECTION:
+        request.set_is_pre_election(true);
+        request.set_ignore_live_leader(true);
+        break;
+      default:
+        break;
     }
+
     request.set_tablet_id(options_.tablet_id);
     *request.mutable_candidate_status()->mutable_last_received() =
         queue_->GetLastOpIdInLog();
@@ -2063,7 +2087,8 @@ Status RaftConsensus::RequestVote(const VoteRequestPB* request,
   // takes place between requests.
   // Lock ordering: update_lock_ must be acquired before lock_.
   std::unique_lock<simple_spinlock> update_guard(update_lock_, std::defer_lock);
-  if (FLAGS_enable_leader_failure_detection && !request->ignore_live_leader()) {
+  if (FLAGS_enable_leader_failure_detection &&
+      request->mode() != ElectionMode::ELECT_EVEN_IF_LEADER_IS_ALIVE) {
     update_guard.try_lock();
   } else {
     // If failure detection is not enabled, then we can't just reject the vote,
@@ -2178,7 +2203,8 @@ Status RaftConsensus::RequestVote(const VoteRequestPB* request,
         "votes are being witheld for testing", response);
   }
 
-  if (!request->ignore_live_leader() && MonoTime::Now() < withhold_votes_until_) {
+  if (request->mode() != ELECT_EVEN_IF_LEADER_IS_ALIVE &&
+      MonoTime::Now() < withhold_votes_until_) {
     return RequestVoteRespondLeaderIsAlive(request, hostname_port, response);
   }
 
@@ -2247,7 +2273,7 @@ Status RaftConsensus::RequestVote(const VoteRequestPB* request,
   // pre-elections because it's possible that the node who called the pre-election
   // has actually now successfully become leader of the prior term, in which case
   // bumping our term here would disrupt it.
-  if (!request->is_pre_election() &&
+  if (request->mode() != ElectionMode::PRE_ELECTION &&
       request->candidate_term() > CurrentTermUnlocked()) {
     // If we are going to vote for this peer, then we will flush the consensus metadata
     // to disk below when we record the vote, and we can skip flushing the term advancement
@@ -2873,9 +2899,9 @@ Status RaftConsensus::AdvanceTermForTests(int64_t new_term) {
 
 std::string RaftConsensus::GetRequestVoteLogPrefixUnlocked(const VoteRequestPB& request) const {
   DCHECK(lock_.is_locked());
-  return Substitute("$0Leader $1election vote request",
+  return Substitute("$0Leader $1 vote request",
                     LogPrefixUnlocked(),
-                    request.is_pre_election() ? "pre-" : "");
+                    ElectionMode_Name(request.mode()));
 }
 
 void RaftConsensus::FillVoteResponsePreviousVoteHistory(VoteResponsePB* response) {
@@ -2921,7 +2947,7 @@ Status RaftConsensus::RequestVoteRespondInvalidTerm(const VoteRequestPB* request
   string msg = Substitute("$0: Denying $1 to candidate $2 $3 for earlier term $4. "
                           "Current term is $5. Candidate context $6. ",
                           GetRequestVoteLogPrefixUnlocked(*request),
-                          (request->is_pre_election() ? "pre-vote" : "vote"),
+                          ElectionMode_Name(request->mode()),
                           hostname_port,
                           request->candidate_uuid(),
                           request->candidate_term(),
@@ -2940,7 +2966,7 @@ Status RaftConsensus::RequestVoteRespondVoteAlreadyGranted(const VoteRequestPB* 
                           "Candidate context $5. "
                           "Re-sending same reply.",
                           GetRequestVoteLogPrefixUnlocked(*request),
-                          (request->is_pre_election() ? "pre-vote" : "vote"),
+                          ElectionMode_Name(request->mode()),
                           hostname_port,
                           request->candidate_uuid(),
                           request->candidate_term(),
@@ -2956,7 +2982,7 @@ Status RaftConsensus::RequestVoteRespondAlreadyVotedForOther(const VoteRequestPB
                           "Already voted for candidate $5 in this term. "
                           "Candidate context $6.",
                           GetRequestVoteLogPrefixUnlocked(*request),
-                          (request->is_pre_election() ? "pre-vote" : "vote"),
+                          ElectionMode_Name(request->mode()),
                           hostname_port,
                           request->candidate_uuid(),
                           CurrentTermUnlocked(),
@@ -2977,7 +3003,7 @@ Status RaftConsensus::RequestVoteRespondLastOpIdTooOld(const OpId& local_last_lo
                           "candidate, which has last-logged OpId of $6. "
                           "Candidate context: $7.",
                           GetRequestVoteLogPrefixUnlocked(*request),
-                          (request->is_pre_election() ? "pre-vote" : "vote"),
+                          ElectionMode_Name(request->mode()),
                           hostname_port,
                           request->candidate_uuid(),
                           request->candidate_term(),
@@ -2997,7 +3023,7 @@ Status RaftConsensus::RequestVoteRespondVoteWitheld(const VoteRequestPB* request
   string msg = Substitute("$0: Denying $1 to candidate $2 $3 for term $4 "
                           "because of reason: $5. Candidate context: $6.",
                           GetRequestVoteLogPrefixUnlocked(*request),
-                          (request->is_pre_election() ? "pre-vote" : "vote"),
+                          ElectionMode_Name(request->mode()),
                           hostname_port,
                           request->candidate_uuid(),
                           request->candidate_term(),
@@ -3016,7 +3042,7 @@ Status RaftConsensus::RequestVoteRespondLeaderIsAlive(const VoteRequestPB* reque
                           "replica is either leader or believes a valid leader to "
                           "be alive. Candidate context: $5.",
                           GetRequestVoteLogPrefixUnlocked(*request),
-                          (request->is_pre_election() ? "pre-vote" : "vote"),
+                          ElectionMode_Name(request->mode()),
                           hostname_port,
                           request->candidate_uuid(),
                           request->candidate_term(),
@@ -3033,7 +3059,7 @@ Status RaftConsensus::RequestVoteRespondIsBusy(const VoteRequestPB* request,
                           "replica is already servicing an update from a current leader "
                           "or another vote. Candidate context: $4. ",
                           GetRequestVoteLogPrefixUnlocked(*request),
-                          (request->is_pre_election() ? "pre-vote" : "vote"),
+                          ElectionMode_Name(request->mode()),
                           request->candidate_uuid(),
                           request->candidate_term(),
                           GetCandidateContextString(request));
@@ -3053,7 +3079,8 @@ Status RaftConsensus::RequestVoteRespondVoteGranted(const VoteRequestPB* request
   MonoDelta backoff = LeaderElectionExpBackoffDeltaUnlocked();
   SnoozeFailureDetector(string("vote granted"), backoff);
 
-  if (!request->is_pre_election()) {
+  ElectionMode mode = request->mode();
+  if (mode != ElectionMode::PRE_ELECTION) {
     // Persist our vote to disk.
     RETURN_NOT_OK(SetVotedForCurrentTermUnlocked(request->candidate_uuid()));
   }
@@ -3352,7 +3379,8 @@ void RaftConsensus::ElectionCallback(ElectionContext context, const ElectionResu
 void RaftConsensus::DoElectionCallback(
     const ElectionContext& context, const ElectionResult& result) {
   const int64_t election_term = result.vote_request.candidate_term();
-  const bool was_pre_election = result.vote_request.is_pre_election();
+  const bool was_pre_election =
+      result.vote_request.mode() == ElectionMode::PRE_ELECTION;
   const char* election_type = was_pre_election ? "pre-election" : "election";
 
   // The vote was granted, become leader.
@@ -3475,7 +3503,7 @@ void RaftConsensus::DoElectionCallback(
 void RaftConsensus::NestedElectionDecisionCallback(
     ElectionContext context, const ElectionResult& result) {
   DoElectionCallback(context, result);
-  if (!result.vote_request.is_pre_election() && edcb_) {
+  if (result.vote_request.mode() != ElectionMode::PRE_ELECTION && edcb_) {
     edcb_(result, std::move(context));
   }
 }

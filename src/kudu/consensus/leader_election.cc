@@ -1150,7 +1150,7 @@ std::pair<bool, bool> FlexibleVoteCounter::IsDynamicQuorumSatisfied() const {
     if (!FLAGS_use_voting_history_as_last_resort) {
       LOG_WITH_PREFIX(INFO) << "Pessimistic quorum did not help decide election but voting history is disabled";
       return pessimistic_result;
-    } 
+    }
 
     // Ensure that we wait for FLAGS_wait_before_using_voting_history_secs
     if (FLAGS_wait_before_using_voting_history_secs &&
@@ -1385,8 +1385,8 @@ void LeaderElection::Run() {
   }
   // Send the RPC request.
   LOG_WITH_PREFIX(INFO) << "Requesting "
-                        << (request_.is_pre_election() ? "pre-" : "")
-                        << "vote from peers: " << msg;
+                        << ElectionMode_Name(request_.mode())
+                        << "-vote from peers: " << msg;
   if (vote_logger_)
     vote_logger_->logElectionStarted(request_, config_);
 }
@@ -1551,7 +1551,8 @@ void LeaderElection::HandleHigherTermUnlocked(const VoterState& state) {
 
 void LeaderElection::HandleVoteGrantedUnlocked(const VoterState& state) {
   DCHECK(lock_.is_locked());
-  if (!request_.is_pre_election()) {
+  ElectionMode mode = request_.mode();
+  if (mode != ElectionMode::PRE_ELECTION) {
     DCHECK_EQ(state.response.responder_term(), election_term());
   }
   DCHECK(state.response.vote_granted());
@@ -1576,11 +1577,11 @@ void LeaderElection::HandleVoteDeniedUnlocked(const VoterState& state) {
 }
 
 std::string LeaderElection::LogPrefix() const {
-  return Substitute("T $0 P $1 [CANDIDATE]: Term $2 $3election: ",
+  return Substitute("T $0 P $1 [CANDIDATE]: Term $2 $3: ",
                     request_.tablet_id(),
                     request_.candidate_uuid(),
                     request_.candidate_term(),
-                    request_.is_pre_election() ? "pre-" : "");
+                    ElectionMode_Name(request_.mode()));
 }
 
 } // namespace consensus

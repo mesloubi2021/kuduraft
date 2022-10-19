@@ -32,6 +32,7 @@
 #include "kudu/common/wire_protocol-test-util.h"
 #include "kudu/common/wire_protocol.h"
 #include "kudu/common/wire_protocol.pb.h"
+#include "kudu/consensus/consensus.pb.h"
 #include "kudu/consensus/consensus.proxy.h"
 #include "kudu/consensus/opid.pb.h"
 #include "kudu/consensus/opid_util.h"
@@ -681,8 +682,14 @@ Status RequestVote(const TServerDetails* replica,
   req.set_candidate_uuid(candidate_uuid);
   req.set_candidate_term(candidate_term);
   *req.mutable_candidate_status()->mutable_last_received() = last_logged_opid;
-  if (ignore_live_leader) req.set_ignore_live_leader(*ignore_live_leader);
-  if (is_pre_election) req.set_is_pre_election(*is_pre_election);
+  // TODO(T135470632): Remove ignore_live_leader field and is_pre_election
+  // fields
+  if (ignore_live_leader && *ignore_live_leader) {
+    req.set_mode(ElectionMode::ELECT_EVEN_IF_LEADER_IS_ALIVE);
+  }
+  if (is_pre_election && *is_pre_election) {
+    req.set_mode(consensus::ElectionMode::PRE_ELECTION);
+  }
   VoteResponsePB resp;
   RpcController rpc;
   rpc.set_timeout(timeout);

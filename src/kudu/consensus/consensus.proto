@@ -366,6 +366,32 @@ message CandidateContext {
   optional RaftPeerPB candidate_peer_pb = 1;
 }
 
+enum ElectionMode {
+  UNKNOWN_ELECTION_MODE = 0;
+
+  // A normal leader election. Peers will not vote for this node
+  // if they believe that a leader is alive.
+  NORMAL_ELECTION = 1;
+
+  // A "pre-election". Peers will vote as they would for a normal
+  // election, except that the votes will not be "binding". In other
+  // words, they will not durably record their vote.
+  PRE_ELECTION = 2;
+
+  // In this mode, peers will vote for this candidate even if they
+  // think a leader is alive. This can be used for a faster hand-off
+  // between a leader and one of its replicas.
+  ELECT_EVEN_IF_LEADER_IS_ALIVE = 3;
+
+  // Similar to a pre-election, where votes are not durably recorded. The
+  // difference is that a specific snapshot op id is passed in as consensus
+  // state for a candidate to determine whether a node is caught up enough to be
+  // a leader. The motivation for introducing this mode is that we want to have
+  // confidence that leadership can be transfered before we give up leadership
+  // and go into a read-only mode, which can incur some downtime.
+  MOCK_ELECTION = 4;
+}
+
 // A request from a candidate peer that wishes to become leader of
 // the configuration serving tablet with 'tablet_id'.
 // See RAFT sec. 5.2.
@@ -398,11 +424,19 @@ message VoteRequestPB {
   // peers will vote even if they think a leader is alive. This can be used
   // for example to force a faster leader hand-off rather than waiting for
   // the election timer to expire.
-  optional bool ignore_live_leader = 5 [ default = false ];
+  // DEPRECATED: Set "mode" field to ElectionMode:ELECT_EVEN_IF_LEADER_IS_ALIVE
+  // instead. This field will remain for now to be backwards compatible with
+  // older versions as we rollout a new version.
+  // TODO(T135470632): Remove ignore_live_leader field
+  optional bool ignore_live_leader = 5 [ default = false, deprecated = true ];
 
   // In a "pre-election", voters should respond how they _would_ have voted
   // but not actually record the vote.
-  optional bool is_pre_election = 7 [ default = false ];
+  // DEPRECATED: Set "mode" field to ElectionMode::PRE_ELECTION instead. This
+  // field will remain for now to be backwards compatible with older versions as
+  // we rollout a new version.
+  // TODO(T135470632): Remove is_pre_election field
+  optional bool is_pre_election = 7 [ default = false, deprecated = true ];
 
   // Additional candidate context that is passed by the candidate
   optional CandidateContext candidate_context = 8;
@@ -410,6 +444,8 @@ message VoteRequestPB {
   // A token stamped to the request to prove to the remote host that we're part
   // of a ring
   optional string raft_rpc_token = 9;
+
+  optional ElectionMode mode = 10;
 }
 
 // Additional context that a voter sends back in the response to RequestVote()

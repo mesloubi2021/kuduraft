@@ -129,23 +129,6 @@ struct TabletVotingState {
 typedef int64_t ConsensusTerm;
 typedef StdStatusCallback ConsensusReplicatedCallback;
 
-// Modes for StartElection().
-enum ElectionMode {
-  // A normal leader election. Peers will not vote for this node
-  // if they believe that a leader is alive.
-  NORMAL_ELECTION,
-
-  // A "pre-election". Peers will vote as they would for a normal
-  // election, except that the votes will not be "binding". In other
-  // words, they will not durably record their vote.
-  PRE_ELECTION,
-
-  // In this mode, peers will vote for this candidate even if they
-  // think a leader is alive. This can be used for a faster hand-off
-  // between a leader and one of its replicas.
-  ELECT_EVEN_IF_LEADER_IS_ALIVE
-};
-
 // Reasons for StartElection().
 enum ElectionReason {
   // The election is being called because the Raft configuration has only
