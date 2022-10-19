@@ -446,7 +446,7 @@ class PeerMessageQueue {
       const TrackedPeer* proxy_peer, const TrackedPeer* dest_peer);
 
   void SetAdjustVoterDistribution(bool val) {
-    std::lock_guard<simple_spinlock> lock(queue_lock_);
+    std::lock_guard<simple_mutexlock> lock(queue_lock_);
     adjust_voter_distribution_ = val;
   }
 
@@ -705,7 +705,7 @@ class PeerMessageQueue {
 
   // The currently tracked peers.
   PeersMap peers_map_;
-  mutable simple_spinlock queue_lock_; // TODO(todd): rename
+  mutable simple_mutexlock queue_lock_; // TODO(todd): rename
 
   bool successor_watch_in_progress_;
   boost::optional<std::string> designated_successor_uuid_;

@@ -934,7 +934,7 @@ scoped_refptr<ConsensusRound> RaftConsensus::NewRound(
 }
 
 void RaftConsensus::ReportFailureDetectedTask() {
-  std::unique_lock<simple_spinlock> try_lock(failure_detector_election_lock_,
+  std::unique_lock<simple_mutexlock> try_lock(failure_detector_election_lock_,
                                              std::try_to_lock);
   if (try_lock.owns_lock()) {
     // failure_detector_last_snoozed_ is the time the failure detector was
@@ -1032,7 +1032,7 @@ Status RaftConsensus::BecomeReplicaUnlocked(boost::optional<MonoDelta> fd_delta)
 
 Status RaftConsensus::Replicate(const scoped_refptr<ConsensusRound>& round) {
 
-  std::lock_guard<simple_spinlock> lock(update_lock_);
+  std::lock_guard<simple_mutexlock> lock(update_lock_);
   {
     ThreadRestrictions::AssertWaitAllowed();
     LockGuard l(lock_);
@@ -1373,7 +1373,7 @@ Status RaftConsensus::Update(const ConsensusRequestPB* request,
   VLOG_WITH_PREFIX(2) << "Replica received request: " << SecureShortDebugString(*request);
 
   // see var declaration
-  std::lock_guard<simple_spinlock> lock(update_lock_);
+  std::lock_guard<simple_mutexlock> lock(update_lock_);
   Status s = UpdateReplica(request, response);
   if (PREDICT_FALSE(VLOG_IS_ON(1))) {
     if (request->ops().empty()) {
@@ -2086,7 +2086,7 @@ Status RaftConsensus::RequestVote(const VoteRequestPB* request,
   // We must acquire the update lock in order to ensure that this vote action
   // takes place between requests.
   // Lock ordering: update_lock_ must be acquired before lock_.
-  std::unique_lock<simple_spinlock> update_guard(update_lock_, std::defer_lock);
+  std::unique_lock<simple_mutexlock> update_guard(update_lock_, std::defer_lock);
   if (FLAGS_enable_leader_failure_detection &&
       request->mode() != ElectionMode::ELECT_EVEN_IF_LEADER_IS_ALIVE) {
     update_guard.try_lock();

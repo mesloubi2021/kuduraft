@@ -20,6 +20,7 @@
 #include <sched.h>
 
 #include <algorithm>  // IWYU pragma: keep
+#include <atomic>
 #include <cstddef>
 #include <mutex>
 
@@ -287,6 +288,43 @@ class shared_lock {
  private:
   Mutex* m_;
   DISALLOW_COPY_AND_ASSIGN(shared_lock<Mutex>);
+};
+
+class simple_mutexlock {
+ public:
+  simple_mutexlock() {}
+
+  void lock() {
+    m_.lock();
+    is_locked_ = true;
+  }
+
+  void unlock() {
+    is_locked_ = false;
+    m_.unlock();
+  }
+
+  bool try_lock() {
+    return m_.try_lock();
+  }
+
+  // Return whether the lock is currently held.
+  //
+  // This state can change at any instant, so this is only really useful
+  // for assertions where you expect to hold the lock. The success of
+  // such an assertion isn't a guarantee that the current thread is the
+  // holder, but the failure of such an assertion _is_ a guarantee that
+  // the current thread is _not_ holding the lock!
+  bool is_locked() {
+    return is_locked_;
+  }
+
+ private:
+  std::mutex m_;
+
+  std::atomic<bool> is_locked_{false};
+
+  DISALLOW_COPY_AND_ASSIGN(simple_mutexlock);
 };
 
 } // namespace kudu

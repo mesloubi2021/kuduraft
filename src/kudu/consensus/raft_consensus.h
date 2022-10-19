@@ -71,7 +71,7 @@ DECLARE_int32(lag_threshold_for_request_vote);
 
 namespace kudu {
 
-typedef std::lock_guard<simple_spinlock> Lock;
+typedef std::lock_guard<simple_mutexlock> Lock;
 typedef gscoped_ptr<Lock> ScopedLock;
 
 class Status;
@@ -734,8 +734,8 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
     std::string OpsRangeString() const;
   };
 
-  using LockGuard = std::lock_guard<simple_spinlock>;
-  using UniqueLock = std::unique_lock<simple_spinlock>;
+  using LockGuard = std::lock_guard<simple_mutexlock>;
+  using UniqueLock = std::unique_lock<simple_mutexlock>;
 
   // Initializes the RaftConsensus object, including loading the consensus
   // metadata.
@@ -1131,10 +1131,10 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   //
   // Lock ordering note: If both 'update_lock_' and 'lock_' are to be taken,
   // 'update_lock_' lock must be taken first.
-  mutable simple_spinlock update_lock_;
+  mutable simple_mutexlock update_lock_;
 
   // Coarse-grained lock that protects all mutable data members.
-  mutable simple_spinlock lock_;
+  mutable simple_mutexlock lock_;
 
   State state_;
 
@@ -1196,7 +1196,7 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   //
   // TODO(KUDU-2155): should be replaced with explicit disabling/enabling of
   // the failure detector during elections.
-  simple_spinlock failure_detector_election_lock_;
+  simple_mutexlock failure_detector_election_lock_;
 
   // If any RequestVote() RPC arrives before this timestamp,
   // the request will be ignored. This prevents abandoned or partitioned
