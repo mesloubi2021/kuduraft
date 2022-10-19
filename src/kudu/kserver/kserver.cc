@@ -47,6 +47,7 @@ TAG_FLAG(server_thread_pool_max_thread_count, advanced);
 TAG_FLAG(server_thread_pool_max_thread_count, evolving);
 DEFINE_int32(raft_thread_pool_idle_timeout_second, 3600,
              "Max idle time for a raft worker thread before it dies");
+DEFINE_int32(raft_thread_pool_max_size, 0, "Max threads in the raft thread pool");
 
 static bool ValidateThreadPoolThreadLimit(const char* /*flagname*/, int32_t value) {
   if (value == 0 || value < -1) {
@@ -161,7 +162,7 @@ Status KuduServer::Init() {
 #endif
   RETURN_NOT_OK(ThreadPoolBuilder("raft")
                 .set_trace_metric_prefix("raft")
-                .set_max_threads(server_wide_pool_limit)
+                .set_max_threads(FLAGS_raft_thread_pool_max_size ? FLAGS_raft_thread_pool_max_size : server_wide_pool_limit)
                 .set_idle_timeout(MonoDelta::FromSeconds(static_cast<double>(FLAGS_raft_thread_pool_idle_timeout_second)))
                 .Build(&raft_pool_));
 
