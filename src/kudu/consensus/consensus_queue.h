@@ -335,6 +335,11 @@ class PeerMessageQueue {
   bool ResponseFromPeer(const std::string& peer_uuid,
                         const ConsensusResponsePB& response);
 
+  // The method that does most of the heavy lifting of ResponseFromPeer
+  bool DoResponseFromPeer(const std::string& peer_uuid,
+                          const ConsensusResponsePB& response,
+                          boost::optional<int64_t>& updated_commit_index);
+
   // Called by the consensus implementation to update the queue's watermarks
   // based on information provided by the leader. This is used for metrics and
   // log retention.
@@ -584,7 +589,7 @@ class PeerMessageQueue {
 
   // Asynchronously trigger various types of observer notifications on a
   // separate thread.
-  void NotifyObserversOfCommitIndexChange(int64_t new_commit_index);
+  void NotifyObserversOfCommitIndexChange(int64_t new_commit_index, bool need_lock = true);
   void NotifyObserversOfTermChange(int64_t term);
   void NotifyObserversOfFailedFollower(const std::string& uuid,
                                        int64_t term,
@@ -631,9 +636,8 @@ class PeerMessageQueue {
   void CheckPeersInActiveConfigIfLeaderUnlocked() const;
 
   // Generates a fake response to count the local peer's (leader's) vote after
-  // appending to the log. The fake response is scheduled to run aynchronously
-  // so that it does not block on queue_lock_
-  void DoLocalPeerAppendFinished(const OpId& id);
+  // appending to the log
+  void DoLocalPeerAppendFinished(const OpId& id, bool need_lock);
 
   // Callback when a REPLICATE message has finished appending to the local log.
   void LocalPeerAppendFinished(const OpId& id,
@@ -743,7 +747,7 @@ class PeerMessageQueue {
 class PeerMessageQueueObserver {
  public:
   // Notify the observer that the commit index has advanced to 'committed_index'.
-  virtual void NotifyCommitIndex(int64_t committed_index) = 0;
+  virtual void NotifyCommitIndex(int64_t committed_index, bool need_lock) = 0;
 
   // Notify the observer that a follower replied with a term
   // higher than that established in the queue.

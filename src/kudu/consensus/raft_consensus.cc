@@ -203,6 +203,9 @@ DEFINE_bool(raft_enforce_rpc_token, false,
 DEFINE_int32(lag_threshold_for_request_vote, -1,
              "The threshold beyond which a VOTER will not give votes to CANDIDATE. -1 to turn it OFF");
 
+DEFINE_bool(notify_commit_index_after_response, true,
+            "Should we notify peers of commit index after every response?");
+
 // Metrics
 // ---------
 METRIC_DEFINE_counter(server, raft_log_truncation_counter,
@@ -1151,13 +1154,15 @@ Status RaftConsensus::AddPendingOperationUnlocked(const scoped_refptr<ConsensusR
   return pending_->AddPendingOperation(round);
 }
 
-void RaftConsensus::NotifyCommitIndex(int64_t commit_index) {
+void RaftConsensus::NotifyCommitIndex(int64_t commit_index, bool need_lock) {
   TRACE_EVENT2("consensus", "RaftConsensus::NotifyCommitIndex",
                "tablet", options_.tablet_id,
                "commit_index", commit_index);
 
   ThreadRestrictions::AssertWaitAllowed();
-  LockGuard l(lock_);
+  if (need_lock) {
+    lock_.lock();
+  }
   // We will process commit notifications while shutting down because a replica
   // which has initiated a Prepare() / Replicate() may eventually commit even if
   // its state has changed after the initial Append() / Update().
@@ -1165,13 +1170,16 @@ void RaftConsensus::NotifyCommitIndex(int64_t commit_index) {
     LOG_WITH_PREFIX_UNLOCKED(WARNING) << "Unable to update committed index: "
                                       << "Replica not in running state: "
                                       << State_Name(state_);
-    return;
+  } else {
+    pending_->AdvanceCommittedIndex(commit_index);
+
+    if (FLAGS_notify_commit_index_after_response && cmeta_->active_role() == RaftPeerPB::LEADER) {
+      peer_manager_->SignalRequest(false);
+    }
   }
 
-  pending_->AdvanceCommittedIndex(commit_index);
-
-  if (cmeta_->active_role() == RaftPeerPB::LEADER) {
-    peer_manager_->SignalRequest(false);
+  if (need_lock) {
+    lock_.unlock();
   }
 }
 

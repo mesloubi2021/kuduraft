@@ -99,6 +99,12 @@ DEFINE_bool(update_peer_health_status, true,
             "After every request for peer, maintain the health status of the peer "
             " This can be used to evict an irrecovarable peer");
 
+DEFINE_bool(async_local_vote_count, true,
+            "Should the local voter counting be done async? (not sync in the append path)");
+
+DEFINE_bool(async_notify_commit_index, true,
+            "Should the commit index notification be done async?");
+
 TAG_FLAG(synchronous_transfer_leadership, advanced);
 DECLARE_bool(enable_flexi_raft);
 
@@ -405,7 +411,7 @@ void PeerMessageQueue::CheckPeersInActiveConfigIfLeaderUnlocked() const {
   }
 }
 
-void PeerMessageQueue::DoLocalPeerAppendFinished(const OpId& id) {
+void PeerMessageQueue::DoLocalPeerAppendFinished(const OpId& id, bool need_lock) {
   // Fake an RPC response from the local peer.
   // TODO: we should probably refactor the ResponseFromPeer function
   // so that we don't need to construct this fake response, but this
@@ -418,7 +424,13 @@ void PeerMessageQueue::DoLocalPeerAppendFinished(const OpId& id) {
     std::lock_guard<simple_mutexlock> lock(queue_lock_);
     fake_response.mutable_status()->set_last_committed_idx(queue_state_.committed_index);
   }
-  ResponseFromPeer(local_peer_pb_.permanent_uuid(), fake_response);
+
+  boost::optional<int64_t> updated_commit_index;
+  DoResponseFromPeer(local_peer_pb_.permanent_uuid(), fake_response, updated_commit_index);
+
+  if (updated_commit_index != boost::none) {
+    NotifyObserversOfCommitIndexChange(*updated_commit_index, need_lock);
+  }
 }
 
 void PeerMessageQueue::LocalPeerAppendFinished(const OpId& id,
@@ -430,9 +442,15 @@ void PeerMessageQueue::LocalPeerAppendFinished(const OpId& id,
   // asynchronously (so as not to block the thread writing to local log from
   // blocking on queue_lock_)
   OpId local_id = id;
-  CHECK_OK(raft_pool_observers_token_->SubmitClosure(
-        Bind(&PeerMessageQueue::DoLocalPeerAppendFinished,
-          Unretained(this), local_id)));
+  if (FLAGS_async_local_vote_count) {
+    CHECK_OK(raft_pool_observers_token_->SubmitClosure(
+          Bind(&PeerMessageQueue::DoLocalPeerAppendFinished,
+            Unretained(this), local_id, true)));
+  } else {
+    // NOTE: no need to lock RaftConsensus::lock_ because we're executing in
+    // sync mode
+    DoLocalPeerAppendFinished(local_id, /* need_lock */ false);
+  }
 
   callback.Run(status);
 }
@@ -1763,6 +1781,19 @@ void PeerMessageQueue::TransferLeadershipIfNeeded(const TrackedPeer& peer,
 
 bool PeerMessageQueue::ResponseFromPeer(const std::string& peer_uuid,
                                         const ConsensusResponsePB& response) {
+  boost::optional<int64_t> updated_commit_index;
+  const bool ret = DoResponseFromPeer(peer_uuid, response, updated_commit_index);
+
+  if (updated_commit_index != boost::none) {
+    NotifyObserversOfCommitIndexChange(*updated_commit_index);
+  }
+
+  return ret;
+}
+
+bool PeerMessageQueue::DoResponseFromPeer(const std::string& peer_uuid,
+                                          const ConsensusResponsePB& response,
+                                          boost::optional<int64_t>& updated_commit_index) {
   DCHECK(response.IsInitialized()) << "Error: Uninitialized: "
       << response.InitializationErrorString() << ". Response: " << SecureShortDebugString(response);
 #ifdef FB_DO_NOT_REMOVE
@@ -1770,7 +1801,6 @@ bool PeerMessageQueue::ResponseFromPeer(const std::string& peer_uuid,
 #endif
 
   bool send_more_immediately = false;
-  boost::optional<int64_t> updated_commit_index;
   Mode mode_copy;
   {
     std::lock_guard<simple_mutexlock> scoped_lock(queue_lock_);
@@ -1957,7 +1987,7 @@ bool PeerMessageQueue::ResponseFromPeer(const std::string& peer_uuid,
       AdvanceQueueRegionDurableIndex();
 
       // Only notify observers if the commit index actually changed.
-      if (queue_state_.committed_index != commit_index_before) {
+      if (mode_copy == LEADER && queue_state_.committed_index != commit_index_before) {
         DCHECK_GT(queue_state_.committed_index, commit_index_before);
         updated_commit_index = queue_state_.committed_index;
         VLOG_WITH_PREFIX_UNLOCKED(2) << "Commit index advanced from "
@@ -1980,10 +2010,6 @@ bool PeerMessageQueue::ResponseFromPeer(const std::string& peer_uuid,
     }
 
     UpdateMetricsUnlocked();
-  }
-
-  if (mode_copy == LEADER && updated_commit_index != boost::none) {
-    NotifyObserversOfCommitIndexChange(*updated_commit_index);
   }
 
   return send_more_immediately;
@@ -2145,11 +2171,19 @@ bool PeerMessageQueue::IsOpInLog(const OpId& desired_op) const {
   return false; // Unreachable; here to squelch GCC warning.
 }
 
-void PeerMessageQueue::NotifyObserversOfCommitIndexChange(int64_t new_commit_index) {
+void PeerMessageQueue::NotifyObserversOfCommitIndexChange(int64_t new_commit_index, bool need_lock) {
+  if (!FLAGS_async_notify_commit_index) {
+    NotifyObserversTask([=](PeerMessageQueueObserver* observer) {
+                          observer->NotifyCommitIndex(new_commit_index, need_lock);
+                        });
+    return;
+  }
+  // NOTE: if we're scheduling this to run async we always need to lock, so we
+  // ignore the needs_lock param
   WARN_NOT_OK(raft_pool_observers_token_->SubmitClosure(
       Bind(&PeerMessageQueue::NotifyObserversTask, Unretained(this),
            [=](PeerMessageQueueObserver* observer) {
-             observer->NotifyCommitIndex(new_commit_index);
+             observer->NotifyCommitIndex(new_commit_index, true);
            })),
       LogPrefixUnlocked() + "Unable to notify RaftConsensus of commit index change.");
 }

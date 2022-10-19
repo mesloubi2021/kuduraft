@@ -599,7 +599,7 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // Updates the committed_index and triggers the Apply()s for whatever
   // transactions were pending.
   // This is idempotent.
-  void NotifyCommitIndex(int64_t commit_index) override;
+  void NotifyCommitIndex(int64_t commit_index, bool need_lock) override;
 
   void NotifyTermChange(int64_t term) override;
 
