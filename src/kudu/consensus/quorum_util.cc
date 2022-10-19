@@ -984,6 +984,30 @@ void GetVoterDistributionForQuorumId(
   }
 }
 
+std::optional<int> GetTotalVotersFromVoterDistribution(
+    const RaftConfigPB& config, const std::string& quorum_id) {
+  const auto& vd = config.voter_distribution();
+  const auto& itr = vd.find(quorum_id);
+  if (itr != vd.end()) {
+    return itr->second;
+  }
+
+  if (!IsUseQuorumId(config.commit_rule())) {
+    return {};
+  }
+
+  for (const auto& peer : config.peers()) {
+    if (peer.has_member_type() && peer.member_type() == RaftPeerPB::VOTER &&
+        peer.has_attrs() && peer.attrs().has_quorum_id() &&
+        peer.attrs().quorum_id() == quorum_id) {
+      return FLAGS_default_quorum_size;
+    }
+  }
+
+  return {};
+}
+
+
 bool IsStaticQuorumMode(QuorumMode mode) {
   return (mode == QuorumMode::STATIC_DISJUNCTION ||
     mode == QuorumMode::STATIC_CONJUNCTION);
@@ -994,23 +1018,24 @@ bool IsUseQuorumId(const CommitRulePB& commit_rule) {
          commit_rule.quorum_type() == QuorumType::QUORUM_ID;
 }
 
-std::string GetQuorumId(const RaftPeerPB& peer, bool use_quorum_id) {
-  if (use_quorum_id) {
-    if (peer.has_member_type() && peer.member_type() == RaftPeerPB::VOTER) {
-      // Voter must have a quorum_id
-      CHECK(peer.has_attrs() && peer.attrs().has_quorum_id());
-      return peer.attrs().quorum_id();
-    } else {
-      // Non-voter must not have a quorum_id
-      return "";
-    }
-  } else {
+static std::string empty_str = "";
+const std::string& GetQuorumId(const RaftPeerPB& peer, bool use_quorum_id) {
+  if (!use_quorum_id) {
     CHECK(peer.has_attrs() && peer.attrs().has_region());
     return peer.attrs().region();
   }
+
+  if (peer.has_member_type() && peer.member_type() == RaftPeerPB::VOTER) {
+    // Voter must have a quorum_id
+    CHECK(peer.has_attrs() && peer.attrs().has_quorum_id());
+    return peer.attrs().quorum_id();
+  }
+
+  // Non-voter must not have a quorum_id
+  return empty_str;
 }
 
-std::string GetQuorumId(const RaftPeerPB& peer, const CommitRulePB& commit_rule) {
+const std::string& GetQuorumId(const RaftPeerPB& peer, const CommitRulePB& commit_rule) {
   return GetQuorumId(peer, IsUseQuorumId(commit_rule));
 }
 

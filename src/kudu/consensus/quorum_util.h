@@ -19,6 +19,7 @@
 #define KUDU_CONSENSUS_QUORUM_UTIL_H_
 
 #include <string>
+#include <optional>
 
 #include "kudu/consensus/metadata.pb.h"
 #include "kudu/util/status.h"
@@ -174,6 +175,9 @@ void GetVoterDistributionForQuorumId(
     std::map<std::string, int>* quorum_id_vd
 );
 
+std::optional<int> GetTotalVotersFromVoterDistribution(
+    const RaftConfigPB& config, const std::string& quorum_id);
+
 // Is this mode a static quorum mode type?
 bool IsStaticQuorumMode(QuorumMode mode);
 
@@ -181,10 +185,10 @@ bool IsStaticQuorumMode(QuorumMode mode);
 bool IsUseQuorumId(const CommitRulePB& commit_rule);
 
 // Return quorum_id or region based on current commit rule's QuorumType
-std::string GetQuorumId(const RaftPeerPB& peer, const CommitRulePB& commit_rule);
+const std::string& GetQuorumId(const RaftPeerPB& peer, const CommitRulePB& commit_rule);
 
 // Return quorum_id or region based on whether use quorum_id
-std::string GetQuorumId(const RaftPeerPB& peer, bool use_quorum_id);
+const std::string& GetQuorumId(const RaftPeerPB& peer, bool use_quorum_id);
 
 // Return true of the peer has a non-empty quorum_id
 bool PeerHasValidQuorumId(const RaftPeerPB& peer);

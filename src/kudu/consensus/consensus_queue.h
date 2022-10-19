@@ -28,6 +28,7 @@
 #include <functional>
 #include <iosfwd>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -128,7 +129,7 @@ const char* PeerStatusToString(PeerStatus p);
 class PeerMessageQueue {
  public:
   struct TrackedPeer {
-    explicit TrackedPeer(RaftPeerPB peer_pb);
+    explicit TrackedPeer(RaftPeerPB peer_pb, const PeerMessageQueue* queue);
 
     TrackedPeer() = default;
 
@@ -187,11 +188,19 @@ class PeerMessageQueue {
     // peer (eg when it is lagging, etc).
     std::shared_ptr<logging::LogThrottler> status_log_throttler;
 
+    std::optional<bool> is_peer_in_local_quorum;
+    std::optional<bool> is_peer_in_local_region;
+
+    void PopulateIsPeerInLocalRegion();
+    void PopulateIsPeerInLocalQuorum();
+
    private:
     // The last term we saw from a given peer.
     // This is only used for sanity checking that a peer doesn't
     // go backwards in time.
     int64_t last_seen_term_;
+
+    const PeerMessageQueue* queue = nullptr;
   };
 
   struct TransferContext {
@@ -687,7 +696,7 @@ class PeerMessageQueue {
 
   // return the region of peer or quorum_id of peer based on use_quorum_id
   // in commit rule
-  std::string getQuorumIdUsingCommitRule(const RaftPeerPB& peer);
+  const std::string& getQuorumIdUsingCommitRule(const RaftPeerPB& peer) const;
 
   std::vector<PeerMessageQueueObserver*> observers_;
 

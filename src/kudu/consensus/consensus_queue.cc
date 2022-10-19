@@ -29,6 +29,7 @@
 #include <iostream>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <unordered_set>
 #include <utility>
@@ -107,6 +108,7 @@ DEFINE_bool(async_notify_commit_index, true,
 
 TAG_FLAG(synchronous_transfer_leadership, advanced);
 DECLARE_bool(enable_flexi_raft);
+DECLARE_int32(default_quorum_size);
 
 using kudu::log::Log;
 using kudu::pb_util::SecureDebugString;
@@ -148,7 +150,7 @@ const char* PeerStatusToString(PeerStatus p) {
   return "<unknown>";
 }
 
-PeerMessageQueue::TrackedPeer::TrackedPeer(RaftPeerPB peer_pb)
+PeerMessageQueue::TrackedPeer::TrackedPeer(RaftPeerPB peer_pb, const PeerMessageQueue* queue)
     : peer_pb(std::move(peer_pb)),
       next_index(kInvalidOpIdIndex),
       last_received(MinimumOpId()),
@@ -158,7 +160,52 @@ PeerMessageQueue::TrackedPeer::TrackedPeer(RaftPeerPB peer_pb)
       wal_catchup_possible(true),
       last_overall_health_status(HealthReportPB::UNKNOWN),
       status_log_throttler(std::make_shared<logging::LogThrottler>()),
-      last_seen_term_(0) {
+      last_seen_term_(0),
+      queue(queue) {
+  PopulateIsPeerInLocalQuorum();
+  PopulateIsPeerInLocalRegion();
+}
+
+void PeerMessageQueue::TrackedPeer::PopulateIsPeerInLocalQuorum() {
+  is_peer_in_local_quorum.reset();
+
+  const RaftPeerPB& local_peer_pb = queue->local_peer_pb_;
+
+  if (peer_pb.permanent_uuid() == local_peer_pb.permanent_uuid()) {
+    is_peer_in_local_quorum = true;
+    return;
+  }
+
+  if (!peer_pb.has_attrs() || !local_peer_pb.has_attrs()) {
+    return;
+  }
+
+  const std::string& local_peer_quorum_id = queue->getQuorumIdUsingCommitRule(local_peer_pb);
+  const std::string& peer_quorum_id = queue->getQuorumIdUsingCommitRule(peer_pb);
+  if (!local_peer_quorum_id.empty() && !peer_quorum_id.empty()) {
+    is_peer_in_local_quorum = (local_peer_quorum_id == peer_quorum_id);
+  }
+}
+
+void PeerMessageQueue::TrackedPeer::PopulateIsPeerInLocalRegion() {
+  is_peer_in_local_region.reset();
+
+  const RaftPeerPB& local_peer_pb = queue->local_peer_pb_;
+
+  if (peer_pb.permanent_uuid() == local_peer_pb.permanent_uuid()) {
+    is_peer_in_local_region = true;
+    return;
+  }
+
+  if (!peer_pb.attrs().has_region() || !local_peer_pb.attrs().has_region()) {
+    return;
+  }
+
+  const std::string& peer_region = peer_pb.attrs().region();
+  const std::string& local_peer_region = local_peer_pb.attrs().region();
+  if (!local_peer_region.empty() && !peer_region.empty()) {
+    is_peer_in_local_region = (local_peer_region == peer_region);
+  }
 }
 
 std::string PeerMessageQueue::TrackedPeer::ToString() const {
@@ -319,7 +366,7 @@ void PeerMessageQueue::TrackPeerUnlocked(const RaftPeerPB& peer_pb) {
   DCHECK(queue_lock_.is_locked());
   DCHECK_EQ(queue_state_.state, kQueueOpen);
 
-  TrackedPeer* tracked_peer = new TrackedPeer(peer_pb);
+  TrackedPeer* tracked_peer = new TrackedPeer(peer_pb, this);
   // We don't know the last operation received by the peer so, following the
   // Raft protocol, we set next_index to one past the end of our own log. This
   // way, if calling this method is the result of a successful leader election
@@ -1037,19 +1084,17 @@ void PeerMessageQueue::AdvanceQueueRegionDurableIndex() {
   // region_durable_index is updated only if following constraints are satisfied
   // 1. region_durable_index <= committed_index
   // 2. Atleast one non-leader region has received this index
-  const std::string& local_region = local_peer_pb_.attrs().region();
   for (const PeersMap::value_type& peer : peers_map_) {
-    if (peer.second->peer_pb.attrs().has_region()) {
-      const std::string& peer_region = peer.second->peer_pb.attrs().region();
-
-      if (local_region != peer_region && // 2
-          peer.second->last_received.index() <= queue_state_.committed_index) {
-        // This peer is outside our region and the last received index is
-        // lower than the current committed_index. Include this in the
-        // calculation of region_durable_index
-        max_region_durable_index = std::max(
-            max_region_durable_index, peer.second->last_received.index());
-      }
+    if (!peer.second->is_peer_in_local_region.has_value()) {
+      continue;
+    }
+    if (!peer.second->is_peer_in_local_region.value() &&
+        peer.second->last_received.index() <= queue_state_.committed_index) {
+      // This peer is outside our region and the last received index is
+      // lower than the current committed_index. Include this in the
+      // calculation of region_durable_index
+      max_region_durable_index = std::max(
+          max_region_durable_index, peer.second->last_received.index());
     }
   }
 
@@ -1081,6 +1126,7 @@ void PeerMessageQueue::AdvanceQueueWatermark(const char* type,
   // - Find the vector.size() - 'num_peers_required' position, this
   //   will be the new 'watermark'.
   std::vector<int64_t> watermarks;
+  watermarks.reserve(peers_map_.size());
   for (const PeersMap::value_type& peer : peers_map_) {
     if (replica_types == VOTER_REPLICAS &&
         peer.second->peer_pb.member_type() != RaftPeerPB::VOTER) {
@@ -1302,13 +1348,14 @@ int64_t PeerMessageQueue::ComputeNewWatermarkDynamicMode(int64_t* watermark) {
   CHECK(queue_state_.active_config->commit_rule().mode() ==
       QuorumMode::SINGLE_REGION_DYNAMIC);
 
-  const std::string& leader_quorum = getQuorumIdUsingCommitRule(local_peer_pb_);
+  const std::string& leader_quorum_id = getQuorumIdUsingCommitRule(local_peer_pb_);
 
   // Compute the watermarks in leader quorum. As an example, at the end of this
   // loop, watermarks_in_leader_quorum might have entries (3, 7, 5) which
   // indicates that the leader quorum has 3 peers that have responded to OpId
   // indexes 3, 7 and 5 respectively
   std::vector<int64_t> watermarks_in_leader_quorum;
+  watermarks_in_leader_quorum.reserve(FLAGS_default_quorum_size * 2);
   for (const PeersMap::value_type& peer : peers_map_) {
     // Only voter members are considered for advancing watermark
     if (peer.second->peer_pb.member_type() != RaftPeerPB::VOTER) {
@@ -1318,21 +1365,21 @@ int64_t PeerMessageQueue::ComputeNewWatermarkDynamicMode(int64_t* watermark) {
     // Refer to the comment in AdvanceQueueWatermark method for why only
     // successful last exchanges are considered.
     if (peer.second->last_exchange_status == PeerStatus::OK) {
-      const string& peer_quorum_id = getQuorumIdUsingCommitRule(peer.second->peer_pb);
-      if (peer_quorum_id == leader_quorum) {
+      if (peer.second->is_peer_in_local_quorum.has_value() &&
+          peer.second->is_peer_in_local_quorum.value()) {
         watermarks_in_leader_quorum.push_back(
             peer.second->last_received.index());
       }
     }
   }
 
-  std::map<std::string, int> voter_distribution;
-
   // Compute total number of voters in each region.
-  GetVoterDistributionForQuorumId(*(queue_state_.active_config), &voter_distribution);
+  std::optional<int> total_from_vd =
+    GetTotalVotersFromVoterDistribution(*(queue_state_.active_config), leader_quorum_id);
 
-  int total_voters_from_voter_distribution =
-    FindOrDie(voter_distribution, leader_quorum);
+  CHECK(total_from_vd.has_value());
+
+  int total_voters_from_voter_distribution = total_from_vd.value();
 
   // Compute number of voters in each region in the active config.
   // As voter distribution provided in topology config can lag,
@@ -1349,7 +1396,7 @@ int64_t PeerMessageQueue::ComputeNewWatermarkDynamicMode(int64_t* watermark) {
 
     CHECK(peer_pb.has_permanent_uuid());
     const std::string& peer_pb_quorum_id = getQuorumIdUsingCommitRule(peer_pb);
-    if (peer_pb_quorum_id != leader_quorum) {
+    if (peer_pb_quorum_id != leader_quorum_id) {
       // In dynamic mode, only the leader region matters
       continue;
     }
@@ -1381,7 +1428,7 @@ int64_t PeerMessageQueue::ComputeNewWatermarkDynamicMode(int64_t* watermark) {
           << "Watermarks size: "
           << watermarks_in_leader_quorum.size()
           << ", Num peers required: " << commit_req
-          << ", Quorum: " << leader_quorum;
+          << ", Quorum: " << leader_quorum_id;
     }
     return *watermark;
   }
@@ -2278,24 +2325,24 @@ string PeerMessageQueue::QueueState::ToString() const {
       active_config ? ", active raft config: " + SecureShortDebugString(*active_config) : "");
 }
 
-std::string PeerMessageQueue::getQuorumIdUsingCommitRule(const RaftPeerPB& peer) {
+const std::string& PeerMessageQueue::getQuorumIdUsingCommitRule(const RaftPeerPB& peer) const {
   return GetQuorumId(peer, queue_state_.active_config->commit_rule());
 }
 
 void PeerMessageQueue::UpdatePeerQuorumIdUnlocked(
     const std::map<std::string, std::string>& quorum_id_map) {
+  // Update local peer's quorum id
+  auto it = quorum_id_map.find(local_peer_pb_.permanent_uuid());
+  if (it != quorum_id_map.end()) {
+    local_peer_pb_.mutable_attrs()->set_quorum_id(it->second);
+  }
   // Update quorum_ids in peers_map
   for (const PeersMap::value_type& entry : peers_map_) {
     auto it = quorum_id_map.find(entry.first);
     if (it != quorum_id_map.end()) {
       entry.second->peer_pb.mutable_attrs()->set_quorum_id(it->second);
     }
-  }
-
-  // Update local peer's quorum id
-  auto it = quorum_id_map.find(local_peer_pb_.permanent_uuid());
-  if (it != quorum_id_map.end()) {
-    local_peer_pb_.mutable_attrs()->set_quorum_id(it->second);
+    entry.second->PopulateIsPeerInLocalQuorum();
   }
 }
 
