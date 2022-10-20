@@ -203,6 +203,17 @@ void LogCache::TruncateOpsAfterUnlocked(int64_t index) {
   next_sequential_op_index_ = index + 1;
 }
 
+namespace {
+// Return the payload size as the approximate size of the msg. To get the true
+// size we'd have to use msg->SpaceUsedLong() for in-memory size of the msg and
+// grpc's WireFormatLite::LengthDelimitedSize() (+ 1 for type tag) for the
+// serialized size but both these methods are expensive. So we return the size
+// of the payload instead.
+int64_t ApproxMsgSize(const ReplicateRefPtr& msg) {
+  return static_cast<int64_t>(msg->get()->write_payload().payload().size());
+}
+} // anonymous namespace
+
 Status LogCache::AppendOperations(const vector<ReplicateRefPtr>& msgs,
                                   const StatusCallback& callback) {
   CHECK_GT(msgs.size(), 0);
@@ -308,22 +319,22 @@ Status LogCache::AppendOperations(const vector<ReplicateMsgWrapper>& msg_wrapper
     auto compressed_msg = msg_wrapper.GetCompressedMsg();
 
     CacheEntry e;
-    e.msg_size = msg->get()->SpaceUsedLong();
+    e.msg_size = ApproxMsgSize(msg);
 
-    uncompressed_size += msg->get()->write_payload().payload().size();
+    uncompressed_size += e.msg_size;
 
     // We use the compressed msg if available. The compressed msg might
     // not be avaiblable if compression is disabled or the msg doesn't
     // support compression e.g. non write op
     if (compressed_msg) {
-      e.mem_usage = static_cast<int64_t>(compressed_msg->get()->SpaceUsedLong());
+      e.mem_usage = ApproxMsgSize(compressed_msg);
       e.msg = compressed_msg;
     } else {
       e.mem_usage = e.msg_size;
       e.msg = msg;
     }
 
-    compressed_size += e.msg->get()->write_payload().payload().size();
+    compressed_size += static_cast<int64_t>(e.msg->get()->write_payload().payload().size());
 
     // Update the crc32 checksum for the payload
     uint32_t payload_crc32 = crc::Crc32c(
@@ -472,18 +483,6 @@ Status LogCache::LookupOpId(int64_t op_index, OpId* op_id) const {
   return log_->LookupOpId(op_index, op_id);
 }
 
-namespace {
-// Calculate the total byte size that will be used on the wire to replicate
-// this message as part of a consensus update request. This accounts for the
-// length delimiting and tagging of the message.
-int64_t TotalByteSizeForMessage(const ReplicateMsg& msg) {
-  int msg_size = google::protobuf::internal::WireFormatLite::LengthDelimitedSize(
-    msg.ByteSize());
-  msg_size += 1; // for the type tag
-  return msg_size;
-}
-} // anonymous namespace
-
 Status LogCache::BlockingReadOps(int64_t after_op_index,
                                  int max_size_bytes,
                                  const ReadContext& context,
@@ -621,7 +620,7 @@ Status LogCache::ReadOps(int64_t after_op_index,
           msg_wrapper.GetCompressedMsg() : msg_wrapper.GetUncompressedMsg();
         CHECK_EQ(next_index, msg->get()->id().index());
 
-        remaining_space -= TotalByteSizeForMessage(*(msg->get()));
+        remaining_space -= ApproxMsgSize(msg);
         if (remaining_space > 0 || messages->empty()) {
           messages->push_back(msg);
           next_index++;
@@ -636,7 +635,10 @@ Status LogCache::ReadOps(int64_t after_op_index,
           continue;
         }
 
-        remaining_space -= TotalByteSizeForMessage(*msg->get());
+        // The full size of the msg is actually returned by SpaceUsedLong() but
+        // that's very expensive, the payload size should be very close to the full
+        // msg size
+        remaining_space -= static_cast<int64_t>(msg->get()->write_payload().payload().size());
         if (remaining_space < 0 && !messages->empty()) {
           break;
         }
