@@ -520,6 +520,20 @@ void ConsensusServiceImpl::RunLeaderElection(const RunLeaderElectionRequestPB* r
     return;
   }
 
+  consensus::ElectionMode mode = consensus::ELECT_EVEN_IF_LEADER_IS_ALIVE;
+  std::function<void(const consensus::ElectionResult&)> callback;
+  bool wait_for_decision =
+      req->has_wait_for_decision() && req->wait_for_decision();
+  if (wait_for_decision) {
+    callback = std::bind(
+        [resp](rpc::RpcContext* ctx, const consensus::ElectionResult& result) {
+          resp->set_election_won(
+              result.decision == consensus::ElectionVote::VOTE_GRANTED);
+          ctx->RespondSuccess();
+        },
+        context,
+        std::placeholders::_1);
+  }
   Status s;
   if (req->has_election_context()) {
     const LeaderElectionContextPB& ctx = req->election_context();
@@ -528,16 +542,20 @@ void ConsensusServiceImpl::RunLeaderElection(const RunLeaderElectionRequestPB* r
       std::chrono::system_clock::time_point(
           std::chrono::nanoseconds(ctx.original_start_time()));
     s = consensus->StartElection(
-        consensus::ElectionMode::ELECT_EVEN_IF_LEADER_IS_ALIVE,
-        {consensus::ElectionReason::EXTERNAL_REQUEST,
-         request_start,
-         ctx.original_uuid(),
-         ctx.is_origin_dead_promotion()});
+        mode,
+        {
+            consensus::ElectionReason::EXTERNAL_REQUEST,
+            request_start,
+            ctx.original_uuid(),
+            ctx.is_origin_dead_promotion()
+        },
+        callback);
   } else {
     s = consensus->StartElection(
-        consensus::ElectionMode::ELECT_EVEN_IF_LEADER_IS_ALIVE,
+        mode,
         {consensus::ElectionReason::EXTERNAL_REQUEST,
-         std::chrono::system_clock::now()});
+         std::chrono::system_clock::now()},
+        callback);
   }
 
   if (PREDICT_FALSE(!s.ok())) {
@@ -546,7 +564,10 @@ void ConsensusServiceImpl::RunLeaderElection(const RunLeaderElectionRequestPB* r
                          context);
     return;
   }
-  context->RespondSuccess();
+
+  if (!wait_for_decision) {
+    context->RespondSuccess();
+  }
 }
 
 void ConsensusServiceImpl::LeaderStepDown(const LeaderStepDownRequestPB* req,

@@ -656,11 +656,19 @@ message RunLeaderElectionRequestPB {
   // A token stamped to the request to prove to the remote host that we're part
   // of a ring
   optional string raft_rpc_token = 6;
+
+  // Whether to return response after a decision has been made. When set true,
+  // RunLeaderElectionResponsePB.vote_granted will be populated.
+  optional bool wait_for_decision = 7 [default = false];
 }
 
 message RunLeaderElectionResponsePB {
   // A generic error message (such as tablet not found).
   optional ServerErrorPB error = 1;
+
+  // Whether request's dest_uuid was elected as leader. Is only populated if
+  // RunLeaderElectionRequestPB.wait_for_decision is set to true.
+  optional bool election_won = 2;
 }
 
 enum LeaderStepDownMode {

@@ -619,7 +619,10 @@ string ReasonString(ElectionReason reason, StringPiece leader_uuid) {
 }
 } // anonymous namespace
 
-Status RaftConsensus::StartElection(ElectionMode mode, ElectionContext context) {
+Status RaftConsensus::StartElection(
+    ElectionMode mode,
+    ElectionContext context,
+    std::function<void(const ElectionResult&)> callback) {
   const char* const mode_str = ModeString(mode);
 
   TRACE_EVENT2("consensus", "RaftConsensus::StartElection",
@@ -793,7 +796,8 @@ Status RaftConsensus::StartElection(ElectionMode mode, ElectionContext context) 
         std::bind(&RaftConsensus::ElectionCallback,
                   shared_from_this(),
                   std::move(context),
-                  std::placeholders::_1),
+                  std::placeholders::_1,
+                  std::move(callback)),
                   vote_logger_));
   }
 
@@ -1361,7 +1365,8 @@ void RaftConsensus::TryStartElectionOnPeerTask(const string& peer_uuid,
     req.set_raft_rpc_token(*rpc_token);
   }
 
-  WARN_NOT_OK(peer_manager_->StartElection(peer_uuid, std::move(req)),
+  RunLeaderElectionResponsePB resp;
+  WARN_NOT_OK(peer_manager_->StartElection(peer_uuid, &resp, std::move(req)),
               Substitute("unable to start election on peer $0", peer_uuid));
 }
 
@@ -3373,7 +3378,13 @@ void RaftConsensus::DumpStatusHtml(std::ostream& out) const {
   }
 }
 
-void RaftConsensus::ElectionCallback(ElectionContext context, const ElectionResult& result) {
+void RaftConsensus::ElectionCallback(
+    ElectionContext context,
+    const ElectionResult& result,
+    std::function<void(const ElectionResult&)> callback) {
+  if (callback) {
+    callback(result);
+  }
   // The election callback runs on a reactor thread, so we need to defer to our
   // threadpool. If the threadpool is already shut down for some reason, it's OK --
   // we're OK with the callback never running.

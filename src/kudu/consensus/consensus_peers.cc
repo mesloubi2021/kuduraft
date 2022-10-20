@@ -400,14 +400,15 @@ void Peer::SendNextRequest(bool even_if_queue_empty, bool from_heartbeater) {
                               });
 }
 
-Status Peer::StartElection(RunLeaderElectionRequestPB req) {
-  RunLeaderElectionResponsePB resp;
+Status Peer::StartElection(
+    RunLeaderElectionResponsePB* resp,
+    RunLeaderElectionRequestPB req) {
   RpcController controller;
   req.set_dest_uuid(peer_pb().permanent_uuid());
   req.set_tablet_id(tablet_id_);
-  RETURN_NOT_OK(proxy_->StartElection(&req, &resp, &controller));
+  RETURN_NOT_OK(proxy_->StartElection(&req, resp, &controller));
   RETURN_NOT_OK(controller.status());
-  if (resp.has_error()) {
+  if (resp->has_error()) {
     return StatusFromPB(response_.error().status());
   }
   return Status::OK();

@@ -292,7 +292,10 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   Status EmulateElection();
 
   // Triggers a leader election.
-  Status StartElection(ElectionMode mode, ElectionContext context);
+  Status StartElection(
+      ElectionMode mode,
+      ElectionContext context,
+      std::function<void(const ElectionResult&)> callback = {});
 
   // Wait until the node has LEADER role.
   // Returns Status::TimedOut if the role is not LEADER within 'timeout'.
@@ -925,9 +928,13 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // Get the context sent by the candidate as a string. Used for logging
   std::string GetCandidateContextString(const VoteRequestPB* request);
 
-  // Callback for leader election driver. ElectionCallback is run on the
+  // Callback for leader election driver. The "callback" arg is run in the same
+  // caller thread but the rest of the ElectionCallback is run on the
   // reactor thread, so it simply defers its work to DoElectionCallback.
-  void ElectionCallback(ElectionContext context, const ElectionResult& result);
+  void ElectionCallback(
+      ElectionContext context,
+      const ElectionResult& result,
+      std::function<void(const ElectionResult&)> callback);
   void DoElectionCallback(const ElectionContext& context, const ElectionResult& result);
   void NestedElectionDecisionCallback(
       ElectionContext context, const ElectionResult& result);

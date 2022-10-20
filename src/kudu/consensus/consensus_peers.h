@@ -91,7 +91,9 @@ class Peer : public std::enable_shared_from_this<Peer> {
   // StartElection request.
   // The StartElection RPC does not count as the single outstanding request
   // that this class tracks.
-  Status StartElection(RunLeaderElectionRequestPB req = {});
+  Status StartElection(
+      RunLeaderElectionResponsePB* resp,
+      RunLeaderElectionRequestPB req = {});
 
   const RaftPeerPB& peer_pb() const { return peer_pb_; }
 
