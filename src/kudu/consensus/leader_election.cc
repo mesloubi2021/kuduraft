@@ -281,6 +281,14 @@ FlexibleVoteCounter::FlexibleVoteCounter(
   // Its critical that we count num_voters_ based on current voter list
   // as voter_distribution_ can be greater or less than current voter list
   num_voters_ = uuid_to_quorum_id_.size();
+  for (const auto& [uuid, quorum_id]: uuid_to_quorum_id_){
+    auto quorum_id_itr = num_voters_per_quorum_id_.find(quorum_id);
+    if (quorum_id_itr == num_voters_per_quorum_id_.end()) {
+      num_voters_per_quorum_id_.emplace(quorum_id, 1);
+    } else {
+      quorum_id_itr->second++;
+    }
+  }
 
   CHECK_GT(num_voters_, 0);
 }
@@ -408,16 +416,16 @@ FlexibleVoteCounter::IsMajoritySatisfiedInRegions(
     // constructor.
     int regional_yes_count = FindOrDie(yes_vote_count_, region);
     int regional_no_count = FindOrDie(no_vote_count_, region);
-    int regional_total_count = FindOrDie(voter_distribution_, region);
+    int regional_quorum_count = FindOrDie(voter_distribution_, region);
+    size_t regional_total_count = FindOrDie(num_voters_per_quorum_id_, region);
 
     VLOG_WITH_PREFIX(3) << "Region: " << region
-                        << " Total voters: " << regional_total_count
+                        << " Total voters: " << regional_quorum_count
                         << " Votes granted count: "
                         << regional_yes_count
                         << " Votes denied count: " << regional_no_count;
 
-    DCHECK(regional_total_count >= 1 || !adjust_voter_distribution_);
-    const int region_majority_size = MajoritySize(regional_total_count);
+    const int region_majority_size = MajoritySize(regional_quorum_count);
 
     if (regional_yes_count < region_majority_size) {
       VLOG_WITH_PREFIX(2) << "Yes votes in region: " << region
@@ -425,15 +433,26 @@ FlexibleVoteCounter::IsMajoritySatisfiedInRegions(
           << " but majority requirement is: " << region_majority_size;
       quorum_satisfied = false;
     }
-    if (!quorum_satisfied && regional_no_count + region_majority_size > regional_total_count) {
+    if ((regional_yes_count + regional_no_count) >= regional_total_count) {
+      DCHECK_EQ(regional_yes_count + regional_no_count, regional_total_count);
+      VLOG_WITH_PREFIX(2) << "All votes are in. Quorum "
+                          << (quorum_satisfied ? "" : "not")
+                          << " statisfied in region " << region
+                          << ". Yes votes: " << regional_yes_count
+                          << ", no votes: " << regional_no_count
+                          << ", total members: " << regional_total_count
+                          << ", majority requirement: " << region_majority_size;
+      quorum_satisfaction_possible = quorum_satisfied;
+    } else if (
+        !quorum_satisfied &&
+        regional_no_count + region_majority_size > regional_quorum_count) {
       VLOG_WITH_PREFIX(2) << "Quorum satisfaction not possible in region: "
                           << region << " because of excessive no votes: "
                           << regional_no_count
                           << " Majority requirement: " << region_majority_size;
       quorum_satisfaction_possible = false;
     }
-    results.push_back(std::make_pair<>(
-                        quorum_satisfied, quorum_satisfaction_possible));
+    results.emplace_back(quorum_satisfied, quorum_satisfaction_possible);
   }
   return results;
 }
@@ -1034,6 +1053,10 @@ std::pair<bool, bool> FlexibleVoteCounter::IsDynamicQuorumSatisfied() const {
         << "has been found in the crowd sourcing phase.";
     return std::make_pair<>(false, false);
   }
+  bool all_votes_are_in = AreAllVotesIn();
+  if (all_votes_are_in) {
+    LOG_WITH_PREFIX(INFO) << "All expected number of votes are in";
+  }
 
   // This could be empty as a Last known leader could no more
   // be a voter or in the ring.
@@ -1043,11 +1066,22 @@ std::pair<bool, bool> FlexibleVoteCounter::IsDynamicQuorumSatisfied() const {
   // Step 1: Check if pessimistic quorum is satisfied.
   std::pair<bool, bool> pessimistic_result = IsPessimisticQuorumSatisfied();
 
+  if (all_votes_are_in && pessimistic_result.first != pessimistic_result.second) {
+    // when all_votes_are_in, it should not be the case that
+    // pessimistic_result.second is different from pessimistic_result.first,
+    // because it should be a clear VOTE_GRANTED or VOTE_DENIED case
+    // (decideable)
+    LOG_WITH_PREFIX(DFATAL)
+        << "UNEXPECTED VOTING: All votes are in but Pessimistic quorum is "
+        << "not decideable. Acheived majority: " << pessimistic_result.first
+        << ", can achieve majority: " << pessimistic_result.second;
+  }
+
   // Return pessimistic quorum result if the pessimistic quorum is satisfied or
   // if the pessimistic quorum cannot be satisfied and we depend on the
   // knowledge of the last leader without having it (eg. during bootstrap), we
-  // should declare having lost the election or having insufficient votes to make
-  // a decision.
+  // should declare having lost the election or having insufficient votes to
+  // make a decision.
   if (pessimistic_result.first || last_known_leader_quorum_id.empty()) {
     LOG_WITH_PREFIX(INFO)
         << "Election status returned from pessimistic quorum check. "
@@ -1060,16 +1094,6 @@ std::pair<bool, bool> FlexibleVoteCounter::IsDynamicQuorumSatisfied() const {
   std::string candidate_quorum_id(
       DetermineQuorumIdForUUID(candidate_uuid_));
 
-  bool all_votes_are_in = AreAllVotesIn();
-  if (all_votes_are_in) {
-    LOG_WITH_PREFIX(INFO) << "ALL EXPECTED NUMBER OF VOTES ARE IN";
-    // when all_votes_are_in, it should not be the case that
-    // pessimistic_result.second = true, because it should be a clear
-    // VOTE_GRANTED or VOTE_DENIED case (decideable)
-    if (pessimistic_result.second) {
-      LOG_WITH_PREFIX(INFO) << "UNEXPECTED VOTING: All votes are in but Pessimistic quorum is not decideable";
-    }
-  }
   // Step 2: Check if last known leader's quorum is satisfied and we directly
   // succeed term.
   //
@@ -1202,6 +1226,17 @@ std::pair<bool, bool> FlexibleVoteCounter::IsDynamicQuorumSatisfied() const {
     // that it will be less than pessimistic quorum.
     result = ComputeElectionResultFromVotingHistory(
         last_known_leader, last_known_leader_quorum_id, candidate_quorum_id);
+  }
+
+  if (all_votes_are_in && result.first != result.second) {
+    // when all_votes_are_in, it should not be the case that
+    // result.second is different from result.first,
+    // because it should be a clear VOTE_GRANTED or VOTE_DENIED case
+    // (decideable)
+    LOG_WITH_PREFIX(DFATAL)
+      << "UNEXPECTED VOTING: All votes are in but quorum is "
+      << "not decideable. Acheived majority: " << result.first
+      << ", can achieve majority: " << result.second;
   }
 
   return result;

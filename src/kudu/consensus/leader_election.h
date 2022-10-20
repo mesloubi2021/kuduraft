@@ -357,6 +357,9 @@ class FlexibleVoteCounter : public VoteCounter {
   // Config at the beginning of the leader election.
   const RaftConfigPB config_;
 
+  // Number of voters in each quorum
+  std::unordered_map<std::string, size_t> num_voters_per_quorum_id_;
+
   // UUID to quorum_id map derived from RaftConfigPB.
   std::map<std::string, std::string> uuid_to_quorum_id_;
 
