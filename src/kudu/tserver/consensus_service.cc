@@ -23,6 +23,7 @@
 #include <functional>
 #include <memory>
 #include <numeric>
+#include <optional>
 #include <ostream>
 #include <string>
 #include <type_traits>
@@ -521,9 +522,17 @@ void ConsensusServiceImpl::RunLeaderElection(const RunLeaderElectionRequestPB* r
   }
 
   consensus::ElectionMode mode = consensus::ELECT_EVEN_IF_LEADER_IS_ALIVE;
+  std::optional<OpId> mock_election_snapshot_op_id;
+  if (req->has_mock_election_snapshot_op_id()) {
+    mode = consensus::MOCK_ELECTION;
+    mock_election_snapshot_op_id = req->mock_election_snapshot_op_id();
+  }
+
   std::function<void(const consensus::ElectionResult&)> callback;
   bool wait_for_decision =
-      req->has_wait_for_decision() && req->wait_for_decision();
+      (req->has_wait_for_decision() && req->wait_for_decision()) ||
+      mode == consensus::MOCK_ELECTION;
+
   if (wait_for_decision) {
     callback = std::bind(
         [resp](rpc::RpcContext* ctx, const consensus::ElectionResult& result) {
@@ -534,6 +543,7 @@ void ConsensusServiceImpl::RunLeaderElection(const RunLeaderElectionRequestPB* r
         context,
         std::placeholders::_1);
   }
+
   Status s;
   if (req->has_election_context()) {
     const LeaderElectionContextPB& ctx = req->election_context();
@@ -546,6 +556,7 @@ void ConsensusServiceImpl::RunLeaderElection(const RunLeaderElectionRequestPB* r
         {
             consensus::ElectionReason::EXTERNAL_REQUEST,
             request_start,
+            std::move(mock_election_snapshot_op_id),
             ctx.original_uuid(),
             ctx.is_origin_dead_promotion()
         },
@@ -554,7 +565,8 @@ void ConsensusServiceImpl::RunLeaderElection(const RunLeaderElectionRequestPB* r
     s = consensus->StartElection(
         mode,
         {consensus::ElectionReason::EXTERNAL_REQUEST,
-         std::chrono::system_clock::now()},
+         std::chrono::system_clock::now(),
+         std::move(mock_election_snapshot_op_id)},
         callback);
   }
 

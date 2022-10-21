@@ -147,20 +147,28 @@ enum ElectionReason {
 struct ElectionContext {
   typedef const std::chrono::system_clock::time_point Timepoint;
 
-  ElectionContext(ElectionReason reason, Timepoint chained_start_time) :
-    reason_(reason),
-    chained_start_time_(chained_start_time),
-    is_origin_dead_promotion_(reason == ElectionReason::ELECTION_TIMEOUT_EXPIRED) {}
+  ElectionContext(
+      ElectionReason reason,
+      Timepoint chained_start_time,
+      std::optional<OpId> mock_election_snapshot_op_id = {})
+      : reason_(reason),
+        chained_start_time_(chained_start_time),
+        is_origin_dead_promotion_(
+            reason == ElectionReason::ELECTION_TIMEOUT_EXPIRED),
+        mock_election_snapshot_op_id_(std::move(mock_election_snapshot_op_id)) {
+  }
 
   ElectionContext(
       ElectionReason reason,
       Timepoint chained_start_time,
+      std::optional<OpId> mock_election_snapshot_op_id,
       std::string source_uuid,
       bool is_origin_dead_promotion) :
     reason_(reason),
     chained_start_time_(chained_start_time),
     source_uuid_(std::move(source_uuid)),
-    is_origin_dead_promotion_(is_origin_dead_promotion) {}
+    is_origin_dead_promotion_(is_origin_dead_promotion),
+    mock_election_snapshot_op_id_(std::move(mock_election_snapshot_op_id)) {}
 
   PeerMessageQueue::TransferContext TransferContext() const;
 
@@ -185,6 +193,8 @@ struct ElectionContext {
 
   // True if the start of the election is a dead promotion
   const bool is_origin_dead_promotion_;
+
+  std::optional<OpId> mock_election_snapshot_op_id_;
 };
 
 class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
@@ -924,6 +934,11 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   Status RequestVoteRespondVoteGranted(const VoteRequestPB* request,
                                        const std::string& hostname_port,
                                        VoteResponsePB* response);
+
+  // Respond to VoteRequest that the request is invalid.
+  Status RequestVoteRespondInvalidClientRequest(
+      VoteResponsePB* response,
+      const std::string& error_message);
 
   // Get the context sent by the candidate as a string. Used for logging
   std::string GetCandidateContextString(const VoteRequestPB* request);

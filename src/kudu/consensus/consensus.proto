@@ -122,6 +122,10 @@ message ServerErrorPB {
 
     // The provided raft_rpc_token does not match with the token of the server
     RING_TOKEN_MISMATCH = 19;
+
+    // Client request error. For example, not providing a
+    // mock_election_snapshot_op_id when requesting a Mock Election.
+    INVALID_CLIENT_REQUEST = 20;
   }
 
   // The error code.
@@ -446,6 +450,10 @@ message VoteRequestPB {
   optional string raft_rpc_token = 9;
 
   optional ElectionMode mode = 10;
+
+  // See RunLeaderElectionRequestPB.mock_election_snapshot_op_id for definition.
+  // Must be set if mode is MOCK_ELECTION. Value is ignored in any other mode.
+  optional OpId mock_election_snapshot_op_id = 11;
 }
 
 // Additional context that a voter sends back in the response to RequestVote()
@@ -660,6 +668,11 @@ message RunLeaderElectionRequestPB {
   // Whether to return response after a decision has been made. When set true,
   // RunLeaderElectionResponsePB.vote_granted will be populated.
   optional bool wait_for_decision = 7 [default = false];
+
+  // Snapshot op id taken on the leader. Used in the mock election to compare
+  // how ahead or behind a voter is to a candidate. If this is set, we assume
+  // that the election is a mock election.
+  optional OpId mock_election_snapshot_op_id = 8;
 }
 
 message RunLeaderElectionResponsePB {

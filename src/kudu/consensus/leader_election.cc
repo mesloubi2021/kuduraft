@@ -1587,7 +1587,8 @@ void LeaderElection::HandleHigherTermUnlocked(const VoterState& state) {
 void LeaderElection::HandleVoteGrantedUnlocked(const VoterState& state) {
   DCHECK(lock_.is_locked());
   ElectionMode mode = request_.mode();
-  if (mode != ElectionMode::PRE_ELECTION) {
+  if (mode != ElectionMode::PRE_ELECTION &&
+      mode != ElectionMode::MOCK_ELECTION) {
     DCHECK_EQ(state.response.responder_term(), election_term());
   }
   DCHECK(state.response.vote_granted());

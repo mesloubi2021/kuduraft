@@ -54,6 +54,8 @@ bool OpIdBiggerThan(const OpId& left, const OpId& right);
 // If to_compare is copied into target, returns true, else false.
 bool CopyIfOpIdLessThan(const OpId& to_compare, OpId* target);
 
+const OpId& MinOpId(const OpId& left, const OpId& right);
+
 // Return -1 if left < right,
 //         0 if equal,
 //         1 if left > right.

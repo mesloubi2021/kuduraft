@@ -74,6 +74,10 @@ bool CopyIfOpIdLessThan(const consensus::OpId& to_compare, consensus::OpId* targ
   return false;
 }
 
+const OpId& MinOpId(const OpId& left, const OpId& right) {
+  return OpIdLessThan(left, right) ? left : right;
+}
+
 size_t OpIdHashFunctor::operator() (const OpId& id) const {
   return (id.term() + 31) ^ id.index();
 }

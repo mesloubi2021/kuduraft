@@ -685,8 +685,9 @@ Status RaftConsensus::StartElection(
     MonoDelta timeout = LeaderElectionExpBackoffDeltaUnlocked();
     SnoozeFailureDetector(string("starting election"), timeout);
 
-    // Increment the term and vote for ourselves, unless it's a pre-election.
-    if (mode != PRE_ELECTION) {
+    // Increment the term and vote for ourselves, unless it's a pre or mock
+    // election.
+    if (mode != PRE_ELECTION && mode != MOCK_ELECTION) {
       // TODO(mpercy): Consider using a separate Mutex for voting, which must sync to disk.
 
       // We skip flushing the term to disk because setting the vote just below also
@@ -701,9 +702,9 @@ Status RaftConsensus::StartElection(
                                    << SecureShortDebugString(active_config);
 
     int64_t candidate_term = CurrentTermUnlocked();
-    if (mode == PRE_ELECTION) {
-      // In a pre-election, we haven't bumped our own term yet, so we need to be
-      // asking for votes for the next term.
+    if (mode == PRE_ELECTION || mode == MOCK_ELECTION) {
+      // In a pre or mock election, we haven't bumped our own term yet, so we
+      // need to be asking for votes for the next term.
       candidate_term += 1;
     }
 
@@ -780,8 +781,16 @@ Status RaftConsensus::StartElection(
     }
 
     request.set_tablet_id(options_.tablet_id);
-    *request.mutable_candidate_status()->mutable_last_received() =
-        queue_->GetLastOpIdInLog();
+
+    if (context.mock_election_snapshot_op_id_) {
+      *request.mutable_candidate_status()->mutable_last_received() = MinOpId(
+          *context.mock_election_snapshot_op_id_, queue_->GetLastOpIdInLog());
+      *request.mutable_mock_election_snapshot_op_id() =
+          *context.mock_election_snapshot_op_id_;
+    } else {
+      *request.mutable_candidate_status()->mutable_last_received() =
+          queue_->GetLastOpIdInLog();
+    }
 
     // active_config is cached into the LeaderElection, i.e.
     // if it changes during the LeaderElection process that is not
@@ -2160,6 +2169,16 @@ Status RaftConsensus::RequestVote(const VoteRequestPB* request,
   }
   DCHECK(local_last_logged_opid.IsInitialized());
 
+  if (request->mode() == MOCK_ELECTION) {
+    if (!request->has_mock_election_snapshot_op_id()) {
+      return RequestVoteRespondInvalidClientRequest(
+          response,
+          "mock_election_snapshot_op_id must be provided in a Mock Election");
+    }
+    local_last_logged_opid = MinOpId(
+        local_last_logged_opid, request->mock_election_snapshot_op_id());
+  }
+
   // If the node is not in the configuration, allow the vote (this is required by Raft)
   // but log an informational message anyway.
   std::string hostname_port("[NOT-IN-CONFIG]");
@@ -2217,6 +2236,7 @@ Status RaftConsensus::RequestVote(const VoteRequestPB* request,
   }
 
   if (request->mode() != ELECT_EVEN_IF_LEADER_IS_ALIVE &&
+      request->mode() != MOCK_ELECTION &&
       MonoTime::Now() < withhold_votes_until_) {
     return RequestVoteRespondLeaderIsAlive(request, hostname_port, response);
   }
@@ -2271,11 +2291,14 @@ Status RaftConsensus::RequestVote(const VoteRequestPB* request,
   if (vote_yes && check_srd_lag) {
     int64_t lag = (request->candidate_status().last_received().index() -
         local_last_logged_opid.index());
-    if (lag > FLAGS_lag_threshold_for_request_vote) {
+    int64_t lag_threshold = request->mode() == MOCK_ELECTION
+        ? 0
+        : FLAGS_lag_threshold_for_request_vote;
+    if (lag > lag_threshold) {
       return RequestVoteRespondVoteWitheld(request, hostname_port,
           strings::Substitute("votes are being witheld for huge lag "
               "$0 > $1, candidate at: $2, voter at: $3",
-              lag, FLAGS_lag_threshold_for_request_vote,
+              lag, lag_threshold,
               SecureShortDebugString(request->candidate_status().last_received()),
               SecureShortDebugString(local_last_logged_opid)),
           response);
@@ -2283,10 +2306,11 @@ Status RaftConsensus::RequestVote(const VoteRequestPB* request,
   }
 
   // Record the term advancement if necessary. We don't do so in the case of
-  // pre-elections because it's possible that the node who called the pre-election
-  // has actually now successfully become leader of the prior term, in which case
-  // bumping our term here would disrupt it.
+  // pre or mock elections because it's possible that the node who called the
+  // pre or mock election has actually now successfully become leader of the
+  // prior term, in which case bumping our term here would disrupt it.
   if (request->mode() != ElectionMode::PRE_ELECTION &&
+      request->mode() != ElectionMode::MOCK_ELECTION &&
       request->candidate_term() > CurrentTermUnlocked()) {
     // If we are going to vote for this peer, then we will flush the consensus metadata
     // to disk below when we record the vote, and we can skip flushing the term advancement
@@ -3093,7 +3117,8 @@ Status RaftConsensus::RequestVoteRespondVoteGranted(const VoteRequestPB* request
   SnoozeFailureDetector(string("vote granted"), backoff);
 
   ElectionMode mode = request->mode();
-  if (mode != ElectionMode::PRE_ELECTION) {
+  if (mode != ElectionMode::PRE_ELECTION &&
+      mode != ElectionMode::MOCK_ELECTION) {
     // Persist our vote to disk.
     RETURN_NOT_OK(SetVotedForCurrentTermUnlocked(request->candidate_uuid()));
   }
@@ -3111,6 +3136,17 @@ Status RaftConsensus::RequestVoteRespondVoteGranted(const VoteRequestPB* request
                           request->candidate_uuid(),
                           CurrentTermUnlocked(),
                           GetCandidateContextString(request));
+  return Status::OK();
+}
+
+Status RaftConsensus::RequestVoteRespondInvalidClientRequest(
+    VoteResponsePB* response,
+    const std::string& error_message) {
+  LOG(INFO) << "Invalid client request in RequestVote: " << error_message;
+  response->mutable_error()->set_code(ServerErrorPB::INVALID_CLIENT_REQUEST);
+  StatusToPB(
+      Status::InvalidArgument(error_message),
+      response->mutable_error()->mutable_status());
   return Status::OK();
 }
 
@@ -3385,6 +3421,13 @@ void RaftConsensus::ElectionCallback(
   if (callback) {
     callback(result);
   }
+
+  // We stop here if we're doing mock elections as we do not want to incur any
+  // side effects.
+  if (result.vote_request.mode() == ElectionMode::MOCK_ELECTION) {
+    return;
+  }
+
   // The election callback runs on a reactor thread, so we need to defer to our
   // threadpool. If the threadpool is already shut down for some reason, it's OK --
   // we're OK with the callback never running.
@@ -3397,6 +3440,7 @@ void RaftConsensus::ElectionCallback(
 
 void RaftConsensus::DoElectionCallback(
     const ElectionContext& context, const ElectionResult& result) {
+  DCHECK(result.vote_request.mode() != MOCK_ELECTION);
   const int64_t election_term = result.vote_request.candidate_term();
   const bool was_pre_election =
       result.vote_request.mode() == ElectionMode::PRE_ELECTION;
@@ -3521,6 +3565,7 @@ void RaftConsensus::DoElectionCallback(
 
 void RaftConsensus::NestedElectionDecisionCallback(
     ElectionContext context, const ElectionResult& result) {
+  DCHECK(result.vote_request.mode() != MOCK_ELECTION);
   DoElectionCallback(context, result);
   if (result.vote_request.mode() != ElectionMode::PRE_ELECTION && edcb_) {
     edcb_(result, std::move(context));
