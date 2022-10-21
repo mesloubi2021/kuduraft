@@ -99,7 +99,7 @@ char* strnstr(const char* haystack, const char* needle, size_t haystack_len);
 #ifndef strprefix
 #define strprefix(str, prefix) \
   (strncmp(str, prefix, sizeof("" prefix "")-1) == 0 ? \
-      str + sizeof(prefix)-1 :                         \
+      (str) + sizeof(prefix)-1 :                       \
       NULL)
 #endif
 
@@ -108,7 +108,7 @@ char* strnstr(const char* haystack, const char* needle, size_t haystack_len);
 #ifndef strcaseprefix
 #define strcaseprefix(str, prefix) \
   (strncasecmp(str, prefix, sizeof("" prefix "")-1) == 0 ? \
-      str + sizeof(prefix)-1 :                             \
+      (str) + sizeof(prefix)-1 :                           \
       NULL)
 #endif
 

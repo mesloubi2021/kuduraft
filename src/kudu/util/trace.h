@@ -101,11 +101,11 @@ class Trace;
 // coarse-grained histogram for trace metrics.
 #define BUCKETED_COUNTER_NAME(prefix, duration_us)      \
   [=]() -> const char* {                                \
-    if (duration_us >= 100 * 1000) {                    \
+    if ((duration_us) >= 100 * 1000) {                    \
       return prefix "_gt_100_ms";                       \
-    } else if (duration_us >= 10 * 1000) {              \
+    } else if ((duration_us) >= 10 * 1000) {              \
       return prefix "_10-100_ms";                       \
-    } else if (duration_us >= 1000) {                   \
+    } else if ((duration_us) >= 1000) {                   \
       return prefix "_1-10_ms";                         \
     } else {                                            \
       return prefix "_lt_1ms";                          \

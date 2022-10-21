@@ -66,12 +66,13 @@
                          /* send_to_log= */VLOG_IS_ON(vlevel)).stream()
 
 #define VLOG_AND_TRACE(category, vlevel)                              \
+  /*NOLINTNEXTLINE(bugprone-macro-parentheses)*/                      \
   !( {                                                                \
       bool enabled;                                                   \
       TRACE_EVENT_CATEGORY_GROUP_ENABLED(category, &enabled);         \
       enabled || VLOG_IS_ON(vlevel);                                  \
     } ) ? static_cast<void>(0) :                                      \
-          google::LogMessageVoidify() & VLOG_AND_TRACE_INTERNAL(category, vlevel) // NOLINT(*)
+          google::LogMessageVoidify() & VLOG_AND_TRACE_INTERNAL(category, vlevel)
 
 
 #define LOG_AND_TRACE(category, severity) \

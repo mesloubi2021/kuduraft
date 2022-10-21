@@ -1242,7 +1242,7 @@ inline void UnalignedStore(void* dst, const T& src) {
 
 #define OFFSETOF_MEMBER(t, f)         \
   (reinterpret_cast<char*>(           \
-     &reinterpret_cast<t*>(16)->f) -  \
+     &reinterpret_cast<(t)*>(16)->f) -  \
    reinterpret_cast<char*>(16))
 
 #ifdef PTHREADS_REDHAT_WIN32

@@ -1870,7 +1870,7 @@ struct kernel_statfs {
     do {                                                                      \
       if ((unsigned long)(res) >= (unsigned long)(-4095)) {                   \
         LSS_ERRNO = -(res);                                                   \
-        res = -1;                                                             \
+        (res) = -1;                                                           \
       }                                                                       \
       return (type) (res);                                                    \
     } while (0)
@@ -1883,7 +1883,7 @@ struct kernel_statfs {
       if (err) {                                                              \
         unsigned long __errnovalue = (res);                                   \
         LSS_ERRNO = __errnovalue;                                             \
-        res = -1;                                                             \
+        (res) = -1;                                                             \
       }                                                                       \
       return (type) (res);                                                    \
     } while (0)
@@ -1895,7 +1895,7 @@ struct kernel_statfs {
    do {                                                                       \
      if (err & 0x10000000 ) {                                                 \
        LSS_ERRNO = (res);                                                     \
-       res = -1;                                                              \
+       (res) = -1;                                                            \
      }                                                                        \
      return (type) (res);                                                     \
    } while (0)

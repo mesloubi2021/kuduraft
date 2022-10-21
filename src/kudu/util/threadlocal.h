@@ -94,7 +94,7 @@ static __thread T* t
 
 // You must also define the instance in the .cc file.
 #define DEFINE_STATIC_THREAD_LOCAL(T, Class, t)                                               \
-__thread T* Class::t
+(__thread (T)* Class::t)
 
 // Must be invoked at least once by each thread that will access t.
 #define INIT_STATIC_THREAD_LOCAL(T, t, ...)                                       \

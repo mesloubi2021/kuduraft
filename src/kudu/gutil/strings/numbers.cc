@@ -760,12 +760,15 @@ size_t u64tostr_base36(uint64 number, size_t buf_size, char* buffer) {
 
 // Generate functions that wrap safe_strtoXXX_base.
 #define GEN_SAFE_STRTO(name, type)                           \
+/*NOLINTNEXTLINE(bugprone-macro-parentheses)*/               \
 bool name##_base(const string& str, type* value, int base) { \
   return name##_base(str.c_str(), value, base);              \
 }                                                            \
+/*NOLINTNEXTLINE(bugprone-macro-parentheses)*/               \
 bool name(const char* str, type* value) {                    \
   return name##_base(str, value, 10);                        \
 }                                                            \
+/*NOLINTNEXTLINE(bugprone-macro-parentheses)*/               \
 bool name(const string& str, type* value) {                  \
   return name##_base(str.c_str(), value, 10);                \
 }

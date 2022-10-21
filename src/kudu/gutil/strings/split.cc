@@ -644,7 +644,7 @@ static inline uint64 strtou64_16(const char * source, char ** end) {
 
 #define DEFINE_SPLIT_ONE_NUMBER_TOKEN(name, type, function) \
 bool SplitOne##name##Token(const char ** source, const char * delim, \
-                           type * value) {                      \
+                           type * value) {/*NOLINT(bugprone-macro-parentheses)*/\
   assert(source);                                               \
   assert(delim);                                                \
   assert(value);                                                \

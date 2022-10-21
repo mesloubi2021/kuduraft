@@ -290,29 +290,29 @@
 //   literals). They may not include " chars.
 #define TRACE_EVENT_INSTANT0(category_group, name, scope) \
     INTERNAL_TRACE_EVENT_ADD(TRACE_EVENT_PHASE_INSTANT, \
-        category_group, name, TRACE_EVENT_FLAG_NONE | scope)
+        category_group, name, TRACE_EVENT_FLAG_NONE | (scope)
 #define TRACE_EVENT_INSTANT1(category_group, name, scope, arg1_name, arg1_val) \
     INTERNAL_TRACE_EVENT_ADD(TRACE_EVENT_PHASE_INSTANT, \
-        category_group, name, TRACE_EVENT_FLAG_NONE | scope, \
+        category_group, name, TRACE_EVENT_FLAG_NONE | (scope), \
         arg1_name, arg1_val)
 #define TRACE_EVENT_INSTANT2(category_group, name, scope, arg1_name, arg1_val, \
                              arg2_name, arg2_val) \
     INTERNAL_TRACE_EVENT_ADD(TRACE_EVENT_PHASE_INSTANT, \
-        category_group, name, TRACE_EVENT_FLAG_NONE | scope, \
+        category_group, name, TRACE_EVENT_FLAG_NONE | (scope), \
         arg1_name, arg1_val, arg2_name, arg2_val)
 #define TRACE_EVENT_COPY_INSTANT0(category_group, name, scope) \
     INTERNAL_TRACE_EVENT_ADD(TRACE_EVENT_PHASE_INSTANT, \
-        category_group, name, TRACE_EVENT_FLAG_COPY | scope)
+        category_group, name, TRACE_EVENT_FLAG_COPY | (scope)
 #define TRACE_EVENT_COPY_INSTANT1(category_group, name, scope, \
                                   arg1_name, arg1_val) \
     INTERNAL_TRACE_EVENT_ADD(TRACE_EVENT_PHASE_INSTANT, \
-        category_group, name, TRACE_EVENT_FLAG_COPY | scope, arg1_name, \
+        category_group, name, TRACE_EVENT_FLAG_COPY | (scope), arg1_name, \
         arg1_val)
 #define TRACE_EVENT_COPY_INSTANT2(category_group, name, scope, \
                                   arg1_name, arg1_val, \
                                   arg2_name, arg2_val) \
     INTERNAL_TRACE_EVENT_ADD(TRACE_EVENT_PHASE_INSTANT, \
-        category_group, name, TRACE_EVENT_FLAG_COPY | scope, \
+        category_group, name, TRACE_EVENT_FLAG_COPY | (scope), \
         arg1_name, arg1_val, arg2_name, arg2_val)
 
 // Sets the current sample state to the given category and name (both must be
@@ -735,9 +735,9 @@
     do { \
       INTERNAL_TRACE_EVENT_GET_CATEGORY_INFO(category_group); \
       if (INTERNAL_TRACE_EVENT_CATEGORY_GROUP_ENABLED_FOR_RECORDING_MODE()) { \
-        *ret = true; \
+        *(ret) = true; \
       } else { \
-        *ret = false; \
+        *(ret) = false; \
       } \
     } while (0)
 
@@ -751,9 +751,9 @@
           INTERNAL_TRACE_EVENT_UID(lastRecordingNumber)) { \
         INTERNAL_TRACE_EVENT_UID(lastRecordingNumber) = \
             num_traces_recorded; \
-        *ret = true; \
+        *(ret) = true; \
       } else { \
-        *ret = false; \
+        *(ret) = false; \
       } \
     } while (0)
 
@@ -854,8 +854,8 @@ TRACE_EVENT_API_CLASS_EXPORT extern \
     category_group_enabled = \
         reinterpret_cast<const unsigned char*>(TRACE_EVENT_API_ATOMIC_LOAD( \
             atomic)); \
-    if (PREDICT_FALSE(!category_group_enabled)) { \
-      category_group_enabled = \
+    if (PREDICT_FALSE(!(category_group_enabled))) { \
+      (category_group_enabled) = \
           TRACE_EVENT_API_GET_CATEGORY_GROUP_ENABLED(category_group); \
       TRACE_EVENT_API_ATOMIC_STORE(atomic, \
           reinterpret_cast<TRACE_EVENT_API_ATOMIC_WORD>( \

@@ -180,41 +180,41 @@ enum PRIVATE_ThrottleMsg {THROTTLE_MSG};
   ANNOTATE_BENIGN_RACE(&LOG_OCCURRENCES, "Logging every N is approximate"); \
   ANNOTATE_BENIGN_RACE(&LOG_OCCURRENCES_MOD_N, "Logging every N is approximate"); \
   ++LOG_OCCURRENCES; \
-  if (++LOG_OCCURRENCES_MOD_N > n) LOG_OCCURRENCES_MOD_N -= n; \
+  if (++LOG_OCCURRENCES_MOD_N > (n)) LOG_OCCURRENCES_MOD_N -= (n); \
   if (LOG_OCCURRENCES_MOD_N == 1) \
     google::LogMessage( \
         __FILE__, __LINE__, google::GLOG_ ## severity, LOG_OCCURRENCES, \
-        &what_to_do).stream()
+        &what_to_do).stream() /*NOLINT(bugprone-macro-parentheses)*/
 
 #define KUDU_SOME_KIND_OF_LOG_IF_EVERY_N(severity, condition, n, what_to_do) \
   static int LOG_OCCURRENCES = 0, LOG_OCCURRENCES_MOD_N = 0; \
   ANNOTATE_BENIGN_RACE(&LOG_OCCURRENCES, "Logging every N is approximate"); \
   ANNOTATE_BENIGN_RACE(&LOG_OCCURRENCES_MOD_N, "Logging every N is approximate"); \
   ++LOG_OCCURRENCES; \
-  if (condition && \
-      ((LOG_OCCURRENCES_MOD_N=(LOG_OCCURRENCES_MOD_N + 1) % n) == (1 % n))) \
+  if ((condition) && \
+      ((LOG_OCCURRENCES_MOD_N=(LOG_OCCURRENCES_MOD_N + 1) % (n)) == (1 % (n)))) \
     google::LogMessage( \
         __FILE__, __LINE__, google::GLOG_ ## severity, LOG_OCCURRENCES, \
-                 &what_to_do).stream()
+                 &what_to_do).stream() /*NOLINT(bugprone-macro-parentheses)*/
 
 #define KUDU_SOME_KIND_OF_PLOG_EVERY_N(severity, n, what_to_do) \
   static int LOG_OCCURRENCES = 0, LOG_OCCURRENCES_MOD_N = 0; \
   ANNOTATE_BENIGN_RACE(&LOG_OCCURRENCES, "Logging every N is approximate"); \
   ANNOTATE_BENIGN_RACE(&LOG_OCCURRENCES_MOD_N, "Logging every N is approximate"); \
   ++LOG_OCCURRENCES; \
-  if (++LOG_OCCURRENCES_MOD_N > n) LOG_OCCURRENCES_MOD_N -= n; \
+  if (++LOG_OCCURRENCES_MOD_N > (n)) LOG_OCCURRENCES_MOD_N -= (n); \
   if (LOG_OCCURRENCES_MOD_N == 1) \
     google::ErrnoLogMessage( \
         __FILE__, __LINE__, google::GLOG_ ## severity, LOG_OCCURRENCES, \
-        &what_to_do).stream()
+        &what_to_do).stream() /*NOLINT(bugprone-macro-parentheses)*/
 
 #define KUDU_SOME_KIND_OF_LOG_FIRST_N(severity, n, what_to_do) \
   static uint64_t LOG_OCCURRENCES = 0; \
   ANNOTATE_BENIGN_RACE(&LOG_OCCURRENCES, "Logging the first N is approximate"); \
-  if (LOG_OCCURRENCES++ < n) \
+  if (LOG_OCCURRENCES++ < (n)) \
     google::LogMessage( \
       __FILE__, __LINE__, google::GLOG_ ## severity, LOG_OCCURRENCES, \
-      &what_to_do).stream()
+      &what_to_do).stream() /*NOLINT(bugprone-macro-parentheses)*/
 
 // The direct user-facing macros.
 #define KLOG_EVERY_N(severity, n) \

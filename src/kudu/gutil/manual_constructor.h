@@ -100,7 +100,7 @@ UTIL_GTL_ALIGNTYPE_TEMPLATE(8192);
 
 #define UTIL_GTL_ALIGNED_CHAR_ARRAY(T, Size) \
   typename util::gtl::internal::AlignType<UTIL_GTL_ALIGN_OF(T), \
-                                          sizeof(T) * Size>::result
+                                          sizeof(T) * (Size)>::result
 
 #undef UTIL_GTL_ALIGNTYPE_TEMPLATE
 #undef UTIL_GTL_ALIGN_ATTRIBUTE

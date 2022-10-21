@@ -51,9 +51,9 @@ class RpcSidecar;
 #define PANIC_RPC(rpc_context, message) \
   do { \
     if (rpc_context) {                              \
-      rpc_context->Panic(__FILE__, __LINE__, (message));  \
+      (rpc_context)->Panic(__FILE__, __LINE__, (message));  \
     } else { \
-      LOG(FATAL) << message; \
+      LOG(FATAL) << (message); \
     } \
   } while (0)
 

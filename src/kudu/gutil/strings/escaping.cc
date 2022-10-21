@@ -883,16 +883,17 @@ int Base64UnescapeInternal(const unsigned char *src, int szsrc,
   // an arbitrary identifier (used as a label for goto) and the number
   // of data bytes that must remain in the input to avoid aborting the
   // loop.
-#define GET_INPUT(label, remain)                 \
-  label:                                         \
-    --szsrc;                                     \
-    ch = *src++;                                 \
-    decode = unbase64[ch];                       \
-    if (decode < 0) {                            \
-      if (ascii_isspace(ch) && szsrc >= remain)  \
-        goto label;                              \
-      state = 4 - remain;                        \
-      break;                                     \
+#define GET_INPUT(label, remain)                       \
+  label:                                               \
+    --szsrc;                                           \
+    ch = *src++;                                       \
+    decode = unbase64[ch];                             \
+    if (decode < 0) {                                  \
+      if (ascii_isspace(ch) && szsrc >= (remain))      \
+        /*NOLINTNEXTLINE(bugprone-macro-parentheses)*/ \
+        goto label;                                    \
+      state = 4 - (remain);                            \
+      break;                                           \
     }
 
   // if dest is null, we're just checking to see if it's legal input
