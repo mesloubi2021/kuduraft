@@ -33,6 +33,7 @@
 #include <memory>
 #include <mutex>
 #include <ostream>
+#include <thread>
 #include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
@@ -205,6 +206,13 @@ DEFINE_int32(lag_threshold_for_request_vote, -1,
 
 DEFINE_bool(notify_commit_index_after_response, true,
             "Should we notify peers of commit index after every response?");
+
+DEFINE_int32(
+    mock_elections_timeout_ms,
+    5000,
+    "Max time in milliseconds to wait for mock elections to complete before "
+    "timing out");
+TAG_FLAG(mock_elections_timeout_ms, advanced);
 
 // Metrics
 // ---------
@@ -854,25 +862,22 @@ Status RaftConsensus::StepDown(LeaderStepDownResponsePB* resp) {
   return Status::OK();
 }
 
-Status RaftConsensus::TransferLeadership(const boost::optional<string>& new_leader_uuid,
-    const std::function<bool(const kudu::consensus::RaftPeerPB&)>& filter_fn,
-    const ElectionContext& election_ctx,
+Status RaftConsensus::ValidateTransferLeadership(
+    const boost::optional<std::string>& new_leader_uuid,
     LeaderStepDownResponsePB* resp) {
-  TRACE_EVENT0("consensus", "RaftConsensus::TransferLeadership");
-  ThreadRestrictions::AssertWaitAllowed();
-  LockGuard l(lock_);
-  LOG_WITH_PREFIX_UNLOCKED(INFO) << "Received request to transfer leadership"
-                                 << (new_leader_uuid ?
-                                    Substitute(" to TS $0", *new_leader_uuid) :
-                                    "");
-  DCHECK((queue_->IsInLeaderMode() && cmeta_->active_role() == RaftPeerPB::LEADER) ||
-         (!queue_->IsInLeaderMode() && cmeta_->active_role() != RaftPeerPB::LEADER));
+  DCHECK(
+      (queue_->IsInLeaderMode() &&
+       cmeta_->active_role() == RaftPeerPB::LEADER) ||
+      (!queue_->IsInLeaderMode() &&
+       cmeta_->active_role() != RaftPeerPB::LEADER));
   RETURN_NOT_OK(CheckRunningUnlocked());
   if (cmeta_->active_role() != RaftPeerPB::LEADER) {
-    LOG_WITH_PREFIX_UNLOCKED(INFO) << "Rejecting request to transer leadership while not leader";
+    LOG_WITH_PREFIX_UNLOCKED(INFO)
+        << "Rejecting request to tranfser leadership while not leader";
     resp->mutable_error()->set_code(ServerErrorPB::NOT_THE_LEADER);
-    StatusToPB(Status::IllegalState("not currently leader"),
-               resp->mutable_error()->mutable_status());
+    StatusToPB(
+        Status::IllegalState("not currently leader"),
+        resp->mutable_error()->mutable_status());
     // We return OK so that the tablet service won't overwrite the error code.
     return Status::OK();
   }
@@ -883,15 +888,99 @@ Status RaftConsensus::TransferLeadership(const boost::optional<string>& new_lead
       return Status::OK();
     }
     if (!IsRaftConfigVoter(*new_leader_uuid, cmeta_->ActiveConfig())) {
-      const string msg = Substitute("tablet server $0 is not a voter in the active config",
-                                    *new_leader_uuid);
-      LOG_WITH_PREFIX_UNLOCKED(INFO) << "Rejecting request to transfer leadership "
-                                     << "because " << msg;
+      const string msg = Substitute(
+          "tablet server $0 is not a voter in the active config",
+          *new_leader_uuid);
+      LOG_WITH_PREFIX_UNLOCKED(INFO)
+          << "Rejecting request to transfer leadership "
+          << "because " << msg;
       return Status::InvalidArgument(msg);
     }
   }
+  return Status::OK();
+}
+
+Status RaftConsensus::TransferLeadership(
+    const boost::optional<string>& new_leader_uuid,
+    const std::function<bool(const kudu::consensus::RaftPeerPB&)>& filter_fn,
+    const ElectionContext& election_ctx,
+    LeaderStepDownResponsePB* resp) {
+  TRACE_EVENT0("consensus", "RaftConsensus::TransferLeadership");
+  ThreadRestrictions::AssertWaitAllowed();
+  LockGuard l(lock_);
+  LOG_WITH_PREFIX_UNLOCKED(INFO)
+      << "Received request to transfer leadership"
+      << (new_leader_uuid ? Substitute(" to TS $0", *new_leader_uuid) : "");
+  Status validation_status = ValidateTransferLeadership(new_leader_uuid, resp);
+  if (!validation_status.ok()) {
+    return validation_status;
+  }
+
   return BeginLeaderTransferPeriodUnlocked(
-    new_leader_uuid, filter_fn, election_ctx);
+      new_leader_uuid, filter_fn, election_ctx);
+}
+
+Status RaftConsensus::MockTransferLeadership(
+    const std::string& new_leader_uuid,
+    const ElectionContext& election_ctx,
+    const std::chrono::milliseconds& wait_time,
+    RunLeaderElectionResponsePB* resp) {
+  TRACE_EVENT0("consensus", "RaftConsensus::MockTransferLeadership");
+  ThreadRestrictions::AssertWaitAllowed();
+
+  {
+    LockGuard l(lock_);
+    LOG_WITH_PREFIX_UNLOCKED(INFO)
+        << "Received request to mock transfer leadership to "
+        << new_leader_uuid;
+
+    LeaderStepDownResponsePB validation_resp;
+    Status validation_status =
+        ValidateTransferLeadership(new_leader_uuid, &validation_resp);
+    if (!validation_status.ok()) {
+      if (validation_resp.has_error()) {
+        resp->set_allocated_error(validation_resp.release_error());
+      }
+      return validation_status;
+    }
+  }
+
+  OpId snapshot_op_id;
+  RETURN_NOT_OK(
+      queue_->GetSnapshotForMockElection(new_leader_uuid, &snapshot_op_id));
+
+  // Wait for candidate to potentially catch up or exceed snapshot op id.
+  std::this_thread::sleep_for(wait_time);
+
+  std::shared_ptr<Promise<RunLeaderElectionResponsePB>> promise =
+      std::make_shared<Promise<RunLeaderElectionResponsePB>>();
+
+  Status status = raft_pool_token_->SubmitClosure(Bind(
+      &RaftConsensus::NotifyPeerToStartElection,
+      Unretained(this),
+      new_leader_uuid,
+      election_ctx.TransferContext(),
+      promise,
+      snapshot_op_id));
+
+  if (!status.ok()) {
+    RunLeaderElectionResponsePB error_resp;
+    error_resp.mutable_error()->set_code(ServerErrorPB::SERVICE_UNAVAILABLE);
+    StatusToPB(status, error_resp.mutable_error()->mutable_status());
+    promise->Set(error_resp);
+  }
+
+  MonoDelta timeout =
+      MonoDelta::FromMilliseconds(FLAGS_mock_elections_timeout_ms);
+
+  const RunLeaderElectionResponsePB* election_resp = promise->WaitFor(timeout);
+  if (election_resp) {
+    *resp = *election_resp;
+    return Status::OK();
+  }
+
+  return Status::Aborted(Substitute(
+      "Mock Election timed out for candidate $0.", new_leader_uuid));
 }
 
 Status RaftConsensus::CancelTransferLeadership() {
@@ -1264,14 +1353,21 @@ void RaftConsensus::NotifyPeerToPromote(const std::string& peer_uuid) {
               LogPrefixThreadSafe() + "Unable to start TryPromoteNonVoterTask");
 }
 
-void RaftConsensus::NotifyPeerToStartElection(const string& peer_uuid,
-    boost::optional<PeerMessageQueue::TransferContext> transfer_context) {
+void RaftConsensus::NotifyPeerToStartElection(
+    const std::string& peer_uuid,
+    boost::optional<PeerMessageQueue::TransferContext> transfer_context,
+    std::shared_ptr<Promise<RunLeaderElectionResponsePB>> promise,
+    std::optional<OpId> mock_election_snapshot_op_id) {
   LOG(INFO) << "Instructing follower " << peer_uuid << " to start an election";
-  WARN_NOT_OK(raft_pool_token_->SubmitFunc(std::bind(&RaftConsensus::TryStartElectionOnPeerTask,
-                                                     shared_from_this(),
-                                                     peer_uuid,
-                                                     std::move(transfer_context))),
-              LogPrefixThreadSafe() + "Unable to start TryStartElectionOnPeerTask");
+  WARN_NOT_OK(
+      raft_pool_token_->SubmitFunc(std::bind(
+          &RaftConsensus::TryStartElectionOnPeerTask,
+          shared_from_this(),
+          peer_uuid,
+          std::move(transfer_context),
+          promise,
+          std::move(mock_election_snapshot_op_id))),
+      LogPrefixThreadSafe() + "Unable to start TryStartElectionOnPeerTask");
 }
 
 void RaftConsensus::NotifyPeerHealthChange() {
@@ -1345,19 +1441,35 @@ void RaftConsensus::TryPromoteNonVoterTask(const std::string& peer_uuid) {
               LogPrefixThreadSafe() + Substitute("Unable to promote non-voter $0", peer_uuid));
 }
 
-void RaftConsensus::TryStartElectionOnPeerTask(const string& peer_uuid,
-    const boost::optional<PeerMessageQueue::TransferContext>& transfer_context) {
+void RaftConsensus::TryStartElectionOnPeerTask(
+    const string& peer_uuid,
+    const boost::optional<PeerMessageQueue::TransferContext>& transfer_context,
+    std::shared_ptr<Promise<RunLeaderElectionResponsePB>> promise,
+    std::optional<OpId> mock_election_snapshot_op_id) {
   ThreadRestrictions::AssertWaitAllowed();
-  LockGuard l(lock_);
-  // Double-check that the peer is a voter in the active config.
-  if (!IsRaftConfigVoter(peer_uuid, cmeta_->ActiveConfig())) {
-    LOG_WITH_PREFIX_UNLOCKED(INFO) << "Not signalling peer " << peer_uuid
-                                   << "to start an election: it's not a voter "
-                                   << "in the active config.";
-    return;
+  {
+    LockGuard l(lock_);
+    // Double-check that the peer is a voter in the active config.
+    if (!IsRaftConfigVoter(peer_uuid, cmeta_->ActiveConfig())) {
+      std::string msg = Substitute(
+          "Not signalling peer $0 to start an election: it's not a voter in "
+          "the active config.",
+          peer_uuid);
+      LOG_WITH_PREFIX_UNLOCKED(WARNING) << msg;
+      if (promise) {
+        RunLeaderElectionResponsePB error_resp;
+        error_resp.mutable_error()->set_code(ServerErrorPB::NOT_VOTER);
+        StatusToPB(
+            Status::ConfigurationError(std::move(msg)),
+            error_resp.mutable_error()->mutable_status());
+        promise->Set(error_resp);
+      }
+      return;
+    }
+    LOG_WITH_PREFIX_UNLOCKED(INFO)
+        << "Signalling peer " << peer_uuid << " to start "
+        << (mock_election_snapshot_op_id ? "a mock election." : "an election.");
   }
-  LOG_WITH_PREFIX_UNLOCKED(INFO) << "Signalling peer " << peer_uuid
-                                 << "to start an election";
 
   RunLeaderElectionRequestPB req;
   if (transfer_context) {
@@ -1374,9 +1486,25 @@ void RaftConsensus::TryStartElectionOnPeerTask(const string& peer_uuid,
     req.set_raft_rpc_token(*rpc_token);
   }
 
+  if (mock_election_snapshot_op_id) {
+    req.mutable_mock_election_snapshot_op_id()->CopyFrom(
+        *mock_election_snapshot_op_id);
+    req.set_wait_for_decision(true);
+  }
+
   RunLeaderElectionResponsePB resp;
-  WARN_NOT_OK(peer_manager_->StartElection(peer_uuid, &resp, std::move(req)),
-              Substitute("unable to start election on peer $0", peer_uuid));
+  Status election_status =
+      peer_manager_->StartElection(peer_uuid, &resp, std::move(req));
+  if (!election_status.ok()) {
+    LOG_WITH_PREFIX_UNLOCKED(WARNING)
+        << "Unable to start " << (mock_election_snapshot_op_id ? "mock " : "")
+        << "election on peer " << peer_uuid << ": "
+        << election_status.ToString();
+  }
+
+  if (promise) {
+    promise->Set(resp);
+  }
 }
 
 Status RaftConsensus::Update(const ConsensusRequestPB* request,

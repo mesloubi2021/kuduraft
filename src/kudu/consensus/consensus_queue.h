@@ -51,6 +51,7 @@
 #include "kudu/util/locks.h"
 #include "kudu/util/metrics.h"
 #include "kudu/util/monotime.h"
+#include "kudu/util/promise.h"
 #include "kudu/util/status.h"
 #include "kudu/util/status_callback.h"
 
@@ -427,6 +428,10 @@ class PeerMessageQueue {
       TransferContext transfer_context);
   void EndWatchForSuccessor();
 
+  Status GetSnapshotForMockElection(
+      const std::string& new_leader_uuid,
+      OpId* snapshot_op_id);
+
   // If the previous call to BeginWatchForSuccessor had resulted in a
   // notification to a peer to start an election
   bool WatchForSuccessorPeerNotified();
@@ -776,7 +781,9 @@ class PeerMessageQueueObserver {
   // and it should be told to run an election.
   virtual void NotifyPeerToStartElection(
       const std::string& peer_uuid,
-      boost::optional<PeerMessageQueue::TransferContext> transfer_context) = 0;
+      boost::optional<PeerMessageQueue::TransferContext> transfer_context,
+      std::shared_ptr<Promise<RunLeaderElectionResponsePB>> promise,
+      std::optional<OpId> mock_election_snapshot_op_id) = 0;
 
   // Notify the observer that the health of one of the peers has changed.
   virtual void NotifyPeerHealthChange() = 0;

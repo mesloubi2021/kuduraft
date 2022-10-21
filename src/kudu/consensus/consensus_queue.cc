@@ -1748,19 +1748,35 @@ bool PeerMessageQueue::BasicChecksOKToTransferAndGetPeerUnlocked(
 
   // This check is redundant for ResponseFromPeer common path
   if (PREDICT_FALSE(queue_state_.state != kQueueOpen)) {
+    LOG_WITH_PREFIX_UNLOCKED(WARNING) << "Queue is not open";
     return false;
   }
 
-  // Only in LEADER mode can you transfer leadership,
+  // Only in LEADER mode can you transfer leadership
+  if (queue_state_.mode != PeerMessageQueue::LEADER) {
+    LOG_WITH_PREFIX_UNLOCKED(WARNING)
+        << "Peer is not a leader, cannot transfer leadership";
+    return false;
+  }
+
   // Peer has to be healthily communicating to LEADER
-  if (queue_state_.mode != PeerMessageQueue::LEADER ||
-      peer.last_exchange_status != PeerStatus::OK) {
+  if (peer.last_exchange_status != PeerStatus::OK) {
+    LOG_WITH_PREFIX_UNLOCKED(WARNING)
+        << "Peer does not have healthy communications with leader";
     return false;
   }
 
   Status s = GetRaftConfigMember(DCHECK_NOTNULL(queue_state_.active_config.get()),
                                  peer.uuid(), peer_pb_ptr);
-  if (!s.ok() || (*peer_pb_ptr)->member_type() != RaftPeerPB::VOTER) {
+  if (!s.ok()) {
+    LOG_WITH_PREFIX_UNLOCKED(WARNING)
+        << "Unable to get target peer " << peer.uuid() << ":" << s.ToString();
+    return false;
+  }
+
+  if ((*peer_pb_ptr)->member_type() != RaftPeerPB::VOTER) {
+    LOG_WITH_PREFIX_UNLOCKED(WARNING)
+        << "Target peer " << peer.uuid() << " is not a voter";
     return false;
   }
 
@@ -2266,16 +2282,42 @@ void PeerMessageQueue::NotifyObserversOfPeerToPromote(const string& peer_uuid) {
 
 void PeerMessageQueue::NotifyObserversOfSuccessor(const string& peer_uuid) {
   DCHECK(queue_lock_.is_locked());
-  WARN_NOT_OK(raft_pool_observers_token_->SubmitClosure(
-      Bind(&PeerMessageQueue::NotifyObserversTask, Unretained(this),
-           [=, transfer_context = std::move(transfer_context_)] (
-             PeerMessageQueueObserver* observer
-           ) mutable {
-             observer->NotifyPeerToStartElection(peer_uuid, std::move(transfer_context));
-           })),
-      LogPrefixUnlocked() + "Unable to notify RaftConsensus of available successor.");
+  WARN_NOT_OK(
+      raft_pool_observers_token_->SubmitClosure(Bind(
+          &PeerMessageQueue::NotifyObserversTask,
+          Unretained(this),
+          [=, transfer_context = std::move(transfer_context_)](
+              PeerMessageQueueObserver* observer) mutable {
+            observer->NotifyPeerToStartElection(
+                peer_uuid,
+                std::move(transfer_context),
+                /*promise=*/nullptr,
+                /*mock_election_snapshot_op_id=*/std::nullopt);
+          })),
+      LogPrefixUnlocked() +
+          "Unable to notify RaftConsensus of available successor.");
   successor_watch_peer_notified_ = true;
   transfer_context_ = boost::none;
+}
+
+Status PeerMessageQueue::GetSnapshotForMockElection(
+    const std::string& new_leader_uuid,
+    OpId* snapshot_op_id) {
+  std::unique_lock<simple_mutexlock> l(queue_lock_);
+
+  TrackedPeer* peer = FindPtrOrNull(peers_map_, new_leader_uuid);
+  if (PREDICT_FALSE(peer == nullptr)) {
+    return Status::IllegalState("Target peer is not tracked.");
+  }
+
+  RaftPeerPB* peer_pb = nullptr;
+  if (!BasicChecksOKToTransferAndGetPeerUnlocked(*peer, &peer_pb)) {
+    return Status::IllegalState("Failed basic leadership transfer checks.");
+  }
+
+  *snapshot_op_id = queue_state_.last_appended;
+
+  return Status::OK();
 }
 
 void PeerMessageQueue::NotifyObserversOfPeerHealthChange() {

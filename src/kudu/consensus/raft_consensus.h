@@ -64,6 +64,7 @@
 #include "kudu/util/make_shared.h"
 #include "kudu/util/metrics.h"
 #include "kudu/util/monotime.h"
+#include "kudu/util/promise.h"
 #include "kudu/util/random.h"
 #include "kudu/util/status_callback.h"
 
@@ -335,6 +336,50 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
                             const std::function<bool(const kudu::consensus::RaftPeerPB&)>& filter_fn,
                             const ElectionContext& election_ctx,
                             LeaderStepDownResponsePB* resp);
+
+  // Runs a mock version of TransferLeadership to see if the operation can be
+  // successfuly or not. It is mock in the sense that election votes are not
+  // durably stored, much like a pre-election.
+  //
+  // The process of a mock election is as follows:
+  //
+  // 1. Leader takes a snapshot opid, this is the point where we pretend we
+  // stopped writes.
+  // 2. We wait a few heartbeats.
+  // 3. Candidate starts election with own state as min(own opid, snapshot opid)
+  // and sends voters the snapshot op id.
+  // 4. Voter's own state is min(own opid, snapshot opid) and votes based on
+  // that.
+  //
+  // Case 1: Candidate is replicating properly.
+  // In this case, the candidate's current opid will exceed the snapshot and due
+  // to min(own opid, snapshot opid), they will request votes with snapshot opid
+  // as current state.
+  //
+  // Voter cases:
+  // a) Voters are at or ahead of snapshot opid. They will vote yes since they
+  // will be voting with their own state as snapshot opid which is equal to
+  // candidate's state.
+  // b) Voters are behind snapshot opid and not in the candidate region. They
+  // will vote yes.
+  // c) Voters are behind snapshot opid and in the candidate region. They will
+  // vote no since they themselves are not caught up to the snapshot and won't
+  // be able to commit a no-op should a real election elect the candidate
+  // (lag threshold).
+  //
+  // Case 2: Candidate is not replicating properly and is behind.
+  // In this case, it'll start election with an outdated snapshot opid.
+  //
+  // Voter cases:
+  // a) Voters are at or ahead of candidates opid. They will vote no since they
+  // will be voting with their own state as snapshot op id which is greater than
+  // candidate's state.
+  // b) Voters are behind candidate's opid. They will vote yes.
+  Status MockTransferLeadership(
+      const std::string& new_leader_uuid,
+      const ElectionContext& election_ctx,
+      const std::chrono::milliseconds& wait_time,
+      RunLeaderElectionResponsePB* resp);
 
   // Attempts to cancel the leadership transfer. This stops any leadership
   // transfers, then checks if we are past the point where we notified anyone to
@@ -624,7 +669,9 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
 
   void NotifyPeerToStartElection(
       const std::string& peer_uuid,
-      boost::optional<PeerMessageQueue::TransferContext> transfer_context) override;
+      boost::optional<PeerMessageQueue::TransferContext> transfer_context,
+      std::shared_ptr<Promise<RunLeaderElectionResponsePB>> promise,
+      std::optional<OpId> mock_election_snapshot_op_id) override;
 
   void NotifyPeerHealthChange() override;
 
@@ -1019,8 +1066,12 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // Attempt to promote the given non-voter to a voter.
   void TryPromoteNonVoterTask(const std::string& peer_uuid);
 
-  void TryStartElectionOnPeerTask(const std::string& peer_uuid,
-    const boost::optional<PeerMessageQueue::TransferContext>& transfer_context);
+  void TryStartElectionOnPeerTask(
+      const std::string& peer_uuid,
+      const boost::optional<PeerMessageQueue::TransferContext>&
+          transfer_context,
+      std::shared_ptr<Promise<RunLeaderElectionResponsePB>> promise = nullptr,
+      std::optional<OpId> mock_election_snapshot_op_id = {});
 
   // Called when the failure detector expires.
   // Submits ReportFailureDetectedTask() to a thread pool.
@@ -1134,6 +1185,10 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   void SetNoOpReceivedCallback(NoOpReceivedCallback norcb);
   void SetLeaderDetectedCallback(LeaderDetectedCallback ldcb);
   void SetVoteLogger(std::shared_ptr<VoteLoggerInterface> vote_logger);
+
+  Status ValidateTransferLeadership(
+      const boost::optional<std::string>& new_leader_uuid,
+      LeaderStepDownResponsePB* resp);
 
   const ConsensusOptions options_;
 

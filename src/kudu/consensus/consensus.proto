@@ -126,6 +126,13 @@ message ServerErrorPB {
     // Client request error. For example, not providing a
     // mock_election_snapshot_op_id when requesting a Mock Election.
     INVALID_CLIENT_REQUEST = 20;
+
+    // Service is not able to service the request due to thread pools either at
+    // capacity or shutdown
+    SERVICE_UNAVAILABLE = 21;
+
+    // An attempt to start an election on a non-voter peer.
+    NOT_VOTER = 22;
   }
 
   // The error code.
