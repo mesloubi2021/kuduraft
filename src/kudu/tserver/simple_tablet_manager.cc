@@ -434,6 +434,11 @@ Status TSTabletManager::Start(bool is_first_run) {
         log_, std::move(time_manager),
         round_handler, server_->metric_entity(), mark_dirty_clbk_));
 
+  for (consensus::ReplicateMsg* replicate : bootstrap_info_.orphaned_replicates) {
+    delete replicate;
+  }
+  bootstrap_info_.orphaned_replicates.clear();
+
   RETURN_NOT_OK_PREPEND(WaitUntilRunning(),
                         "Failed waiting for the raft to run");
 
