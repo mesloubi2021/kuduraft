@@ -273,22 +273,33 @@ int64_t ConsensusMetadata::last_pruned_term() const {
   return pb_.last_pruned_term();
 }
 
-Status ConsensusMetadata::set_leader_uuid(string uuid) {
+void ConsensusMetadata::set_leader_uuid(string uuid) {
   DFAKE_SCOPED_RECURSIVE_LOCK(fake_lock_);
-  Status s = Status::OK();
   leader_uuid_ = std::move(uuid);
+  UpdateActiveRole();
+  // cmeta not persisted untill we sync to LKL
+}
 
+Status ConsensusMetadata::sync_last_known_leader(std::optional<int64_t> cas_term) {
   // Only update last_known_leader when the current node
   // 1) has won a leader election (LEADER)
   // 2) receives AppendEntries from a legitimate leader (FOLLOWER)
-  if (!leader_uuid_.empty()) {
-    DCHECK(pb_.has_current_term());
-    pb_.mutable_last_known_leader()->set_uuid(leader_uuid_);
-    pb_.mutable_last_known_leader()->set_election_term(pb_.current_term());
-    s = Flush();
+  if (leader_uuid_.empty()) {
+    return Status::OK();
   }
-  UpdateActiveRole();
-  return s;
+  DCHECK(pb_.has_current_term());
+  int64_t current_term = pb_.current_term();
+  if (cas_term && current_term != *cas_term) {
+    LOG(INFO) << "Compare and swap on LKL term mismatch. Supplied term: "
+              << *cas_term << ", current term: " << current_term
+              << ". Will not update LKL";
+    return Status::OK();
+  }
+  LOG(INFO) << "LKL updated to " << leader_uuid_
+            << " for term: " << current_term;
+  pb_.mutable_last_known_leader()->set_uuid(leader_uuid_);
+  pb_.mutable_last_known_leader()->set_election_term(current_term);
+  return Flush();
 }
 
 std::pair<string, unsigned int> ConsensusMetadata::leader_hostport() const {

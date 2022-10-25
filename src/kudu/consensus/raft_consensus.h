@@ -1041,6 +1041,9 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   Status HandleTermAdvanceUnlocked(ConsensusTerm new_term,
                                    FlushToDisk flush = FLUSH_TO_DISK);
 
+  // Handle when a op id with a new term has been appended
+  void HandleNewTermAppendedUnlocked(int64_t new_term);
+
   // Asynchronously (on thread_pool_) notify the TabletReplica that the consensus configuration
   // has changed, thus reporting it back to the master.
   void MarkDirty(const std::string& reason);

@@ -214,6 +214,11 @@ DEFINE_int32(
     "timing out");
 TAG_FLAG(mock_elections_timeout_ms, advanced);
 
+DEFINE_bool(
+    update_lkl_after_new_term_append,
+    true,
+    "Should only update LKL after a op from the new term has been appened");
+
 // Metrics
 // ---------
 METRIC_DEFINE_counter(server, raft_log_truncation_counter,
@@ -1204,6 +1209,9 @@ Status RaftConsensus::AppendNewRoundToQueueUnlocked(const scoped_refptr<Consensu
   // or if we had an actual IO error, which we currently don't handle.
   CHECK_OK_PREPEND(queue_->AppendOperation(msg_wrapper),
                    Substitute("$0: could not append to queue", LogPrefixUnlocked()));
+  if(round->replicate_msg()->op_type() == NO_OP){
+    HandleNewTermAppendedUnlocked(round->replicate_msg()->id().term());
+  }
   return Status::OK();
 }
 
@@ -1372,6 +1380,13 @@ void RaftConsensus::NotifyPeerToStartElection(
 
 void RaftConsensus::NotifyPeerHealthChange() {
   MarkDirty("Peer health change");
+}
+
+void RaftConsensus::HandleNewTermAppendedUnlocked(int64_t new_term) {
+  DCHECK(lock_.is_locked());
+  if (FLAGS_update_lkl_after_new_term_append) {
+    CHECK_OK(cmeta_->sync_last_known_leader(new_term));
+  }
 }
 
 void RaftConsensus::TryRemoveFollowerTask(const string& uuid,
@@ -2116,6 +2131,7 @@ Status RaftConsensus::UpdateReplica(const ConsensusRequestPB* request,
     // Now that we've triggered the prepares enqueue the operations to be written
     // to the WAL.
     if (PREDICT_TRUE(!messages.empty())) {
+      int64_t preceding_term = deduped_req.preceding_opid->term();
       last_from_leader = messages.back()->get()->id();
       // Trigger the log append asap, if fsync() is on this might take a while
       // and we can't reply until this is done.
@@ -2123,6 +2139,9 @@ Status RaftConsensus::UpdateReplica(const ConsensusRequestPB* request,
       // Since we've prepared, we need to be able to append (or we risk trying to apply
       // later something that wasn't logged). We crash if we can't.
       CHECK_OK(queue_->AppendOperations(msg_wrappers, sync_status_cb));
+      if (last_from_leader.term() != preceding_term) {
+        HandleNewTermAppendedUnlocked(last_from_leader.term());
+      }
     } else {
       last_from_leader = *deduped_req.preceding_opid;
     }
@@ -3367,7 +3386,12 @@ Status RaftConsensus::SetLeaderUuidUnlocked(const string& uuid) {
   failed_elections_since_stable_leader_ = 0;
   failed_elections_candidate_not_in_config_ = 0;
   num_failed_elections_metric_->set_value(failed_elections_since_stable_leader_);
-  Status s = cmeta_->set_leader_uuid(uuid);
+  cmeta_->set_leader_uuid(uuid);
+
+  Status s = Status::OK();
+  if (!FLAGS_update_lkl_after_new_term_append) {
+    s = cmeta_->sync_last_known_leader();
+  }
   routing_table_container_->UpdateLeader(uuid);
   MarkDirty(Substitute("New leader $0", uuid));
   return s;
@@ -3681,7 +3705,6 @@ void RaftConsensus::DoElectionCallback(
                 "Couldn't start leader election after successful pre-election");
   } else {
     // We won a real election. Convert role to LEADER.
-    // This can fail while persisting last known leader.
     CHECK_OK(SetLeaderUuidUnlocked(peer_uuid()));
 
     // TODO(todd): BecomeLeaderUnlocked() can fail due to state checks during shutdown.

@@ -136,7 +136,8 @@ class ConsensusMetadata : public RefCountedThreadSafe<ConsensusMetadata> {
 
   // Accessors for setting the active leader.
   const std::string& leader_uuid() const;
-  Status set_leader_uuid(std::string uuid);
+  void set_leader_uuid(std::string uuid);
+  Status sync_last_known_leader(std::optional<int64_t> cas_term = {});
 
   // Accessor for last known leader. It's not necessarily an active leader.
   // Used for computation of quorums for flexiraft leader elections.
