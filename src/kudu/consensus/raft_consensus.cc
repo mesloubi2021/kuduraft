@@ -2257,7 +2257,8 @@ Status RaftConsensus::RequestVote(const VoteRequestPB* request,
   // Lock ordering: update_lock_ must be acquired before lock_.
   std::unique_lock<simple_mutexlock> update_guard(update_lock_, std::defer_lock);
   if (FLAGS_enable_leader_failure_detection &&
-      request->mode() != ElectionMode::ELECT_EVEN_IF_LEADER_IS_ALIVE) {
+      request->mode() != ElectionMode::ELECT_EVEN_IF_LEADER_IS_ALIVE &&
+      request->mode() != ElectionMode::MOCK_ELECTION) {
     update_guard.try_lock();
   } else {
     // If failure detection is not enabled, then we can't just reject the vote,
