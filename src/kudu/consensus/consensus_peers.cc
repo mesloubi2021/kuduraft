@@ -409,7 +409,7 @@ Status Peer::StartElection(
   RETURN_NOT_OK(proxy_->StartElection(&req, resp, &controller));
   RETURN_NOT_OK(controller.status());
   if (resp->has_error()) {
-    return StatusFromPB(response_.error().status());
+    return StatusFromPB(resp->error().status());
   }
   return Status::OK();
 }

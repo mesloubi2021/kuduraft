@@ -648,9 +648,11 @@ Status RaftConsensus::StartElection(
     RETURN_NOT_OK(CheckRunningUnlocked());
 
     if (!persistent_vars_->is_start_election_allowed()) {
-      KLOG_EVERY_N_SECS(WARNING, 300) << LogPrefixUnlocked() <<
-          Substitute("allow_start_election is set to false, not starting $0 [EVERY 300 seconds]", mode_str);
-      return Status::OK();
+      std::string msg = Substitute(
+          "allow_start_election is set to false, not starting $0", mode_str);
+      KLOG_EVERY_N_SECS(WARNING, 300)
+          << LogPrefixUnlocked() << msg << " [EVERY 300 seconds]";
+      return Status::Aborted(msg);
     }
 
     context.current_leader_uuid_ = GetLeaderUuidUnlocked();
@@ -1511,7 +1513,7 @@ void RaftConsensus::TryStartElectionOnPeerTask(
   Status election_status =
       peer_manager_->StartElection(peer_uuid, &resp, std::move(req));
   if (!election_status.ok()) {
-    LOG_WITH_PREFIX_UNLOCKED(WARNING)
+    LOG_WITH_PREFIX(WARNING)
         << "Unable to start " << (mock_election_snapshot_op_id ? "mock " : "")
         << "election on peer " << peer_uuid << ": "
         << election_status.ToString();
