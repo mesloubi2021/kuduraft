@@ -46,7 +46,7 @@
 #include "kudu/gutil/port.h"
 
 // forward declaration for use by spinlock_*-inl.h
-namespace base { namespace internal { static int SuggestedDelayNS(int loop); }}
+namespace base { namespace internal { namespace kudu { static int SuggestedDelayNS(int loop); }}}
 
 #if defined(_WIN32)
 #include "kudu/gutil/spinlock_win32-inl.h"
@@ -58,6 +58,7 @@ namespace base { namespace internal { static int SuggestedDelayNS(int loop); }}
 
 namespace base {
 namespace internal {
+namespace kudu {
 
 // See spinlock_internal.h for spec.
 int32 SpinLockWait(volatile Atomic32 *w, int n,
@@ -121,5 +122,6 @@ static int SuggestedDelayNS(int loop) {
 #endif
 }
 
+} // namespace kudu
 } // namespace internal
 } // namespace base

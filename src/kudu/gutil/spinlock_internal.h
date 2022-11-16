@@ -41,6 +41,7 @@
 
 namespace base {
 namespace internal {
+namespace kudu {
 
 // SpinLockWait() waits until it can perform one of several transitions from
 // "from" to "to".  It returns when it performs a transition where done==true.
@@ -59,6 +60,7 @@ int32 SpinLockWait(volatile Atomic32 *w, int n,
 void SpinLockWake(volatile Atomic32 *w, bool all);
 void SpinLockDelay(volatile Atomic32 *w, int32 value, int loop);
 
+} // namespace kudu
 } // namespace internal
 } // namespace base
 #endif
