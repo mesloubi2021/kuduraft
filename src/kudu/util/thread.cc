@@ -73,43 +73,57 @@ using std::string;
 using std::vector;
 using strings::Substitute;
 
-METRIC_DEFINE_gauge_uint64(server, threads_started,
-                           "Threads Started",
-                           kudu::MetricUnit::kThreads,
-                           "Total number of threads started on this server",
-                           kudu::EXPOSE_AS_COUNTER);
+METRIC_DEFINE_gauge_uint64(
+    server,
+    threads_started,
+    "Threads Started",
+    kudu::MetricUnit::kThreads,
+    "Total number of threads started on this server",
+    kudu::EXPOSE_AS_COUNTER);
 
-METRIC_DEFINE_gauge_uint64(server, threads_running,
-                           "Threads Running",
-                           kudu::MetricUnit::kThreads,
-                           "Current number of running threads");
+METRIC_DEFINE_gauge_uint64(
+    server,
+    threads_running,
+    "Threads Running",
+    kudu::MetricUnit::kThreads,
+    "Current number of running threads");
 
-METRIC_DEFINE_gauge_uint64(server, cpu_utime,
-                           "User CPU Time",
-                           kudu::MetricUnit::kMilliseconds,
-                           "Total user CPU time of the process",
-                           kudu::EXPOSE_AS_COUNTER);
+METRIC_DEFINE_gauge_uint64(
+    server,
+    cpu_utime,
+    "User CPU Time",
+    kudu::MetricUnit::kMilliseconds,
+    "Total user CPU time of the process",
+    kudu::EXPOSE_AS_COUNTER);
 
-METRIC_DEFINE_gauge_uint64(server, cpu_stime,
-                           "System CPU Time",
-                           kudu::MetricUnit::kMilliseconds,
-                           "Total system CPU time of the process",
-                           kudu::EXPOSE_AS_COUNTER);
+METRIC_DEFINE_gauge_uint64(
+    server,
+    cpu_stime,
+    "System CPU Time",
+    kudu::MetricUnit::kMilliseconds,
+    "Total system CPU time of the process",
+    kudu::EXPOSE_AS_COUNTER);
 
-METRIC_DEFINE_gauge_uint64(server, voluntary_context_switches,
-                           "Voluntary Context Switches",
-                           kudu::MetricUnit::kContextSwitches,
-                           "Total voluntary context switches",
-                           kudu::EXPOSE_AS_COUNTER);
+METRIC_DEFINE_gauge_uint64(
+    server,
+    voluntary_context_switches,
+    "Voluntary Context Switches",
+    kudu::MetricUnit::kContextSwitches,
+    "Total voluntary context switches",
+    kudu::EXPOSE_AS_COUNTER);
 
-METRIC_DEFINE_gauge_uint64(server, involuntary_context_switches,
-                           "Involuntary Context Switches",
-                           kudu::MetricUnit::kContextSwitches,
-                           "Total involuntary context switches",
-                           kudu::EXPOSE_AS_COUNTER);
+METRIC_DEFINE_gauge_uint64(
+    server,
+    involuntary_context_switches,
+    "Involuntary Context Switches",
+    kudu::MetricUnit::kContextSwitches,
+    "Total involuntary context switches",
+    kudu::EXPOSE_AS_COUNTER);
 
-DEFINE_int32(thread_inject_start_latency_ms, 0,
-             "Number of ms to sleep when starting a new thread. (For tests).");
+DEFINE_int32(
+    thread_inject_start_latency_ms,
+    0,
+    "Number of ms to sleep when starting a new thread. (For tests).");
 TAG_FLAG(thread_inject_start_latency_ms, hidden);
 TAG_FLAG(thread_inject_start_latency_ms, unsafe);
 
@@ -130,7 +144,8 @@ static uint64_t GetCpuSTime() {
 static uint64_t GetVoluntaryContextSwitches() {
   rusage ru;
   CHECK_ERR(getrusage(RUSAGE_SELF, &ru));
-  return ru.ru_nvcsw;;
+  return ru.ru_nvcsw;
+  ;
 }
 
 static uint64_t GetInVoluntaryContextSwitches() {
@@ -143,24 +158,22 @@ class ThreadMgr;
 
 __thread Thread* Thread::tls_ = NULL;
 
-// Singleton instance of ThreadMgr. Only visible in this file, used only by Thread.
-// The Thread class adds a reference to thread_manager while it is supervising a thread so
-// that a race between the end of the process's main thread (and therefore the destruction
-// of thread_manager) and the end of a thread that tries to remove itself from the
-// manager after the destruction can be avoided.
+// Singleton instance of ThreadMgr. Only visible in this file, used only by
+// Thread. The Thread class adds a reference to thread_manager while it is
+// supervising a thread so that a race between the end of the process's main
+// thread (and therefore the destruction of thread_manager) and the end of a
+// thread that tries to remove itself from the manager after the destruction can
+// be avoided.
 static shared_ptr<ThreadMgr> thread_manager;
 
 // Controls the single (lazy) initialization of thread_manager.
 static GoogleOnceType once = GOOGLE_ONCE_INIT;
 
-// A singleton class that tracks all live threads, and groups them together for easy
-// auditing. Used only by Thread.
+// A singleton class that tracks all live threads, and groups them together for
+// easy auditing. Used only by Thread.
 class ThreadMgr {
  public:
-  ThreadMgr()
-      : threads_started_metric_(0),
-        threads_running_metric_(0) {
-  }
+  ThreadMgr() : threads_started_metric_(0), threads_running_metric_(0) {}
 
   ~ThreadMgr() {
     MutexLock l(lock_);
@@ -169,11 +182,16 @@ class ThreadMgr {
 
   static void SetThreadName(const std::string& name, int64_t tid);
 
-  Status StartInstrumentation(const scoped_refptr<MetricEntity>& metrics, WebCallbackRegistry* web);
+  Status StartInstrumentation(
+      const scoped_refptr<MetricEntity>& metrics,
+      WebCallbackRegistry* web);
 
   // Registers a thread to the supplied category. The key is a pthread_t,
   // not the system TID, since pthread_t is less prone to being recycled.
-  void AddThread(const pthread_t& pthread_id, const string& name, const string& category,
+  void AddThread(
+      const pthread_t& pthread_id,
+      const string& name,
+      const string& category,
       int64_t tid);
 
   // Removes a thread from the supplied category. If the thread has
@@ -214,9 +232,12 @@ class ThreadMgr {
   uint64_t ReadThreadsRunning();
 
   // Webpage callback; prints all threads by category.
-  void ThreadPathHandler(const WebCallbackRegistry::WebRequest& req,
-                         WebCallbackRegistry::PrerenderedWebResponse* resp);
-  void PrintThreadCategoryRows(const ThreadCategory& category, ostringstream* output);
+  void ThreadPathHandler(
+      const WebCallbackRegistry::WebRequest& req,
+      WebCallbackRegistry::PrerenderedWebResponse* resp);
+  void PrintThreadCategoryRows(
+      const ThreadCategory& category,
+      ostringstream* output);
 };
 
 void ThreadMgr::SetThreadName(const string& name, int64_t tid) {
@@ -244,37 +265,38 @@ void ThreadMgr::SetThreadName(const string& name, int64_t tid) {
   }
 }
 
-Status ThreadMgr::StartInstrumentation(const scoped_refptr<MetricEntity>& metrics,
-                                       WebCallbackRegistry* web) {
+Status ThreadMgr::StartInstrumentation(
+    const scoped_refptr<MetricEntity>& metrics,
+    WebCallbackRegistry* web) {
   MutexLock l(lock_);
 
-  // Use function gauges here so that we can register a unique copy of these metrics in
-  // multiple tservers, even though the ThreadMgr is itself a singleton.
+  // Use function gauges here so that we can register a unique copy of these
+  // metrics in multiple tservers, even though the ThreadMgr is itself a
+  // singleton.
+  metrics->NeverRetire(METRIC_threads_started.InstantiateFunctionGauge(
+      metrics, Bind(&ThreadMgr::ReadThreadsStarted, Unretained(this))));
+  metrics->NeverRetire(METRIC_threads_running.InstantiateFunctionGauge(
+      metrics, Bind(&ThreadMgr::ReadThreadsRunning, Unretained(this))));
   metrics->NeverRetire(
-      METRIC_threads_started.InstantiateFunctionGauge(metrics,
-        Bind(&ThreadMgr::ReadThreadsStarted, Unretained(this))));
+      METRIC_cpu_utime.InstantiateFunctionGauge(metrics, Bind(&GetCpuUTime)));
   metrics->NeverRetire(
-      METRIC_threads_running.InstantiateFunctionGauge(metrics,
-        Bind(&ThreadMgr::ReadThreadsRunning, Unretained(this))));
+      METRIC_cpu_stime.InstantiateFunctionGauge(metrics, Bind(&GetCpuSTime)));
   metrics->NeverRetire(
-      METRIC_cpu_utime.InstantiateFunctionGauge(metrics,
-        Bind(&GetCpuUTime)));
+      METRIC_voluntary_context_switches.InstantiateFunctionGauge(
+          metrics, Bind(&GetVoluntaryContextSwitches)));
   metrics->NeverRetire(
-      METRIC_cpu_stime.InstantiateFunctionGauge(metrics,
-        Bind(&GetCpuSTime)));
-  metrics->NeverRetire(
-      METRIC_voluntary_context_switches.InstantiateFunctionGauge(metrics,
-        Bind(&GetVoluntaryContextSwitches)));
-  metrics->NeverRetire(
-      METRIC_involuntary_context_switches.InstantiateFunctionGauge(metrics,
-        Bind(&GetInVoluntaryContextSwitches)));
+      METRIC_involuntary_context_switches.InstantiateFunctionGauge(
+          metrics, Bind(&GetInVoluntaryContextSwitches)));
 
   if (web) {
     WebCallbackRegistry::PrerenderedPathHandlerCallback thread_callback =
         bind<void>(mem_fn(&ThreadMgr::ThreadPathHandler), this, _1, _2);
-    DCHECK_NOTNULL(web)->RegisterPrerenderedPathHandler("/threadz", "Threads", thread_callback,
-                                                        true /* is_styled*/,
-                                                        true /* is_on_nav_bar */);
+    DCHECK_NOTNULL(web)->RegisterPrerenderedPathHandler(
+        "/threadz",
+        "Threads",
+        thread_callback,
+        true /* is_styled*/,
+        true /* is_on_nav_bar */);
   }
   return Status::OK();
 }
@@ -289,8 +311,11 @@ uint64_t ThreadMgr::ReadThreadsRunning() {
   return threads_running_metric_;
 }
 
-void ThreadMgr::AddThread(const pthread_t& pthread_id, const string& name,
-    const string& category, int64_t tid) {
+void ThreadMgr::AddThread(
+    const pthread_t& pthread_id,
+    const string& name,
+    const string& category,
+    int64_t tid) {
   // These annotations cause TSAN to ignore the synchronization on lock_
   // without causing the subsequent mutations to be treated as data races
   // in and of themselves (that's what IGNORE_READS_AND_WRITES does).
@@ -307,7 +332,8 @@ void ThreadMgr::AddThread(const pthread_t& pthread_id, const string& name,
   ANNOTATE_IGNORE_READS_AND_WRITES_BEGIN();
   {
     MutexLock l(lock_);
-    thread_categories_[category][pthread_id] = ThreadDescriptor(category, name, tid);
+    thread_categories_[category][pthread_id] =
+        ThreadDescriptor(category, name, tid);
     threads_running_metric_++;
     threads_started_metric_++;
   }
@@ -315,7 +341,9 @@ void ThreadMgr::AddThread(const pthread_t& pthread_id, const string& name,
   ANNOTATE_IGNORE_READS_AND_WRITES_END();
 }
 
-void ThreadMgr::RemoveThread(const pthread_t& pthread_id, const string& category) {
+void ThreadMgr::RemoveThread(
+    const pthread_t& pthread_id,
+    const string& category) {
   ANNOTATE_IGNORE_SYNC_BEGIN();
   ANNOTATE_IGNORE_READS_AND_WRITES_BEGIN();
   {
@@ -329,14 +357,15 @@ void ThreadMgr::RemoveThread(const pthread_t& pthread_id, const string& category
   ANNOTATE_IGNORE_READS_AND_WRITES_END();
 }
 
-void ThreadMgr::PrintThreadCategoryRows(const ThreadCategory& category,
+void ThreadMgr::PrintThreadCategoryRows(
+    const ThreadCategory& category,
     ostringstream* output) {
   for (const ThreadCategory::value_type& thread : category) {
     ThreadStats stats;
     Status status = GetThreadStats(thread.second.thread_id(), &stats);
     if (!status.ok()) {
-      KLOG_EVERY_N(INFO, 100) << "Could not get per-thread statistics: "
-                              << status.ToString();
+      KLOG_EVERY_N(INFO, 100)
+          << "Could not get per-thread statistics: " << status.ToString();
     }
     (*output) << "<tr><td>" << thread.second.name() << "</td><td>"
               << (static_cast<double>(stats.user_ns) / 1e9) << "</td><td>"
@@ -345,8 +374,9 @@ void ThreadMgr::PrintThreadCategoryRows(const ThreadCategory& category,
   }
 }
 
-void ThreadMgr::ThreadPathHandler(const WebCallbackRegistry::WebRequest& req,
-                                  WebCallbackRegistry::PrerenderedWebResponse* resp) {
+void ThreadMgr::ThreadPathHandler(
+    const WebCallbackRegistry::WebRequest& req,
+    WebCallbackRegistry::PrerenderedWebResponse* resp) {
   ostringstream* output = resp->output;
   MutexLock l(lock_);
   vector<const ThreadCategory*> categories_to_print;
@@ -355,7 +385,8 @@ void ThreadMgr::ThreadPathHandler(const WebCallbackRegistry::WebRequest& req,
     string group = EscapeForHtmlToString(category_name->second);
     (*output) << "<h2>Thread Group: " << group << "</h2>" << endl;
     if (group != "all") {
-      ThreadCategoryMap::const_iterator category = thread_categories_.find(group);
+      ThreadCategoryMap::const_iterator category =
+          thread_categories_.find(group);
       if (category == thread_categories_.end()) {
         (*output) << "Thread group '" << group << "' not found" << endl;
         return;
@@ -371,9 +402,10 @@ void ThreadMgr::ThreadPathHandler(const WebCallbackRegistry::WebRequest& req,
     }
 
     (*output) << "<table class='table table-hover table-border'>";
-    (*output) << "<thead><tr><th>Thread name</th><th>Cumulative User CPU(s)</th>"
-              << "<th>Cumulative Kernel CPU(s)</th>"
-              << "<th>Cumulative IO-wait(s)</th></tr></thead>";
+    (*output)
+        << "<thead><tr><th>Thread name</th><th>Cumulative User CPU(s)</th>"
+        << "<th>Cumulative Kernel CPU(s)</th>"
+        << "<th>Cumulative IO-wait(s)</th></tr></thead>";
     (*output) << "<tbody>\n";
 
     for (const ThreadCategory* category : categories_to_print) {
@@ -389,7 +421,8 @@ void ThreadMgr::ThreadPathHandler(const WebCallbackRegistry::WebRequest& req,
       string category_arg;
       UrlEncode(category.first, &category_arg);
       (*output) << "<a href='/threadz?group=" << category_arg << "'><h3>"
-                << category.first << " : " << category.second.size() << "</h3></a>";
+                << category.first << " : " << category.second.size()
+                << "</h3></a>";
     }
   }
 }
@@ -398,18 +431,18 @@ static void InitThreading() {
   thread_manager.reset(new ThreadMgr());
 }
 
-Status StartThreadInstrumentation(const scoped_refptr<MetricEntity>& server_metrics,
-                                  WebCallbackRegistry* web) {
+Status StartThreadInstrumentation(
+    const scoped_refptr<MetricEntity>& server_metrics,
+    WebCallbackRegistry* web) {
   GoogleOnceInit(&once, &InitThreading);
   return thread_manager->StartInstrumentation(server_metrics, web);
 }
 
 ThreadJoiner::ThreadJoiner(Thread* thr)
-  : thread_(CHECK_NOTNULL(thr)),
-    warn_after_ms_(kDefaultWarnAfterMs),
-    warn_every_ms_(kDefaultWarnEveryMs),
-    give_up_after_ms_(kDefaultGiveUpAfterMs) {
-}
+    : thread_(CHECK_NOTNULL(thr)),
+      warn_after_ms_(kDefaultWarnAfterMs),
+      warn_every_ms_(kDefaultWarnEveryMs),
+      give_up_after_ms_(kDefaultGiveUpAfterMs) {}
 
 ThreadJoiner& ThreadJoiner::warn_after_ms(int ms) {
   warn_after_ms_ = ms;
@@ -441,8 +474,11 @@ Status ThreadJoiner::Join() {
   bool keep_trying = true;
   while (keep_trying) {
     if (waited_ms >= warn_after_ms_) {
-      LOG(WARNING) << Substitute("Waited for $0ms trying to join with $1 (tid $2)",
-                                 waited_ms, thread_->name_, thread_->tid_);
+      LOG(WARNING) << Substitute(
+          "Waited for $0ms trying to join with $1 (tid $2)",
+          waited_ms,
+          thread_->name_,
+          thread_->tid_);
     }
 
     int remaining_before_giveup = MathLimits<int>::kMax;
@@ -459,7 +495,8 @@ Status ThreadJoiner::Join() {
       keep_trying = false;
     }
 
-    int wait_for = std::min(remaining_before_giveup, remaining_before_next_warn);
+    int wait_for =
+        std::min(remaining_before_giveup, remaining_before_next_warn);
 
     if (thread_->done_.WaitFor(MonoDelta::FromMilliseconds(wait_for))) {
       // Unconditionally join before returning, to guarantee that any TLS
@@ -472,8 +509,8 @@ Status ThreadJoiner::Join() {
     }
     waited_ms += wait_for;
   }
-  return Status::Aborted(strings::Substitute("Timed out after $0ms joining on $1",
-                                             waited_ms, thread_->name_));
+  return Status::Aborted(strings::Substitute(
+      "Timed out after $0ms joining on $1", waited_ms, thread_->name_));
 }
 
 Thread::~Thread() {
@@ -484,31 +521,39 @@ Thread::~Thread() {
 }
 
 std::string Thread::ToString() const {
-  return Substitute("Thread $0 (name: \"$1\", category: \"$2\")", tid(), name_, category_);
+  return Substitute(
+      "Thread $0 (name: \"$1\", category: \"$2\")", tid(), name_, category_);
 }
 
 int64_t Thread::WaitForTid() const {
   const string log_prefix = Substitute("$0 ($1) ", name_, category_);
-  SCOPED_LOG_SLOW_EXECUTION_PREFIX(WARNING, 500 /* ms */, log_prefix,
-                                   "waiting for new thread to publish its TID");
+  SCOPED_LOG_SLOW_EXECUTION_PREFIX(
+      WARNING,
+      500 /* ms */,
+      log_prefix,
+      "waiting for new thread to publish its TID");
   int loop_count = 0;
   while (true) {
     int64_t t = Acquire_Load(&tid_);
-    if (t != PARENT_WAITING_TID) return t;
+    if (t != PARENT_WAITING_TID)
+      return t;
     boost::detail::yield(loop_count++);
   }
 }
 
-
-Status Thread::StartThread(const std::string& category, const std::string& name,
-                           const ThreadFunctor& functor, uint64_t flags,
-                           scoped_refptr<Thread> *holder) {
+Status Thread::StartThread(
+    const std::string& category,
+    const std::string& name,
+    const ThreadFunctor& functor,
+    uint64_t flags,
+    scoped_refptr<Thread>* holder) {
   TRACE_COUNTER_INCREMENT("threads_started", 1);
   TRACE_COUNTER_SCOPE_LATENCY_US("thread_start_us");
   GoogleOnceInit(&once, &InitThreading);
 
   const string log_prefix = Substitute("$0 ($1) ", name, category);
-  SCOPED_LOG_SLOW_EXECUTION_PREFIX(WARNING, 500 /* ms */, log_prefix, "starting thread");
+  SCOPED_LOG_SLOW_EXECUTION_PREFIX(
+      WARNING, 500 /* ms */, log_prefix, "starting thread");
 
   // Temporary reference for the duration of this function.
   scoped_refptr<Thread> t(new Thread(category, name, functor));
@@ -530,22 +575,26 @@ Status Thread::StartThread(const std::string& category, const std::string& name,
   t->AddRef();
 
   auto cleanup = MakeScopedCleanup([&]() {
-      // If we failed to create the thread, we need to undo all of our prep work.
-      t->tid_ = INVALID_TID;
-      t->Release();
-    });
+    // If we failed to create the thread, we need to undo all of our prep work.
+    t->tid_ = INVALID_TID;
+    t->Release();
+  });
 
   if (PREDICT_FALSE(FLAGS_thread_inject_start_latency_ms > 0)) {
-    LOG(INFO) << "Injecting " << FLAGS_thread_inject_start_latency_ms << "ms sleep on thread start";
+    LOG(INFO) << "Injecting " << FLAGS_thread_inject_start_latency_ms
+              << "ms sleep on thread start";
     SleepFor(MonoDelta::FromMilliseconds(FLAGS_thread_inject_start_latency_ms));
   }
 
   {
-    SCOPED_LOG_SLOW_EXECUTION_PREFIX(WARNING, 500 /* ms */, log_prefix, "creating pthread");
-    //SCOPED_WATCH_STACK((flags & NO_STACK_WATCHDOG) ? 0 : 250);
-    int ret = pthread_create(&t->thread_, NULL, &Thread::SuperviseThread, t.get());
+    SCOPED_LOG_SLOW_EXECUTION_PREFIX(
+        WARNING, 500 /* ms */, log_prefix, "creating pthread");
+    // SCOPED_WATCH_STACK((flags & NO_STACK_WATCHDOG) ? 0 : 250);
+    int ret =
+        pthread_create(&t->thread_, NULL, &Thread::SuperviseThread, t.get());
     if (ret) {
-      return Status::RuntimeError("Could not create thread", strerror(ret), ret);
+      return Status::RuntimeError(
+          "Could not create thread", strerror(ret), ret);
     }
   }
 
@@ -557,7 +606,7 @@ Status Thread::StartThread(const std::string& category, const std::string& name,
   t->joinable_ = true;
   cleanup.cancel();
 
-  VLOG(2) << "Started thread " << t->tid()<< " - " << category << ":" << name;
+  VLOG(2) << "Started thread " << t->tid() << " - " << category << ":" << name;
   return Status::OK();
 }
 
@@ -609,7 +658,8 @@ void Thread::FinishThread(void* arg) {
   // Signal any Joiner that we're done.
   t->done_.CountDown();
 
-  VLOG(2) << "Ended thread " << t->tid_ << " - " << t->category() << ":" << t->name();
+  VLOG(2) << "Ended thread " << t->tid_ << " - " << t->category() << ":"
+          << t->name();
   t->Release();
   // NOTE: the above 'Release' call could be the last reference to 'this',
   // so 'this' could be destructed at this point. Do not add any code
@@ -617,15 +667,14 @@ void Thread::FinishThread(void* arg) {
 }
 
 static bool set_capability_flag(cap_value_t capability, cap_flag_value_t flag) {
-  cap_value_t cap_list[]= {capability};
-  cap_t caps= cap_get_proc();
-  bool ret= true;
+  cap_value_t cap_list[] = {capability};
+  cap_t caps = cap_get_proc();
+  bool ret = true;
 
-  if (!caps ||
-      cap_set_flag(caps, CAP_EFFECTIVE, 1, cap_list, flag) ||
+  if (!caps || cap_set_flag(caps, CAP_EFFECTIVE, 1, cap_list, flag) ||
       cap_set_proc(caps)) {
     LOG(ERROR) << "Can not set capability flag";
-    ret= false;
+    ret = false;
   }
 
   if (caps) {
@@ -635,21 +684,18 @@ static bool set_capability_flag(cap_value_t capability, cap_flag_value_t flag) {
   return true;
 }
 
-static bool acquire_capability(cap_value_t capability)
-{
+static bool acquire_capability(cap_value_t capability) {
   return set_capability_flag(capability, CAP_SET);
 }
 
-static bool drop_capability(cap_value_t capability)
-{
+static bool drop_capability(cap_value_t capability) {
   return set_capability_flag(capability, CAP_CLEAR);
 }
 
 // CAP_SYS_NICE capability is acquired before changing the thread priority,
 // and dropped after the action is done.
 // This is the same flow like we did in mysqld
-static int set_system_thread_priority(pid_t tid, int pri)
-{
+static int set_system_thread_priority(pid_t tid, int pri) {
   acquire_capability(CAP_SYS_NICE);
   int ret = setpriority(PRIO_PROCESS, tid, pri) != 0;
   drop_capability(CAP_SYS_NICE);
@@ -657,8 +703,7 @@ static int set_system_thread_priority(pid_t tid, int pri)
   return ret;
 }
 
-static int get_system_thread_priority(pid_t tid)
-{
+static int get_system_thread_priority(pid_t tid) {
   return getpriority(PRIO_PROCESS, tid);
 }
 
@@ -686,8 +731,8 @@ Status ThreadMgr::ChangeThreadPriority(string category, int priority) {
       uint64_t thread_id = thread_info.second.thread_id();
       int ret = set_system_thread_priority(thread_id, priority);
       if (ret != 0) {
-        return Status::RuntimeError("Can not change thread priority",
-          strerror(ret), ret);
+        return Status::RuntimeError(
+            "Can not change thread priority", strerror(ret), ret);
       }
     }
   }
@@ -697,8 +742,8 @@ Status ThreadMgr::ChangeThreadPriority(string category, int priority) {
 void ThreadMgr::SetToDefaultPriority(Thread* thread) {
   MutexLock l(lock_);
   if (category2priority_.count(thread->category())) {
-    set_system_thread_priority(thread->tid(),
-      category2priority_[thread->category()]);
+    set_system_thread_priority(
+        thread->tid(), category2priority_[thread->category()]);
   }
 }
 

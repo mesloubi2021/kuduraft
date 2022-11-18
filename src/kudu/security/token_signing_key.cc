@@ -28,18 +28,16 @@
 #include "kudu/security/token.pb.h"
 #include "kudu/util/status.h"
 
-using std::unique_ptr;
 using std::string;
+using std::unique_ptr;
 
 namespace kudu {
 namespace security {
 
 TokenSigningPublicKey::TokenSigningPublicKey(TokenSigningPublicKeyPB pb)
-    : pb_(std::move(pb)) {
-}
+    : pb_(std::move(pb)) {}
 
-TokenSigningPublicKey::~TokenSigningPublicKey() {
-}
+TokenSigningPublicKey::~TokenSigningPublicKey() {}
 
 Status TokenSigningPublicKey::Init() {
   // This should be called only once.
@@ -52,8 +50,10 @@ Status TokenSigningPublicKey::Init() {
 }
 
 bool TokenSigningPublicKey::VerifySignature(const SignedTokenPB& token) const {
-  return key_.VerifySignature(DigestType::SHA256,
-      token.token_data(), token.signature()).ok();
+  return key_
+      .VerifySignature(
+          DigestType::SHA256, token.token_data(), token.signature())
+      .ok();
 }
 
 TokenSigningPrivateKey::TokenSigningPrivateKey(
@@ -70,7 +70,9 @@ TokenSigningPrivateKey::TokenSigningPrivateKey(
 }
 
 TokenSigningPrivateKey::TokenSigningPrivateKey(
-    int64_t key_seq_num, int64_t expire_time, unique_ptr<PrivateKey> key)
+    int64_t key_seq_num,
+    int64_t expire_time,
+    unique_ptr<PrivateKey> key)
     : key_(std::move(key)),
       key_seq_num_(key_seq_num),
       expire_time_(expire_time) {
@@ -80,13 +82,12 @@ TokenSigningPrivateKey::TokenSigningPrivateKey(
   CHECK_OK(public_key.ToString(&public_key_der_, DataFormat::DER));
 }
 
-TokenSigningPrivateKey::~TokenSigningPrivateKey() {
-}
+TokenSigningPrivateKey::~TokenSigningPrivateKey() {}
 
 Status TokenSigningPrivateKey::Sign(SignedTokenPB* token) const {
   string signature;
-  RETURN_NOT_OK(key_->MakeSignature(DigestType::SHA256,
-      token->token_data(), &signature));
+  RETURN_NOT_OK(
+      key_->MakeSignature(DigestType::SHA256, token->token_data(), &signature));
   token->mutable_signature()->assign(std::move(signature));
   token->set_signing_key_seq_num(key_seq_num_);
   return Status::OK();
@@ -99,7 +100,8 @@ void TokenSigningPrivateKey::ExportPB(TokenSigningPrivateKeyPB* pb) const {
   pb->set_expire_unix_epoch_seconds(expire_time_);
 }
 
-void TokenSigningPrivateKey::ExportPublicKeyPB(TokenSigningPublicKeyPB* pb) const {
+void TokenSigningPrivateKey::ExportPublicKeyPB(
+    TokenSigningPublicKeyPB* pb) const {
   pb->Clear();
   pb->set_key_seq_num(key_seq_num_);
   pb->set_rsa_key_der(public_key_der_);

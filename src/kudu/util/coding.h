@@ -13,8 +13,8 @@
 #include <cstdint>
 #include <cstring>
 
+#include "kudu/gutil/port.h" // IWYU pragma: keep
 #include "kudu/util/slice.h"
-#include "kudu/gutil/port.h"  // IWYU pragma: keep
 // IWYU pragma: no_include <endian.h>
 
 namespace kudu {
@@ -44,60 +44,61 @@ extern bool GetLengthPrefixedSlice(Slice* input, Slice* result);
 // in *v and return a pointer just past the parsed value, or return
 // NULL on error.  These routines only look at bytes in the range
 // [p..limit-1]
-extern const uint8_t *GetVarint32Ptr(const uint8_t *p,const uint8_t *limit, uint32_t* v);
-extern const uint8_t *GetVarint64Ptr(const uint8_t *p,const uint8_t *limit, uint64_t* v);
+extern const uint8_t*
+GetVarint32Ptr(const uint8_t* p, const uint8_t* limit, uint32_t* v);
+extern const uint8_t*
+GetVarint64Ptr(const uint8_t* p, const uint8_t* limit, uint64_t* v);
 
 // Returns the length of the varint32 or varint64 encoding of "v"
 extern int VarintLength(uint64_t v);
 
 // Lower-level versions of Put... that write directly into a character buffer
 // REQUIRES: dst has enough space for the value being written
-extern void EncodeFixed32(uint8_t *dst, uint32_t value);
-extern void EncodeFixed64(uint8_t *dst, uint64_t value);
+extern void EncodeFixed32(uint8_t* dst, uint32_t value);
+extern void EncodeFixed64(uint8_t* dst, uint64_t value);
 
 // Lower-level versions of Put... that write directly into a character buffer
 // and return a pointer just past the last byte written.
 // REQUIRES: dst has enough space for the value being written
-extern uint8_t *EncodeVarint32(uint8_t *dst, uint32_t value);
-extern uint8_t *EncodeVarint64(uint8_t *dst, uint64_t value);
+extern uint8_t* EncodeVarint32(uint8_t* dst, uint32_t value);
+extern uint8_t* EncodeVarint64(uint8_t* dst, uint64_t value);
 
 // Lower-level versions of Get... that read directly from a character buffer
 // without any bounds checking.
 
-inline uint32_t DecodeFixed32(const uint8_t *ptr) {
+inline uint32_t DecodeFixed32(const uint8_t* ptr) {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-    // Load the raw bytes
-    uint32_t result;
-    memcpy(&result, ptr, sizeof(result));  // gcc optimizes this to a plain load
-    return result;
+  // Load the raw bytes
+  uint32_t result;
+  memcpy(&result, ptr, sizeof(result)); // gcc optimizes this to a plain load
+  return result;
 #else
-    return ((static_cast<uint32_t>(static_cast<unsigned char>(ptr[0])))
-        | (static_cast<uint32_t>(static_cast<unsigned char>(ptr[1])) << 8)
-        | (static_cast<uint32_t>(static_cast<unsigned char>(ptr[2])) << 16)
-        | (static_cast<uint32_t>(static_cast<unsigned char>(ptr[3])) << 24));
+  return (
+      (static_cast<uint32_t>(static_cast<unsigned char>(ptr[0]))) |
+      (static_cast<uint32_t>(static_cast<unsigned char>(ptr[1])) << 8) |
+      (static_cast<uint32_t>(static_cast<unsigned char>(ptr[2])) << 16) |
+      (static_cast<uint32_t>(static_cast<unsigned char>(ptr[3])) << 24));
 #endif
 }
 
-inline uint64_t DecodeFixed64(const uint8_t *ptr) {
+inline uint64_t DecodeFixed64(const uint8_t* ptr) {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-    // Load the raw bytes
-    uint64_t result;
-    memcpy(&result, ptr, sizeof(result));  // gcc optimizes this to a plain load
-    return result;
+  // Load the raw bytes
+  uint64_t result;
+  memcpy(&result, ptr, sizeof(result)); // gcc optimizes this to a plain load
+  return result;
 #else
-    uint64_t lo = DecodeFixed32(ptr);
-    uint64_t hi = DecodeFixed32(ptr + 4);
-    return (hi << 32) | lo;
+  uint64_t lo = DecodeFixed32(ptr);
+  uint64_t hi = DecodeFixed32(ptr + 4);
+  return (hi << 32) | lo;
 #endif
 }
 
 // Internal routine for use by fallback path of GetVarint32Ptr
-extern const uint8_t *GetVarint32PtrFallback(const uint8_t *p,
-                                             const uint8_t *limit,
-                                             uint32_t* value);
-inline const uint8_t *GetVarint32Ptr(const uint8_t *p,
-                                     const uint8_t *limit,
-                                     uint32_t* value) {
+extern const uint8_t*
+GetVarint32PtrFallback(const uint8_t* p, const uint8_t* limit, uint32_t* value);
+inline const uint8_t*
+GetVarint32Ptr(const uint8_t* p, const uint8_t* limit, uint32_t* value) {
   if (PREDICT_TRUE(p < limit)) {
     uint32_t result = *p;
     if (PREDICT_TRUE((result & 128) == 0)) {
@@ -108,6 +109,6 @@ inline const uint8_t *GetVarint32Ptr(const uint8_t *p,
   return GetVarint32PtrFallback(p, limit, value);
 }
 
-}  // namespace kudu
+} // namespace kudu
 
-#endif  // STORAGE_LEVELDB_UTIL_CODING_H_
+#endif // STORAGE_LEVELDB_UTIL_CODING_H_

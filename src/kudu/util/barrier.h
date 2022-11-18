@@ -27,15 +27,12 @@ namespace kudu {
 class Barrier {
  public:
   // Initialize the barrier with the given initial count.
-  explicit Barrier(int count) :
-      cond_(&mutex_),
-      count_(count),
-      initial_count_(count) {
+  explicit Barrier(int count)
+      : cond_(&mutex_), count_(count), initial_count_(count) {
     DCHECK_GT(count, 0);
   }
 
-  ~Barrier() {
-  }
+  ~Barrier() {}
 
   // Wait until all threads have reached the barrier.
   // Once all threads have reached the barrier, the barrier is reset

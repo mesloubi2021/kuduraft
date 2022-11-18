@@ -202,8 +202,8 @@ class ThreadPool {
   // Waits until all the tasks are completed.
   void Wait();
 
-  // Waits for the pool to reach the idle state, or until 'until' time is reached.
-  // Returns true if the pool reached the idle state, false otherwise.
+  // Waits for the pool to reach the idle state, or until 'until' time is
+  // reached. Returns true if the pool reached the idle state, false otherwise.
   bool WaitUntil(const MonoTime& until);
 
   // Waits for the pool to reach the idle state, or until 'delta' time elapses.
@@ -226,11 +226,12 @@ class ThreadPool {
   // Like NewToken(), but lets the caller provide metrics for the token. These
   // metrics are incremented/decremented in addition to the configured
   // pool-wide metrics (if any).
-  std::unique_ptr<ThreadPoolToken> NewTokenWithMetrics(ExecutionMode mode,
-                                                       ThreadPoolMetrics metrics);
+  std::unique_ptr<ThreadPoolToken> NewTokenWithMetrics(
+      ExecutionMode mode,
+      ThreadPoolMetrics metrics);
 
-  // Return the number of threads currently running (or in the process of starting up)
-  // for this thread pool.
+  // Return the number of threads currently running (or in the process of
+  // starting up) for this thread pool.
   int num_threads() const {
     MutexLock l(lock_);
     return num_threads_ + num_threads_pending_start_;
@@ -263,8 +264,8 @@ class ThreadPool {
 
   // Create new thread.
   //
-  // REQUIRES: caller has incremented 'num_threads_pending_start_' ahead of this call.
-  // NOTE: For performance reasons, lock_ should not be held.
+  // REQUIRES: caller has incremented 'num_threads_pending_start_' ahead of this
+  // call. NOTE: For performance reasons, lock_ should not be held.
   Status CreateThread();
 
   // Aborts if the current thread is a member of this thread pool.
@@ -328,7 +329,8 @@ class ThreadPool {
   std::unordered_set<ThreadPoolToken*> tokens_;
 
   // FIFO of tokens from which tasks should be executed. Does not own the
-  // tokens; they are owned by clients and are removed from the FIFO on shutdown.
+  // tokens; they are owned by clients and are removed from the FIFO on
+  // shutdown.
   //
   // Protected by lock_.
   std::deque<ThreadPoolToken*> queue_;
@@ -348,8 +350,7 @@ class ThreadPool {
   //
   // Protected by lock_.
   struct IdleThread : public boost::intrusive::list_base_hook<> {
-    explicit IdleThread(Mutex* m)
-        : not_empty(m) {}
+    explicit IdleThread(Mutex* m) : not_empty(m) {}
 
     // Condition variable for "queue is not empty". Waiters wake up when a new
     // task is queued.
@@ -357,7 +358,8 @@ class ThreadPool {
 
     DISALLOW_COPY_AND_ASSIGN(IdleThread);
   };
-  boost::intrusive::list<IdleThread> idle_threads_; // NOLINT(build/include_what_you_use)
+  boost::intrusive::list<IdleThread>
+      idle_threads_; // NOLINT(build/include_what_you_use)
 
   // ExecutionMode::CONCURRENT token used by the pool for tokenless submission.
   std::unique_ptr<ThreadPoolToken> tokenless_;
@@ -451,9 +453,10 @@ class ThreadPoolToken {
   // Constructs a new token.
   //
   // The token may not outlive its thread pool ('pool').
-  ThreadPoolToken(ThreadPool* pool,
-                  ThreadPool::ExecutionMode mode,
-                  ThreadPoolMetrics metrics);
+  ThreadPoolToken(
+      ThreadPool* pool,
+      ThreadPool::ExecutionMode mode,
+      ThreadPoolMetrics metrics);
 
   // Changes this token's state to 'new_state' taking actions as needed.
   void Transition(State new_state);
@@ -461,18 +464,20 @@ class ThreadPoolToken {
   // Returns true if this token has a task queued and ready to run, or if a
   // task belonging to this token is already running.
   bool IsActive() const {
-    return state_ == State::RUNNING ||
-           state_ == State::QUIESCING;
+    return state_ == State::RUNNING || state_ == State::QUIESCING;
   }
 
   // Returns true if new tasks may be submitted to this token.
   bool MaySubmitNewTasks() const {
-    return state_ != State::QUIESCING &&
-           state_ != State::QUIESCED;
+    return state_ != State::QUIESCING && state_ != State::QUIESCED;
   }
 
-  State state() const { return state_; }
-  ThreadPool::ExecutionMode mode() const { return mode_; }
+  State state() const {
+    return state_;
+  }
+  ThreadPool::ExecutionMode mode() const {
+    return mode_;
+  }
 
   // Token's configured execution mode.
   const ThreadPool::ExecutionMode mode_;

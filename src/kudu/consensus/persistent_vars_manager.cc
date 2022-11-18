@@ -37,43 +37,51 @@ using std::string;
 using strings::Substitute;
 
 PersistentVarsManager::PersistentVarsManager(FsManager* fs_manager)
-    : fs_manager_(DCHECK_NOTNULL(fs_manager)) {
-}
+    : fs_manager_(DCHECK_NOTNULL(fs_manager)) {}
 
-Status PersistentVarsManager::CreatePersistentVars(const string& tablet_id,
-                                             scoped_refptr<PersistentVars>* persistent_vars_out) {
+Status PersistentVarsManager::CreatePersistentVars(
+    const string& tablet_id,
+    scoped_refptr<PersistentVars>* persistent_vars_out) {
   scoped_refptr<PersistentVars> persistent_vars;
-  RETURN_NOT_OK_PREPEND(PersistentVars::Create(fs_manager_, tablet_id, fs_manager_->uuid(),
-                                                  &persistent_vars),
-                        Substitute("Unable to create consensus metadata for tablet $0", tablet_id));
+  RETURN_NOT_OK_PREPEND(
+      PersistentVars::Create(
+          fs_manager_, tablet_id, fs_manager_->uuid(), &persistent_vars),
+      Substitute(
+          "Unable to create consensus metadata for tablet $0", tablet_id));
 
   lock_guard<Mutex> l(persistent_vars_lock_);
-  if (!InsertIfNotPresent(&persistent_vars_cache_, tablet_id, persistent_vars)) {
-    return Status::AlreadyPresent(Substitute("PersistentVars instance for $0 already exists",
-                                             tablet_id));
+  if (!InsertIfNotPresent(
+          &persistent_vars_cache_, tablet_id, persistent_vars)) {
+    return Status::AlreadyPresent(
+        Substitute("PersistentVars instance for $0 already exists", tablet_id));
   }
-  if (persistent_vars_out) *persistent_vars_out = std::move(persistent_vars);
+  if (persistent_vars_out)
+    *persistent_vars_out = std::move(persistent_vars);
   return Status::OK();
 }
 
-Status PersistentVarsManager::LoadPersistentVars(const string& tablet_id,
-                                           scoped_refptr<PersistentVars>* persistent_vars_out) {
+Status PersistentVarsManager::LoadPersistentVars(
+    const string& tablet_id,
+    scoped_refptr<PersistentVars>* persistent_vars_out) {
   {
     lock_guard<Mutex> l(persistent_vars_lock_);
 
     // Try to get the persistent_vars instance from cache first.
-    scoped_refptr<PersistentVars>* cached_persistent_vars = FindOrNull(persistent_vars_cache_, tablet_id);
+    scoped_refptr<PersistentVars>* cached_persistent_vars =
+        FindOrNull(persistent_vars_cache_, tablet_id);
     if (cached_persistent_vars) {
-      if (persistent_vars_out) *persistent_vars_out = *cached_persistent_vars;
+      if (persistent_vars_out)
+        *persistent_vars_out = *cached_persistent_vars;
       return Status::OK();
     }
   }
 
   // If it's not yet cached, drop the lock before we load it.
   scoped_refptr<PersistentVars> persistent_vars;
-  RETURN_NOT_OK_PREPEND(PersistentVars::Load(fs_manager_, tablet_id, fs_manager_->uuid(),
-                                                &persistent_vars),
-                        Substitute("Unable to load persistent vars for tablet $0", tablet_id));
+  RETURN_NOT_OK_PREPEND(
+      PersistentVars::Load(
+          fs_manager_, tablet_id, fs_manager_->uuid(), &persistent_vars),
+      Substitute("Unable to load persistent vars for tablet $0", tablet_id));
 
   // Cache and return the loaded PersistentVars.
   {
@@ -83,11 +91,13 @@ Status PersistentVarsManager::LoadPersistentVars(const string& tablet_id,
     InsertOrDie(&persistent_vars_cache_, tablet_id, persistent_vars);
   }
 
-  if (persistent_vars_out) *persistent_vars_out = std::move(persistent_vars);
+  if (persistent_vars_out)
+    *persistent_vars_out = std::move(persistent_vars);
   return Status::OK();
 }
 
-bool PersistentVarsManager::PersistentVarsFileExists(const std::string& tablet_id) const {
+bool PersistentVarsManager::PersistentVarsFileExists(
+    const std::string& tablet_id) const {
   return PersistentVars::FileExists(fs_manager_, tablet_id);
 }
 

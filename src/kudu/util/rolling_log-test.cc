@@ -45,9 +45,7 @@ namespace kudu {
 
 class RollingLogTest : public KuduTest {
  public:
-  RollingLogTest()
-    : log_dir_(GetTestPath("log_dir")) {
-  }
+  RollingLogTest() : log_dir_(GetTestPath("log_dir")) {}
 
   virtual void SetUp() override {
     ASSERT_OK(env_->CreateDir(log_dir_));
@@ -60,14 +58,17 @@ class RollingLogTest : public KuduTest {
     children->clear();
 
     for (const string& child : dir_entries) {
-      if (child == "." || child == "..") continue;
+      if (child == "." || child == "..")
+        continue;
       children->push_back(child);
       ASSERT_TRUE(HasPrefixString(child, "rolling_log-test."));
       ASSERT_STR_CONTAINS(child, ".mylog.");
 
       string pid_suffix = Substitute("$0", getpid());
-      ASSERT_TRUE(HasSuffixString(child, pid_suffix) ||
-                  HasSuffixString(child, pid_suffix + ".gz")) << "bad child: " << child;
+      ASSERT_TRUE(
+          HasSuffixString(child, pid_suffix) ||
+          HasSuffixString(child, pid_suffix + ".gz"))
+          << "bad child: " << child;
     }
     std::sort(children->begin(), children->end());
     ASSERT_EQ(children->size(), expected_count) << *children;
@@ -99,8 +100,7 @@ TEST_F(RollingLogTest, TestLog) {
   faststring data;
   string path = JoinPathSegments(log_dir_, children[0]);
   ASSERT_OK(ReadFileToString(env_, path, &data));
-  ASSERT_TRUE(HasPrefixString(data.ToString(), kTestString))
-    << "Data missing";
+  ASSERT_TRUE(HasPrefixString(data.ToString(), kTestString)) << "Data missing";
   ASSERT_LE(data.size(), 100 + kTestString.length())
       << "Roll threshold not respected";
 }

@@ -46,9 +46,12 @@ string GetKuduToolAbsolutePath() {
   return tool_abs_path;
 }
 
-Status RunKuduTool(const vector<string>& args, string* out, string* err,
-                   const std::string& in) {
-  vector<string> total_args = { GetKuduToolAbsolutePath() };
+Status RunKuduTool(
+    const vector<string>& args,
+    string* out,
+    string* err,
+    const std::string& in) {
+  vector<string> total_args = {GetKuduToolAbsolutePath()};
 
   // Speed up filesystem-based operations.
   total_args.emplace_back("--unlock_unsafe_flags");

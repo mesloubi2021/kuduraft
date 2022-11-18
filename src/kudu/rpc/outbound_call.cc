@@ -47,17 +47,21 @@
 // 100M cycles should be about 50ms on a 2Ghz box. This should be high
 // enough that involuntary context switches don't trigger it, but low enough
 // that any serious blocking behavior on the reactor would.
-DEFINE_int64(rpc_callback_max_cycles, 100 * 1000 * 1000,
-             "The maximum number of cycles for which an RPC callback "
-             "should be allowed to run without emitting a warning."
-             " (Advanced debugging option)");
+DEFINE_int64(
+    rpc_callback_max_cycles,
+    100 * 1000 * 1000,
+    "The maximum number of cycles for which an RPC callback "
+    "should be allowed to run without emitting a warning."
+    " (Advanced debugging option)");
 TAG_FLAG(rpc_callback_max_cycles, advanced);
 TAG_FLAG(rpc_callback_max_cycles, runtime);
 
 // Flag used in debug build for injecting cancellation at different code paths.
-DEFINE_int32(rpc_inject_cancellation_state, -1,
-             "If this flag is not -1, it is the state in which a cancellation request "
-             "will be injected. Should use values in OutboundCall::State only");
+DEFINE_int32(
+    rpc_inject_cancellation_state,
+    -1,
+    "If this flag is not -1, it is the state in which a cancellation request "
+    "will be injected. Should use values in OutboundCall::State only");
 TAG_FLAG(rpc_inject_cancellation_state, unsafe);
 
 using std::string;
@@ -76,11 +80,12 @@ static const double kMicrosPerSecond = 1000000.0;
 /// OutboundCall
 ///
 
-OutboundCall::OutboundCall(const ConnectionId& conn_id,
-                           const RemoteMethod& remote_method,
-                           google::protobuf::Message* response_storage,
-                           RpcController* controller,
-                           ResponseCallback callback)
+OutboundCall::OutboundCall(
+    const ConnectionId& conn_id,
+    const RemoteMethod& remote_method,
+    google::protobuf::Message* response_storage,
+    RpcController* controller,
+    ResponseCallback callback)
     : state_(READY),
       remote_method_(remote_method),
       conn_id_(conn_id),
@@ -88,9 +93,12 @@ OutboundCall::OutboundCall(const ConnectionId& conn_id,
       controller_(DCHECK_NOTNULL(controller)),
       response_(DCHECK_NOTNULL(response_storage)),
       cancellation_requested_(false) {
-  DVLOG(4) << "OutboundCall " << this << " constructed with state_: " << StateName(state_)
+  DVLOG(4) << "OutboundCall " << this
+           << " constructed with state_: " << StateName(state_)
            << " and RPC timeout: "
-           << (controller->timeout().Initialized() ? controller->timeout().ToString() : "none");
+           << (controller->timeout().Initialized()
+                   ? controller->timeout().ToString()
+                   : "none");
   header_.set_call_id(kInvalidCallId);
   remote_method.ToPB(header_.mutable_remote_method());
   start_time_ = MonoTime::Now();
@@ -106,14 +114,15 @@ OutboundCall::OutboundCall(const ConnectionId& conn_id,
 
 OutboundCall::~OutboundCall() {
   DCHECK(IsFinished());
-  DVLOG(4) << "OutboundCall " << this << " destroyed with state_: " << StateName(state_);
+  DVLOG(4) << "OutboundCall " << this
+           << " destroyed with state_: " << StateName(state_);
 }
 
 size_t OutboundCall::SerializeTo(TransferPayload* slices) {
   DCHECK_LT(0, request_buf_.size())
       << "Must call SetRequestPayload() before SerializeTo()";
 
-  const MonoDelta &timeout = controller_->timeout();
+  const MonoDelta& timeout = controller_->timeout();
   if (timeout.Initialized()) {
     header_.set_timeout_millis(timeout.ToMilliseconds());
   }
@@ -138,21 +147,24 @@ size_t OutboundCall::SerializeTo(TransferPayload* slices) {
   return n_slices;
 }
 
-void OutboundCall::SetRequestPayload(const Message& req,
+void OutboundCall::SetRequestPayload(
+    const Message& req,
     vector<unique_ptr<RpcSidecar>>&& sidecars) {
   DCHECK_EQ(-1, sidecar_byte_size_);
 
   sidecars_ = move(sidecars);
   DCHECK_LE(sidecars_.size(), TransferLimits::kMaxSidecars);
 
-  // Compute total size of sidecar payload so that extra space can be reserved as part of
-  // the request body.
+  // Compute total size of sidecar payload so that extra space can be reserved
+  // as part of the request body.
   uint32_t message_size = req.ByteSize();
   sidecar_byte_size_ = 0;
-  for (const unique_ptr<RpcSidecar>& car: sidecars_) {
+  for (const unique_ptr<RpcSidecar>& car : sidecars_) {
     header_.add_sidecar_offsets(sidecar_byte_size_ + message_size);
     int32_t sidecar_bytes = car->AsSlice().size();
-    DCHECK_LE(sidecar_byte_size_, TransferLimits::kMaxTotalSidecarBytes - sidecar_bytes);
+    DCHECK_LE(
+        sidecar_byte_size_,
+        TransferLimits::kMaxTotalSidecarBytes - sidecar_bytes);
     sidecar_byte_size_ += sidecar_bytes;
   }
 
@@ -209,15 +221,16 @@ OutboundCall::State OutboundCall::state() const {
 
 void OutboundCall::set_state_unlocked(State new_state) {
   // Sanity check state transitions.
-  DVLOG(3) << "OutboundCall " << this << " (" << ToString() << ") switching from " <<
-    StateName(state_) << " to " << StateName(new_state);
+  DVLOG(3) << "OutboundCall " << this << " (" << ToString()
+           << ") switching from " << StateName(state_) << " to "
+           << StateName(new_state);
   switch (new_state) {
     case ON_OUTBOUND_QUEUE:
       DCHECK_EQ(state_, READY);
       break;
     case SENDING:
-      // Allow SENDING to be set idempotently so we don't have to specifically check
-      // whether the state is transitioning in the RPC code.
+      // Allow SENDING to be set idempotently so we don't have to specifically
+      // check whether the state is transitioning in the RPC code.
       DCHECK(state_ == ON_OUTBOUND_QUEUE || state_ == SENDING);
       break;
     case SENT:
@@ -227,7 +240,8 @@ void OutboundCall::set_state_unlocked(State new_state) {
       DCHECK(state_ == ON_OUTBOUND_QUEUE);
       break;
     case TIMED_OUT:
-      DCHECK(state_ == SENT || state_ == ON_OUTBOUND_QUEUE || state_ == SENDING);
+      DCHECK(
+          state_ == SENT || state_ == ON_OUTBOUND_QUEUE || state_ == SENDING);
       break;
     case CANCELLED:
       DCHECK(state_ == READY || state_ == ON_OUTBOUND_QUEUE || state_ == SENT);
@@ -274,18 +288,18 @@ void OutboundCall::CallCallback() {
     callback_();
     // Clear the callback, since it may be holding onto reference counts
     // via bound parameters. We do this inside the timer because it's possible
-    // the user has naughty destructors that block, and we want to account for that
-    // time here if they happen to run on this thread.
+    // the user has naughty destructors that block, and we want to account for
+    // that time here if they happen to run on this thread.
     callback_ = NULL;
   }
   int64_t end_cycles = CycleClock::Now();
   int64_t wait_cycles = end_cycles - start_cycles;
   if (PREDICT_FALSE(wait_cycles > FLAGS_rpc_callback_max_cycles)) {
-    double micros = static_cast<double>(wait_cycles) / base::CyclesPerSecond()
-      * kMicrosPerSecond;
+    double micros = static_cast<double>(wait_cycles) / base::CyclesPerSecond() *
+        kMicrosPerSecond;
 
-    LOG(WARNING) << "RPC callback for " << ToString() << " blocked reactor thread for "
-                 << micros << "us";
+    LOG(WARNING) << "RPC callback for " << ToString()
+                 << " blocked reactor thread for " << micros << "us";
   }
 }
 
@@ -294,12 +308,13 @@ void OutboundCall::SetResponse(gscoped_ptr<CallResponse> resp) {
   Slice r(call_response_->serialized_response());
 
   if (call_response_->is_success()) {
-    // TODO: here we're deserializing the call response within the reactor thread,
-    // which isn't great, since it would block processing of other RPCs in parallel.
-    // Should look into a way to avoid this.
+    // TODO: here we're deserializing the call response within the reactor
+    // thread, which isn't great, since it would block processing of other RPCs
+    // in parallel. Should look into a way to avoid this.
     if (!response_->ParseFromArray(r.data(), r.size())) {
-      SetFailed(Status::IOError("invalid RPC response, missing fields",
-                                response_->InitializationErrorString()));
+      SetFailed(Status::IOError(
+          "invalid RPC response, missing fields",
+          response_->InitializationErrorString()));
       return;
     }
     set_state(FINISHED_SUCCESS);
@@ -308,8 +323,9 @@ void OutboundCall::SetResponse(gscoped_ptr<CallResponse> resp) {
     // Error
     unique_ptr<ErrorStatusPB> err(new ErrorStatusPB());
     if (!err->ParseFromArray(r.data(), r.size())) {
-      SetFailed(Status::IOError("Was an RPC error but could not parse error response",
-                                err->InitializationErrorString()));
+      SetFailed(Status::IOError(
+          "Was an RPC error but could not parse error response",
+          err->InitializationErrorString()));
       return;
     }
     Status s = Status::RemoteError(err->message());
@@ -333,30 +349,32 @@ void OutboundCall::SetSent() {
   // behavior is a lot more efficient if memory is freed from the same thread
   // which allocated it -- this lets it keep to thread-local operations instead
   // of taking a mutex to put memory back on the global freelist.
-  delete [] header_buf_.release();
+  delete[] header_buf_.release();
 
   // request_buf_ is also done being used here, but since it was allocated by
   // the caller thread, we would rather let that thread free it whenever it
   // deletes the RpcController.
 
-  // If cancellation was requested, it's now a good time to do the actual cancellation.
+  // If cancellation was requested, it's now a good time to do the actual
+  // cancellation.
   if (cancellation_requested()) {
     SetCancelled();
   }
 }
 
-void OutboundCall::SetFailed(Status status,
-                             Phase phase,
-                             unique_ptr<ErrorStatusPB> err_pb) {
+void OutboundCall::SetFailed(
+    Status status,
+    Phase phase,
+    unique_ptr<ErrorStatusPB> err_pb) {
   DCHECK(!status.ok());
   DCHECK(phase == Phase::CONNECTION_NEGOTIATION || phase == Phase::REMOTE_CALL);
   {
     std::lock_guard<simple_spinlock> l(lock_);
     status_ = std::move(status);
     error_pb_ = std::move(err_pb);
-    set_state_unlocked(phase == Phase::CONNECTION_NEGOTIATION
-        ? FINISHED_NEGOTIATION_ERROR
-        : FINISHED_ERROR);
+    set_state_unlocked(
+        phase == Phase::CONNECTION_NEGOTIATION ? FINISHED_NEGOTIATION_ERROR
+                                               : FINISHED_ERROR);
   }
   CallCallback();
 }
@@ -372,13 +390,14 @@ void OutboundCall::SetTimedOut(Phase phase) {
   const MonoDelta timeout = controller_->timeout();
   {
     std::lock_guard<simple_spinlock> l(lock_);
-    status_ = Status::TimedOut(
-        Substitute((phase == Phase::REMOTE_CALL) ? kErrMsgCall : kErrMsgNegotiation,
-                   remote_method_.method_name(),
-                   conn_id_.remote().ToString(),
-                   timeout.ToString(),
-                   StateName(state_)));
-    set_state_unlocked((phase == Phase::REMOTE_CALL) ? TIMED_OUT : NEGOTIATION_TIMED_OUT);
+    status_ = Status::TimedOut(Substitute(
+        (phase == Phase::REMOTE_CALL) ? kErrMsgCall : kErrMsgNegotiation,
+        remote_method_.method_name(),
+        conn_id_.remote().ToString(),
+        timeout.ToString(),
+        StateName(state_)));
+    set_state_unlocked(
+        (phase == Phase::REMOTE_CALL) ? TIMED_OUT : NEGOTIATION_TIMED_OUT);
   }
   CallCallback();
 }
@@ -387,11 +406,11 @@ void OutboundCall::SetCancelled() {
   DCHECK(!IsFinished());
   {
     std::lock_guard<simple_spinlock> l(lock_);
-    status_ = Status::Aborted(
-        Substitute("$0 RPC to $1 is cancelled in state $2",
-                   remote_method_.method_name(),
-                   conn_id_.remote().ToString(),
-                   StateName(state_)));
+    status_ = Status::Aborted(Substitute(
+        "$0 RPC to $1 is cancelled in state $2",
+        remote_method_.method_name(),
+        conn_id_.remote().ToString(),
+        StateName(state_)));
     set_state_unlocked(CANCELLED);
   }
   CallCallback();
@@ -400,7 +419,7 @@ void OutboundCall::SetCancelled() {
 bool OutboundCall::IsTimedOut() const {
   std::lock_guard<simple_spinlock> l(lock_);
   switch (state_) {
-    case NEGOTIATION_TIMED_OUT:       // fall-through
+    case NEGOTIATION_TIMED_OUT: // fall-through
     case TIMED_OUT:
       return true;
     default:
@@ -416,7 +435,7 @@ bool OutboundCall::IsCancelled() const {
 bool OutboundCall::IsNegotiationError() const {
   std::lock_guard<simple_spinlock> l(lock_);
   switch (state_) {
-    case FINISHED_NEGOTIATION_ERROR:  // fall-through
+    case FINISHED_NEGOTIATION_ERROR: // fall-through
     case NEGOTIATION_TIMED_OUT:
       return true;
     default:
@@ -446,11 +465,13 @@ bool OutboundCall::IsFinished() const {
 }
 
 string OutboundCall::ToString() const {
-  return Substitute("RPC call $0 -> $1", remote_method_.ToString(), conn_id_.ToString());
+  return Substitute(
+      "RPC call $0 -> $1", remote_method_.ToString(), conn_id_.ToString());
 }
 
-void OutboundCall::DumpPB(const DumpRunningRpcsRequestPB& req,
-                          RpcCallInProgressPB* resp) {
+void OutboundCall::DumpPB(
+    const DumpRunningRpcsRequestPB& req,
+    RpcCallInProgressPB* resp) {
   std::lock_guard<simple_spinlock> l(lock_);
   resp->mutable_header()->CopyFrom(header_);
   resp->set_micros_elapsed((MonoTime::Now() - start_time_).ToMicroseconds());
@@ -494,9 +515,7 @@ void OutboundCall::DumpPB(const DumpRunningRpcsRequestPB& req,
 /// CallResponse
 ///
 
-CallResponse::CallResponse()
- : parsed_(false) {
-}
+CallResponse::CallResponse() : parsed_(false) {}
 
 Status CallResponse::GetSidecar(int idx, Slice* sidecar) const {
   DCHECK(parsed_);
@@ -510,12 +529,12 @@ Status CallResponse::GetSidecar(int idx, Slice* sidecar) const {
 
 Status CallResponse::ParseFrom(gscoped_ptr<InboundTransfer> transfer) {
   CHECK(!parsed_);
-  RETURN_NOT_OK(serialization::ParseMessage(transfer->data(), &header_,
-                                            &serialized_response_));
+  RETURN_NOT_OK(serialization::ParseMessage(
+      transfer->data(), &header_, &serialized_response_));
 
   // Use information from header to extract the payload slices.
-  RETURN_NOT_OK(RpcSidecar::ParseSidecars(header_.sidecar_offsets(),
-          serialized_response_, sidecar_slices_));
+  RETURN_NOT_OK(RpcSidecar::ParseSidecars(
+      header_.sidecar_offsets(), serialized_response_, sidecar_slices_));
 
   if (header_.sidecar_offsets_size() > 0) {
     serialized_response_ =

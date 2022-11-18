@@ -39,19 +39,18 @@ namespace kudu {
 // be used for scoped resource cleanup.
 //
 // Use 'MakeScopedCleanup()' below to instantiate.
-template<typename F>
+template <typename F>
 class ScopedCleanup {
  public:
-  explicit ScopedCleanup(F f)
-      : cancelled_(false),
-        f_(std::move(f)) {
-  }
+  explicit ScopedCleanup(F f) : cancelled_(false), f_(std::move(f)) {}
   ~ScopedCleanup() {
     if (!cancelled_) {
       f_();
     }
   }
-  void cancel() { cancelled_ = true; }
+  void cancel() {
+    cancelled_ = true;
+  }
 
  private:
   bool cancelled_;
@@ -59,7 +58,7 @@ class ScopedCleanup {
 };
 
 // Creates a new scoped cleanup instance with the provided function.
-template<typename F>
+template <typename F>
 ScopedCleanup<F> MakeScopedCleanup(F f) {
   return ScopedCleanup<F>(f);
 }

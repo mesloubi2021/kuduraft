@@ -92,97 +92,124 @@
 #include "kudu/util/user.h"
 #include "kudu/util/version_info.h"
 
-DEFINE_int32(num_reactor_threads, 4, "Number of libev reactor threads to start.");
+DEFINE_int32(
+    num_reactor_threads,
+    4,
+    "Number of libev reactor threads to start.");
 TAG_FLAG(num_reactor_threads, advanced);
 
-DEFINE_int32(min_negotiation_threads, 0, "Minimum number of connection negotiation threads.");
+DEFINE_int32(
+    min_negotiation_threads,
+    0,
+    "Minimum number of connection negotiation threads.");
 TAG_FLAG(min_negotiation_threads, advanced);
 
-DEFINE_int32(max_negotiation_threads, 50, "Maximum number of connection negotiation threads.");
+DEFINE_int32(
+    max_negotiation_threads,
+    50,
+    "Maximum number of connection negotiation threads.");
 TAG_FLAG(max_negotiation_threads, advanced);
 
-DEFINE_int64(rpc_negotiation_timeout_ms, 3000,
-             "Timeout for negotiating an RPC connection.");
+DEFINE_int64(
+    rpc_negotiation_timeout_ms,
+    3000,
+    "Timeout for negotiating an RPC connection.");
 TAG_FLAG(rpc_negotiation_timeout_ms, advanced);
 TAG_FLAG(rpc_negotiation_timeout_ms, runtime);
 
-DEFINE_bool(webserver_enabled, true, "Whether to enable the web server on this daemon. "
-            "NOTE: disabling the web server is also likely to prevent monitoring systems "
-            "from properly capturing metrics.");
+DEFINE_bool(
+    webserver_enabled,
+    true,
+    "Whether to enable the web server on this daemon. "
+    "NOTE: disabling the web server is also likely to prevent monitoring systems "
+    "from properly capturing metrics.");
 TAG_FLAG(webserver_enabled, advanced);
 
-DEFINE_string(superuser_acl, "",
-              "The list of usernames to allow as super users, comma-separated. "
-              "A '*' entry indicates that all authenticated users are allowed. "
-              "If this is left unset or blank, the default behavior is that the "
-              "identity of the daemon itself determines the superuser. If the "
-              "daemon is logged in from a Keytab, then the local username from "
-              "the Kerberos principal is used; otherwise, the local Unix "
-              "username is used.");
+DEFINE_string(
+    superuser_acl,
+    "",
+    "The list of usernames to allow as super users, comma-separated. "
+    "A '*' entry indicates that all authenticated users are allowed. "
+    "If this is left unset or blank, the default behavior is that the "
+    "identity of the daemon itself determines the superuser. If the "
+    "daemon is logged in from a Keytab, then the local username from "
+    "the Kerberos principal is used; otherwise, the local Unix "
+    "username is used.");
 TAG_FLAG(superuser_acl, stable);
 TAG_FLAG(superuser_acl, sensitive);
 
-DEFINE_string(user_acl, "*",
-              "The list of usernames who may access the cluster, comma-separated. "
-              "A '*' entry indicates that all authenticated users are allowed.");
+DEFINE_string(
+    user_acl,
+    "*",
+    "The list of usernames who may access the cluster, comma-separated. "
+    "A '*' entry indicates that all authenticated users are allowed.");
 TAG_FLAG(user_acl, stable);
 TAG_FLAG(user_acl, sensitive);
 
-DEFINE_string(principal, "kudu/_HOST",
-              "Kerberos principal that this daemon will log in as. The special token "
-              "_HOST will be replaced with the FQDN of the local host.");
+DEFINE_string(
+    principal,
+    "kudu/_HOST",
+    "Kerberos principal that this daemon will log in as. The special token "
+    "_HOST will be replaced with the FQDN of the local host.");
 TAG_FLAG(principal, experimental);
-// This is currently tagged as unsafe because there is no way for users to configure
-// clients to expect a non-default principal. As such, configuring a server to login
-// as a different one would end up with a cluster that can't be connected to.
-// See KUDU-1884.
+// This is currently tagged as unsafe because there is no way for users to
+// configure clients to expect a non-default principal. As such, configuring a
+// server to login as a different one would end up with a cluster that can't be
+// connected to. See KUDU-1884.
 TAG_FLAG(principal, unsafe);
 
-
-DEFINE_string(keytab_file, "",
-              "Path to the Kerberos Keytab file for this server. Specifying a "
-              "keytab file will cause the server to kinit, and enable Kerberos "
-              "to be used to authenticate RPC connections.");
+DEFINE_string(
+    keytab_file,
+    "",
+    "Path to the Kerberos Keytab file for this server. Specifying a "
+    "keytab file will cause the server to kinit, and enable Kerberos "
+    "to be used to authenticate RPC connections.");
 TAG_FLAG(keytab_file, stable);
 
-DEFINE_bool(allow_world_readable_credentials, false,
-            "Enable the use of keytab files and TLS private keys with "
-            "world-readable permissions.");
+DEFINE_bool(
+    allow_world_readable_credentials,
+    false,
+    "Enable the use of keytab files and TLS private keys with "
+    "world-readable permissions.");
 TAG_FLAG(allow_world_readable_credentials, unsafe);
 
-DEFINE_string(rpc_authentication, "optional",
-              "Whether to require RPC connections to authenticate. Must be one "
-              "of 'disabled', 'optional', or 'required'. If 'optional', "
-              "authentication will be used when the remote end supports it. If "
-              "'required', connections which are not able to authenticate "
-              "(because the remote end lacks support) are rejected. Secure "
-              "clusters should use 'required'.");
-DEFINE_string(rpc_encryption, "optional",
-              "Whether to require RPC connections to be encrypted. Must be one "
-              "of 'disabled', 'optional', or 'required'. If 'optional', "
-              "encryption will be used when the remote end supports it. If "
-              "'required', connections which are not able to use encryption "
-              "(because the remote end lacks support) are rejected. If 'disabled', "
-              "encryption will not be used, and RPC authentication "
-              "(--rpc_authentication) must also be disabled as well. "
-              "Secure clusters should use 'required'.");
+DEFINE_string(
+    rpc_authentication,
+    "optional",
+    "Whether to require RPC connections to authenticate. Must be one "
+    "of 'disabled', 'optional', or 'required'. If 'optional', "
+    "authentication will be used when the remote end supports it. If "
+    "'required', connections which are not able to authenticate "
+    "(because the remote end lacks support) are rejected. Secure "
+    "clusters should use 'required'.");
+DEFINE_string(
+    rpc_encryption,
+    "optional",
+    "Whether to require RPC connections to be encrypted. Must be one "
+    "of 'disabled', 'optional', or 'required'. If 'optional', "
+    "encryption will be used when the remote end supports it. If "
+    "'required', connections which are not able to use encryption "
+    "(because the remote end lacks support) are rejected. If 'disabled', "
+    "encryption will not be used, and RPC authentication "
+    "(--rpc_authentication) must also be disabled as well. "
+    "Secure clusters should use 'required'.");
 TAG_FLAG(rpc_authentication, evolving);
 TAG_FLAG(rpc_encryption, evolving);
 
-DEFINE_string(rpc_tls_ciphers,
-              kudu::security::SecurityDefaults::kDefaultTlsCiphers,
-              "The cipher suite preferences to use for TLS-secured RPC connections. "
-              "Uses the OpenSSL cipher preference list format. See man (1) ciphers "
-              "for more information.");
+DEFINE_string(
+    rpc_tls_ciphers,
+    kudu::security::SecurityDefaults::kDefaultTlsCiphers,
+    "The cipher suite preferences to use for TLS-secured RPC connections. "
+    "Uses the OpenSSL cipher preference list format. See man (1) ciphers "
+    "for more information.");
 TAG_FLAG(rpc_tls_ciphers, advanced);
 
-
-
-DEFINE_string(rpc_tls_min_protocol,
-              kudu::security::SecurityDefaults::kDefaultTlsMinVersion,
-              "The minimum protocol version to allow when for securing RPC "
-              "connections with TLS. May be one of 'TLSv1', 'TLSv1.1', or "
-              "'TLSv1.2'.");
+DEFINE_string(
+    rpc_tls_min_protocol,
+    kudu::security::SecurityDefaults::kDefaultTlsMinVersion,
+    "The minimum protocol version to allow when for securing RPC "
+    "connections with TLS. May be one of 'TLSv1', 'TLSv1.1', or "
+    "'TLSv1.2'.");
 TAG_FLAG(rpc_tls_min_protocol, advanced);
 
 DECLARE_string(rpc_certificate_file);
@@ -190,10 +217,12 @@ DECLARE_string(rpc_private_key_file);
 DECLARE_string(rpc_ca_certificate_file);
 DECLARE_string(rpc_private_key_password_cmd);
 
-DEFINE_int32(rpc_default_keepalive_time_ms, 65000,
-             "If an RPC connection from a client is idle for this amount of time, the server "
-             "will disconnect the client. Setting this to any negative value keeps connections "
-             "always alive.");
+DEFINE_int32(
+    rpc_default_keepalive_time_ms,
+    65000,
+    "If an RPC connection from a client is idle for this amount of time, the server "
+    "will disconnect the client. Setting this to any negative value keeps connections "
+    "always alive.");
 TAG_FLAG(rpc_default_keepalive_time_ms, advanced);
 
 DECLARE_bool(use_hybrid_clock);
@@ -219,10 +248,14 @@ namespace {
 bool ValidateKeytabPermissions() {
   if (!FLAGS_keytab_file.empty() && !FLAGS_allow_world_readable_credentials) {
     bool world_readable_keytab;
-    Status s = Env::Default()->IsFileWorldReadable(FLAGS_keytab_file, &world_readable_keytab);
+    Status s = Env::Default()->IsFileWorldReadable(
+        FLAGS_keytab_file, &world_readable_keytab);
     if (!s.ok()) {
-      LOG(ERROR) << Substitute("$0: could not verify keytab file does not have world-readable "
-                               "permissions: $1", FLAGS_keytab_file, s.ToString());
+      LOG(ERROR) << Substitute(
+          "$0: could not verify keytab file does not have world-readable "
+          "permissions: $1",
+          FLAGS_keytab_file,
+          s.ToString());
       return false;
     }
     if (world_readable_keytab) {
@@ -238,7 +271,9 @@ GROUP_FLAG_VALIDATOR(keytab_permissions, &ValidateKeytabPermissions);
 
 } // namespace
 
-static bool ValidateRpcAuthentication(const char* flag_name, const string& flag_value) {
+static bool ValidateRpcAuthentication(
+    const char* flag_name,
+    const string& flag_value) {
   security::RpcAuthentication result;
   Status s = ParseTriState(flag_name, flag_value, &result);
   if (!s.ok()) {
@@ -249,7 +284,9 @@ static bool ValidateRpcAuthentication(const char* flag_name, const string& flag_
 }
 DEFINE_validator(rpc_authentication, &ValidateRpcAuthentication);
 
-static bool ValidateRpcEncryption(const char* flag_name, const string& flag_value) {
+static bool ValidateRpcEncryption(
+    const char* flag_name,
+    const string& flag_value) {
   security::RpcEncryption result;
   Status s = ParseTriState(flag_name, flag_value, &result);
   if (!s.ok()) {
@@ -262,12 +299,15 @@ DEFINE_validator(rpc_encryption, &ValidateRpcEncryption);
 
 static bool ValidateRpcAuthnFlags() {
   security::RpcAuthentication authentication;
-  CHECK_OK(ParseTriState("--rpc_authentication", FLAGS_rpc_authentication, &authentication));
+  CHECK_OK(ParseTriState(
+      "--rpc_authentication", FLAGS_rpc_authentication, &authentication));
 
   security::RpcEncryption encryption;
-  CHECK_OK(ParseTriState("--rpc_encryption", FLAGS_rpc_encryption, &encryption));
+  CHECK_OK(
+      ParseTriState("--rpc_encryption", FLAGS_rpc_encryption, &encryption));
 
-  if (encryption == RpcEncryption::DISABLED && authentication != RpcAuthentication::DISABLED) {
+  if (encryption == RpcEncryption::DISABLED &&
+      authentication != RpcAuthentication::DISABLED) {
     LOG(ERROR) << "RPC authentication (--rpc_authentication) must be disabled "
                   "if RPC encryption (--rpc_encryption) is disabled";
     return false;
@@ -275,7 +315,8 @@ static bool ValidateRpcAuthnFlags() {
 
   const bool has_keytab = !FLAGS_keytab_file.empty();
   const bool has_cert = !FLAGS_rpc_certificate_file.empty();
-  if (authentication == RpcAuthentication::REQUIRED && !has_keytab && !has_cert) {
+  if (authentication == RpcAuthentication::REQUIRED && !has_keytab &&
+      !has_cert) {
     LOG(ERROR) << "RPC authentication (--rpc_authentication) may not be "
                   "required unless Kerberos (--keytab_file) or external PKI "
                   "(--rpc_certificate_file et al) are configured";
@@ -300,17 +341,20 @@ static bool ValidateExternalPkiFlags() {
 
   if (has_key && !FLAGS_allow_world_readable_credentials) {
     bool world_readable_private_key;
-    Status s = Env::Default()->IsFileWorldReadable(FLAGS_rpc_private_key_file,
-                                                   &world_readable_private_key);
+    Status s = Env::Default()->IsFileWorldReadable(
+        FLAGS_rpc_private_key_file, &world_readable_private_key);
     if (!s.ok()) {
-      LOG(ERROR) << Substitute("$0: could not verify private key file does not have "
-                               "world-readable permissions: $1",
-                               FLAGS_rpc_private_key_file, s.ToString());
+      LOG(ERROR) << Substitute(
+          "$0: could not verify private key file does not have "
+          "world-readable permissions: $1",
+          FLAGS_rpc_private_key_file,
+          s.ToString());
       return false;
     }
     if (world_readable_private_key) {
-      LOG(ERROR) << "cannot use private key file with world-readable permissions: "
-                 << FLAGS_rpc_private_key_file;
+      LOG(ERROR)
+          << "cannot use private key file with world-readable permissions: "
+          << FLAGS_rpc_private_key_file;
       return false;
     }
   }
@@ -337,16 +381,19 @@ shared_ptr<MemTracker> CreateMemTrackerForServer() {
 
 } // anonymous namespace
 
-ServerBase::ServerBase(string name, const ServerBaseOptions& options,
-                       const string& metric_namespace)
+ServerBase::ServerBase(
+    string name,
+    const ServerBaseOptions& options,
+    const string& metric_namespace)
     : name_(std::move(name)),
 #ifdef FB_DO_NOT_REMOVE
       minidump_handler_(new MinidumpExceptionHandler()),
 #endif
       mem_tracker_(CreateMemTrackerForServer()),
       metric_registry_(new MetricRegistry()),
-      metric_entity_(METRIC_ENTITY_server.Instantiate(metric_registry_.get(),
-                                                      metric_namespace)),
+      metric_entity_(METRIC_ENTITY_server.Instantiate(
+          metric_registry_.get(),
+          metric_namespace)),
       rpc_server_(new RpcServer(options.rpc_opts)),
       result_tracker_(new rpc::ResultTracker(shared_ptr<MemTracker>(
           MemTracker::CreateTracker(-1, "result-tracker", mem_tracker_)))),
@@ -364,7 +411,8 @@ ServerBase::ServerBase(string name, const ServerBaseOptions& options,
   if (FLAGS_use_hybrid_clock) {
     clock_ = new clock::HybridClock();
   } else {
-    clock_ = clock::LogicalClock::CreateStartingAt(Timestamp::kInitialTimestamp);
+    clock_ =
+        clock::LogicalClock::CreateStartingAt(Timestamp::kInitialTimestamp);
   }
 #ifdef FB_DO_NOT_REMOVE
   if (FLAGS_webserver_enabled) {
@@ -373,7 +421,7 @@ ServerBase::ServerBase(string name, const ServerBaseOptions& options,
   CHECK_OK(StartThreadInstrumentation(metric_entity_, web_server_.get()));
 
   CHECK_OK(codegen::CompilationManager::GetSingleton()->StartInstrumentation(
-               metric_entity_));
+      metric_entity_));
 #endif
 }
 
@@ -383,8 +431,8 @@ ServerBase::~ServerBase() {
 
 Sockaddr ServerBase::first_rpc_address() const {
   vector<Sockaddr> addrs;
-  WARN_NOT_OK(rpc_server_->GetBoundAddresses(&addrs),
-              "Couldn't get bound RPC address");
+  WARN_NOT_OK(
+      rpc_server_->GetBoundAddresses(&addrs), "Couldn't get bound RPC address");
   CHECK(!addrs.empty()) << "Not bound";
   return addrs[0];
 }
@@ -393,8 +441,9 @@ Sockaddr ServerBase::first_rpc_address() const {
 Sockaddr ServerBase::first_http_address() const {
   CHECK(web_server_);
   vector<Sockaddr> addrs;
-  WARN_NOT_OK(web_server_->GetBoundAddresses(&addrs),
-              "Couldn't get bound webserver addresses");
+  WARN_NOT_OK(
+      web_server_->GetBoundAddresses(&addrs),
+      "Couldn't get bound webserver addresses");
   CHECK(!addrs.empty()) << "Not bound";
   return addrs[0];
 }
@@ -437,12 +486,13 @@ Status ServerBase::Init() {
 
   InitSpinLockContentionProfiling();
 
-  // Initialize the clock immediately. This checks that the clock is synchronized
-  // so we're less likely to get into a partially initialized state on disk during startup
-  // if we're having clock problems.
+  // Initialize the clock immediately. This checks that the clock is
+  // synchronized so we're less likely to get into a partially initialized state
+  // on disk during startup if we're having clock problems.
   RETURN_NOT_OK_PREPEND(clock_->Init(), "Cannot initialize clock");
 
-  RETURN_NOT_OK(security::InitKerberosForServer(FLAGS_principal, FLAGS_keytab_file));
+  RETURN_NOT_OK(
+      security::InitKerberosForServer(FLAGS_principal, FLAGS_keytab_file));
 
   fs::FsReport report;
   Status s = fs_manager_->Open(&report);
@@ -460,7 +510,8 @@ Status ServerBase::Init() {
       // `fs_data_dirs` configuration.
       LOG(INFO) << "To start Kudu with a different FS layout, the `kudu fs "
                    "update_dirs` tool must be run first";
-      return s.CloneAndPrepend("FS layout already exists; not overwriting existing layout");
+      return s.CloneAndPrepend(
+          "FS layout already exists; not overwriting existing layout");
     }
     RETURN_NOT_OK_PREPEND(s, "Could not create new FS layout");
     s = fs_manager_->Open(&report);
@@ -474,20 +525,21 @@ Status ServerBase::Init() {
   rpc::MessengerBuilder builder(name_);
 
   builder.set_num_reactors(FLAGS_num_reactor_threads)
-         .set_min_negotiation_threads(FLAGS_min_negotiation_threads)
-         .set_max_negotiation_threads(FLAGS_max_negotiation_threads)
-         .set_metric_entity(metric_entity())
-         .set_connection_keep_alive_time(FLAGS_rpc_default_keepalive_time_ms)
-         .set_rpc_negotiation_timeout_ms(FLAGS_rpc_negotiation_timeout_ms)
-         .set_rpc_authentication(FLAGS_rpc_authentication)
-         .set_rpc_encryption(FLAGS_rpc_encryption)
-         .set_rpc_tls_ciphers(FLAGS_rpc_tls_ciphers)
-         .set_rpc_tls_min_protocol(FLAGS_rpc_tls_min_protocol)
-         .set_epki_cert_key_files(FLAGS_rpc_certificate_file, FLAGS_rpc_private_key_file)
-         .set_epki_certificate_authority_file(FLAGS_rpc_ca_certificate_file)
-         .set_epki_private_password_key_cmd(FLAGS_rpc_private_key_password_cmd)
-         .set_keytab_file(FLAGS_keytab_file)
-         .enable_inbound_tls();
+      .set_min_negotiation_threads(FLAGS_min_negotiation_threads)
+      .set_max_negotiation_threads(FLAGS_max_negotiation_threads)
+      .set_metric_entity(metric_entity())
+      .set_connection_keep_alive_time(FLAGS_rpc_default_keepalive_time_ms)
+      .set_rpc_negotiation_timeout_ms(FLAGS_rpc_negotiation_timeout_ms)
+      .set_rpc_authentication(FLAGS_rpc_authentication)
+      .set_rpc_encryption(FLAGS_rpc_encryption)
+      .set_rpc_tls_ciphers(FLAGS_rpc_tls_ciphers)
+      .set_rpc_tls_min_protocol(FLAGS_rpc_tls_min_protocol)
+      .set_epki_cert_key_files(
+          FLAGS_rpc_certificate_file, FLAGS_rpc_private_key_file)
+      .set_epki_certificate_authority_file(FLAGS_rpc_ca_certificate_file)
+      .set_epki_private_password_key_cmd(FLAGS_rpc_private_key_password_cmd)
+      .set_keytab_file(FLAGS_keytab_file)
+      .enable_inbound_tls();
 
   if (options_.rpc_opts.rpc_reuseport) {
     builder.set_reuseport();
@@ -513,7 +565,8 @@ Status ServerBase::Init() {
   RETURN_NOT_OK(rpc_server_->Bind());
   clock_->RegisterMetrics(metric_entity_);
 
-  RETURN_NOT_OK_PREPEND(StartMetricsLogging(), "Could not enable metrics logging");
+  RETURN_NOT_OK_PREPEND(
+      StartMetricsLogging(), "Could not enable metrics logging");
 
   result_tracker_->StartGCThread();
   RETURN_NOT_OK(StartExcessLogFileDeleterThread());
@@ -522,40 +575,40 @@ Status ServerBase::Init() {
 }
 
 Status ServerBase::InitAcls() {
-
   string service_user;
-  boost::optional<string> keytab_user = security::GetLoggedInUsernameFromKeytab();
+  boost::optional<string> keytab_user =
+      security::GetLoggedInUsernameFromKeytab();
   if (keytab_user) {
-    // If we're logged in from a keytab, then everyone should be, and we expect them
-    // to use the same mapped username.
+    // If we're logged in from a keytab, then everyone should be, and we expect
+    // them to use the same mapped username.
     service_user = *keytab_user;
   } else {
     // If we aren't logged in from a keytab, then just assume that the services
     // will be running as the same Unix user as we are.
-    RETURN_NOT_OK_PREPEND(GetLoggedInUser(&service_user),
-                          "could not deterine local username");
+    RETURN_NOT_OK_PREPEND(
+        GetLoggedInUser(&service_user), "could not deterine local username");
   }
 
   // If the user has specified a superuser acl, use that. Otherwise, assume
   // that the same user running the service acts as superuser.
   if (!FLAGS_superuser_acl.empty()) {
-    RETURN_NOT_OK_PREPEND(superuser_acl_.ParseFlag(FLAGS_superuser_acl),
-                          "could not parse --superuser_acl flag");
+    RETURN_NOT_OK_PREPEND(
+        superuser_acl_.ParseFlag(FLAGS_superuser_acl),
+        "could not parse --superuser_acl flag");
   } else {
-    superuser_acl_.Reset({ service_user });
+    superuser_acl_.Reset({service_user});
   }
 
-  RETURN_NOT_OK_PREPEND(user_acl_.ParseFlag(FLAGS_user_acl),
-                        "could not parse --user_acl flag");
+  RETURN_NOT_OK_PREPEND(
+      user_acl_.ParseFlag(FLAGS_user_acl), "could not parse --user_acl flag");
 
   // For the "service" ACL, we currently don't allow it to be user-configured,
   // but instead assume that all of the services will be running the same
   // way.
-  service_acl_.Reset({ service_user });
+  service_acl_.Reset({service_user});
 
   return Status::OK();
 }
-
 
 Status ServerBase::GetStatusPB(ServerStatusPB* status) const {
   // Node instance
@@ -564,15 +617,17 @@ Status ServerBase::GetStatusPB(ServerStatusPB* status) const {
   // RPC ports
   {
     vector<Sockaddr> addrs;
-    RETURN_NOT_OK_PREPEND(rpc_server_->GetBoundAddresses(&addrs),
-                          "could not get bound RPC addresses");
+    RETURN_NOT_OK_PREPEND(
+        rpc_server_->GetBoundAddresses(&addrs),
+        "could not get bound RPC addresses");
     for (const Sockaddr& addr : addrs) {
       HostPort hp;
-      RETURN_NOT_OK_PREPEND(HostPortFromSockaddrReplaceWildcard(addr, &hp),
-                            "could not get RPC hostport");
+      RETURN_NOT_OK_PREPEND(
+          HostPortFromSockaddrReplaceWildcard(addr, &hp),
+          "could not get RPC hostport");
       HostPortPB* pb = status->add_bound_rpc_addresses();
-      RETURN_NOT_OK_PREPEND(HostPortToPB(hp, pb),
-                            "could not convert RPC hostport");
+      RETURN_NOT_OK_PREPEND(
+          HostPortToPB(hp, pb), "could not convert RPC hostport");
     }
   }
 
@@ -580,15 +635,17 @@ Status ServerBase::GetStatusPB(ServerStatusPB* status) const {
   // HTTP ports
   if (web_server_) {
     vector<Sockaddr> addrs;
-    RETURN_NOT_OK_PREPEND(web_server_->GetBoundAddresses(&addrs),
-                          "could not get bound web addresses");
+    RETURN_NOT_OK_PREPEND(
+        web_server_->GetBoundAddresses(&addrs),
+        "could not get bound web addresses");
     for (const Sockaddr& addr : addrs) {
       HostPort hp;
-      RETURN_NOT_OK_PREPEND(HostPortFromSockaddrReplaceWildcard(addr, &hp),
-                            "could not get web hostport");
+      RETURN_NOT_OK_PREPEND(
+          HostPortFromSockaddrReplaceWildcard(addr, &hp),
+          "could not get web hostport");
       HostPortPB* pb = status->add_bound_http_addresses();
-      RETURN_NOT_OK_PREPEND(HostPortToPB(hp, pb),
-                            "could not convert web hostport");
+      RETURN_NOT_OK_PREPEND(
+          HostPortToPB(hp, pb), "could not convert web hostport");
     }
   }
 #endif
@@ -599,8 +656,8 @@ Status ServerBase::GetStatusPB(ServerStatusPB* status) const {
 
 void ServerBase::LogUnauthorizedAccess(rpc::RpcContext* rpc) const {
   LOG(WARNING) << "Unauthorized access attempt to method "
-               << rpc->service_name() << "." << rpc->method_name()
-               << " from " << rpc->requestor_string();
+               << rpc->service_name() << "." << rpc->method_name() << " from "
+               << rpc->requestor_string();
 }
 
 bool ServerBase::Authorize(rpc::RpcContext* rpc, uint32_t allowed_roles) {
@@ -620,15 +677,15 @@ bool ServerBase::Authorize(rpc::RpcContext* rpc, uint32_t allowed_roles) {
   }
 
   LogUnauthorizedAccess(rpc);
-  rpc->RespondFailure(Status::NotAuthorized("unauthorized access to method",
-                                            rpc->method_name()));
+  rpc->RespondFailure(Status::NotAuthorized(
+      "unauthorized access to method", rpc->method_name()));
   return false;
 }
 #ifdef FB_DO_NOT_REMOVE
 #endif
 
-Status ServerBase::DumpServerInfo(const string& path,
-                                  const string& format) const {
+Status ServerBase::DumpServerInfo(const string& path, const string& format)
+    const {
   ServerStatusPB status;
   RETURN_NOT_OK_PREPEND(GetStatusPB(&status), "could not get server status");
 
@@ -637,8 +694,11 @@ Status ServerBase::DumpServerInfo(const string& path,
     RETURN_NOT_OK(WriteStringToFile(options_.env, Slice(json), path));
   } else if (boost::iequals(format, "pb")) {
     // TODO: Use PB container format?
-    RETURN_NOT_OK(pb_util::WritePBToPath(options_.env, path, status,
-                                         pb_util::NO_SYNC)); // durability doesn't matter
+    RETURN_NOT_OK(pb_util::WritePBToPath(
+        options_.env,
+        path,
+        status,
+        pb_util::NO_SYNC)); // durability doesn't matter
   } else {
     return Status::InvalidArgument("bad format", format);
   }
@@ -660,12 +720,14 @@ Status ServerBase::StartMetricsLogging() {
     log_dir = options_.metrics_log_dir;
   }
   if (log_dir.empty()) {
-    LOG(INFO) << "Not starting metrics log since no log directory was specified.";
+    LOG(INFO)
+        << "Not starting metrics log since no log directory was specified.";
     return Status::OK();
   }
-  unique_ptr<DiagnosticsLog> l(new DiagnosticsLog(std::move(log_dir),
-                                                  metric_registry_.get()));
-  l->SetMetricsLogInterval(MonoDelta::FromMilliseconds(options_.metrics_log_interval_ms));
+  unique_ptr<DiagnosticsLog> l(
+      new DiagnosticsLog(std::move(log_dir), metric_registry_.get()));
+  l->SetMetricsLogInterval(
+      MonoDelta::FromMilliseconds(options_.metrics_log_interval_ms));
   RETURN_NOT_OK(l->Start());
   diag_log_ = std::move(l);
   return Status::OK();
@@ -676,35 +738,45 @@ Status ServerBase::StartExcessLogFileDeleterThread() {
   // works, then start a background thread to continue deleting them in the
   // future. Same with minidumps.
   if (!FLAGS_logtostderr) {
-    RETURN_NOT_OK_PREPEND(DeleteExcessLogFiles(options_.env),
-                          "Unable to delete excess log files");
+    RETURN_NOT_OK_PREPEND(
+        DeleteExcessLogFiles(options_.env),
+        "Unable to delete excess log files");
   }
-  #ifdef FB_DO_NOT_REMOVE
-  RETURN_NOT_OK_PREPEND(minidump_handler_->DeleteExcessMinidumpFiles(options_.env),
-                        "Unable to delete excess minidump files");
-  #endif
-  return Thread::Create("server", "excess-log-deleter", &ServerBase::ExcessLogFileDeleterThread,
-                        this, &excess_log_deleter_thread_);
+#ifdef FB_DO_NOT_REMOVE
+  RETURN_NOT_OK_PREPEND(
+      minidump_handler_->DeleteExcessMinidumpFiles(options_.env),
+      "Unable to delete excess minidump files");
+#endif
+  return Thread::Create(
+      "server",
+      "excess-log-deleter",
+      &ServerBase::ExcessLogFileDeleterThread,
+      this,
+      &excess_log_deleter_thread_);
 }
 
 void ServerBase::ExcessLogFileDeleterThread() {
   // How often to attempt to clean up excess glog and minidump files.
   const MonoDelta kWait = MonoDelta::FromSeconds(60);
   while (!stop_background_threads_latch_.WaitUntil(MonoTime::Now() + kWait)) {
-    WARN_NOT_OK(DeleteExcessLogFiles(options_.env), "Unable to delete excess log files");
-    #ifdef FB_DO_NOT_REMOVE
-    WARN_NOT_OK(minidump_handler_->DeleteExcessMinidumpFiles(options_.env),
-                "Unable to delete excess minidump files");
-    #endif
+    WARN_NOT_OK(
+        DeleteExcessLogFiles(options_.env),
+        "Unable to delete excess log files");
+#ifdef FB_DO_NOT_REMOVE
+    WARN_NOT_OK(
+        minidump_handler_->DeleteExcessMinidumpFiles(options_.env),
+        "Unable to delete excess minidump files");
+#endif
   }
 }
 
 #ifdef FB_DO_NOT_REMOVE
 
 std::string ServerBase::FooterHtml() const {
-  return Substitute("<pre>$0\nserver uuid $1</pre>",
-                    VersionInfo::GetVersionInfo(),
-                    instance_pb_->permanent_uuid());
+  return Substitute(
+      "<pre>$0\nserver uuid $1</pre>",
+      VersionInfo::GetVersionInfo(),
+      instance_pb_->permanent_uuid());
 }
 
 #endif
@@ -713,8 +785,8 @@ Status ServerBase::Start() {
   GenerateInstanceID();
 
 #ifdef FB_DO_NOT_REMOVE
-  RETURN_NOT_OK(RegisterService(make_gscoped_ptr<rpc::ServiceIf>(
-                                  new GenericServiceImpl(this))));
+  RETURN_NOT_OK(RegisterService(
+      make_gscoped_ptr<rpc::ServiceIf>(new GenericServiceImpl(this))));
 #endif
 
   RETURN_NOT_OK(rpc_server_->Start());
@@ -731,8 +803,9 @@ Status ServerBase::Start() {
 #endif
 
   if (!options_.dump_info_path.empty()) {
-    RETURN_NOT_OK_PREPEND(DumpServerInfo(options_.dump_info_path, options_.dump_info_format),
-                          "Failed to dump server info to " + options_.dump_info_path);
+    RETURN_NOT_OK_PREPEND(
+        DumpServerInfo(options_.dump_info_path, options_.dump_info_format),
+        "Failed to dump server info to " + options_.dump_info_path);
   }
 
   return Status::OK();
@@ -771,21 +844,24 @@ void ServerBase::UnregisterAllServices() {
 }
 
 void ServerBase::ServiceQueueOverflowed(rpc::ServicePool* service) {
-  if (!diag_log_) return;
+  if (!diag_log_)
+    return;
 
-  // Logging all of the stacks is relatively heavy-weight, so if we are in a persistent
-  // state of overload, it's probably not a good idea to start compounding the issue with
-  // a lot of stack-logging activity. So, we limit the frequency of stack-dumping.
+  // Logging all of the stacks is relatively heavy-weight, so if we are in a
+  // persistent state of overload, it's probably not a good idea to start
+  // compounding the issue with a lot of stack-logging activity. So, we limit
+  // the frequency of stack-dumping.
   static logging::LogThrottler throttler;
   const int kStackDumpFrequencySecs = 5;
   int suppressed = 0;
-  if (PREDICT_TRUE(!throttler.ShouldLog(kStackDumpFrequencySecs, "", &suppressed))) {
+  if (PREDICT_TRUE(
+          !throttler.ShouldLog(kStackDumpFrequencySecs, "", &suppressed))) {
     return;
   }
 
 #ifdef FB_DO_NOT_REMOVE
-  diag_log_->DumpStacksNow(Substitute("service queue overflowed for $0",
-                                      service->service_name()));
+  diag_log_->DumpStacksNow(
+      Substitute("service queue overflowed for $0", service->service_name()));
 #endif
 }
 

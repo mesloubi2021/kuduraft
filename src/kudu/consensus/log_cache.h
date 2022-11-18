@@ -61,10 +61,11 @@ class ReplicateMsgWrapper;
 // entries which are asynchronously fetched from the disk.
 class LogCache {
  public:
-  LogCache(const scoped_refptr<MetricEntity>& metric_entity,
-           scoped_refptr<log::Log> log,
-           std::string local_uuid,
-           std::string tablet_id);
+  LogCache(
+      const scoped_refptr<MetricEntity>& metric_entity,
+      scoped_refptr<log::Log> log,
+      std::string local_uuid,
+      std::string tablet_id);
   ~LogCache();
 
   // Initialize the cache.
@@ -76,24 +77,26 @@ class LogCache {
   void Init(const OpId& preceding_op);
 
   // Read operations from the log, following 'after_op_index'.
-  // If such an op exists in the log, an OK result will always include at least one
-  // operation.
+  // If such an op exists in the log, an OK result will always include at least
+  // one operation.
   //
-  // The result will be limited such that the total ByteSize() of the returned ops
-  // is less than max_size_bytes, unless that would result in an empty result, in
-  // which case exactly one op is returned.
+  // The result will be limited such that the total ByteSize() of the returned
+  // ops is less than max_size_bytes, unless that would result in an empty
+  // result, in which case exactly one op is returned.
   //
   // The OpId which precedes the returned ops is returned in *preceding_op.
   // The index of this OpId will match 'after_op_index'.
   //
-  // If the ops being requested are not available in the log, this will synchronously
-  // read these ops from disk. Therefore, this function may take a substantial amount
-  // of time and should not be called with important locks held, etc.
-  Status ReadOps(int64_t after_op_index,
-                 int max_size_bytes,
-                 const ReadContext& context,
-                 std::vector<ReplicateRefPtr>* messages,
-                 OpId* preceding_op);
+  // If the ops being requested are not available in the log, this will
+  // synchronously read these ops from disk. Therefore, this function may take a
+  // substantial amount of time and should not be called with important locks
+  // held, etc.
+  Status ReadOps(
+      int64_t after_op_index,
+      int max_size_bytes,
+      const ReadContext& context,
+      std::vector<ReplicateRefPtr>* messages,
+      OpId* preceding_op);
 
   // Similar to ReadOps(...), but blocks for 'max_duration_ms' if
   // 'after_op_index' is not available in the local log.
@@ -104,40 +107,46 @@ class LogCache {
   // Returns "Incomplete" if the op has not yet been written to the log even
   // after waiting for 'max_duration_ms'
   // Returns "NotFound" if the op has been GCed.
-  // Returns another bad Status if the log index fails to load (eg. due to an IO error).
-  Status BlockingReadOps(int64_t after_op_index,
-                         int max_size_bytes,
-                         const ReadContext& context,
-                         int64_t max_duration_ms,
-                         std::vector<ReplicateRefPtr>* messages,
-                         OpId* preceding_op);
+  // Returns another bad Status if the log index fails to load (eg. due to an IO
+  // error).
+  Status BlockingReadOps(
+      int64_t after_op_index,
+      int max_size_bytes,
+      const ReadContext& context,
+      int64_t max_duration_ms,
+      std::vector<ReplicateRefPtr>* messages,
+      OpId* preceding_op);
 
   // Append the operations into the log and the cache.
-  // When the messages have completed writing into the on-disk log, fires 'callback'.
+  // When the messages have completed writing into the on-disk log, fires
+  // 'callback'.
   //
-  // If the cache memory limit is exceeded, the entries may no longer be in the cache
-  // when the callback fires.
+  // If the cache memory limit is exceeded, the entries may no longer be in the
+  // cache when the callback fires.
   //
   // Returns non-OK if the Log append itself fails.
-  Status AppendOperations(const std::vector<ReplicateRefPtr>& msgs,
-                          const StatusCallback& callback);
+  Status AppendOperations(
+      const std::vector<ReplicateRefPtr>& msgs,
+      const StatusCallback& callback);
 
   // Just like AppendOperations() above but with msg_wrappers as input
-  Status AppendOperations(const std::vector<ReplicateMsgWrapper>& msg_wrappers,
-                          const StatusCallback& callback);
+  Status AppendOperations(
+      const std::vector<ReplicateMsgWrapper>& msg_wrappers,
+      const StatusCallback& callback);
 
   // Truncate any operations with index > 'index'.
   //
   // Following this, reads of truncated indexes using ReadOps(), LookupOpId(),
-  // HasOpBeenWritten(), etc, will return as if the operations were never appended.
+  // HasOpBeenWritten(), etc, will return as if the operations were never
+  // appended.
   //
-  // NOTE: unless a new operation is appended followig 'index', this truncation does
-  // not persist across server restarts.
+  // NOTE: unless a new operation is appended followig 'index', this truncation
+  // does not persist across server restarts.
   void TruncateOpsAfter(int64_t index);
 
   // Return true if an operation with the given index has been written through
-  // the cache. The operation may not necessarily be durable yet -- it could still be
-  // en route to the log.
+  // the cache. The operation may not necessarily be durable yet -- it could
+  // still be en route to the log.
   bool HasOpBeenWritten(int64_t index) const;
 
   // Evict any operations with op index <= 'index'.
@@ -168,7 +177,8 @@ class LogCache {
   //
   // Returns "Incomplete" if the op has not yet been written.
   // Returns "NotFound" if the op has been GCed.
-  // Returns another bad Status if the log index fails to load (eg. due to an IO error).
+  // Returns another bad Status if the log index fails to load (eg. due to an IO
+  // error).
   Status LookupOpId(int64_t op_index, OpId* op_id) const;
 
   // Sets compression codec and updates the internal codec_ atomic pointer
@@ -189,15 +199,17 @@ class LogCache {
   // Compress the payload in 'msg' and populate a new ReplicateMsg with
   // compressed payload in 'compressed_msg'. Uses 'buffer' as a temporary buffer
   // to hold the compressed message
-  Status CompressMsg(const ReplicateMsg* msg,
-                     faststring& buffer,
-                     std::unique_ptr<ReplicateMsg>* compressed_msg);
+  Status CompressMsg(
+      const ReplicateMsg* msg,
+      faststring& buffer,
+      std::unique_ptr<ReplicateMsg>* compressed_msg);
 
   // Compress all messages in 'replicate_ptrs' and return the compressed
   // messages in 'compressed_replicate_ptrs'. If any message is uncompressable,
   // then it inserts the original msg into 'compressed_replicate_ptrs'
-  Status CompressMsgs(const std::vector<ReplicateMsg*>& replicate_ptrs,
-                      std::vector<ReplicateMsg*>* compressed_repliate_ptrs);
+  Status CompressMsgs(
+      const std::vector<ReplicateMsg*>& replicate_ptrs,
+      std::vector<ReplicateMsg*>* compressed_repliate_ptrs);
 
   // Uncompresses the payload of 'msg' based on its compression_codec and
   // populates a new ReplicateMsg with uncompressed payload in
@@ -237,10 +249,11 @@ class LogCache {
 
   std::string LogPrefixUnlocked() const;
 
-  void LogCallback(int64_t last_idx_in_batch,
-                   bool borrowed_memory,
-                   const StatusCallback& user_callback,
-                   const Status& log_status);
+  void LogCallback(
+      int64_t last_idx_in_batch,
+      bool borrowed_memory,
+      const StatusCallback& user_callback,
+      const Status& log_status);
 
   scoped_refptr<log::Log> const log_;
 
@@ -250,7 +263,7 @@ class LogCache {
   // The id of the tablet.
   const std::string tablet_id_;
 
-  mutable Mutex  lock_;
+  mutable Mutex lock_;
   ConditionVariable next_index_cond_;
 
   // An ordered map that serves as the buffer for the cached messages.
@@ -285,14 +298,14 @@ class LogCache {
     explicit Metrics(const scoped_refptr<MetricEntity>& metric_entity);
 
     // Keeps track of the total number of operations in the cache.
-    scoped_refptr<AtomicGauge<int64_t> > log_cache_num_ops;
+    scoped_refptr<AtomicGauge<int64_t>> log_cache_num_ops;
 
     // Keeps track of the memory consumed by the cache, in bytes.
-    scoped_refptr<AtomicGauge<int64_t> > log_cache_size;
+    scoped_refptr<AtomicGauge<int64_t>> log_cache_size;
 
     // Keeps track of uncompressed size of messages cached. This will be same as
     // log_cache_size if compression is not enabled and on secondaries
-    scoped_refptr<AtomicGauge<int64_t> > log_cache_msg_size;
+    scoped_refptr<AtomicGauge<int64_t>> log_cache_msg_size;
 
     // Payload size of the msg that is written to the log
     scoped_refptr<Counter> log_cache_payload_size;

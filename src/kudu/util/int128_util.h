@@ -30,10 +30,11 @@ inline std::ostream& operator<<(std::ostream& os, const __int128& val) {
   os << SimpleItoa(val);
   return os;
 }
-inline std::ostream& operator<<(std::ostream& os, const unsigned __int128& val) {
+inline std::ostream& operator<<(
+    std::ostream& os,
+    const unsigned __int128& val) {
   os << SimpleItoa(val);
   return os;
 }
 
 } // namespace std
-

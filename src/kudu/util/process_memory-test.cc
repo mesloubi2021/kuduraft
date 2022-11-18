@@ -47,19 +47,19 @@ TEST(ProcessMemory, BenchmarkConsumptionTracking) {
   // tcmalloc locks.
   for (int i = 0; i < kNumThreads; i++) {
     threads.emplace_back([&]() {
-        int64_t local_count = 0;
-        while (!done) {
-          for (int a = 0; a < 10; a++) {
-            // Mark 'x' volatile so that the compiler does not optimize out the
-            // allocation.
-            char* volatile x = new char[8000];
-            delete[] x;
-          }
-          process_memory::CurrentConsumption();
-          local_count++;
+      int64_t local_count = 0;
+      while (!done) {
+        for (int a = 0; a < 10; a++) {
+          // Mark 'x' volatile so that the compiler does not optimize out the
+          // allocation.
+          char* volatile x = new char[8000];
+          delete[] x;
         }
-        total_count += local_count;
-      });
+        process_memory::CurrentConsumption();
+        local_count++;
+      }
+      total_count += local_count;
+    });
   }
   double secs = 3;
   SleepFor(MonoDelta::FromSeconds(secs));

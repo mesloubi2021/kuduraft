@@ -45,8 +45,7 @@ bool RpcRetrier::HandleResponse(Rpc* rpc, Status* out_status) {
   const Status controller_status = controller_.status();
   if (controller_status.IsRemoteError()) {
     const ErrorStatusPB* err = controller_.error_response();
-    if (err &&
-        err->has_code() &&
+    if (err && err->has_code() &&
         (err->code() == ErrorStatusPB::ERROR_SERVER_TOO_BUSY ||
          err->code() == ErrorStatusPB::ERROR_UNAVAILABLE)) {
       // The UNAVAILABLE code is a broader counterpart of the
@@ -69,10 +68,9 @@ void RpcRetrier::DelayedRetry(Rpc* rpc, const Status& why_status) {
   // If the delay causes us to miss our deadline, RetryCb will fail the
   // RPC on our behalf.
   int num_ms = ++attempt_num_ + ((rand() % 5));
-  messenger_->ScheduleOnReactor(boost::bind(&RpcRetrier::DelayedRetryCb,
-                                            this,
-                                            rpc, _1),
-                                MonoDelta::FromMilliseconds(num_ms));
+  messenger_->ScheduleOnReactor(
+      boost::bind(&RpcRetrier::DelayedRetryCb, this, rpc, _1),
+      MonoDelta::FromMilliseconds(num_ms));
 }
 
 void RpcRetrier::DelayedRetryCb(Rpc* rpc, const Status& status) {

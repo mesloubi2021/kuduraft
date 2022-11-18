@@ -33,7 +33,6 @@ namespace kudu {
 // not, and will crash in debug mode if recursive acquisition is detected.
 class RWMutex {
  public:
-
   // Possible fairness policies for the RWMutex.
   enum class Priority {
     // The lock will prioritize readers at the expense of writers.
@@ -64,7 +63,7 @@ class RWMutex {
   void WriteUnlock();
   bool TryWriteLock();
 
-#ifdef FB_DO_NOT_REMOVE  // #ifndef NDEBUG
+#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
   void AssertAcquired() const;
   void AssertAcquiredForReading() const;
   void AssertAcquiredForWriting() const;
@@ -75,12 +74,24 @@ class RWMutex {
 #endif
 
   // Aliases for use with std::lock_guard and kudu::shared_lock.
-  void lock() { WriteLock(); }
-  void unlock() { WriteUnlock(); }
-  bool try_lock() { return TryWriteLock(); }
-  void lock_shared() { ReadLock(); }
-  void unlock_shared() { ReadUnlock(); }
-  bool try_lock_shared() { return TryReadLock(); }
+  void lock() {
+    WriteLock();
+  }
+  void unlock() {
+    WriteUnlock();
+  }
+  bool try_lock() {
+    return TryWriteLock();
+  }
+  void lock_shared() {
+    ReadLock();
+  }
+  void unlock_shared() {
+    ReadUnlock();
+  }
+  bool try_lock_shared() {
+    return TryReadLock();
+  }
 
  private:
   void Init(Priority prio);
@@ -90,7 +101,7 @@ class RWMutex {
     READER,
     WRITER,
   };
-#ifdef FB_DO_NOT_REMOVE  // #ifndef NDEBUG
+#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
   void CheckLockState(LockState state) const;
   void MarkForReading();
   void MarkForWriting();
@@ -106,7 +117,7 @@ class RWMutex {
 
   pthread_rwlock_t native_handle_;
 
-#ifdef FB_DO_NOT_REMOVE  // #ifndef NDEBUG
+#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
   // Protects reader_tids_ and writer_tid_.
   mutable simple_spinlock tid_lock_;
 

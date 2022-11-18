@@ -40,12 +40,14 @@ using std::vector;
 namespace kudu {
 namespace security {
 
-template<> struct SslTypeTraits<GENERAL_NAMES> {
+template <>
+struct SslTypeTraits<GENERAL_NAMES> {
   static constexpr auto kFreeFunc = &GENERAL_NAMES_free;
 };
 
 // This OID is generated via the UUID method.
-static const char* kKuduKerberosPrincipalOidStr = "2.25.243346677289068076843480765133256509912";
+static const char* kKuduKerberosPrincipalOidStr =
+    "2.25.243346677289068076843480765133256509912";
 
 string X509NameToString(X509_NAME* name) {
   SCOPED_OPENSSL_NO_PENDING_ERRORS;
@@ -62,9 +64,11 @@ int GetKuduKerberosPrincipalOidNid() {
   InitializeOpenSSL();
   static std::once_flag flag;
   static int nid;
-  std::call_once(flag, [&] () {
-      nid = OBJ_create(kKuduKerberosPrincipalOidStr, "kuduPrinc", "kuduKerberosPrincipal");
-      CHECK_NE(nid, NID_undef) << "failed to create kuduPrinc oid: " << GetOpenSSLErrors();
+  std::call_once(flag, [&]() {
+    nid = OBJ_create(
+        kKuduKerberosPrincipalOidStr, "kuduPrinc", "kuduKerberosPrincipal");
+    CHECK_NE(nid, NID_undef)
+        << "failed to create kuduPrinc oid: " << GetOpenSSLErrors();
   });
   return nid;
 }
@@ -77,7 +81,8 @@ X509* Cert::GetTopOfChainX509() const {
 Status Cert::FromString(const std::string& data, DataFormat format) {
   RETURN_NOT_OK(::kudu::security::FromString(data, format, &data_));
   if (sk_X509_num(data_.get()) < 1) {
-    return Status::RuntimeError("Certificate chain is empty. Expected at least one certificate.");
+    return Status::RuntimeError(
+        "Certificate chain is empty. Expected at least one certificate.");
   }
   return Status::OK();
 }
@@ -89,7 +94,8 @@ Status Cert::ToString(std::string* data, DataFormat format) const {
 Status Cert::FromFile(const std::string& fpath, DataFormat format) {
   RETURN_NOT_OK(::kudu::security::FromFile(fpath, format, &data_));
   if (sk_X509_num(data_.get()) < 1) {
-    return Status::RuntimeError("Certificate chain is empty. Expected at least one certificate.");
+    return Status::RuntimeError(
+        "Certificate chain is empty. Expected at least one certificate.");
   }
   return Status::OK();
 }
@@ -107,7 +113,8 @@ boost::optional<string> Cert::UserId() const {
   X509_NAME* name = X509_get_subject_name(GetTopOfChainX509());
   char buf[1024];
   int len = X509_NAME_get_text_by_NID(name, NID_userId, buf, arraysize(buf));
-  if (len < 0) return boost::none;
+  if (len < 0)
+    return boost::none;
   return string(buf, len);
 }
 
@@ -118,8 +125,10 @@ boost::optional<string> Cert::CommonName() const {
     return boost::none;
   }
   char buf[1024];
-  int len = X509_NAME_get_text_by_NID(name, NID_commonName, buf, arraysize(buf));
-  if (len < 0) return boost::none;
+  int len =
+      X509_NAME_get_text_by_NID(name, NID_commonName, buf, arraysize(buf));
+  if (len < 0)
+    return boost::none;
   return string(buf, len);
 }
 
@@ -147,14 +156,17 @@ vector<string> Cert::Hostnames() const {
 
 boost::optional<string> Cert::KuduKerberosPrincipal() const {
   SCOPED_OPENSSL_NO_PENDING_ERRORS;
-  int idx = X509_get_ext_by_NID(GetTopOfChainX509(), GetKuduKerberosPrincipalOidNid(), -1);
-  if (idx < 0) return boost::none;
+  int idx = X509_get_ext_by_NID(
+      GetTopOfChainX509(), GetKuduKerberosPrincipalOidNid(), -1);
+  if (idx < 0)
+    return boost::none;
   X509_EXTENSION* ext = X509_get_ext(GetTopOfChainX509(), idx);
   ASN1_OCTET_STRING* octet_str = X509_EXTENSION_get_data(ext);
   const unsigned char* octet_str_data = octet_str->data;
   long len; // NOLINT
   int tag, xclass;
-  if (ASN1_get_object(&octet_str_data, &len, &tag, &xclass, octet_str->length) != 0 ||
+  if (ASN1_get_object(
+          &octet_str_data, &len, &tag, &xclass, octet_str->length) != 0 ||
       tag != V_ASN1_UTF8STRING) {
     LOG(DFATAL) << "invalid extension value in cert " << SubjectName();
     return boost::none;
@@ -165,8 +177,9 @@ boost::optional<string> Cert::KuduKerberosPrincipal() const {
 
 Status Cert::CheckKeyMatch(const PrivateKey& key) const {
   SCOPED_OPENSSL_NO_PENDING_ERRORS;
-  OPENSSL_RET_NOT_OK(X509_check_private_key(GetTopOfChainX509(), key.GetRawData()),
-                     "certificate does not match private key");
+  OPENSSL_RET_NOT_OK(
+      X509_check_private_key(GetTopOfChainX509(), key.GetRawData()),
+      "certificate does not match private key");
   return Status::OK();
 }
 
@@ -197,7 +210,8 @@ Status Cert::GetServerEndPointChannelBindings(string* channel_bindings) const {
   // TODO(dan): can the multiple hash function scenario actually happen? What
   // does OBJ_find_sigid_algs do in that scenario?
   if (digest_nid == NID_undef) {
-    return Status::NotSupported("server certificate has no signature digest (hash) algorithm");
+    return Status::NotSupported(
+        "server certificate has no signature digest (hash) algorithm");
   }
 
   // RFC 5929: if the certificate's signatureAlgorithm uses a single hash
@@ -211,10 +225,12 @@ Status Cert::GetServerEndPointChannelBindings(string* channel_bindings) const {
   OPENSSL_RET_IF_NULL(md, "digest for nid not found");
 
   // Create a digest BIO. All data written to the BIO will be sent through the
-  // digest (hash) function. The digest BIO requires a null BIO to writethrough to.
+  // digest (hash) function. The digest BIO requires a null BIO to writethrough
+  // to.
   auto null_bio = ssl_make_unique(BIO_new(BIO_s_null()));
   auto md_bio = ssl_make_unique(BIO_new(BIO_f_md()));
-  OPENSSL_RET_NOT_OK(BIO_set_md(md_bio.get(), md), "failed to set digest for BIO");
+  OPENSSL_RET_NOT_OK(
+      BIO_set_md(md_bio.get(), md), "failed to set digest for BIO");
   BIO_push(md_bio.get(), null_bio.get());
 
   // Write the cert to the digest BIO.
@@ -234,12 +250,14 @@ void Cert::AdoptAndAddRefRawData(RawDataType* data) {
 
   DCHECK(cert);
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
-  CHECK_GT(CRYPTO_add(&cert->references, 1, CRYPTO_LOCK_X509), 1) << "X509 use-after-free detected";
+  CHECK_GT(CRYPTO_add(&cert->references, 1, CRYPTO_LOCK_X509), 1)
+      << "X509 use-after-free detected";
 #else
-  OPENSSL_CHECK_OK(X509_up_ref(cert)) << "X509 use-after-free detected: " << GetOpenSSLErrors();
+  OPENSSL_CHECK_OK(X509_up_ref(cert))
+      << "X509 use-after-free detected: " << GetOpenSSLErrors();
 #endif
-  // We copy the STACK_OF() object, but the copy and the original both internally point to the
-  // same elements.
+  // We copy the STACK_OF() object, but the copy and the original both
+  // internally point to the same elements.
   AdoptRawData(sk_X509_dup(data));
 }
 
@@ -255,9 +273,11 @@ void Cert::AdoptX509(X509* cert) {
 
 void Cert::AdoptAndAddRefX509(X509* cert) {
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
-  CHECK_GT(CRYPTO_add(&cert->references, 1, CRYPTO_LOCK_X509), 1) << "X509 use-after-free detected";
+  CHECK_GT(CRYPTO_add(&cert->references, 1, CRYPTO_LOCK_X509), 1)
+      << "X509 use-after-free detected";
 #else
-  OPENSSL_CHECK_OK(X509_up_ref(cert)) << "X509 use-after-free detected: " << GetOpenSSLErrors();
+  OPENSSL_CHECK_OK(X509_up_ref(cert))
+      << "X509 use-after-free detected: " << GetOpenSSLErrors();
 #endif
   AdoptX509(cert);
 }
@@ -286,14 +306,14 @@ CertSignRequest CertSignRequest::Clone() const {
   X509_REQ* cloned_req;
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
   CHECK_GT(CRYPTO_add(&data_->references, 1, CRYPTO_LOCK_X509_REQ), 1)
-    << "X509_REQ use-after-free detected";
+      << "X509_REQ use-after-free detected";
   cloned_req = GetRawData();
 #else
   // With OpenSSL 1.1, data structure internals are hidden, and there doesn't
   // seem to be a public method that increments data_'s refcount.
   cloned_req = X509_REQ_dup(GetRawData());
   CHECK(cloned_req != nullptr)
-    << "X509 allocation failure detected: " << GetOpenSSLErrors();
+      << "X509 allocation failure detected: " << GetOpenSSLErrors();
 #endif
 
   CertSignRequest clone;

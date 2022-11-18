@@ -53,8 +53,8 @@ message RpcCallInProgressPB {
 message RpcConnectionPB {
   enum StateType {
     UNKNOWN = 999;
-    NEGOTIATING = 0;  // Connection is still being negotiated.
-    OPEN = 1;         // Connection is active.
+    NEGOTIATING = 0; // Connection is still being negotiated.
+    OPEN = 1; // Connection is active.
   };
 
   required string remote_ip = 1;
@@ -103,8 +103,7 @@ message RpczMethodPB {
 }
 
 // Request and response for dumping previously sampled RPC calls.
-message DumpRpczStoreRequestPB {
-}
+message DumpRpczStoreRequestPB {}
 message DumpRpczStoreResponsePB {
   repeated RpczMethodPB methods = 1;
 }

@@ -17,10 +17,10 @@
 #ifndef KUDU_UTIL_BLOCKING_QUEUE_H
 #define KUDU_UTIL_BLOCKING_QUEUE_H
 
+#include <unistd.h>
 #include <list>
 #include <string>
 #include <type_traits>
-#include <unistd.h>
 #include <vector>
 
 #include "kudu/gutil/basictypes.h"
@@ -33,15 +33,11 @@
 namespace kudu {
 
 // Return values for BlockingQueue::Put()
-enum QueueStatus {
-  QUEUE_SUCCESS = 0,
-  QUEUE_SHUTDOWN = 1,
-  QUEUE_FULL = 2
-};
+enum QueueStatus { QUEUE_SUCCESS = 0, QUEUE_SHUTDOWN = 1, QUEUE_FULL = 2 };
 
 // Default logical length implementation: always returns 1.
 struct DefaultLogicalSize {
-  template<typename T>
+  template <typename T>
   static size_t logical_size(const T& /* unused */) {
     return 1;
   }
@@ -56,12 +52,11 @@ class BlockingQueue {
   typedef typename std::remove_pointer<T>::type T_VAL;
 
   explicit BlockingQueue(size_t max_size)
-    : shutdown_(false),
-      size_(0),
-      max_size_(max_size),
-      not_empty_(&lock_),
-      not_full_(&lock_) {
-  }
+      : shutdown_(false),
+        size_(0),
+        max_size_(max_size),
+        not_empty_(&lock_),
+        not_full_(&lock_) {}
 
   // If the queue holds a bare pointer, it must be empty on destruction, since
   // it may have ownership of the pointer.
@@ -72,7 +67,7 @@ class BlockingQueue {
 
   // Get an element from the queue.  Returns false if we were shut down prior to
   // getting the element.
-  bool BlockingGet(T *out) {
+  bool BlockingGet(T* out) {
     MutexLock l(lock_);
     while (true) {
       if (!list_.empty()) {
@@ -91,7 +86,7 @@ class BlockingQueue {
 
   // Get an element from the queue.  Returns false if the queue is empty and
   // we were shut down prior to getting the element.
-  bool BlockingGet(gscoped_ptr<T_VAL> *out) {
+  bool BlockingGet(gscoped_ptr<T_VAL>* out) {
     T t = NULL;
     bool got_element = BlockingGet(&t);
     if (!got_element) {
@@ -143,7 +138,7 @@ class BlockingQueue {
   //   QUEUE_SUCCESS: if successfully inserted
   //   QUEUE_FULL: if the queue has reached max_size
   //   QUEUE_SHUTDOWN: if someone has already called Shutdown()
-  QueueStatus Put(const T &val) {
+  QueueStatus Put(const T& val) {
     MutexLock l(lock_);
     if (size_ >= max_size_) {
       return QUEUE_FULL;
@@ -160,7 +155,7 @@ class BlockingQueue {
 
   // Returns the same as the other Put() overload above.
   // If the element was inserted, the gscoped_ptr releases its contents.
-  QueueStatus Put(gscoped_ptr<T_VAL> *val) {
+  QueueStatus Put(gscoped_ptr<T_VAL>* val) {
     QueueStatus s = Put(val->get());
     if (s == QUEUE_SUCCESS) {
       ignore_result<>(val->release());
@@ -231,7 +226,6 @@ class BlockingQueue {
   }
 
  private:
-
   // Increments queue size. Must be called when 'lock_' is held.
   void increment_size_unlocked(const T& t) {
     size_ += LOGICAL_SIZE::logical_size(t);

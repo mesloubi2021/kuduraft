@@ -44,30 +44,35 @@ class RaftConsensusITestBase : public TabletServerIntegrationTestBase {
  public:
   // Behavior for the tablet server hosting the fall-behind-WAL-GC replica.
   enum BehindWalGcBehavior {
-    STOP_CONTINUE,    // Send SIGSTOP and then SIGCONT to the affected tserver.
+    STOP_CONTINUE, // Send SIGSTOP and then SIGCONT to the affected tserver.
     SHUTDOWN_RESTART, // Shutdown and then restart the affected tserver.
-    SHUTDOWN,         // Shutdown the affected tserver, don't start it back up.
-    DO_NOT_TAMPER,    // Leave the affected tserver alone, running or not.
+    SHUTDOWN, // Shutdown the affected tserver, don't start it back up.
+    DO_NOT_TAMPER, // Leave the affected tserver alone, running or not.
   };
 
   RaftConsensusITestBase();
 
   void SetUp() override;
 
-  void ScanReplica(TabletServerServiceProxy* replica_proxy,
-                   std::vector<std::string>* results);
+  void ScanReplica(
+      TabletServerServiceProxy* replica_proxy,
+      std::vector<std::string>* results);
 
-  void InsertTestRowsRemoteThread(uint64_t first_row,
-                                  uint64_t count,
-                                  uint64_t num_batches,
-                                  const std::vector<CountDownLatch*>& latches);
+  void InsertTestRowsRemoteThread(
+      uint64_t first_row,
+      uint64_t count,
+      uint64_t num_batches,
+      const std::vector<CountDownLatch*>& latches);
+
  protected:
   // Retrieve the current term of the first tablet on this tablet server.
-  static Status GetTermMetricValue(cluster::ExternalTabletServer* ts,
-                                   int64_t* term);
+  static Status GetTermMetricValue(
+      cluster::ExternalTabletServer* ts,
+      int64_t* term);
 
   // Flags needed for CauseFollowerToFallBehindLogGC() to work well.
-  static void AddFlagsForLogRolls(std::vector<std::string>* extra_tserver_flags);
+  static void AddFlagsForLogRolls(
+      std::vector<std::string>* extra_tserver_flags);
 
   // Pause/shutdown the tserver hosting one of the follower tablet replicas and
   // write enough data to the remaining replicas to cause log GC. Then
@@ -102,5 +107,5 @@ class RaftConsensusITestBase : public TabletServerIntegrationTestBase {
   CountDownLatch inserters_;
 };
 
-}  // namespace tserver
-}  // namespace kudu
+} // namespace tserver
+} // namespace kudu

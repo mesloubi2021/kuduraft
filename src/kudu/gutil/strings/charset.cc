@@ -21,4 +21,4 @@ CharSet::CharSet(const CharSet& other) {
   memcpy(this, &other, sizeof(*this));
 }
 
-}  // namespace strings
+} // namespace strings

@@ -25,8 +25,7 @@ message AuthnTokenPB {
   optional string username = 1;
 };
 
-message AuthzTokenPB {
-};
+message AuthzTokenPB {};
 
 message TokenPB {
   // The time at which this token expires, in seconds since the
@@ -60,10 +59,10 @@ message TokenPB {
 };
 
 message SignedTokenPB {
-  // The actual token data. This is a serialized TokenPB protobuf. However, we use a
-  // 'bytes' field, since protobuf doesn't guarantee that if two implementations serialize
-  // a protobuf, they'll necessary get bytewise identical results, particularly in the
-  // presence of unknown fields.
+  // The actual token data. This is a serialized TokenPB protobuf. However, we
+  // use a 'bytes' field, since protobuf doesn't guarantee that if two
+  // implementations serialize a protobuf, they'll necessary get bytewise
+  // identical results, particularly in the presence of unknown fields.
   optional bytes token_data = 1;
 
   // The cryptographic signature of 'token_contents'.

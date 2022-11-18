@@ -22,9 +22,9 @@
 
 #include <cstdint>
 #include <cstring>
-#include <string>
 #include <memory>
 #include <ostream>
+#include <string>
 
 #include "kudu/gutil/macros.h"
 #include "kudu/gutil/strings/substitute.h"
@@ -35,13 +35,12 @@ using std::ostream;
 using std::string;
 using std::unique_ptr;
 
-#define ZRETURN_NOT_OK(call) \
-  RETURN_NOT_OK(ZlibResultToStatus(call))
+#define ZRETURN_NOT_OK(call) RETURN_NOT_OK(ZlibResultToStatus(call))
 
 namespace kudu {
 namespace zlib {
 
-namespace  {
+namespace {
 Status ZlibResultToStatus(int rc) {
   switch (rc) {
     case Z_OK:
@@ -72,10 +71,13 @@ Status ZlibResultToStatus(int rc) {
 Status Compress(Slice input, ostream* out) {
   z_stream zs;
   memset(&zs, 0, sizeof(zs));
-  ZRETURN_NOT_OK(deflateInit2(&zs, Z_DEFAULT_COMPRESSION, Z_DEFLATED,
-                              15 + 16 /* 15 window bits, enable gzip */,
-                              8 /* memory level, max is 9 */,
-                              Z_DEFAULT_STRATEGY));
+  ZRETURN_NOT_OK(deflateInit2(
+      &zs,
+      Z_DEFAULT_COMPRESSION,
+      Z_DEFLATED,
+      15 + 16 /* 15 window bits, enable gzip */,
+      8 /* memory level, max is 9 */,
+      Z_DEFAULT_STRATEGY));
 
   zs.avail_in = input.size();
   zs.next_in = const_cast<uint8_t*>(input.data());
@@ -92,7 +94,7 @@ Status Compress(Slice input, ostream* out) {
     }
     int out_size = zs.next_out - chunk.get();
     if (out_size > 0) {
-      out->write(reinterpret_cast<char *>(chunk.get()), out_size);
+      out->write(reinterpret_cast<char*>(chunk.get()), out_size);
     }
   } while (flush != Z_FINISH);
   ZRETURN_NOT_OK(deflateEnd(&zs));
@@ -116,7 +118,7 @@ Status Uncompress(Slice compressed, std::ostream* out) {
     if (!s.ok() && !s.IsEndOfFile()) {
       return s;
     }
-    out->write(reinterpret_cast<char *>(buf), zs.next_out - buf);
+    out->write(reinterpret_cast<char*>(buf), zs.next_out - buf);
   } while (flush == Z_NO_FLUSH);
   ZRETURN_NOT_OK(inflateEnd(&zs));
 

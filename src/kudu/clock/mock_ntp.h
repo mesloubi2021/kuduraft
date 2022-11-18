@@ -38,7 +38,8 @@ class MockNtp : public TimeService {
     return Status::OK();
   }
 
-  virtual Status WalltimeWithError(uint64_t* now_usec, uint64_t* error_usec) override;
+  virtual Status WalltimeWithError(uint64_t* now_usec, uint64_t* error_usec)
+      override;
 
   virtual int64_t skew_ppm() const override {
     // Just return the same constant as the default configuration for NTP:
@@ -49,14 +50,14 @@ class MockNtp : public TimeService {
 
   // Sets the time to be returned by a mock call to the system clock, for tests.
   // Requires that 'now_usec' is higher than the previously set time.
-  // NOTE: This refers to the time returned by the system clock, not the time returned
-  // by HybridClock, i.e. 'now_usec' is not a HybridTime timestamp and shouldn't have
-  // a logical component.
+  // NOTE: This refers to the time returned by the system clock, not the time
+  // returned by HybridClock, i.e. 'now_usec' is not a HybridTime timestamp and
+  // shouldn't have a logical component.
   void SetMockClockWallTimeForTests(uint64_t now_usec);
 
-  // Sets the max. error to be returned by a mock call to the system clock, for tests.
-  // This can be used to make HybridClock report the wall clock as unsynchronized, by
-  // setting error to be more than the configured tolerance.
+  // Sets the max. error to be returned by a mock call to the system clock, for
+  // tests. This can be used to make HybridClock report the wall clock as
+  // unsynchronized, by setting error to be more than the configured tolerance.
   void SetMockMaxClockErrorForTests(uint64_t max_error_usec);
 
  private:

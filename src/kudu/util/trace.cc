@@ -54,8 +54,7 @@ Trace::Trace()
   arena_->SetMaxBufferSize(4096);
 }
 
-Trace::~Trace() {
-}
+Trace::~Trace() {}
 
 // Struct which precedes each entry in the trace.
 struct TraceEntry {
@@ -79,25 +78,39 @@ struct TraceEntry {
 // Borrowed from glog.
 static const char* const_basename(const char* filepath) {
   const char* base = strrchr(filepath, '/');
-#ifdef OS_WINDOWS  // Look for either path separator in Windows
+#ifdef OS_WINDOWS // Look for either path separator in Windows
   if (!base)
     base = strrchr(filepath, '\\');
 #endif
-  return base ? (base+1) : filepath;
+  return base ? (base + 1) : filepath;
 }
 
-
-void Trace::SubstituteAndTrace(const char* file_path,
-                               int line_number,
-                               StringPiece format,
-                               const SubstituteArg& arg0, const SubstituteArg& arg1,
-                               const SubstituteArg& arg2, const SubstituteArg& arg3,
-                               const SubstituteArg& arg4, const SubstituteArg& arg5,
-                               const SubstituteArg& arg6, const SubstituteArg& arg7,
-                               const SubstituteArg& arg8, const SubstituteArg& arg9) {
+void Trace::SubstituteAndTrace(
+    const char* file_path,
+    int line_number,
+    StringPiece format,
+    const SubstituteArg& arg0,
+    const SubstituteArg& arg1,
+    const SubstituteArg& arg2,
+    const SubstituteArg& arg3,
+    const SubstituteArg& arg4,
+    const SubstituteArg& arg5,
+    const SubstituteArg& arg6,
+    const SubstituteArg& arg7,
+    const SubstituteArg& arg8,
+    const SubstituteArg& arg9) {
   const SubstituteArg* const args_array[] = {
-    &arg0, &arg1, &arg2, &arg3, &arg4, &arg5, &arg6, &arg7, &arg8, &arg9, nullptr
-  };
+      &arg0,
+      &arg1,
+      &arg2,
+      &arg3,
+      &arg4,
+      &arg5,
+      &arg6,
+      &arg7,
+      &arg8,
+      &arg9,
+      nullptr};
 
   int msg_len = strings::internal::SubstitutedSize(format, args_array);
   TraceEntry* entry = NewEntry(msg_len, file_path, line_number);
@@ -105,7 +118,8 @@ void Trace::SubstituteAndTrace(const char* file_path,
   AddEntry(entry);
 }
 
-TraceEntry* Trace::NewEntry(int msg_len, const char* file_path, int line_number) {
+TraceEntry*
+Trace::NewEntry(int msg_len, const char* file_path, int line_number) {
   int size = sizeof(TraceEntry) + msg_len;
   uint8_t* dst = reinterpret_cast<uint8_t*>(arena_->AllocateBytes(size));
   TraceEntry* entry = reinterpret_cast<TraceEntry*>(dst);
@@ -138,9 +152,7 @@ void Trace::Dump(std::ostream* out, int flags) const {
   vector<pair<StringPiece, scoped_refptr<Trace>>> child_traces;
   {
     std::lock_guard<simple_spinlock> l(lock_);
-    for (TraceEntry* cur = entries_head_;
-         cur != nullptr;
-         cur = cur->next) {
+    for (TraceEntry* cur = entries_head_; cur != nullptr; cur = cur->next) {
       entries.push_back(cur);
     }
 
@@ -166,10 +178,8 @@ void Trace::Dump(std::ostream* out, int flags) const {
       out->fill(' ');
       *out << "(+" << setw(6) << usecs_since_prev << "us) ";
     }
-    *out << const_basename(e->file_path) << ':' << e->line_number
-         << "] ";
-    out->write(reinterpret_cast<char*>(e) + sizeof(TraceEntry),
-               e->message_len);
+    *out << const_basename(e->file_path) << ':' << e->line_number << "] ";
+    out->write(reinterpret_cast<char*>(e) + sizeof(TraceEntry), e->message_len);
     *out << std::endl;
   }
 
@@ -251,7 +261,8 @@ void Trace::AddChildTrace(StringPiece label, Trace* child_trace) {
   child_traces_.emplace_back(label, ptr);
 }
 
-std::vector<std::pair<StringPiece, scoped_refptr<Trace>>> Trace::ChildTraces() const {
+std::vector<std::pair<StringPiece, scoped_refptr<Trace>>> Trace::ChildTraces()
+    const {
   std::lock_guard<simple_spinlock> l(lock_);
   return child_traces_;
 }

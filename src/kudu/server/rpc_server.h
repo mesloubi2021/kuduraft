@@ -32,7 +32,8 @@
 #include "kudu/util/net/sockaddr.h"
 #include "kudu/util/status.h"
 
-template <class T> class scoped_refptr;
+template <class T>
+class scoped_refptr;
 
 namespace kudu {
 
@@ -74,10 +75,12 @@ class RpcServer {
     too_busy_hook_ = std::move(hook);
   }
 
-  Status Init(const std::shared_ptr<rpc::Messenger>& messenger) WARN_UNUSED_RESULT;
+  Status Init(const std::shared_ptr<rpc::Messenger>& messenger)
+      WARN_UNUSED_RESULT;
   // Services need to be registered after Init'ing, but before Start'ing.
   // The service's ownership will be given to a ServicePool.
-  Status RegisterService(gscoped_ptr<rpc::ServiceIf> service) WARN_UNUSED_RESULT;
+  Status RegisterService(gscoped_ptr<rpc::ServiceIf> service)
+      WARN_UNUSED_RESULT;
   Status Bind() WARN_UNUSED_RESULT;
   Status Start() WARN_UNUSED_RESULT;
   void Shutdown();
@@ -86,11 +89,13 @@ class RpcServer {
 
   // Return the addresses that this server has successfully
   // bound to. Requires that the server has been Start()ed.
-  Status GetBoundAddresses(std::vector<Sockaddr>* addresses) const WARN_UNUSED_RESULT;
+  Status GetBoundAddresses(std::vector<Sockaddr>* addresses) const
+      WARN_UNUSED_RESULT;
 
   // Return the addresses that this server is advertising externally
   // to the world. Requires that the server has been Start()ed.
-  Status GetAdvertisedAddresses(std::vector<Sockaddr>* addresses) const WARN_UNUSED_RESULT;
+  Status GetAdvertisedAddresses(std::vector<Sockaddr>* addresses) const
+      WARN_UNUSED_RESULT;
 
   const rpc::ServicePool* service_pool(const std::string& service_name) const;
 
@@ -122,9 +127,10 @@ class RpcServer {
   // should be advertised.
   std::vector<Sockaddr> rpc_advertised_addresses_;
 
-  std::vector<std::shared_ptr<rpc::AcceptorPool> > acceptor_pools_;
+  std::vector<std::shared_ptr<rpc::AcceptorPool>> acceptor_pools_;
 
-  // Function called when one of this server's pools rejects an RPC due to queue overflow.
+  // Function called when one of this server's pools rejects an RPC due to queue
+  // overflow.
   std::function<void(rpc::ServicePool*)> too_busy_hook_;
 
   DISALLOW_COPY_AND_ASSIGN(RpcServer);

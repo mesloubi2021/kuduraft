@@ -27,8 +27,10 @@ namespace kudu {
 
 const Timestamp Timestamp::kMin(MathLimits<Timestamp::val_type>::kMin);
 const Timestamp Timestamp::kMax(MathLimits<Timestamp::val_type>::kMax);
-const Timestamp Timestamp::kInitialTimestamp(MathLimits<Timestamp::val_type>::kMin + 1);
-const Timestamp Timestamp::kInvalidTimestamp(MathLimits<Timestamp::val_type>::kMax - 1);
+const Timestamp Timestamp::kInitialTimestamp(
+    MathLimits<Timestamp::val_type>::kMin + 1);
+const Timestamp Timestamp::kInvalidTimestamp(
+    MathLimits<Timestamp::val_type>::kMax - 1);
 
 bool Timestamp::DecodeFrom(Slice* input) {
   return GetMemcmpableVarint64(input, &v);
@@ -54,4 +56,4 @@ std::ostream& operator<<(std::ostream& o, const Timestamp& timestamp) {
   return o << timestamp.ToString();
 }
 
-}  // namespace kudu
+} // namespace kudu

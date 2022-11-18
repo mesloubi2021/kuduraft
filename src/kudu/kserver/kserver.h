@@ -42,9 +42,10 @@ class KuduServer : public server::ServerBase {
  public:
   // Constructs a new KuduServer instance and performs all no-fail member
   // initializations.
-  KuduServer(std::string name,
-             const server::ServerBaseOptions& options,
-             const std::string& metric_namespace);
+  KuduServer(
+      std::string name,
+      const server::ServerBaseOptions& options,
+      const std::string& metric_namespace);
 
   // Finalizes the initialization of a KuduServer by performing any member
   // initializations that may fail.
@@ -57,14 +58,19 @@ class KuduServer : public server::ServerBase {
   virtual void Shutdown() override;
 
 #ifdef FB_DO_NOT_REMOVE
-  ThreadPool* tablet_prepare_pool() const { return tablet_prepare_pool_.get(); }
-  ThreadPool* tablet_apply_pool() const { return tablet_apply_pool_.get(); }
+  ThreadPool* tablet_prepare_pool() const {
+    return tablet_prepare_pool_.get();
+  }
+  ThreadPool* tablet_apply_pool() const {
+    return tablet_apply_pool_.get();
+  }
 #endif
 
-  ThreadPool* raft_pool() const { return raft_pool_.get(); }
+  ThreadPool* raft_pool() const {
+    return raft_pool_.get();
+  }
 
  private:
-
 #ifdef FB_DO_NOT_REMOVE
   // Thread pool for preparing transactions, shared between all tablets.
   gscoped_ptr<ThreadPool> tablet_prepare_pool_;

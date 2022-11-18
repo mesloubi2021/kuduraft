@@ -37,13 +37,13 @@ class HumanReadableNumBytes {
   // e.g. 1000000 -> "976.6K".
   //  Note that calling these two functions in succession isn't a
   //  noop, since ToString() may round.
-  static bool ToInt64(const std::string &str, int64 *num_bytes);
+  static bool ToInt64(const std::string& str, int64* num_bytes);
   static std::string ToString(int64 num_bytes);
   // Like ToString but without rounding.  For example 1025 would return
   // "1025B" rather than "1.0K".  Uses the largest common denominator.
   static std::string ToStringWithoutRounding(int64 num_bytes);
 
-  static bool ToDouble(const std::string &str, double *num_bytes);
+  static bool ToDouble(const std::string& str, double* num_bytes);
   // Function overloading this with a function that takes an int64 is just
   // asking for trouble.
   static std::string DoubleToString(double num_bytes);
@@ -67,25 +67,26 @@ class HumanReadableNumBytes {
   //        3.02P
   //        0.007E
   // ----------------------------------------------------------------------
-  static bool LessThan(const std::string &a, const std::string &b);
+  static bool LessThan(const std::string& a, const std::string& b);
 
  private:
   DISALLOW_IMPLICIT_CONSTRUCTORS(HumanReadableNumBytes);
 };
 
-
 // See documentation at HumanReadableNumBytes::LessThan().
 struct humanreadablebytes_less
-    : public std::binary_function<const std::string&, const std::string&, bool> {
-  bool operator()(const std::string& a, const std::string &b) const {
+    : public std::
+          binary_function<const std::string&, const std::string&, bool> {
+  bool operator()(const std::string& a, const std::string& b) const {
     return HumanReadableNumBytes::LessThan(a, b);
   }
 };
 
 // See documentation at HumanReadableNumBytes::LessThan().
 struct humanreadablebytes_greater
-    : public std::binary_function<const std::string&, const std::string&, bool> {
-  bool operator()(const std::string& a, const std::string &b) const {
+    : public std::
+          binary_function<const std::string&, const std::string&, bool> {
+  bool operator()(const std::string& a, const std::string& b) const {
     return HumanReadableNumBytes::LessThan(b, a);
   }
 };
@@ -99,7 +100,7 @@ class HumanReadableInt {
 
   // Reverses ToString(). Note that calling these two functions in
   // succession isn't a noop, since ToString() may round.
-  static bool ToInt64(const std::string &str, int64 *value);
+  static bool ToInt64(const std::string& str, int64* value);
 
  private:
   DISALLOW_IMPLICIT_CONSTRUCTORS(HumanReadableInt);
@@ -117,7 +118,7 @@ class HumanReadableNum {
 
   // Reverses DoubleToString(). Note that calling these two functions in
   // succession isn't a noop, since there may be rounding errors.
-  static bool ToDouble(const std::string &str, double *value);
+  static bool ToDouble(const std::string& str, double* value);
 
  private:
   DISALLOW_IMPLICIT_CONSTRUCTORS(HumanReadableNum);
@@ -155,4 +156,4 @@ class HumanReadableElapsedTime {
   DISALLOW_IMPLICIT_CONSTRUCTORS(HumanReadableElapsedTime);
 };
 
-#endif  // STRINGS_HUMAN_READABLE_H__
+#endif // STRINGS_HUMAN_READABLE_H__

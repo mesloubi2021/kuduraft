@@ -51,8 +51,8 @@ string DecimalToString(int128_t d, int8_t scale) {
   // 38 digits, 1 extra leading zero, decimal point,
   // and sign are good for 128-bit or smaller decimals.
   char local[41];
-  char *p = local + sizeof(local);
-  int128_t n = d < 0? -d : d;
+  char* p = local + sizeof(local);
+  int128_t n = d < 0 ? -d : d;
   int position = 0;
   while (n) {
     // Print the decimal in the scale position.

@@ -20,10 +20,10 @@
 
 #include <glog/logging.h>
 
+#include "kudu/gutil/stl_util.h" // for string_as_array, STLAppendToString
 #include "kudu/gutil/strings/ascii_ctype.h"
 #include "kudu/gutil/strings/numbers.h"
 #include "kudu/gutil/strings/stringpiece.h"
-#include "kudu/gutil/stl_util.h"  // for string_as_array, STLAppendToString
 #include "kudu/gutil/utf/utf.h"
 
 using std::min;
@@ -32,7 +32,7 @@ using std::swap;
 using std::vector;
 
 #ifdef OS_WINDOWS
-#ifdef min  // windows.h defines this to something silly
+#ifdef min // windows.h defines this to something silly
 #undef min
 #endif
 #endif
@@ -45,11 +45,10 @@ static struct tm* PortableSafeGmtime(const time_t* timep, struct tm* result) {
   return gmtime_s(result, timep) == 0 ? result : NULL;
 #else
   return gmtime_r(timep, result);
-#endif  // OS_WINDOWS
+#endif // OS_WINDOWS
 }
 
-char* strnstr(const char* haystack, const char* needle,
-                     size_t haystack_len) {
+char* strnstr(const char* haystack, const char* needle, size_t haystack_len) {
   if (*needle == '\0') {
     return const_cast<char*>(haystack);
   }
@@ -68,8 +67,11 @@ char* strnstr(const char* haystack, const char* needle,
   return nullptr;
 }
 
-const char* strnprefix(const char* haystack, int haystack_size,
-                              const char* needle, int needle_size) {
+const char* strnprefix(
+    const char* haystack,
+    int haystack_size,
+    const char* needle,
+    int needle_size) {
   if (needle_size > haystack_size) {
     return nullptr;
   } else {
@@ -81,8 +83,11 @@ const char* strnprefix(const char* haystack, int haystack_size,
   }
 }
 
-const char* strncaseprefix(const char* haystack, int haystack_size,
-                                  const char* needle, int needle_size) {
+const char* strncaseprefix(
+    const char* haystack,
+    int haystack_size,
+    const char* needle,
+    int needle_size) {
   if (needle_size > haystack_size) {
     return nullptr;
   } else {
@@ -106,8 +111,11 @@ char* strcasesuffix(char* str, const char* suffix) {
   }
 }
 
-const char* strnsuffix(const char* haystack, int haystack_size,
-                              const char* needle, int needle_size) {
+const char* strnsuffix(
+    const char* haystack,
+    int haystack_size,
+    const char* needle,
+    int needle_size) {
   if (needle_size > haystack_size) {
     return nullptr;
   } else {
@@ -120,8 +128,11 @@ const char* strnsuffix(const char* haystack, int haystack_size,
   }
 }
 
-const char* strncasesuffix(const char* haystack, int haystack_size,
-                           const char* needle, int needle_size) {
+const char* strncasesuffix(
+    const char* haystack,
+    int haystack_size,
+    const char* needle,
+    int needle_size) {
   if (needle_size > haystack_size) {
     return nullptr;
   } else {
@@ -141,7 +152,7 @@ char* strchrnth(const char* str, const char& c, int n) {
     return const_cast<char*>(str);
   const char* sp;
   int k = 0;
-  for (sp = str; *sp != '\0'; sp ++) {
+  for (sp = str; *sp != '\0'; sp++) {
     if (*sp == c) {
       ++k;
       if (k >= n)
@@ -152,18 +163,17 @@ char* strchrnth(const char* str, const char& c, int n) {
 }
 
 char* AdjustedLastPos(const char* str, char separator, int n) {
-  if ( str == nullptr )
+  if (str == nullptr)
     return nullptr;
   const char* pos = nullptr;
-  if ( n > 0 )
+  if (n > 0)
     pos = strchrnth(str, separator, n);
 
   // if n <= 0 or separator appears fewer than n times, get the last occurrence
-  if ( pos == nullptr)
+  if (pos == nullptr)
     pos = strrchr(str, separator);
   return const_cast<char*>(pos);
 }
-
 
 // ----------------------------------------------------------------------
 // Misc. routines
@@ -188,13 +198,15 @@ bool IsAscii(const char* str, int len) {
 //    happened or not.
 // ----------------------------------------------------------------------
 
-string StringReplace(const StringPiece& s, const StringPiece& oldsub,
-                     const StringPiece& newsub, bool replace_all) {
+string StringReplace(
+    const StringPiece& s,
+    const StringPiece& oldsub,
+    const StringPiece& newsub,
+    bool replace_all) {
   string ret;
   StringReplace(s, oldsub, newsub, replace_all, &ret);
   return ret;
 }
-
 
 // ----------------------------------------------------------------------
 // StringReplace()
@@ -203,11 +215,14 @@ string StringReplace(const StringPiece& s, const StringPiece& oldsub,
 //    it only replaces the first instance of "old."
 // ----------------------------------------------------------------------
 
-void StringReplace(const StringPiece& s, const StringPiece& oldsub,
-                   const StringPiece& newsub, bool replace_all,
-                   string* res) {
+void StringReplace(
+    const StringPiece& s,
+    const StringPiece& oldsub,
+    const StringPiece& newsub,
+    bool replace_all,
+    string* res) {
   if (oldsub.empty()) {
-    res->append(s.data(), s.length());  // If empty, append the given string.
+    res->append(s.data(), s.length()); // If empty, append the given string.
     return;
   }
 
@@ -234,9 +249,10 @@ void StringReplace(const StringPiece& s, const StringPiece& oldsub,
 //    NOTE: The string pieces must not overlap s.
 // ----------------------------------------------------------------------
 
-int GlobalReplaceSubstring(const StringPiece& substring,
-                           const StringPiece& replacement,
-                           string* s) {
+int GlobalReplaceSubstring(
+    const StringPiece& substring,
+    const StringPiece& replacement,
+    string* s) {
   CHECK(s != nullptr);
   if (s->empty() || substring.empty())
     return 0;
@@ -246,7 +262,7 @@ int GlobalReplaceSubstring(const StringPiece& substring,
   for (size_t match_pos = s->find(substring.data(), pos, substring.length());
        match_pos != string::npos;
        pos = match_pos + substring.length(),
-           match_pos = s->find(substring.data(), pos, substring.length())) {
+              match_pos = s->find(substring.data(), pos, substring.length())) {
     ++num_replacements;
     // Append the original content before the match.
     tmp.append(*s, pos, match_pos - pos);
@@ -278,7 +294,7 @@ void RemoveStrings(vector<string>* v, const vector<int>& indices) {
     // verify that indices is sorted least->greatest
     if (indices.size() >= 2 && lcv > 0)
       // use LT and not LE because we should never see repeat indices
-      CHECK_LT(indices[lcv-1], indices[lcv]);
+      CHECK_LT(indices[lcv - 1], indices[lcv]);
 #endif
     assert(indices[lcv] >= 0);
     assert(indices[lcv] < v->size());
@@ -295,7 +311,7 @@ void RemoveStrings(vector<string>* v, const vector<int>& indices) {
 // This function uses ascii_tolower() instead of tolower(), for speed.
 // ----------------------------------------------------------------------
 
-char *gstrcasestr(const char* haystack, const char* needle) {
+char* gstrcasestr(const char* haystack, const char* needle) {
   char c, sc;
   size_t len;
 
@@ -322,7 +338,7 @@ char *gstrcasestr(const char* haystack, const char* needle) {
 //
 // This function uses ascii_tolower() instead of tolower(), for speed.
 // ----------------------------------------------------------------------
-const char *gstrncasestr(const char* haystack, const char* needle, size_t len) {
+const char* gstrncasestr(const char* haystack, const char* needle, size_t len) {
   char c, sc;
 
   if ((c = *needle++) != 0) {
@@ -330,8 +346,7 @@ const char *gstrncasestr(const char* haystack, const char* needle, size_t len) {
     size_t needle_len = strlen(needle);
     do {
       do {
-        if (len-- <= needle_len
-            || 0 == (sc = *haystack++))
+        if (len-- <= needle_len || 0 == (sc = *haystack++))
           return nullptr;
       } while (ascii_tolower(sc) != c);
     } while (strncasecmp(haystack, needle, needle_len) != 0);
@@ -348,25 +363,28 @@ const char *gstrncasestr(const char* haystack, const char* needle, size_t len) {
 //
 //    This function uses ascii_tolower() instead of tolower(), for speed.
 // ----------------------------------------------------------------------
-char *gstrncasestr(char* haystack, const char* needle, size_t len) {
-  return const_cast<char *>(gstrncasestr(static_cast<const char *>(haystack),
-                                         needle, len));
+char* gstrncasestr(char* haystack, const char* needle, size_t len) {
+  return const_cast<char*>(
+      gstrncasestr(static_cast<const char*>(haystack), needle, len));
 }
 // ----------------------------------------------------------------------
 // gstrncasestr_split performs a case insensitive search
 // on (prefix, non_alpha, suffix).
 // ----------------------------------------------------------------------
-char *gstrncasestr_split(const char* str,
-                         const char* prefix, char non_alpha,
-                         const char* suffix,
-                         size_t n) {
+char* gstrncasestr_split(
+    const char* str,
+    const char* prefix,
+    char non_alpha,
+    const char* suffix,
+    size_t n) {
   int prelen = prefix == nullptr ? 0 : strlen(prefix);
   int suflen = suffix == nullptr ? 0 : strlen(suffix);
 
   // adjust the string and its length to avoid unnessary searching.
   // an added benefit is to avoid unnecessary range checks in the if
   // statement in the inner loop.
-  if (suflen + prelen >= n)  return nullptr;
+  if (suflen + prelen >= n)
+    return nullptr;
   str += prelen;
   n -= prelen;
   n -= suflen;
@@ -374,8 +392,8 @@ char *gstrncasestr_split(const char* str,
   const char* where = nullptr;
 
   // for every occurance of non_alpha in the string ...
-  while ((where = static_cast<const char*>(
-            memchr(str, non_alpha, n))) != nullptr) {
+  while ((where = static_cast<const char*>(memchr(str, non_alpha, n))) !=
+         nullptr) {
     // ... test whether it is followed by suffix and preceded by prefix
     if ((!suflen || strncasecmp(where + 1, suffix, suflen) == 0) &&
         (!prelen || strncasecmp(where - prelen, prefix, prelen) == 0)) {
@@ -400,49 +418,48 @@ char *gstrncasestr_split(const char* str,
 // E.g. strcasestr_alnum("i use google all the time", " !!Google!! ")
 // returns pointer to "google all the time"
 // ----------------------------------------------------------------------
-char *strcasestr_alnum(const char *haystack, const char *needle) {
-  const char *haystack_ptr;
-  const char *needle_ptr;
+char* strcasestr_alnum(const char* haystack, const char* needle) {
+  const char* haystack_ptr;
+  const char* needle_ptr;
 
   // Skip non-alnums at beginning
-  while ( !ascii_isalnum(*needle) )
-    if ( *needle++ == '\0' )
+  while (!ascii_isalnum(*needle))
+    if (*needle++ == '\0')
       return const_cast<char*>(haystack);
   needle_ptr = needle;
 
   // Skip non-alnums at beginning
-  while ( !ascii_isalnum(*haystack) )
-    if ( *haystack++ == '\0' )
+  while (!ascii_isalnum(*haystack))
+    if (*haystack++ == '\0')
       return nullptr;
   haystack_ptr = haystack;
 
-  while ( *needle_ptr != '\0' ) {
+  while (*needle_ptr != '\0') {
     // Non-alnums - advance
-    while ( !ascii_isalnum(*needle_ptr) )
-      if ( *needle_ptr++ == '\0' )
-        return const_cast<char *>(haystack);
+    while (!ascii_isalnum(*needle_ptr))
+      if (*needle_ptr++ == '\0')
+        return const_cast<char*>(haystack);
 
-    while ( !ascii_isalnum(*haystack_ptr) )
-      if ( *haystack_ptr++ == '\0' )
+    while (!ascii_isalnum(*haystack_ptr))
+      if (*haystack_ptr++ == '\0')
         return nullptr;
 
-    if ( ascii_tolower(*needle_ptr) == ascii_tolower(*haystack_ptr) ) {
+    if (ascii_tolower(*needle_ptr) == ascii_tolower(*haystack_ptr)) {
       // Case-insensitive match - advance
       needle_ptr++;
       haystack_ptr++;
     } else {
       // No match - rollback to next start point in haystack
       haystack++;
-      while ( !ascii_isalnum(*haystack) )
-        if ( *haystack++ == '\0' )
+      while (!ascii_isalnum(*haystack))
+        if (*haystack++ == '\0')
           return nullptr;
       haystack_ptr = haystack;
       needle_ptr = needle;
     }
   }
-  return const_cast<char *>(haystack);
+  return const_cast<char*>(haystack);
 }
-
 
 // ----------------------------------------------------------------------
 // CountSubstring()
@@ -473,17 +490,19 @@ int CountSubstring(StringPiece text, StringPiece substring) {
 //    Like strstr(), returns haystack if needle is empty, or NULL if
 //    either needle/haystack is NULL.
 // ----------------------------------------------------------------------
-const char* strstr_delimited(const char* haystack,
-                             const char* needle,
-                             char delim) {
-  if (!needle || !haystack) return nullptr;
-  if (*needle == '\0') return haystack;
+const char*
+strstr_delimited(const char* haystack, const char* needle, char delim) {
+  if (!needle || !haystack)
+    return nullptr;
+  if (*needle == '\0')
+    return haystack;
 
   int needle_len = strlen(needle);
 
   while (true) {
     // Skip any leading delimiters.
-    while (*haystack == delim) ++haystack;
+    while (*haystack == delim)
+      ++haystack;
 
     // Walk down the haystack, matching every character in the needle.
     const char* this_match = haystack;
@@ -503,7 +522,8 @@ const char* strstr_delimited(const char* haystack,
 
     // No match. Consume non-delimiter characters until we run out of them.
     while (*haystack != delim) {
-      if (*haystack == '\0') return nullptr;
+      if (*haystack == '\0')
+        return nullptr;
       ++haystack;
     }
   }
@@ -511,16 +531,15 @@ const char* strstr_delimited(const char* haystack,
   return nullptr;
 }
 
-
 // ----------------------------------------------------------------------
 // Older versions of libc have a buggy strsep.
 // ----------------------------------------------------------------------
 
 char* gstrsep(char** stringp, const char* delim) {
-  char *s;
-  const char *spanp;
+  char* s;
+  const char* spanp;
   int c, sc;
-  char *tok;
+  char* tok;
 
   if ((s = *stringp) == nullptr)
     return nullptr;
@@ -548,7 +567,6 @@ void FastStringAppend(string* s, const char* data, int len) {
   STLAppendToString(s, data, len);
 }
 
-
 // TODO(user): add a microbenchmark and revisit
 // the optimizations done here.
 //
@@ -557,27 +575,23 @@ void FastStringAppend(string* s, const char* data, int len) {
 extern const char two_ASCII_digits[100][2];
 
 const char two_ASCII_digits[100][2] = {
-  {'0', '0'}, {'0', '1'}, {'0', '2'}, {'0', '3'}, {'0', '4'},
-  {'0', '5'}, {'0', '6'}, {'0', '7'}, {'0', '8'}, {'0', '9'},
-  {'1', '0'}, {'1', '1'}, {'1', '2'}, {'1', '3'}, {'1', '4'},
-  {'1', '5'}, {'1', '6'}, {'1', '7'}, {'1', '8'}, {'1', '9'},
-  {'2', '0'}, {'2', '1'}, {'2', '2'}, {'2', '3'}, {'2', '4'},
-  {'2', '5'}, {'2', '6'}, {'2', '7'}, {'2', '8'}, {'2', '9'},
-  {'3', '0'}, {'3', '1'}, {'3', '2'}, {'3', '3'}, {'3', '4'},
-  {'3', '5'}, {'3', '6'}, {'3', '7'}, {'3', '8'}, {'3', '9'},
-  {'4', '0'}, {'4', '1'}, {'4', '2'}, {'4', '3'}, {'4', '4'},
-  {'4', '5'}, {'4', '6'}, {'4', '7'}, {'4', '8'}, {'4', '9'},
-  {'5', '0'}, {'5', '1'}, {'5', '2'}, {'5', '3'}, {'5', '4'},
-  {'5', '5'}, {'5', '6'}, {'5', '7'}, {'5', '8'}, {'5', '9'},
-  {'6', '0'}, {'6', '1'}, {'6', '2'}, {'6', '3'}, {'6', '4'},
-  {'6', '5'}, {'6', '6'}, {'6', '7'}, {'6', '8'}, {'6', '9'},
-  {'7', '0'}, {'7', '1'}, {'7', '2'}, {'7', '3'}, {'7', '4'},
-  {'7', '5'}, {'7', '6'}, {'7', '7'}, {'7', '8'}, {'7', '9'},
-  {'8', '0'}, {'8', '1'}, {'8', '2'}, {'8', '3'}, {'8', '4'},
-  {'8', '5'}, {'8', '6'}, {'8', '7'}, {'8', '8'}, {'8', '9'},
-  {'9', '0'}, {'9', '1'}, {'9', '2'}, {'9', '3'}, {'9', '4'},
-  {'9', '5'}, {'9', '6'}, {'9', '7'}, {'9', '8'}, {'9', '9'}
-};
+    {'0', '0'}, {'0', '1'}, {'0', '2'}, {'0', '3'}, {'0', '4'}, {'0', '5'},
+    {'0', '6'}, {'0', '7'}, {'0', '8'}, {'0', '9'}, {'1', '0'}, {'1', '1'},
+    {'1', '2'}, {'1', '3'}, {'1', '4'}, {'1', '5'}, {'1', '6'}, {'1', '7'},
+    {'1', '8'}, {'1', '9'}, {'2', '0'}, {'2', '1'}, {'2', '2'}, {'2', '3'},
+    {'2', '4'}, {'2', '5'}, {'2', '6'}, {'2', '7'}, {'2', '8'}, {'2', '9'},
+    {'3', '0'}, {'3', '1'}, {'3', '2'}, {'3', '3'}, {'3', '4'}, {'3', '5'},
+    {'3', '6'}, {'3', '7'}, {'3', '8'}, {'3', '9'}, {'4', '0'}, {'4', '1'},
+    {'4', '2'}, {'4', '3'}, {'4', '4'}, {'4', '5'}, {'4', '6'}, {'4', '7'},
+    {'4', '8'}, {'4', '9'}, {'5', '0'}, {'5', '1'}, {'5', '2'}, {'5', '3'},
+    {'5', '4'}, {'5', '5'}, {'5', '6'}, {'5', '7'}, {'5', '8'}, {'5', '9'},
+    {'6', '0'}, {'6', '1'}, {'6', '2'}, {'6', '3'}, {'6', '4'}, {'6', '5'},
+    {'6', '6'}, {'6', '7'}, {'6', '8'}, {'6', '9'}, {'7', '0'}, {'7', '1'},
+    {'7', '2'}, {'7', '3'}, {'7', '4'}, {'7', '5'}, {'7', '6'}, {'7', '7'},
+    {'7', '8'}, {'7', '9'}, {'8', '0'}, {'8', '1'}, {'8', '2'}, {'8', '3'},
+    {'8', '4'}, {'8', '5'}, {'8', '6'}, {'8', '7'}, {'8', '8'}, {'8', '9'},
+    {'9', '0'}, {'9', '1'}, {'9', '2'}, {'9', '3'}, {'9', '4'}, {'9', '5'},
+    {'9', '6'}, {'9', '7'}, {'9', '8'}, {'9', '9'}};
 
 static inline void PutTwoDigits(int i, char* p) {
   DCHECK_GE(i, 0);
@@ -595,7 +609,7 @@ char* FastTimeToBuffer(time_t s, char* buffer) {
   if (PortableSafeGmtime(&s, &tm) == nullptr) {
     // Error message must fit in 30-char buffer.
     memcpy(buffer, "Invalid:", sizeof("Invalid:"));
-    FastInt64ToBufferLeft(s, buffer+strlen(buffer));
+    FastInt64ToBufferLeft(s, buffer + strlen(buffer));
     return buffer;
   }
 
@@ -605,60 +619,102 @@ char* FastTimeToBuffer(time_t s, char* buffer) {
 
   const char* weekday_name = "Xxx";
   switch (tm.tm_wday) {
-    default: { DLOG(FATAL) << "tm.tm_wday: " << tm.tm_wday; } break;
-    case 0:  weekday_name = "Sun"; break;
-    case 1:  weekday_name = "Mon"; break;
-    case 2:  weekday_name = "Tue"; break;
-    case 3:  weekday_name = "Wed"; break;
-    case 4:  weekday_name = "Thu"; break;
-    case 5:  weekday_name = "Fri"; break;
-    case 6:  weekday_name = "Sat"; break;
+    default: {
+      DLOG(FATAL) << "tm.tm_wday: " << tm.tm_wday;
+    } break;
+    case 0:
+      weekday_name = "Sun";
+      break;
+    case 1:
+      weekday_name = "Mon";
+      break;
+    case 2:
+      weekday_name = "Tue";
+      break;
+    case 3:
+      weekday_name = "Wed";
+      break;
+    case 4:
+      weekday_name = "Thu";
+      break;
+    case 5:
+      weekday_name = "Fri";
+      break;
+    case 6:
+      weekday_name = "Sat";
+      break;
   }
 
   const char* month_name = "Xxx";
   switch (tm.tm_mon) {
-    default:  { DLOG(FATAL) << "tm.tm_mon: " << tm.tm_mon; } break;
-    case 0:   month_name = "Jan"; break;
-    case 1:   month_name = "Feb"; break;
-    case 2:   month_name = "Mar"; break;
-    case 3:   month_name = "Apr"; break;
-    case 4:   month_name = "May"; break;
-    case 5:   month_name = "Jun"; break;
-    case 6:   month_name = "Jul"; break;
-    case 7:   month_name = "Aug"; break;
-    case 8:   month_name = "Sep"; break;
-    case 9:   month_name = "Oct"; break;
-    case 10:  month_name = "Nov"; break;
-    case 11:  month_name = "Dec"; break;
+    default: {
+      DLOG(FATAL) << "tm.tm_mon: " << tm.tm_mon;
+    } break;
+    case 0:
+      month_name = "Jan";
+      break;
+    case 1:
+      month_name = "Feb";
+      break;
+    case 2:
+      month_name = "Mar";
+      break;
+    case 3:
+      month_name = "Apr";
+      break;
+    case 4:
+      month_name = "May";
+      break;
+    case 5:
+      month_name = "Jun";
+      break;
+    case 6:
+      month_name = "Jul";
+      break;
+    case 7:
+      month_name = "Aug";
+      break;
+    case 8:
+      month_name = "Sep";
+      break;
+    case 9:
+      month_name = "Oct";
+      break;
+    case 10:
+      month_name = "Nov";
+      break;
+    case 11:
+      month_name = "Dec";
+      break;
   }
 
   // Write out the buffer.
 
-  memcpy(buffer+0, weekday_name, 3);
+  memcpy(buffer + 0, weekday_name, 3);
   buffer[3] = ',';
   buffer[4] = ' ';
 
-  PutTwoDigits(tm.tm_mday, buffer+5);
+  PutTwoDigits(tm.tm_mday, buffer + 5);
   buffer[7] = ' ';
 
-  memcpy(buffer+8, month_name, 3);
+  memcpy(buffer + 8, month_name, 3);
   buffer[11] = ' ';
 
   int32 year = tm.tm_year + 1900;
-  PutTwoDigits(year/100, buffer+12);
-  PutTwoDigits(year%100, buffer+14);
+  PutTwoDigits(year / 100, buffer + 12);
+  PutTwoDigits(year % 100, buffer + 14);
   buffer[16] = ' ';
 
-  PutTwoDigits(tm.tm_hour, buffer+17);
+  PutTwoDigits(tm.tm_hour, buffer + 17);
   buffer[19] = ':';
 
-  PutTwoDigits(tm.tm_min, buffer+20);
+  PutTwoDigits(tm.tm_min, buffer + 20);
   buffer[22] = ':';
 
-  PutTwoDigits(tm.tm_sec, buffer+23);
+  PutTwoDigits(tm.tm_sec, buffer + 23);
 
   // includes ending NUL
-  memcpy(buffer+25, " GMT", 5);
+  memcpy(buffer + 25, " GMT", 5);
 
   return buffer;
 }
@@ -688,12 +744,9 @@ char* strndup_with_new(const char* the_string, int max_length) {
     return nullptr;
 
   auto result = new char[max_length + 1];
-  result[max_length] = '\0';  // terminate the string because strncpy might not
+  result[max_length] = '\0'; // terminate the string because strncpy might not
   return strncpy(result, the_string, max_length);
 }
-
-
-
 
 // ----------------------------------------------------------------------
 // ScanForFirstWord()
@@ -711,14 +764,14 @@ char* strndup_with_new(const char* the_string, int max_length) {
 const char* ScanForFirstWord(const char* the_string, const char** end_ptr) {
   CHECK(end_ptr != nullptr) << ": precondition violated";
 
-  if (the_string == nullptr)  // empty string
+  if (the_string == nullptr) // empty string
     return nullptr;
 
   const char* curr = the_string;
-  while ((*curr != '\0') && ascii_isspace(*curr))  // skip initial spaces
+  while ((*curr != '\0') && ascii_isspace(*curr)) // skip initial spaces
     ++curr;
 
-  if (*curr == '\0')  // no valid word found
+  if (*curr == '\0') // no valid word found
     return nullptr;
 
   // else has a valid word
@@ -739,7 +792,7 @@ const char* ScanForFirstWord(const char* the_string, const char** end_ptr) {
 //    one.  A C-style identifier begins with an ASCII letter or underscore
 //    and continues with ASCII letters, digits, or underscores.
 // ----------------------------------------------------------------------
-const char *AdvanceIdentifier(const char *str) {
+const char* AdvanceIdentifier(const char* str) {
   // Not using isalpha and isalnum so as not to rely on the locale.
   // We could have used ascii_isalpha and ascii_isalnum.
   char ch = *str++;
@@ -754,15 +807,14 @@ const char *AdvanceIdentifier(const char *str) {
   }
 }
 
-
 // ----------------------------------------------------------------------
 // IsIdentifier()
 //    This function returns true if str is a C-style identifier.
 //    A C-style identifier begins with an ASCII letter or underscore
 //    and continues with ASCII letters, digits, or underscores.
 // ----------------------------------------------------------------------
-bool IsIdentifier(const char *str) {
-  const char *end = AdvanceIdentifier(str);
+bool IsIdentifier(const char* str) {
+  const char* end = AdvanceIdentifier(str);
   return end && *end == '\0';
 }
 
@@ -772,9 +824,12 @@ static bool IsWildcard(Rune character) {
 
 // Move the strings pointers to the point where they start to differ.
 template <typename CHAR, typename NEXT>
-static void EatSameChars(const CHAR** pattern, const CHAR* pattern_end,
-                         const CHAR** string, const CHAR* string_end,
-                         NEXT next) {
+static void EatSameChars(
+    const CHAR** pattern,
+    const CHAR* pattern_end,
+    const CHAR** string,
+    const CHAR* string_end,
+    NEXT next) {
   const CHAR* escape = nullptr;
   while (*pattern != pattern_end && *string != string_end) {
     if (!escape && IsWildcard(**pattern)) {
@@ -795,8 +850,7 @@ static void EatSameChars(const CHAR** pattern, const CHAR* pattern_end,
     const CHAR* string_next = *string;
     Rune pattern_char = next(&pattern_next, pattern_end);
     if (pattern_char == next(&string_next, string_end) &&
-        pattern_char != Runeerror &&
-        pattern_char <= Runemax) {
+        pattern_char != Runeerror && pattern_char <= Runemax) {
       *pattern = pattern_next;
       *string = string_next;
     } else {
@@ -825,10 +879,13 @@ static void EatWildcard(const CHAR** pattern, const CHAR* end, NEXT next) {
 }
 
 template <typename CHAR, typename NEXT>
-static bool MatchPatternT(const CHAR* eval, const CHAR* eval_end,
-                          const CHAR* pattern, const CHAR* pattern_end,
-                          int depth,
-                          NEXT next) {
+static bool MatchPatternT(
+    const CHAR* eval,
+    const CHAR* eval_end,
+    const CHAR* pattern,
+    const CHAR* pattern_end,
+    int depth,
+    NEXT next) {
   const int kMaxDepth = 16;
   if (depth > kMaxDepth)
     return false;
@@ -852,13 +909,13 @@ static bool MatchPatternT(const CHAR* eval, const CHAR* eval_end,
   const CHAR* next_pattern = pattern;
   next(&next_pattern, pattern_end);
   if (pattern[0] == '?') {
-    if (MatchPatternT(eval, eval_end, next_pattern, pattern_end,
-                      depth + 1, next))
+    if (MatchPatternT(
+            eval, eval_end, next_pattern, pattern_end, depth + 1, next))
       return true;
     const CHAR* next_eval = eval;
     next(&next_eval, eval_end);
-    if (MatchPatternT(next_eval, eval_end, next_pattern, pattern_end,
-                      depth + 1, next))
+    if (MatchPatternT(
+            next_eval, eval_end, next_pattern, pattern_end, depth + 1, next))
       return true;
   }
 
@@ -870,8 +927,8 @@ static bool MatchPatternT(const CHAR* eval, const CHAR* eval_end,
     EatWildcard(&next_pattern, pattern_end, next);
 
     while (eval != eval_end) {
-      if (MatchPatternT(eval, eval_end, next_pattern, pattern_end,
-                        depth + 1, next))
+      if (MatchPatternT(
+              eval, eval_end, next_pattern, pattern_end, depth + 1, next))
         return true;
       eval++;
     }
@@ -898,14 +955,15 @@ struct NextCharUTF8 {
   }
 };
 
-bool MatchPattern(const StringPiece& eval,
-                  const StringPiece& pattern) {
-  return MatchPatternT(eval.data(), eval.data() + eval.size(),
-                       pattern.data(), pattern.data() + pattern.size(),
-                       0, NextCharUTF8());
+bool MatchPattern(const StringPiece& eval, const StringPiece& pattern) {
+  return MatchPatternT(
+      eval.data(),
+      eval.data() + eval.size(),
+      pattern.data(),
+      pattern.data() + pattern.size(),
+      0,
+      NextCharUTF8());
 }
-
-
 
 // ----------------------------------------------------------------------
 // FindTagValuePair
@@ -918,11 +976,16 @@ bool MatchPattern(const StringPiece& eval,
 //    and "tag_len" and "value_len" are set to the respective lengths.
 // ----------------------------------------------------------------------
 
-bool FindTagValuePair(const char* arg_str, char tag_value_separator,
-                      char attribute_separator, char string_terminal,
-                      char **tag, int *tag_len,
-                      char **value, int *value_len) {
-  char* in_str = const_cast<char*>(arg_str);  // For msvc8.
+bool FindTagValuePair(
+    const char* arg_str,
+    char tag_value_separator,
+    char attribute_separator,
+    char string_terminal,
+    char** tag,
+    int* tag_len,
+    char** value,
+    int* value_len) {
+  char* in_str = const_cast<char*>(arg_str); // For msvc8.
   if (in_str == nullptr)
     return false;
   char tv_sep_or_term[3] = {tag_value_separator, string_terminal, '\0'};
@@ -934,13 +997,13 @@ bool FindTagValuePair(const char* arg_str, char tag_value_separator,
   if (*tag == nullptr || **tag == string_terminal)
     *tag = in_str;
   else
-    (*tag)++;   // Move past separator
+    (*tag)++; // Move past separator
   // Now look for value...
-  char *tv_sep_pos = strpbrk(*tag, tv_sep_or_term);
+  char* tv_sep_pos = strpbrk(*tag, tv_sep_or_term);
   if (tv_sep_pos == nullptr || *tv_sep_pos == string_terminal)
     return false;
   // ...and end of value
-  char *attr_sep_pos = strpbrk(tv_sep_pos, attr_sep_or_term);
+  char* attr_sep_pos = strpbrk(tv_sep_pos, attr_sep_or_term);
 
   *tag_len = tv_sep_pos - *tag;
   *value = tv_sep_pos + 1;
@@ -954,19 +1017,19 @@ bool FindTagValuePair(const char* arg_str, char tag_value_separator,
 void UniformInsertString(string* s, int interval, const char* separator) {
   const size_t separator_len = strlen(separator);
 
-  if (interval < 1 ||      // invalid interval
-      s->empty() ||        // nothing to do
-      separator_len == 0)  // invalid separator
+  if (interval < 1 || // invalid interval
+      s->empty() || // nothing to do
+      separator_len == 0) // invalid separator
     return;
 
-  int num_inserts = (s->size() - 1) / interval;  // -1 to avoid appending at end
-  if (num_inserts == 0)  // nothing to do
+  int num_inserts = (s->size() - 1) / interval; // -1 to avoid appending at end
+  if (num_inserts == 0) // nothing to do
     return;
 
   string tmp;
   tmp.reserve(s->size() + num_inserts * separator_len + 1);
 
-  for (int i = 0; i < num_inserts ; ++i) {
+  for (int i = 0; i < num_inserts; ++i) {
     // append this interval
     tmp.append(*s, i * interval, interval);
     // append a separator
@@ -980,17 +1043,18 @@ void UniformInsertString(string* s, int interval, const char* separator) {
   s->swap(tmp);
 }
 
-void InsertString(string *const s,
-                  const vector<uint32> &indices,
-                  char const *const separator) {
+void InsertString(
+    string* const s,
+    const vector<uint32>& indices,
+    char const* const separator) {
   const unsigned num_indices(indices.size());
   if (num_indices == 0) {
-    return;  // nothing to do...
+    return; // nothing to do...
   }
 
   const unsigned separator_len(strlen(separator));
   if (separator_len == 0) {
-    return;  // still nothing to do...
+    return; // still nothing to do...
   }
 
   string tmp;
@@ -1026,9 +1090,9 @@ void InsertString(string *const s,
 int FindNth(StringPiece s, char c, int n) {
   size_t pos = string::npos;
 
-  for ( int i = 0; i < n; ++i ) {
+  for (int i = 0; i < n; ++i) {
     pos = s.find_first_of(c, pos + 1);
-    if ( pos == StringPiece::npos ) {
+    if (pos == StringPiece::npos) {
       break;
     }
   }
@@ -1042,13 +1106,13 @@ int FindNth(StringPiece s, char c, int n) {
 //  (returns string::npos if n <= 0)
 //------------------------------------------------------------------------
 int ReverseFindNth(StringPiece s, char c, int n) {
-  if ( n <= 0 ) {
+  if (n <= 0) {
     return static_cast<int>(StringPiece::npos);
   }
 
   size_t pos = s.size();
 
-  for ( int i = 0; i < n; ++i ) {
+  for (int i = 0; i < n; ++i) {
     // If pos == 0, we return StringPiece::npos right away. Otherwise,
     // the following find_last_of call would take (pos - 1) as string::npos,
     // which means it would again search the entire input string.
@@ -1056,7 +1120,7 @@ int ReverseFindNth(StringPiece s, char c, int n) {
       return static_cast<int>(StringPiece::npos);
     }
     pos = s.find_last_of(c, pos - 1);
-    if ( pos == string::npos ) {
+    if (pos == string::npos) {
       break;
     }
   }
@@ -1074,7 +1138,7 @@ StringPiece FindEol(StringPiece s) {
       return StringPiece(s.data() + i, 1);
     }
     if (s[i] == '\r') {
-      if (i+1 < s.length() && s[i+1] == '\n') {
+      if (i + 1 < s.length() && s[i + 1] == '\n') {
         return StringPiece(s.data() + i, 2);
       } else {
         return StringPiece(s.data() + i, 1);
@@ -1084,7 +1148,7 @@ StringPiece FindEol(StringPiece s) {
   return StringPiece(s.data() + s.length(), 0);
 }
 
-}  // namespace strings
+} // namespace strings
 
 //------------------------------------------------------------------------
 // OnlyWhitespace()
@@ -1092,7 +1156,8 @@ StringPiece FindEol(StringPiece s) {
 //------------------------------------------------------------------------
 bool OnlyWhitespace(const StringPiece& s) {
   for (const auto& c : s) {
-    if ( !ascii_isspace(c) ) return false;
+    if (!ascii_isspace(c))
+      return false;
   }
   return true;
 }
@@ -1131,9 +1196,10 @@ string ImmediateSuccessor(const StringPiece& s) {
   return out;
 }
 
-void FindShortestSeparator(const StringPiece& start,
-                           const StringPiece& limit,
-                           string* separator) {
+void FindShortestSeparator(
+    const StringPiece& start,
+    const StringPiece& limit,
+    string* separator) {
   // Find length of common prefix
   size_t min_length = min(start.size(), limit.size());
   size_t diff_index = 0;
@@ -1149,7 +1215,7 @@ void FindShortestSeparator(const StringPiece& start,
     return;
   }
 
-  if (diff_index+1 == start.size()) {
+  if (diff_index + 1 == start.size()) {
     // If the first difference is in the last character, do not bother
     // incrementing that character since the separator will be no
     // shorter than "start".
@@ -1171,7 +1237,7 @@ void FindShortestSeparator(const StringPiece& start,
   }
 }
 
-int SafeSnprintf(char *str, size_t size, const char *format, ...) {
+int SafeSnprintf(char* str, size_t size, const char* format, ...) {
   va_list printargs;
   va_start(printargs, format);
   int ncw = vsnprintf(str, size, format, printargs);
@@ -1186,8 +1252,10 @@ bool GetlineFromStdioFile(FILE* file, string* str, char delim) {
       return false;
     }
     int c = getc(file);
-    if (c == EOF) return false;
-    if (c == delim) return true;
+    if (c == EOF)
+      return false;
+    if (c == delim)
+      return true;
     str->push_back(c);
   }
 }
@@ -1197,7 +1265,7 @@ namespace {
 template <typename CHAR>
 size_t lcpyT(CHAR* dst, const CHAR* src, size_t dst_size) {
   for (size_t i = 0; i < dst_size; ++i) {
-    if ((dst[i] = src[i]) == 0)  // We hit and copied the terminating NULL.
+    if ((dst[i] = src[i]) == 0) // We hit and copied the terminating NULL.
       return i;
   }
 
@@ -1206,11 +1274,12 @@ size_t lcpyT(CHAR* dst, const CHAR* src, size_t dst_size) {
     dst[dst_size - 1] = 0;
 
   // Count the rest of the |src|, and return it's length in characters.
-  while (src[dst_size]) ++dst_size;
+  while (src[dst_size])
+    ++dst_size;
   return dst_size;
 }
 
-}  // namespace
+} // namespace
 
 size_t strings::strlcpy(char* dst, const char* src, size_t dst_size) {
   return lcpyT<char>(dst, src, dst_size);

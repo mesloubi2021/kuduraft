@@ -44,11 +44,9 @@ using std::vector;
 namespace kudu {
 namespace security {
 
-TokenVerifier::TokenVerifier() {
-}
+TokenVerifier::TokenVerifier() {}
 
-TokenVerifier::~TokenVerifier() {
-}
+TokenVerifier::~TokenVerifier() {}
 
 int64_t TokenVerifier::GetMaxKnownKeySequenceNumber() const {
   shared_lock<RWMutex> l(lock_);
@@ -79,7 +77,7 @@ Status TokenVerifier::ImportKeys(const vector<TokenSigningPublicKeyPB>& keys) {
       return Status::RuntimeError(
           "token-signing public key message must include an expiration time");
     }
-    tsks.emplace_back(new TokenSigningPublicKey { pb });
+    tsks.emplace_back(new TokenSigningPublicKey{pb});
     RETURN_NOT_OK(tsks.back()->Init());
   }
 
@@ -95,16 +93,18 @@ std::vector<TokenSigningPublicKeyPB> TokenVerifier::ExportKeys(
   vector<TokenSigningPublicKeyPB> ret;
   shared_lock<RWMutex> l(lock_);
   ret.reserve(keys_by_seq_.size());
-  transform(keys_by_seq_.upper_bound(after_sequence_number),
-            keys_by_seq_.end(),
-            back_inserter(ret),
-            [](const KeysMap::value_type& e) { return e.second->pb(); });
+  transform(
+      keys_by_seq_.upper_bound(after_sequence_number),
+      keys_by_seq_.end(),
+      back_inserter(ret),
+      [](const KeysMap::value_type& e) { return e.second->pb(); });
   return ret;
 }
 
 // Verify the signature on the given token.
-VerificationResult TokenVerifier::VerifyTokenSignature(const SignedTokenPB& signed_token,
-                                                       TokenPB* token) const {
+VerificationResult TokenVerifier::VerifyTokenSignature(
+    const SignedTokenPB& signed_token,
+    TokenPB* token) const {
   if (!signed_token.has_signature() ||
       !signed_token.has_signing_key_seq_num() ||
       !signed_token.has_token_data()) {
@@ -123,15 +123,17 @@ VerificationResult TokenVerifier::VerifyTokenSignature(const SignedTokenPB& sign
 
   for (auto flag : token->incompatible_features()) {
     if (!TokenPB::Feature_IsValid(flag)) {
-      KLOG_EVERY_N_SECS(WARNING, 60) << "received authentication token with unknown feature; "
-                                        "server needs to be updated";
+      KLOG_EVERY_N_SECS(WARNING, 60)
+          << "received authentication token with unknown feature; "
+             "server needs to be updated";
       return VerificationResult::INCOMPATIBLE_FEATURE;
     }
   }
 
   {
     shared_lock<RWMutex> l(lock_);
-    auto* tsk = FindPointeeOrNull(keys_by_seq_, signed_token.signing_key_seq_num());
+    auto* tsk =
+        FindPointeeOrNull(keys_by_seq_, signed_token.signing_key_seq_num());
     if (!tsk) {
       return VerificationResult::UNKNOWN_SIGNING_KEY;
     }
@@ -170,4 +172,3 @@ const char* VerificationResultToString(VerificationResult r) {
 
 } // namespace security
 } // namespace kudu
-

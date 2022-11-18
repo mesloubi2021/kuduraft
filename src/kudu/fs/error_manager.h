@@ -41,49 +41,53 @@ typedef Callback<void(const std::string&)> ErrorNotificationCb;
 
 // Evaluates the expression and handles it if it results in an error.
 // Returns if the status is an error.
-#define RETURN_NOT_OK_HANDLE_ERROR(status_expr) do { \
-  const Status& _s = (status_expr); \
-  if (PREDICT_TRUE(_s.ok())) { \
-    break; \
-  } \
-  HandleError(_s); \
-  return _s; \
-} while (0);
+#define RETURN_NOT_OK_HANDLE_ERROR(status_expr) \
+  do {                                          \
+    const Status& _s = (status_expr);           \
+    if (PREDICT_TRUE(_s.ok())) {                \
+      break;                                    \
+    }                                           \
+    HandleError(_s);                            \
+    return _s;                                  \
+  } while (0);
 
 // Evaluates the expression and runs 'err_handler' if it results in a disk
 // failure. Returns if the expression results in an error.
-#define RETURN_NOT_OK_HANDLE_DISK_FAILURE(status_expr, err_handler) do { \
-  const Status& _s = (status_expr); \
-  if (PREDICT_TRUE(_s.ok())) { \
-    break; \
-  } \
-  if (_s.IsDiskFailure()) { \
-    (err_handler); \
-  } \
-  return _s; \
-} while (0);
+#define RETURN_NOT_OK_HANDLE_DISK_FAILURE(status_expr, err_handler) \
+  do {                                                              \
+    const Status& _s = (status_expr);                               \
+    if (PREDICT_TRUE(_s.ok())) {                                    \
+      break;                                                        \
+    }                                                               \
+    if (_s.IsDiskFailure()) {                                       \
+      (err_handler);                                                \
+    }                                                               \
+    return _s;                                                      \
+  } while (0);
 
 // Evaluates the expression and runs 'err_handler' if it results in a
 // corruption. Returns if the expression results in an error.
-#define RETURN_NOT_OK_HANDLE_CORRUPTION(status_expr, err_handler) do { \
-  const Status& _s = (status_expr); \
-  if (PREDICT_TRUE(_s.ok())) { \
-    break; \
-  } \
-  if (_s.IsCorruption()) { \
-    (err_handler); \
-  } \
-  return _s; \
-} while (0);
+#define RETURN_NOT_OK_HANDLE_CORRUPTION(status_expr, err_handler) \
+  do {                                                            \
+    const Status& _s = (status_expr);                             \
+    if (PREDICT_TRUE(_s.ok())) {                                  \
+      break;                                                      \
+    }                                                             \
+    if (_s.IsCorruption()) {                                      \
+      (err_handler);                                              \
+    }                                                             \
+    return _s;                                                    \
+  } while (0);
 
 // Evaluates the expression and runs 'err_handler' if it results in a disk
 // failure.
-#define HANDLE_DISK_FAILURE(status_expr, err_handler) do { \
-  const Status& _s = (status_expr); \
-  if (PREDICT_FALSE(_s.IsDiskFailure())) { \
-    (err_handler); \
-  } \
-} while (0);
+#define HANDLE_DISK_FAILURE(status_expr, err_handler) \
+  do {                                                \
+    const Status& _s = (status_expr);                 \
+    if (PREDICT_FALSE(_s.IsDiskFailure())) {          \
+      (err_handler);                                  \
+    }                                                 \
+  } while (0);
 
 enum ErrorHandlerType {
   // For disk failures.
@@ -144,7 +148,8 @@ class FsErrorManager {
   // Runs the error notification callback.
   //
   // 'uuid' is the full UUID of the component that failed.
-  void RunErrorNotificationCb(ErrorHandlerType e, const std::string& uuid) const;
+  void RunErrorNotificationCb(ErrorHandlerType e, const std::string& uuid)
+      const;
 
   // Runs the error notification callback with the UUID of 'dir'.
   void RunErrorNotificationCb(ErrorHandlerType e, const DataDir* dir) const {
@@ -153,13 +158,14 @@ class FsErrorManager {
   }
 
  private:
-   // Callbacks to be run when an error occurs.
-  std::unordered_map<ErrorHandlerType, ErrorNotificationCb, std::hash<int>> callbacks_;
+  // Callbacks to be run when an error occurs.
+  std::unordered_map<ErrorHandlerType, ErrorNotificationCb, std::hash<int>>
+      callbacks_;
 
-   // Protects calls to notifications, enforcing that a single callback runs at
-   // a time.
-   mutable Mutex lock_;
+  // Protects calls to notifications, enforcing that a single callback runs at
+  // a time.
+  mutable Mutex lock_;
 };
 
-}  // namespace fs
-}  // namespace kudu
+} // namespace fs
+} // namespace kudu

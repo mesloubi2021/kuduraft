@@ -66,96 +66,112 @@
 #include "kudu/util/status.h"
 #include "kudu/util/threadpool.h"
 
-DEFINE_int32(consensus_rpc_timeout_ms, 30000,
-             "Timeout used for all consensus internal RPC communications.");
+DEFINE_int32(
+    consensus_rpc_timeout_ms,
+    30000,
+    "Timeout used for all consensus internal RPC communications.");
 TAG_FLAG(consensus_rpc_timeout_ms, advanced);
 
-DEFINE_int32(raft_get_node_instance_timeout_ms, 30000,
-             "Timeout for retrieving node instance data over RPC.");
+DEFINE_int32(
+    raft_get_node_instance_timeout_ms,
+    30000,
+    "Timeout for retrieving node instance data over RPC.");
 TAG_FLAG(raft_get_node_instance_timeout_ms, hidden);
 
-DEFINE_double(fault_crash_on_leader_request_fraction, 0.0,
-              "Fraction of the time when the leader will crash just before sending an "
-              "UpdateConsensus RPC. (For testing only!)");
+DEFINE_double(
+    fault_crash_on_leader_request_fraction,
+    0.0,
+    "Fraction of the time when the leader will crash just before sending an "
+    "UpdateConsensus RPC. (For testing only!)");
 TAG_FLAG(fault_crash_on_leader_request_fraction, unsafe);
 
-DEFINE_double(fault_crash_after_leader_request_fraction, 0.0,
-              "Fraction of the time when the leader will crash on getting a response for an "
-              "UpdateConsensus RPC. (For testing only!)");
+DEFINE_double(
+    fault_crash_after_leader_request_fraction,
+    0.0,
+    "Fraction of the time when the leader will crash on getting a response for an "
+    "UpdateConsensus RPC. (For testing only!)");
 TAG_FLAG(fault_crash_after_leader_request_fraction, unsafe);
-
 
 // Allow for disabling Tablet Copy in unit tests where we want to test
 // certain scenarios without triggering bootstrap of a remote peer.
-DEFINE_bool(enable_tablet_copy, true,
-            "Whether Tablet Copy will be initiated by the leader when it "
-            "detects that a follower is out of date or does not have a tablet "
-            "replica. For testing purposes only.");
+DEFINE_bool(
+    enable_tablet_copy,
+    true,
+    "Whether Tablet Copy will be initiated by the leader when it "
+    "detects that a follower is out of date or does not have a tablet "
+    "replica. For testing purposes only.");
 TAG_FLAG(enable_tablet_copy, unsafe);
 
-DEFINE_int32(raft_proxy_max_hops, 16,
-             "Maximum proxy routing hops allowed. In other words, the proxy routing TTL");
+DEFINE_int32(
+    raft_proxy_max_hops,
+    16,
+    "Maximum proxy routing hops allowed. In other words, the proxy routing TTL");
 TAG_FLAG(raft_proxy_max_hops, advanced);
 
 DECLARE_int32(raft_heartbeat_interval_ms);
 
-DEFINE_int32(proxy_batch_duration_ms, 0,
-             "Time (in ms) to wait before reading ops for proxy requests");
+DEFINE_int32(
+    proxy_batch_duration_ms,
+    0,
+    "Time (in ms) to wait before reading ops for proxy requests");
 
 DECLARE_bool(raft_enforce_rpc_token);
 
-METRIC_DEFINE_counter(server, raft_rpc_token_num_response_mismatches,
-                           "Reponse RPC token mismatches",
-                           kudu::MetricUnit::kRequests,
-                           "Number of RPC responses that did not have a token "
-                           "that matches this instance's");
+METRIC_DEFINE_counter(
+    server,
+    raft_rpc_token_num_response_mismatches,
+    "Reponse RPC token mismatches",
+    kudu::MetricUnit::kRequests,
+    "Number of RPC responses that did not have a token "
+    "that matches this instance's");
 
 using kudu::pb_util::SecureShortDebugString;
 using kudu::rpc::Messenger;
 using kudu::rpc::PeriodicTimer;
 using kudu::rpc::RpcController;
-//using kudu::tserver::TabletServerErrorPB;
+// using kudu::tserver::TabletServerErrorPB;
 using std::shared_ptr;
 using std::string;
 using std::vector;
 using std::weak_ptr;
 using strings::Substitute;
 
-
 namespace kudu {
 namespace consensus {
 
-Status Peer::NewRemotePeer(RaftPeerPB peer_pb,
-                           string tablet_id,
-                           string leader_uuid,
-                           PeerMessageQueue* queue,
-                           PeerProxyPool* peer_proxy_pool,
-                           ThreadPoolToken* raft_pool_token,
-                           shared_ptr<PeerProxy> proxy,
-                           shared_ptr<Messenger> messenger,
-                           shared_ptr<Peer>* peer) {
-
-  shared_ptr<Peer> new_peer(new Peer(std::move(peer_pb),
-                                     std::move(tablet_id),
-                                     std::move(leader_uuid),
-                                     queue,
-                                     peer_proxy_pool,
-                                     raft_pool_token,
-                                     std::move(proxy),
-                                     std::move(messenger)));
+Status Peer::NewRemotePeer(
+    RaftPeerPB peer_pb,
+    string tablet_id,
+    string leader_uuid,
+    PeerMessageQueue* queue,
+    PeerProxyPool* peer_proxy_pool,
+    ThreadPoolToken* raft_pool_token,
+    shared_ptr<PeerProxy> proxy,
+    shared_ptr<Messenger> messenger,
+    shared_ptr<Peer>* peer) {
+  shared_ptr<Peer> new_peer(new Peer(
+      std::move(peer_pb),
+      std::move(tablet_id),
+      std::move(leader_uuid),
+      queue,
+      peer_proxy_pool,
+      raft_pool_token,
+      std::move(proxy),
+      std::move(messenger)));
   RETURN_NOT_OK(new_peer->Init());
   *peer = std::move(new_peer);
   return Status::OK();
 }
 
-Peer::Peer(RaftPeerPB peer_pb,
-           string tablet_id,
-           string leader_uuid,
-           PeerMessageQueue* queue,
-           PeerProxyPool* peer_proxy_pool,
-           ThreadPoolToken* raft_pool_token,
-           shared_ptr<PeerProxy> proxy,
-           shared_ptr<Messenger> messenger)
+Peer::Peer(
+    RaftPeerPB peer_pb,
+    string tablet_id,
+    string leader_uuid,
+    PeerMessageQueue* queue,
+    PeerProxyPool* peer_proxy_pool,
+    ThreadPoolToken* raft_pool_token,
+    shared_ptr<PeerProxy> proxy,
+    shared_ptr<Messenger> messenger)
     : tablet_id_(std::move(tablet_id)),
       leader_uuid_(std::move(leader_uuid)),
       peer_pb_(std::move(peer_pb)),
@@ -218,11 +234,11 @@ Status Peer::SignalRequest(bool even_if_queue_empty, bool from_heartbeater) {
   // safely handle the functor outliving its peer.
   weak_ptr<Peer> w_this = shared_from_this();
   RETURN_NOT_OK(raft_pool_token_->SubmitFunc(
-        [even_if_queue_empty, from_heartbeater, w_this]() {
-    if (auto p = w_this.lock()) {
-      p->SendNextRequest(even_if_queue_empty, from_heartbeater);
-    }
-  }));
+      [even_if_queue_empty, from_heartbeater, w_this]() {
+        if (auto p = w_this.lock()) {
+          p->SendNextRequest(even_if_queue_empty, from_heartbeater);
+        }
+      }));
   return Status::OK();
 }
 
@@ -232,7 +248,7 @@ bool Peer::ProxyBatchDurationHasPassed() {
   }
 
   const bool has_duration_passed = MonoTime::Now() - last_request_time_ >=
-    MonoDelta::FromMilliseconds(FLAGS_proxy_batch_duration_ms);
+      MonoDelta::FromMilliseconds(FLAGS_proxy_batch_duration_ms);
 
   // We update cached proxied status when batch duration has passed (or it's not
   // populated yet), this means we could be looking at stale info for
@@ -240,8 +256,8 @@ bool Peer::ProxyBatchDurationHasPassed() {
   if (has_duration_passed || cached_is_peer_proxied_ == -1) {
     const std::string& uuid = peer_pb_.permanent_uuid();
     std::string next_hop_uuid;
-    // TODO: The routing table is consulted again in RequestForPeer(), ideally we
-    // can do it once
+    // TODO: The routing table is consulted again in RequestForPeer(), ideally
+    // we can do it once
     queue_->GetNextRoutingHopFromLeader(uuid, &next_hop_uuid);
     cached_is_peer_proxied_ = next_hop_uuid != uuid;
   }
@@ -261,9 +277,9 @@ void Peer::SendNextRequest(bool even_if_queue_empty, bool from_heartbeater) {
     return;
   }
 
-  // For the first request sent by the peer, we send it even if the queue is empty,
-  // which it will always appear to be for the first request, since this is the
-  // negotiation round.
+  // For the first request sent by the peer, we send it even if the queue is
+  // empty, which it will always appear to be for the first request, since this
+  // is the negotiation round.
   if (!has_sent_first_request_) {
     even_if_queue_empty = true;
     has_sent_first_request_ = true;
@@ -305,23 +321,30 @@ void Peer::SendNextRequest(bool even_if_queue_empty, bool from_heartbeater) {
   // The next hop to route to to ship messages to this peer. This could be
   // different than the peer_uuid when proxy is enabled
   string next_hop_uuid;
-  int64_t commit_index_before = request_.has_committed_index() ?
-      request_.committed_index() : kMinimumOpIdIndex;
-  Status s = queue_->RequestForPeer(peer_pb_.permanent_uuid(), read_ops, &request_,
-                                    &replicate_msg_refs_, &needs_tablet_copy,
-                                    &next_hop_uuid);
-  int64_t commit_index_after = request_.has_committed_index() ?
-      request_.committed_index() : kMinimumOpIdIndex;
+  int64_t commit_index_before = request_.has_committed_index()
+      ? request_.committed_index()
+      : kMinimumOpIdIndex;
+  Status s = queue_->RequestForPeer(
+      peer_pb_.permanent_uuid(),
+      read_ops,
+      &request_,
+      &replicate_msg_refs_,
+      &needs_tablet_copy,
+      &next_hop_uuid);
+  int64_t commit_index_after = request_.has_committed_index()
+      ? request_.committed_index()
+      : kMinimumOpIdIndex;
 
   if (PREDICT_FALSE(!s.ok())) {
-    // Incrementing failed_attempts_ prevents a RequestForPeer error to continually
-    // trigger an error on every actual write. The next attempt to RequestForPeer
-    // will now be restricted to Heartbeats, but because this is hard failure
-    // it will keep failing but only fail less often.
+    // Incrementing failed_attempts_ prevents a RequestForPeer error to
+    // continually trigger an error on every actual write. The next attempt to
+    // RequestForPeer will now be restricted to Heartbeats, but because this is
+    // hard failure it will keep failing but only fail less often.
     // TODO -
     // Make empty heartbeats go through after a failure to send actual messages,
-    // without changing the cursor at all on peer, but still maintaining authority on
-    // it. Otherwise node keeps asking for votes, destabilizing cluster.
+    // without changing the cursor at all on peer, but still maintaining
+    // authority on it. Otherwise node keeps asking for votes, destabilizing
+    // cluster.
     failed_attempts_++;
     VLOG_WITH_PREFIX_UNLOCKED(1) << s.ToString();
     request_pending_ = false;
@@ -335,16 +358,17 @@ void Peer::SendNextRequest(bool even_if_queue_empty, bool from_heartbeater) {
       controller_.Reset();
       request_pending_ = true;
       l.unlock();
-      // Capture a shared_ptr reference into the RPC callback so that we're guaranteed
-      // that this object outlives the RPC.
+      // Capture a shared_ptr reference into the RPC callback so that we're
+      // guaranteed that this object outlives the RPC.
       shared_ptr<Peer> s_this = shared_from_this();
-      proxy_->StartTabletCopyAsync(&tc_request_, &tc_response_, &controller_,
-                                   [s_this]() {
-                                     s_this->ProcessTabletCopyResponse();
-                                   });
+      proxy_->StartTabletCopyAsync(
+          &tc_request_, &tc_response_, &controller_, [s_this]() {
+            s_this->ProcessTabletCopyResponse();
+          });
     } else {
-      LOG_WITH_PREFIX_UNLOCKED(WARNING) << "Unable to generate Tablet Copy request for peer: "
-                                        << s.ToString();
+      LOG_WITH_PREFIX_UNLOCKED(WARNING)
+          << "Unable to generate Tablet Copy request for peer: "
+          << s.ToString();
       request_pending_ = false;
     }
     return;
@@ -355,7 +379,8 @@ void Peer::SendNextRequest(bool even_if_queue_empty, bool from_heartbeater) {
   request_.set_caller_uuid(leader_uuid_);
   request_.set_dest_uuid(peer_pb_.permanent_uuid());
 
-  bool req_has_ops = request_.ops_size() > 0 || (commit_index_after > commit_index_before);
+  bool req_has_ops =
+      request_.ops_size() > 0 || (commit_index_after > commit_index_before);
   // If the queue is empty, check if we were told to send a status-only
   // message, if not just return.
   if (PREDICT_FALSE(!req_has_ops && !even_if_queue_empty)) {
@@ -370,14 +395,14 @@ void Peer::SendNextRequest(bool even_if_queue_empty, bool from_heartbeater) {
 
   MAYBE_FAULT(FLAGS_fault_crash_on_leader_request_fraction);
 
-
-  VLOG_WITH_PREFIX_UNLOCKED(2) << "Sending to peer " << peer_pb().permanent_uuid() << ": "
+  VLOG_WITH_PREFIX_UNLOCKED(2)
+      << "Sending to peer " << peer_pb().permanent_uuid() << ": "
       << SecureShortDebugString(request_);
   controller_.Reset();
 
   l.unlock();
-  // Capture a shared_ptr reference into the RPC callback so that we're guaranteed
-  // that this object outlives the RPC.
+  // Capture a shared_ptr reference into the RPC callback so that we're
+  // guaranteed that this object outlives the RPC.
   shared_ptr<Peer> s_this = shared_from_this();
 
   // TODO: Refactor this code. Ideally all fields in 'request_' related to
@@ -394,10 +419,9 @@ void Peer::SendNextRequest(bool even_if_queue_empty, bool from_heartbeater) {
                                     << " not found in peer proxy pool";
   }
 
-  next_hop_proxy->UpdateAsync(&request_, &response_, &controller_,
-                              [s_this]() {
-                                s_this->ProcessResponse();
-                              });
+  next_hop_proxy->UpdateAsync(&request_, &response_, &controller_, [s_this]() {
+    s_this->ProcessResponse();
+  });
 }
 
 Status Peer::StartElection(
@@ -427,21 +451,22 @@ void Peer::ProcessResponse() {
   // Process RpcController errors.
   const auto controller_status = controller_.status();
   if (!controller_status.ok()) {
-    auto ps = controller_status.IsRemoteError() ?
-        PeerStatus::REMOTE_ERROR : PeerStatus::RPC_LAYER_ERROR;
+    auto ps = controller_status.IsRemoteError() ? PeerStatus::REMOTE_ERROR
+                                                : PeerStatus::RPC_LAYER_ERROR;
     queue_->UpdatePeerStatus(peer_pb_.permanent_uuid(), ps, controller_status);
     ProcessResponseError(controller_status);
     return;
   }
 
   // Process CANNOT_PREPARE.
-  // TODO(todd): there is no integration test coverage of this code path. Likely a bug in
-  // this path is responsible for KUDU-1779.
+  // TODO(todd): there is no integration test coverage of this code path. Likely
+  // a bug in this path is responsible for KUDU-1779.
   if (response_.status().has_error() &&
-      response_.status().error().code() == consensus::ConsensusErrorPB::CANNOT_PREPARE) {
+      response_.status().error().code() ==
+          consensus::ConsensusErrorPB::CANNOT_PREPARE) {
     Status response_status = StatusFromPB(response_.status().error().status());
-    queue_->UpdatePeerStatus(peer_pb_.permanent_uuid(), PeerStatus::CANNOT_PREPARE,
-                             response_status);
+    queue_->UpdatePeerStatus(
+        peer_pb_.permanent_uuid(), PeerStatus::CANNOT_PREPARE, response_status);
     ProcessResponseError(response_status);
     return;
   }
@@ -455,7 +480,8 @@ void Peer::ProcessResponse() {
     ServerErrorPB resp_error = response_.error();
     switch (response_.error().code()) {
       // We treat WRONG_SERVER_UUID as failed.
-      case ServerErrorPB::WRONG_SERVER_UUID: FALLTHROUGH_INTENDED;
+      case ServerErrorPB::WRONG_SERVER_UUID:
+        FALLTHROUGH_INTENDED;
 #ifdef FB_DO_NOT_REMOVE
       case TabletServerErrorPB::TABLET_FAILED:
         ps = PeerStatus::TABLET_FAILED;
@@ -484,22 +510,23 @@ void Peer::ProcessResponse() {
   Status s = raft_pool_token_->SubmitFunc([w_this]() {
     if (auto p = w_this.lock()) {
       p->DoProcessResponse();
-
     }
   });
   if (PREDICT_FALSE(!s.ok())) {
-    LOG_WITH_PREFIX_UNLOCKED(WARNING) << "Unable to process peer response: " << s.ToString()
-        << ": " << SecureShortDebugString(response_);
+    LOG_WITH_PREFIX_UNLOCKED(WARNING)
+        << "Unable to process peer response: " << s.ToString() << ": "
+        << SecureShortDebugString(response_);
     request_pending_ = false;
   }
 }
 
 void Peer::DoProcessResponse() {
-
-  VLOG_WITH_PREFIX_UNLOCKED(2) << "Response from peer " << peer_pb().permanent_uuid() << ": "
+  VLOG_WITH_PREFIX_UNLOCKED(2)
+      << "Response from peer " << peer_pb().permanent_uuid() << ": "
       << SecureShortDebugString(response_);
 
-  bool send_more_immediately = queue_->ResponseFromPeer(peer_pb_.permanent_uuid(), response_);
+  bool send_more_immediately =
+      queue_->ResponseFromPeer(peer_pb_.permanent_uuid(), response_);
 
   {
     std::unique_lock<simple_spinlock> lock(peer_lock_);
@@ -508,8 +535,8 @@ void Peer::DoProcessResponse() {
     request_pending_ = false;
   }
   // We're OK to read the state_ without a lock here -- if we get a race,
-  // the worst thing that could happen is that we'll make one more request before
-  // noticing a close.
+  // the worst thing that could happen is that we'll make one more request
+  // before noticing a close.
   if (send_more_immediately) {
     SendNextRequest(true);
   }
@@ -522,7 +549,8 @@ Status Peer::PrepareTabletCopyRequest() {
     return Status::NotSupported("Tablet Copy is disabled");
   }
 
-  RETURN_NOT_OK(queue_->GetTabletCopyRequestForPeer(peer_pb_.permanent_uuid(), &tc_request_));
+  RETURN_NOT_OK(queue_->GetTabletCopyRequestForPeer(
+      peer_pb_.permanent_uuid(), &tc_request_));
 
   return Status::OK();
 }
@@ -536,24 +564,28 @@ void Peer::ProcessTabletCopyResponse() {
   CHECK(request_pending_);
   request_pending_ = false;
 
-  // If the response is OK, or ALREADY_INPROGRESS, then consider the RPC successful.
+  // If the response is OK, or ALREADY_INPROGRESS, then consider the RPC
+  // successful.
   const auto controller_status = controller_.status();
-  bool success =
-    controller_status.ok() &&
-    (!tc_response_.has_error() ||
-     tc_response_.error().code() == TabletServerErrorPB::TabletServerErrorPB::ALREADY_INPROGRESS);
+  bool success = controller_status.ok() &&
+      (!tc_response_.has_error() ||
+       tc_response_.error().code() ==
+           TabletServerErrorPB::TabletServerErrorPB::ALREADY_INPROGRESS);
 
   if (success) {
     lock.unlock();
-    queue_->UpdatePeerStatus(peer_pb_.permanent_uuid(), PeerStatus::OK, Status::OK());
-  } else if (!tc_response_.has_error() ||
-              tc_response_.error().code() != TabletServerErrorPB::TabletServerErrorPB::THROTTLED) {
+    queue_->UpdatePeerStatus(
+        peer_pb_.permanent_uuid(), PeerStatus::OK, Status::OK());
+  } else if (
+      !tc_response_.has_error() ||
+      tc_response_.error().code() !=
+          TabletServerErrorPB::TabletServerErrorPB::THROTTLED) {
     // THROTTLED is a common response after a tserver with many replicas fails;
     // logging it would generate a great deal of log spam.
-    LOG_WITH_PREFIX_UNLOCKED(WARNING) << "Unable to start Tablet Copy on peer: "
-                                      << (controller_status.ok() ?
-                                          SecureShortDebugString(tc_response_) :
-                                          controller_status.ToString());
+    LOG_WITH_PREFIX_UNLOCKED(WARNING)
+        << "Unable to start Tablet Copy on peer: "
+        << (controller_status.ok() ? SecureShortDebugString(tc_response_)
+                                   : controller_status.ToString());
   }
 }
 #endif
@@ -563,16 +595,18 @@ void Peer::ProcessResponseError(const Status& status) {
 
 #ifdef FB_DO_NOT_REMOVE
   if (response_.has_error()) {
-    resp_err_info = Substitute(" Error code: $0 ($1).",
-                               TabletServerErrorPB::Code_Name(response_.error().code()),
-                               response_.error().code());
+    resp_err_info = Substitute(
+        " Error code: $0 ($1).",
+        TabletServerErrorPB::Code_Name(response_.error().code()),
+        response_.error().code());
   }
 #endif
 
   request_pending_ = false;
 
   if (status.IsIllegalState() &&
-      status.ToString().find("Previous Rotate Event with") != std::string::npos) {
+      status.ToString().find("Previous Rotate Event with") !=
+          std::string::npos) {
     // This is expected rotation delay. Do not log error and return early
     return;
   }
@@ -583,26 +617,31 @@ void Peer::ProcessResponseError(const Status& status) {
   KLOG_EVERY_N_SECS(WARNING, 300)
       << LogPrefixUnlocked() << "Couldn't send request to peer "
       << peer_pb_.permanent_uuid() << " for tablet " << tablet_id_ << "."
-      << resp_err_info
-      << " Status: " << status.ToString() << "."
+      << resp_err_info << " Status: " << status.ToString() << "."
       << " Retrying in the next heartbeat period."
       << " Already tried " << failed_attempts_ << " times.";
 }
 
 string Peer::LogPrefixUnlocked() const {
-  return Substitute("T $0 P $1 -> Peer $2 ($3:$4): ",
-                    tablet_id_, leader_uuid_, peer_pb_.permanent_uuid(),
-                    peer_pb_.last_known_addr().host(), peer_pb_.last_known_addr().port());
+  return Substitute(
+      "T $0 P $1 -> Peer $2 ($3:$4): ",
+      tablet_id_,
+      leader_uuid_,
+      peer_pb_.permanent_uuid(),
+      peer_pb_.last_known_addr().host(),
+      peer_pb_.last_known_addr().port());
 }
 
 void Peer::Close() {
   // If the peer is already closed return.
   {
     std::lock_guard<simple_spinlock> lock(peer_lock_);
-    if (closed_) return;
+    if (closed_)
+      return;
     closed_ = true;
   }
-  KLOG_EVERY_N(INFO, 5) << LogPrefixUnlocked() << "Closing peer [EVERY 5]: " << peer_pb_.permanent_uuid();
+  KLOG_EVERY_N(INFO, 5) << LogPrefixUnlocked() << "Closing peer [EVERY 5]: "
+                        << peer_pb_.permanent_uuid();
 
   queue_->UntrackPeer(peer_pb_.permanent_uuid());
 }
@@ -639,7 +678,8 @@ void PeerProxyPool::Clear() {
 
 template <class RespType>
 void CheckAndEnforceResponseToken(
-    const std::string& method_name, RespType* response,
+    const std::string& method_name,
+    RespType* response,
     boost::optional<std::string> rpc_token,
     const scoped_refptr<Counter>& mismatch_counter) {
   if (!rpc_token && !response->has_raft_rpc_token()) {
@@ -675,14 +715,15 @@ void CheckAndEnforceResponseToken(
   // We're rejecting the response, clear everything to prevent leaks
   response->Clear();
   ServerErrorPB* error = response->mutable_error();
-  StatusToPB(Status::NotAuthorized(std::move(error_message)),
-             error->mutable_status());
+  StatusToPB(
+      Status::NotAuthorized(std::move(error_message)), error->mutable_status());
   error->set_code(ServerErrorPB::RING_TOKEN_MISMATCH);
 }
 
-RpcPeerProxy::RpcPeerProxy(gscoped_ptr<HostPort> hostport,
-                           shared_ptr<ConsensusServiceProxy> consensus_proxy,
-                           scoped_refptr<Counter> num_rpc_token_mismatches)
+RpcPeerProxy::RpcPeerProxy(
+    gscoped_ptr<HostPort> hostport,
+    shared_ptr<ConsensusServiceProxy> consensus_proxy,
+    scoped_refptr<Counter> num_rpc_token_mismatches)
     : hostport_(std::move(hostport)),
       consensus_proxy_(std::move(consensus_proxy)),
       num_rpc_token_mismatches_(std::move(num_rpc_token_mismatches)) {
@@ -691,15 +732,17 @@ RpcPeerProxy::RpcPeerProxy(gscoped_ptr<HostPort> hostport,
   DCHECK(num_rpc_token_mismatches_ != nullptr);
 }
 
-void RpcPeerProxy::UpdateAsync(const ConsensusRequestPB* request,
-                               ConsensusResponsePB* response,
-                               rpc::RpcController* controller,
-                               const rpc::ResponseCallback& callback) {
-  controller->set_timeout(MonoDelta::FromMilliseconds(FLAGS_consensus_rpc_timeout_ms));
+void RpcPeerProxy::UpdateAsync(
+    const ConsensusRequestPB* request,
+    ConsensusResponsePB* response,
+    rpc::RpcController* controller,
+    const rpc::ResponseCallback& callback) {
+  controller->set_timeout(
+      MonoDelta::FromMilliseconds(FLAGS_consensus_rpc_timeout_ms));
 
   boost::optional<std::string> rpc_token = request->has_raft_rpc_token()
-                                               ? request->raft_rpc_token()
-                                               : boost::optional<std::string>();
+      ? request->raft_rpc_token()
+      : boost::optional<std::string>();
   consensus_proxy_->UpdateConsensusAsync(
       *request,
       response,
@@ -723,17 +766,19 @@ Status RpcPeerProxy::StartElection(
     const RunLeaderElectionRequestPB* request,
     RunLeaderElectionResponsePB* response,
     rpc::RpcController* controller) {
-  controller->set_timeout(MonoDelta::FromMilliseconds(FLAGS_consensus_rpc_timeout_ms));
+  controller->set_timeout(
+      MonoDelta::FromMilliseconds(FLAGS_consensus_rpc_timeout_ms));
   return consensus_proxy_->RunLeaderElection(*request, response, controller);
 }
 
-void RpcPeerProxy::RequestConsensusVoteAsync(const VoteRequestPB* request,
-                                             VoteResponsePB* response,
-                                             rpc::RpcController* controller,
-                                             const rpc::ResponseCallback& callback) {
+void RpcPeerProxy::RequestConsensusVoteAsync(
+    const VoteRequestPB* request,
+    VoteResponsePB* response,
+    rpc::RpcController* controller,
+    const rpc::ResponseCallback& callback) {
   boost::optional<std::string> rpc_token = request->has_raft_rpc_token()
-                                               ? request->raft_rpc_token()
-                                               : boost::optional<std::string>();
+      ? request->raft_rpc_token()
+      : boost::optional<std::string>();
   consensus_proxy_->RequestConsensusVoteAsync(
       *request,
       response,
@@ -755,12 +800,15 @@ void RpcPeerProxy::RequestConsensusVoteAsync(const VoteRequestPB* request,
 }
 
 #ifdef FB_DO_NOT_REMOVE
-void RpcPeerProxy::StartTabletCopyAsync(const StartTabletCopyRequestPB* request,
-                                        StartTabletCopyResponsePB* response,
-                                        rpc::RpcController* controller,
-                                        const rpc::ResponseCallback& callback) {
-  controller->set_timeout(MonoDelta::FromMilliseconds(FLAGS_consensus_rpc_timeout_ms));
-  consensus_proxy_->StartTabletCopyAsync(*request, response, controller, callback);
+void RpcPeerProxy::StartTabletCopyAsync(
+    const StartTabletCopyRequestPB* request,
+    StartTabletCopyResponsePB* response,
+    rpc::RpcController* controller,
+    const rpc::ResponseCallback& callback) {
+  controller->set_timeout(
+      MonoDelta::FromMilliseconds(FLAGS_consensus_rpc_timeout_ms));
+  consensus_proxy_->StartTabletCopyAsync(
+      *request, response, controller, callback);
 }
 #endif
 
@@ -770,17 +818,19 @@ string RpcPeerProxy::PeerName() const {
 
 namespace {
 
-Status CreateConsensusServiceProxyForHost(const shared_ptr<Messenger>& messenger,
-                                          const HostPort& hostport,
-                                          shared_ptr<ConsensusServiceProxy>* new_proxy) {
+Status CreateConsensusServiceProxyForHost(
+    const shared_ptr<Messenger>& messenger,
+    const HostPort& hostport,
+    shared_ptr<ConsensusServiceProxy>* new_proxy) {
   vector<Sockaddr> addrs;
   RETURN_NOT_OK(hostport.ResolveAddresses(&addrs));
   if (addrs.size() > 1) {
-    LOG(WARNING)<< "Peer address '" << hostport.ToString() << "' "
-    << "resolves to " << addrs.size() << " different addresses. Using "
-    << addrs[0].ToString();
+    LOG(WARNING) << "Peer address '" << hostport.ToString() << "' "
+                 << "resolves to " << addrs.size()
+                 << " different addresses. Using " << addrs[0].ToString();
   }
-  new_proxy->reset(new ConsensusServiceProxy(messenger, addrs[0], hostport.host()));
+  new_proxy->reset(
+      new ConsensusServiceProxy(messenger, addrs[0], hostport.host()));
   return Status::OK();
 }
 
@@ -793,26 +843,30 @@ RpcPeerProxyFactory::RpcPeerProxyFactory(
       num_rpc_token_mismatches_(metric_entity->FindOrCreateCounter(
           &METRIC_raft_rpc_token_num_response_mismatches)) {}
 
-Status RpcPeerProxyFactory::NewProxy(const RaftPeerPB& peer_pb,
-                                     shared_ptr<PeerProxy>* proxy) {
+Status RpcPeerProxyFactory::NewProxy(
+    const RaftPeerPB& peer_pb,
+    shared_ptr<PeerProxy>* proxy) {
   gscoped_ptr<HostPort> hostport(new HostPort);
   RETURN_NOT_OK(HostPortFromPB(peer_pb.last_known_addr(), hostport.get()));
   shared_ptr<ConsensusServiceProxy> new_proxy;
-  RETURN_NOT_OK(CreateConsensusServiceProxyForHost(messenger_, *hostport, &new_proxy));
-  proxy->reset(new RpcPeerProxy(std::move(hostport), std::move(new_proxy),
-                                num_rpc_token_mismatches_));
+  RETURN_NOT_OK(
+      CreateConsensusServiceProxyForHost(messenger_, *hostport, &new_proxy));
+  proxy->reset(new RpcPeerProxy(
+      std::move(hostport), std::move(new_proxy), num_rpc_token_mismatches_));
   return Status::OK();
 }
 
 RpcPeerProxyFactory::~RpcPeerProxyFactory() {}
 
-Status SetPermanentUuidForRemotePeer(const shared_ptr<Messenger>& messenger,
-                                     RaftPeerPB* remote_peer) {
+Status SetPermanentUuidForRemotePeer(
+    const shared_ptr<Messenger>& messenger,
+    RaftPeerPB* remote_peer) {
   DCHECK(!remote_peer->has_permanent_uuid());
   HostPort hostport;
   RETURN_NOT_OK(HostPortFromPB(remote_peer->last_known_addr(), &hostport));
   shared_ptr<ConsensusServiceProxy> proxy;
-  RETURN_NOT_OK(CreateConsensusServiceProxyForHost(messenger, hostport, &proxy));
+  RETURN_NOT_OK(
+      CreateConsensusServiceProxyForHost(messenger, hostport, &proxy));
   GetNodeInstanceRequestPB req;
   GetNodeInstanceResponsePB resp;
   rpc::RpcController controller;
@@ -824,7 +878,8 @@ Status SetPermanentUuidForRemotePeer(const shared_ptr<Messenger>& messenger,
       MonoDelta::FromMilliseconds(FLAGS_raft_get_node_instance_timeout_ms);
   int attempt = 1;
   while (true) {
-    VLOG(2) << "Getting uuid from remote peer. Request: " << SecureShortDebugString(req);
+    VLOG(2) << "Getting uuid from remote peer. Request: "
+            << SecureShortDebugString(req);
 
     controller.Reset();
     Status s = proxy->GetNodeInstance(req, &resp, &controller);
@@ -835,23 +890,30 @@ Status SetPermanentUuidForRemotePeer(const shared_ptr<Messenger>& messenger,
       s = controller.status();
     }
 
-    LOG(WARNING) << "Error getting permanent uuid from config peer " << hostport.ToString() << ": "
-                 << s.ToString();
+    LOG(WARNING) << "Error getting permanent uuid from config peer "
+                 << hostport.ToString() << ": " << s.ToString();
     MonoTime now = MonoTime::Now();
     if (now < deadline) {
       int64_t remaining_ms = (deadline - now).ToMilliseconds();
-      int64_t base_delay_ms = 1LL << (attempt + 3); // 1st retry delayed 2^4 ms, 2nd 2^5, etc..
-      int64_t jitter_ms = rand() % 50; // Add up to 50ms of additional random delay.
-      int64_t delay_ms = std::min<int64_t>(base_delay_ms + jitter_ms, remaining_ms);
-      VLOG(1) << "Sleeping " << delay_ms << " ms. before retrying to get uuid from remote peer...";
+      int64_t base_delay_ms = 1LL
+          << (attempt + 3); // 1st retry delayed 2^4 ms, 2nd 2^5, etc..
+      int64_t jitter_ms =
+          rand() % 50; // Add up to 50ms of additional random delay.
+      int64_t delay_ms =
+          std::min<int64_t>(base_delay_ms + jitter_ms, remaining_ms);
+      VLOG(1) << "Sleeping " << delay_ms
+              << " ms. before retrying to get uuid from remote peer...";
       SleepFor(MonoDelta::FromMilliseconds(delay_ms));
       LOG(INFO) << "Retrying to get permanent uuid for remote peer: "
-          << SecureShortDebugString(*remote_peer) << " attempt: " << attempt++;
+                << SecureShortDebugString(*remote_peer)
+                << " attempt: " << attempt++;
     } else {
-      s = Status::TimedOut(Substitute("Getting permanent uuid from $0 timed out after $1 ms.",
-                                      hostport.ToString(),
-                                      FLAGS_raft_get_node_instance_timeout_ms),
-                           s.ToString());
+      s = Status::TimedOut(
+          Substitute(
+              "Getting permanent uuid from $0 timed out after $1 ms.",
+              hostport.ToString(),
+              FLAGS_raft_get_node_instance_timeout_ms),
+          s.ToString());
       return s;
     }
   }
@@ -859,5 +921,5 @@ Status SetPermanentUuidForRemotePeer(const shared_ptr<Messenger>& messenger,
   return Status::OK();
 }
 
-}  // namespace consensus
-}  // namespace kudu
+} // namespace consensus
+} // namespace kudu

@@ -26,12 +26,12 @@ namespace kudu {
 namespace security {
 
 std::array<StringPiece, 3> SplitKerberosPrincipal(StringPiece principal) {
-
-  std::pair<StringPiece, StringPiece> user_realm = strings::Split(principal, "@");
-  std::pair<StringPiece, StringPiece> princ_host = strings::Split(user_realm.first, "/");
+  std::pair<StringPiece, StringPiece> user_realm =
+      strings::Split(principal, "@");
+  std::pair<StringPiece, StringPiece> princ_host =
+      strings::Split(user_realm.first, "/");
   return {{princ_host.first, princ_host.second, user_realm.second}};
 }
-
 
 } // namespace security
 } // namespace kudu

@@ -22,8 +22,8 @@
 
 #include "kudu/util/debug/leakcheck_disabler.h"
 #include "kudu/util/thread.h"
-#include "kudu/util/threadlocal.h"
 #include "kudu/util/thread_restrictions.h"
+#include "kudu/util/threadlocal.h"
 
 #ifdef ENABLE_THREAD_RESTRICTIONS
 
@@ -33,10 +33,7 @@ namespace {
 
 struct LocalThreadRestrictions {
   LocalThreadRestrictions()
-    : io_allowed(true),
-      wait_allowed(true),
-      singleton_allowed(true) {
-  }
+      : io_allowed(true), wait_allowed(true), singleton_allowed(true) {}
 
   bool io_allowed;
   bool wait_allowed;
@@ -61,12 +58,13 @@ bool ThreadRestrictions::SetIOAllowed(bool allowed) {
 
 void ThreadRestrictions::AssertIOAllowed() {
   CHECK(LoadTLS()->io_allowed)
-    << "Function marked as IO-only was called from a thread that "
-    << "disallows IO!  If this thread really should be allowed to "
-    << "make IO calls, adjust the call to "
-    << "kudu::ThreadRestrictions::SetIOAllowed() in this thread's "
-    << "startup. "
-    << (Thread::current_thread() ? Thread::current_thread()->ToString() : "(not a kudu::Thread)");
+      << "Function marked as IO-only was called from a thread that "
+      << "disallows IO!  If this thread really should be allowed to "
+      << "make IO calls, adjust the call to "
+      << "kudu::ThreadRestrictions::SetIOAllowed() in this thread's "
+      << "startup. "
+      << (Thread::current_thread() ? Thread::current_thread()->ToString()
+                                   : "(not a kudu::Thread)");
 }
 
 bool ThreadRestrictions::SetWaitAllowed(bool allowed) {
@@ -77,9 +75,10 @@ bool ThreadRestrictions::SetWaitAllowed(bool allowed) {
 
 void ThreadRestrictions::AssertWaitAllowed() {
   CHECK(LoadTLS()->wait_allowed)
-    << "Waiting is not allowed to be used on this thread to prevent "
-    << "server-wide latency aberrations and deadlocks. "
-    << (Thread::current_thread() ? Thread::current_thread()->ToString() : "(not a kudu::Thread)");
+      << "Waiting is not allowed to be used on this thread to prevent "
+      << "server-wide latency aberrations and deadlocks. "
+      << (Thread::current_thread() ? Thread::current_thread()->ToString()
+                                   : "(not a kudu::Thread)");
 }
 
 } // namespace kudu

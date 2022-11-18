@@ -56,11 +56,19 @@ class HostPort {
 
   std::string ToString() const;
 
-  const std::string& host() const { return host_; }
-  void set_host(const std::string& host) { host_ = host; }
+  const std::string& host() const {
+    return host_;
+  }
+  void set_host(const std::string& host) {
+    host_ = host;
+  }
 
-  uint16_t port() const { return port_; }
-  void set_port(uint16_t port) { port_ = port; }
+  uint16_t port() const {
+    return port_;
+  }
+  void set_port(uint16_t port) {
+    port_ = port;
+  }
 
   size_t HashCode() const;
 
@@ -69,12 +77,15 @@ class HostPort {
   // comma separated list, 'default_port' is used for that entry's
   // pair.
   static Status ParseStrings(
-      const std::string& comma_sep_addrs, uint16_t default_port, std::vector<HostPort>* res);
+      const std::string& comma_sep_addrs,
+      uint16_t default_port,
+      std::vector<HostPort>* res);
 
   // Takes a vector of HostPort objects and returns a comma separated
   // string containing of "host:port" pairs. This method is the
   // "inverse" of ParseStrings().
-  static std::string ToCommaSeparatedString(const std::vector<HostPort>& host_ports);
+  static std::string ToCommaSeparatedString(
+      const std::vector<HostPort>& host_ports);
 
  private:
   std::string host_;
@@ -90,7 +101,8 @@ struct HostPortHasher {
   }
 };
 
-// Equality BinaryPredicate of HostPort objects for UnorderedAssociativeContainers.
+// Equality BinaryPredicate of HostPort objects for
+// UnorderedAssociativeContainers.
 struct HostPortEqualityPredicate {
   bool operator()(const HostPort& hp1, const HostPort& hp2) const {
     return hp1 == hp2;
@@ -105,9 +117,13 @@ class Network {
   Network();
   Network(uint128 addr, uint128 netmask);
 
-  uint128 addr() const { return addr_; }
+  uint128 addr() const {
+    return addr_;
+  }
 
-  uint128 netmask() const { return netmask_; }
+  uint128 netmask() const {
+    return netmask_;
+  }
 
   // Returns true if the address is within network.
   bool WithinNetwork(const Sockaddr& addr) const;
@@ -118,7 +134,9 @@ class Network {
   // Parses a comma separated list of "addr/netmask" (CIDR notation)
   // pairs into a vector of Network objects.
   static Status ParseCIDRStrings(
-      const std::string& comma_sep_addrs, std::vector<Network>* res);
+      const std::string& comma_sep_addrs,
+      std::vector<Network>* res);
+
  private:
   uint128 addr_;
   uint128 netmask_;
@@ -130,9 +148,10 @@ class Network {
 // the 'addresses' vector.
 //
 // Any elements which do not include a port will be assigned 'default_port'.
-Status ParseAddressList(const std::string& addr_list,
-                        uint16_t default_port,
-                        std::vector<Sockaddr>* addresses);
+Status ParseAddressList(
+    const std::string& addr_list,
+    uint16_t default_port,
+    std::vector<Sockaddr>* addresses);
 
 // Return true if the given port is likely to need root privileges to bind to.
 bool IsPrivilegedPort(uint16_t port);

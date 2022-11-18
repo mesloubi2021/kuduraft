@@ -29,8 +29,7 @@ namespace rpc {
 const RequestTracker::SequenceNumber RequestTracker::kNoSeqNo = -1;
 
 RequestTracker::RequestTracker(std::string client_id)
-    : client_id_(std::move(client_id)),
-      next_(0) {}
+    : client_id_(std::move(client_id)), next_(0) {}
 
 Status RequestTracker::NewSeqNo(SequenceNumber* seq_no) {
   std::lock_guard<simple_spinlock> l(lock_);
@@ -42,7 +41,8 @@ Status RequestTracker::NewSeqNo(SequenceNumber* seq_no) {
 
 RequestTracker::SequenceNumber RequestTracker::FirstIncomplete() {
   std::lock_guard<simple_spinlock> l(lock_);
-  if (incomplete_rpcs_.empty()) return kNoSeqNo;
+  if (incomplete_rpcs_.empty())
+    return kNoSeqNo;
   return *incomplete_rpcs_.begin();
 }
 

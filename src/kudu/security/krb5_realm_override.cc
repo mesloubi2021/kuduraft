@@ -15,17 +15,17 @@
 // specific language governing permissions and limitations
 // under the License.
 
-// This file provides a workaround for tests running with Kerberos 1.11 or earlier.
-// These versions of Kerberos are missing a fix which allows service principals
-// to use IP addresses in their host component:
+// This file provides a workaround for tests running with Kerberos 1.11 or
+// earlier. These versions of Kerberos are missing a fix which allows service
+// principals to use IP addresses in their host component:
 //
 //   http://krbdev.mit.edu/rt/Ticket/Display.html?id=7603
 //
-// We use such principals in external minicluster tests, where servers have IP addresses
-// like 127.x.y.z that have no corresponding reverse DNS.
+// We use such principals in external minicluster tests, where servers have IP
+// addresses like 127.x.y.z that have no corresponding reverse DNS.
 //
-// The file contains an implementation of krb5_get_host_realm which wraps the one
-// in the Kerberos library. It detects the return code that indicates the
+// The file contains an implementation of krb5_get_host_realm which wraps the
+// one in the Kerberos library. It detects the return code that indicates the
 // above problem and falls back to the default realm/
 //
 // The wrapper is injected via linking it into tests as well as the
@@ -39,14 +39,14 @@
 #include <cstdlib>
 #include <cstring>
 
-#include <krb5/krb5.h>
 #include <glog/logging.h>
+#include <krb5/krb5.h>
 
 extern "C" {
 
-// This symbol is exported from the static library so that other static-linked binaries
-// can reference it and force this compilation unit to be linked. Otherwise the linker
-// thinks it's unused and doesn't link it.
+// This symbol is exported from the static library so that other static-linked
+// binaries can reference it and force this compilation unit to be linked.
+// Otherwise the linker thinks it's unused and doesn't link it.
 int krb5_realm_override_loaded = 1;
 
 // Save the original function from the Kerberos library itself.
@@ -60,16 +60,16 @@ static void* g_orig_krb5_free_default_realm;
 constexpr static const char* kEnvVar = "KUDU_ENABLE_KRB5_REALM_FIX";
 
 #define CALL_ORIG(func_name, ...) \
-  ((decltype(&func_name))g_orig_ ## func_name)(__VA_ARGS__)
+  ((decltype(&func_name))g_orig_##func_name)(__VA_ARGS__)
 
-__attribute__((constructor))
-static void init_orig_func() {
+__attribute__((constructor)) static void init_orig_func() {
   g_orig_krb5_get_host_realm = dlsym(RTLD_NEXT, "krb5_get_host_realm");
   g_orig_krb5_get_default_realm = dlsym(RTLD_NEXT, "krb5_get_default_realm");
   g_orig_krb5_free_default_realm = dlsym(RTLD_NEXT, "krb5_free_default_realm");
 }
 
-krb5_error_code krb5_get_host_realm(krb5_context context, const char* host, char*** realmsp) {
+krb5_error_code
+krb5_get_host_realm(krb5_context context, const char* host, char*** realmsp) {
   CHECK(g_orig_krb5_get_host_realm);
   CHECK(g_orig_krb5_get_default_realm);
   CHECK(g_orig_krb5_free_default_realm);
@@ -89,7 +89,8 @@ krb5_error_code krb5_get_host_realm(krb5_context context, const char* host, char
 
   char** ret_realms;
   ret_realms = static_cast<char**>(malloc(2 * sizeof(*ret_realms)));
-  if (ret_realms == nullptr) return ENOMEM;
+  if (ret_realms == nullptr)
+    return ENOMEM;
   ret_realms[0] = strdup(default_realm);
   if (ret_realms[0] == nullptr) {
     free(ret_realms);

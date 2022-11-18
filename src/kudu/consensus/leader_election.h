@@ -96,7 +96,8 @@ class VoteCounter {
   // Otherwise, it is set to false.
   // If an OK status is not returned, the value in 'is_duplicate' is undefined.
   virtual Status RegisterVote(
-      const std::string& voter_uuid, const VoteInfo& vote_info,
+      const std::string& voter_uuid,
+      const VoteInfo& vote_info,
       bool* is_duplicate);
 
   // Return whether the vote is decided yet.
@@ -112,7 +113,9 @@ class VoteCounter {
   int GetTotalVotesCounted() const;
 
   // Return total number of expected votes.
-  int GetTotalExpectedVotes() const { return num_voters_; }
+  int GetTotalExpectedVotes() const {
+    return num_voters_;
+  }
 
   // Return true iff GetTotalVotesCounted() == num_voters_;
   bool AreAllVotesIn() const;
@@ -132,7 +135,7 @@ class VoteCounter {
 
   const int majority_size_;
   int yes_votes_; // Accumulated yes votes, for quick counting.
-  int no_votes_;  // Accumulated no votes.
+  int no_votes_; // Accumulated no votes.
   DISALLOW_COPY_AND_ASSIGN(VoteCounter);
 };
 
@@ -150,10 +153,12 @@ class FlexibleVoteCounter : public VoteCounter {
   // class doesn't need to take care of thread safety of its book-keeping
   // variables.
   Status RegisterVote(
-      const std::string& voter_uuid, const VoteInfo& vote,
+      const std::string& voter_uuid,
+      const VoteInfo& vote,
       bool* is_duplicate) override;
   bool IsDecided() const override;
   Status GetDecision(ElectionVote* decision) const override;
+
  private:
   friend class FlexibleVoteCounterTest;
 
@@ -162,7 +167,7 @@ class FlexibleVoteCounter : public VoteCounter {
 
   // Mapping from region to set of voter UUIDs that have responded in that
   // region.
-  typedef std::map<std::string, std::set<std::string> > RegionToVoterSet;
+  typedef std::map<std::string, std::set<std::string>> RegionToVoterSet;
 
   // UUID and term pair for which a vote was given.
   typedef std::pair<std::string, int64_t> UUIDTermPair;
@@ -181,14 +186,14 @@ class FlexibleVoteCounter : public VoteCounter {
   // Populates the number of servers per region that have pruned voting
   // history beyond `term`.
   void FetchRegionalPrunedCounts(
-    int64_t term,
-    std::map<std::string, int32_t>* region_pruned_counts) const;
+      int64_t term,
+      std::map<std::string, int32_t>* region_pruned_counts) const;
 
   // Populates the number of servers per region that have not pruned voting
   // history beyond `term`.
   void FetchRegionalUnprunedCounts(
-    int64_t term,
-    std::map<std::string, int32_t>* region_unpruned_counts) const;
+      int64_t term,
+      std::map<std::string, int32_t>* region_unpruned_counts) const;
 
   // Fetch the region corresponding to server UUID. Returns an empty string
   // if UUID is not found. This could happen during a configuration change,
@@ -199,7 +204,7 @@ class FlexibleVoteCounter : public VoteCounter {
   // representing:
   // 1. if the quorum is satisfied in the current state
   // 2. if the quorum can still be satisfied in the current state
-  std::vector<std::pair<bool, bool> > IsMajoritySatisfiedInRegions(
+  std::vector<std::pair<bool, bool>> IsMajoritySatisfiedInRegions(
       const std::vector<std::string>& regions) const;
 
   // Given a set of regions, returns a pair of booleans:
@@ -220,9 +225,9 @@ class FlexibleVoteCounter : public VoteCounter {
   std::pair<bool, bool> IsMajoritySatisfiedInMajorityOfRegions() const;
 
   // Checks all majorities that need to be satisfied according to gflags
-  std::pair<bool, bool>
-  AreMajoritiesSatisfied(const std::set<std::string>& last_known_leader_regions,
-                         const std::string& candidate_region) const;
+  std::pair<bool, bool> AreMajoritiesSatisfied(
+      const std::set<std::string>& last_known_leader_regions,
+      const std::string& candidate_region) const;
 
   // For the static modes (STATIC_DISJUNCTION & STATIC_CONJUNCTION), return
   // a pair of booleans representing:
@@ -248,15 +253,15 @@ class FlexibleVoteCounter : public VoteCounter {
   // have pruned their voting histories beyond the last known leader's
   // election term.
   std::pair<bool, bool> DoHistoricalVotesSatisfyMajorityInRegion(
-      const std::string& region, int32_t vote_count,
+      const std::string& region,
+      int32_t vote_count,
       int32_t pruned_count) const;
 
   // Given the `region_to_voter_set` for specific candidate in a historical
   // term, this function returns if the historical votes amount to a majority
   // in majority of the regions. The `region_pruned_counts` represents number
   // of servers per region which have pruned voting history.
-  std::pair<bool, bool>
-  DoHistoricalVotesSatisfyMajorityInMajorityOfRegions(
+  std::pair<bool, bool> DoHistoricalVotesSatisfyMajorityInMajorityOfRegions(
       const RegionToVoterSet& region_to_voter_set,
       const std::map<std::string, int32_t>& region_pruned_counts) const;
 
@@ -266,8 +271,7 @@ class FlexibleVoteCounter : public VoteCounter {
 
   // Crowdsource last known leader regions from the votes that have been
   // received so far. This is used as an optimization.
-  void CrowdsourceLastKnownLeader(
-      LastKnownLeaderPB* last_known_leader) const;
+  void CrowdsourceLastKnownLeader(LastKnownLeaderPB* last_known_leader) const;
 
   // Extends the `next_leader_regions` set to include the regions of the UUIDs
   // in `next_leader_uuids`. Returns an error status if the UUID does not
@@ -292,7 +296,8 @@ class FlexibleVoteCounter : public VoteCounter {
   // potential leader region and if the majority has prior voting history
   // available. Returns true if both conditions are met and false otherwise.
   bool EnoughVotesWithSufficientHistories(
-    int64_t term, const std::set<std::string>& leader_regions) const;
+      int64_t term,
+      const std::set<std::string>& leader_regions) const;
 
   // Helper function to go over all the `leader_regions` and see if the
   // `region_to_voter_set` representing the historical votes that a
@@ -301,24 +306,26 @@ class FlexibleVoteCounter : public VoteCounter {
   // `potential_leader_uuids` to include `candidate_uuid` if it could have won
   // an election in the past.
   void AppendPotentialLeaderUUID(
-    const std::string& candidate_uuid,
-    const std::set<std::string>& leader_regions,
-    const RegionToVoterSet& region_to_voter_set,
-    const std::map<std::string, int32_t>& region_pruned_counts,
-    std::set<std::string>* potential_leader_uuids) const;
+      const std::string& candidate_uuid,
+      const std::set<std::string>& leader_regions,
+      const RegionToVoterSet& region_to_voter_set,
+      const std::map<std::string, int32_t>& region_pruned_counts,
+      std::set<std::string>* potential_leader_uuids) const;
 
   // Optimizer function which tries to recursively figure out the next leader
-  // regions since the last term provided and the potential set of leaders regions
-  // in that term. It returns the set of potential leader regions and the next term
-  // to consider. It is possible that the next possible leader regions cannot be
-  // determined in which case, the situation is reflected in the status.
+  // regions since the last term provided and the potential set of leaders
+  // regions in that term. It returns the set of potential leader regions and
+  // the next term to consider. It is possible that the next possible leader
+  // regions cannot be determined in which case, the situation is reflected in
+  // the status.
   PotentialNextLeadersResponse GetPotentialNextLeaders(
-      int64_t term, const std::set<std::string>& leader_regions) const;
+      int64_t term,
+      const std::set<std::string>& leader_regions) const;
 
-  // Given information about the last known leader, this helper function utilizes
-  // the voting histories sent by the voters to determine the outcome of the
-  // leader election. History is used to determine a list of regions which could
-  // potentially have the current leader.
+  // Given information about the last known leader, this helper function
+  // utilizes the voting histories sent by the voters to determine the outcome
+  // of the leader election. History is used to determine a list of regions
+  // which could potentially have the current leader.
   std::pair<bool, bool> ComputeElectionResultFromVotingHistory(
       const LastKnownLeaderPB& last_known_leader,
       const std::string& last_known_leader_region,
@@ -375,9 +382,12 @@ class FlexibleVoteCounter : public VoteCounter {
 // The result of a leader election.
 struct ElectionResult {
  public:
-  ElectionResult(VoteRequestPB vote_request, ElectionVote decision,
-                 ConsensusTerm highest_term, const std::string& message,
-                 bool is_candidate_removed);
+  ElectionResult(
+      VoteRequestPB vote_request,
+      ElectionVote decision,
+      ConsensusTerm highest_term,
+      const std::string& message,
+      bool is_candidate_removed);
 
   // The vote request that was sent to the voters for this election.
   const VoteRequestPB vote_request;
@@ -429,13 +439,14 @@ class LeaderElection : public RefCountedThreadSafe<LeaderElection> {
   // 'proxy_factory' must not go out of scope while LeaderElection is alive.
   //
   // The 'vote_counter' must be initialized with the candidate's own yes vote.
-  LeaderElection(RaftConfigPB config,
-                 PeerProxyFactory* proxy_factory,
-                 VoteRequestPB request,
-                 gscoped_ptr<VoteCounter> vote_counter,
-                 MonoDelta timeout,
-                 ElectionDecisionCallback decision_callback,
-                 std::shared_ptr<VoteLoggerInterface> vote_logger);
+  LeaderElection(
+      RaftConfigPB config,
+      PeerProxyFactory* proxy_factory,
+      VoteRequestPB request,
+      gscoped_ptr<VoteCounter> vote_counter,
+      MonoDelta timeout,
+      ElectionDecisionCallback decision_callback,
+      std::shared_ptr<VoteLoggerInterface> vote_logger);
 
   // Run the election: send the vote request to followers.
   void Run();
@@ -472,8 +483,7 @@ class LeaderElection : public RefCountedThreadSafe<LeaderElection> {
   void VoteResponseRpcCallback(const std::string& voter_uuid);
 
   // Record vote from specified peer.
-  void RecordVoteUnlocked(
-    const VoterState& state, ElectionVote vote);
+  void RecordVoteUnlocked(const VoterState& state, ElectionVote vote);
 
   // Handle a peer that reponded with a term greater than the election term.
   void HandleHigherTermUnlocked(const VoterState& state);
@@ -489,7 +499,9 @@ class LeaderElection : public RefCountedThreadSafe<LeaderElection> {
   std::string LogPrefix() const;
 
   // Helper to reference the term we are running the election for.
-  ConsensusTerm election_term() const { return request_.candidate_term(); }
+  ConsensusTerm election_term() const {
+    return request_.candidate_term();
+  }
 
   // All non-const fields are protected by 'lock_'.
   Lock lock_;
@@ -532,12 +544,14 @@ class LeaderElection : public RefCountedThreadSafe<LeaderElection> {
 };
 
 class VoteLoggerInterface {
-  public:
-    virtual ~VoteLoggerInterface() {};
-    virtual void logElectionStarted(const VoteRequestPB& voteRequest, const RaftConfigPB& config) = 0;
-    virtual void logVoteReceived(const VoteResponsePB& voteResponse) = 0;
-    virtual void logElectionDecided(const ElectionResult& electionResult) = 0;
-    virtual void advanceEpoch(int64_t epoch) = 0;
+ public:
+  virtual ~VoteLoggerInterface(){};
+  virtual void logElectionStarted(
+      const VoteRequestPB& voteRequest,
+      const RaftConfigPB& config) = 0;
+  virtual void logVoteReceived(const VoteResponsePB& voteResponse) = 0;
+  virtual void logElectionDecided(const ElectionResult& electionResult) = 0;
+  virtual void advanceEpoch(int64_t epoch) = 0;
 };
 
 } // namespace consensus

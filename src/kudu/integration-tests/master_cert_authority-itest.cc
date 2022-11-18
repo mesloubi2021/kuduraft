@@ -77,7 +77,6 @@ using std::string;
 using std::vector;
 using strings::Substitute;
 
-
 namespace kudu {
 namespace master {
 
@@ -135,9 +134,10 @@ class MasterCertAuthorityTest : public KuduTest {
 
     // Information on the replica management scheme.
     ReplicaManagementInfoPB rmi;
-    rmi.set_replacement_scheme(FLAGS_raft_prepare_replacement_before_eviction
-        ? ReplicaManagementInfoPB::PREPARE_REPLACEMENT_BEFORE_EVICTION
-        : ReplicaManagementInfoPB::EVICT_FIRST);
+    rmi.set_replacement_scheme(
+        FLAGS_raft_prepare_replacement_before_eviction
+            ? ReplicaManagementInfoPB::PREPARE_REPLACEMENT_BEFORE_EVICTION
+            : ReplicaManagementInfoPB::EVICT_FIRST);
 
     for (int i = 0; i < cluster_->num_masters(); ++i) {
       TSHeartbeatRequestPB req;
@@ -152,7 +152,8 @@ class MasterCertAuthorityTest : public KuduTest {
       if (!m->is_started()) {
         continue;
       }
-      MasterServiceProxy proxy(messenger_, m->bound_rpc_addr(), m->bound_rpc_addr().host());
+      MasterServiceProxy proxy(
+          messenger_, m->bound_rpc_addr(), m->bound_rpc_addr().host());
 
       // All masters (including followers) should accept the heartbeat.
       ASSERT_OK(proxy.TSHeartbeat(req, &resp, &rpc));
@@ -161,9 +162,10 @@ class MasterCertAuthorityTest : public KuduTest {
     }
   }
 
-  Status SendCertSignRequestHBs(const string& csr_str,
-                                bool* has_signed_certificate,
-                                string* signed_certificate) {
+  Status SendCertSignRequestHBs(
+      const string& csr_str,
+      bool* has_signed_certificate,
+      string* signed_certificate) {
     TSToMasterCommonPB common;
     common.mutable_ts_instance()->set_permanent_uuid(kFakeTsUUID);
     common.mutable_ts_instance()->set_instance_seqno(1);
@@ -182,13 +184,15 @@ class MasterCertAuthorityTest : public KuduTest {
       if (!m->is_started()) {
         continue;
       }
-      MasterServiceProxy proxy(messenger_, m->bound_rpc_addr(), m->bound_rpc_addr().host());
+      MasterServiceProxy proxy(
+          messenger_, m->bound_rpc_addr(), m->bound_rpc_addr().host());
 
       // All masters (including followers) should accept the heartbeat.
       RETURN_NOT_OK(proxy.TSHeartbeat(req, &resp, &rpc));
       SCOPED_TRACE(pb_util::SecureDebugString(resp));
       if (resp.has_error()) {
-        return Status::RuntimeError("RPC error", resp.error().ShortDebugString());
+        return Status::RuntimeError(
+            "RPC error", resp.error().ShortDebugString());
       }
 
       // Only the leader sends back the signed server certificate.
@@ -197,7 +201,8 @@ class MasterCertAuthorityTest : public KuduTest {
         ts_cert_str = resp.signed_cert_der();
       } else {
         if (resp.has_signed_cert_der()) {
-          return Status::RuntimeError("unexpected cert returned from non-leader");
+          return Status::RuntimeError(
+              "unexpected cert returned from non-leader");
         }
       }
     }
@@ -256,9 +261,9 @@ TEST_F(MasterCertAuthorityTest, CertAuthorityOnLeaderRoleSwitch) {
   EXPECT_EQ(ref_cert_str, new_leader_cert_str);
 }
 
-
-void GenerateCSR(const CertRequestGenerator::Config& gen_config,
-                 string* csr_str) {
+void GenerateCSR(
+    const CertRequestGenerator::Config& gen_config,
+    string* csr_str) {
   PrivateKey key;
   ASSERT_OK(security::GeneratePrivateKey(512, &key));
   CertRequestGenerator gen(gen_config);
@@ -282,10 +287,11 @@ TEST_F(MasterCertAuthorityTest, RefuseToSignInvalidCSR) {
     string ts_cert_str;
     bool has_ts_cert = false;
     Status s = SendCertSignRequestHBs(csr_str, &has_ts_cert, &ts_cert_str);
-    ASSERT_STR_MATCHES(s.ToString(),
-                       "Remote error: Not authorized: invalid CSR: CSR did not "
-                       "contain expected username. "
-                       "\\(CSR: 'joe-impostor' RPC: '.*'\\)");
+    ASSERT_STR_MATCHES(
+        s.ToString(),
+        "Remote error: Not authorized: invalid CSR: CSR did not "
+        "contain expected username. "
+        "\\(CSR: 'joe-impostor' RPC: '.*'\\)");
   }
 }
 
@@ -356,11 +362,11 @@ namespace client {
 
 class ConnectToClusterBaseTest : public KuduTest {
  public:
-  ConnectToClusterBaseTest(int run_time_seconds,
-                           int latency_ms,
-                           int num_masters)
-      : run_time_seconds_(run_time_seconds),
-        latency_ms_(latency_ms) {
+  ConnectToClusterBaseTest(
+      int run_time_seconds,
+      int latency_ms,
+      int num_masters)
+      : run_time_seconds_(run_time_seconds), latency_ms_(latency_ms) {
     cluster_opts_.num_masters = num_masters;
   }
 
@@ -376,26 +382,30 @@ class ConnectToClusterBaseTest : public KuduTest {
     builder.default_rpc_timeout(timeout);
     client::sp::shared_ptr<KuduClient> client;
     ASSERT_OK(cluster_->CreateClient(&builder, &client));
-    ASSERT_EQ(1, client->data_->messenger_-> tls_context().trusted_cert_count_for_tests());
+    ASSERT_EQ(
+        1,
+        client->data_->messenger_->tls_context()
+            .trusted_cert_count_for_tests());
     ASSERT_NE(boost::none, client->data_->messenger_->authn_token());
   }
 
   void Run() {
-    const MonoTime t_stop = MonoTime::Now() + MonoDelta::FromSeconds(run_time_seconds_);
+    const MonoTime t_stop =
+        MonoTime::Now() + MonoDelta::FromSeconds(run_time_seconds_);
     CountDownLatch stop_latch(1);
-    std::thread clear_latency_thread([&]{
+    std::thread clear_latency_thread([&] {
       // Allow the test client to connect to the cluster (avoid timing out).
-      const MonoTime clear_latency = t_stop -
-          MonoDelta::FromMilliseconds(1000L * run_time_seconds_ / 4);
+      const MonoTime clear_latency =
+          t_stop - MonoDelta::FromMilliseconds(1000L * run_time_seconds_ / 4);
       stop_latch.WaitUntil(clear_latency);
       for (auto i = 0; i < cluster_->num_masters(); ++i) {
-        CHECK_OK(cluster_->SetFlag(cluster_->master(i),
-            "catalog_manager_inject_latency_load_ca_info_ms", "0"));
+        CHECK_OK(cluster_->SetFlag(
+            cluster_->master(i),
+            "catalog_manager_inject_latency_load_ca_info_ms",
+            "0"));
       }
     });
-    SCOPED_CLEANUP({
-      clear_latency_thread.join();
-    });
+    SCOPED_CLEANUP({ clear_latency_thread.join(); });
     while (MonoTime::Now() < t_stop) {
       NO_FATALS(ConnectToCluster());
     }
@@ -420,8 +430,7 @@ class ConnectToClusterBaseTest : public KuduTest {
 // the client must have Kudu IPKI CA certificate and authn token.
 class SingleMasterConnectToClusterTest : public ConnectToClusterBaseTest {
  public:
-  SingleMasterConnectToClusterTest()
-      : ConnectToClusterBaseTest(5, 2500, 1) {
+  SingleMasterConnectToClusterTest() : ConnectToClusterBaseTest(5, 2500, 1) {
     // Add master-only flags.
     cluster_opts_.extra_master_flags.push_back(Substitute(
         "--catalog_manager_inject_latency_load_ca_info_ms=$0", latency_ms_));
@@ -439,19 +448,22 @@ class SingleMasterConnectToClusterTest : public ConnectToClusterBaseTest {
 // the client must have Kudu IPKI CA certificate and authn token.
 class MultiMasterConnectToClusterTest : public ConnectToClusterBaseTest {
  public:
-  MultiMasterConnectToClusterTest()
-      : ConnectToClusterBaseTest(120, 2000, 3) {
+  MultiMasterConnectToClusterTest() : ConnectToClusterBaseTest(120, 2000, 3) {
     constexpr int kHbIntervalMs = 100;
     // Add master-only flags.
     const vector<string> master_flags = {
-      Substitute("--catalog_manager_inject_latency_load_ca_info_ms=$0", latency_ms_),
-      "--raft_enable_pre_election=false",
-      Substitute("--leader_failure_exp_backoff_max_delta_ms=$0", kHbIntervalMs * 3),
-      "--leader_failure_max_missed_heartbeat_periods=1.0",
-      Substitute("--raft_heartbeat_interval_ms=$0", kHbIntervalMs),
+        Substitute(
+            "--catalog_manager_inject_latency_load_ca_info_ms=$0", latency_ms_),
+        "--raft_enable_pre_election=false",
+        Substitute(
+            "--leader_failure_exp_backoff_max_delta_ms=$0", kHbIntervalMs * 3),
+        "--leader_failure_max_missed_heartbeat_periods=1.0",
+        Substitute("--raft_heartbeat_interval_ms=$0", kHbIntervalMs),
     };
-    copy(master_flags.begin(), master_flags.end(),
-         back_inserter(cluster_opts_.extra_master_flags));
+    copy(
+        master_flags.begin(),
+        master_flags.end(),
+        back_inserter(cluster_opts_.extra_master_flags));
   }
 };
 

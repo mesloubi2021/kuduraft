@@ -61,9 +61,9 @@ using kudu::client::KuduSchema;
 using kudu::client::KuduSchemaBuilder;
 using kudu::client::KuduTableCreator;
 using kudu::client::sp::shared_ptr;
-using kudu::consensus::ReplicaManagementInfoPB;
 using kudu::cluster::InternalMiniCluster;
 using kudu::cluster::InternalMiniClusterOptions;
+using kudu::consensus::ReplicaManagementInfoPB;
 using std::string;
 using std::vector;
 using strings::Substitute;
@@ -73,8 +73,8 @@ namespace master {
 
 class TSDescriptor;
 
-const char * const kTableId1 = "testMasterReplication-1";
-const char * const kTableId2 = "testMasterReplication-2";
+const char* const kTableId1 = "testMasterReplication-1";
+const char* const kTableId2 = "testMasterReplication-2";
 
 const int kNumTabletServerReplicas = 3;
 
@@ -99,7 +99,7 @@ class MasterReplicationTest : public KuduTest {
 
   // This method is meant to be run in a separate thread.
   void StartClusterDelayed(int64_t millis) {
-    LOG(INFO) << "Sleeping for "  << millis << " ms...";
+    LOG(INFO) << "Sleeping for " << millis << " ms...";
     SleepFor(MonoDelta::FromMilliseconds(millis));
     LOG(INFO) << "Attempting to start the cluster...";
     CHECK_OK(cluster_->Start());
@@ -115,15 +115,16 @@ class MasterReplicationTest : public KuduTest {
     KuduClientBuilder builder;
     for (int i = 0; i < cluster_->num_masters(); i++) {
       if (!cluster_->mini_master(i)->master()->IsShutdown()) {
-        builder.add_master_server_addr(cluster_->mini_master(i)->bound_rpc_addr_str());
+        builder.add_master_server_addr(
+            cluster_->mini_master(i)->bound_rpc_addr_str());
       }
     }
     return builder.Build(out);
   }
 
-
-  Status CreateTable(const shared_ptr<KuduClient>& client,
-                     const std::string& table_name) {
+  Status CreateTable(
+      const shared_ptr<KuduClient>& client,
+      const std::string& table_name) {
     KuduSchema schema;
     KuduSchemaBuilder b;
     b.AddColumn("key")->Type(KuduColumnSchema::INT32)->NotNull()->PrimaryKey();
@@ -132,7 +133,7 @@ class MasterReplicationTest : public KuduTest {
     CHECK_OK(b.Build(&schema));
     gscoped_ptr<KuduTableCreator> table_creator(client->NewTableCreator());
     return table_creator->table_name(table_name)
-        .set_range_partition_columns({ "key" })
+        .set_range_partition_columns({"key"})
         .schema(&schema)
         .Create();
   }
@@ -212,11 +213,13 @@ TEST_F(MasterReplicationTest, TestCycleThroughAllMasters) {
   cluster_->Shutdown();
   // ... start the cluster after a delay.
   scoped_refptr<kudu::Thread> start_thread;
-  ASSERT_OK(Thread::Create("TestCycleThroughAllMasters", "start_thread",
-                                  &MasterReplicationTest::StartClusterDelayed,
-                                  this,
-                                  1000, // start after 1000 millis.
-                                  &start_thread));
+  ASSERT_OK(Thread::Create(
+      "TestCycleThroughAllMasters",
+      "start_thread",
+      &MasterReplicationTest::StartClusterDelayed,
+      this,
+      1000, // start after 1000 millis.
+      &start_thread));
 
   // Verify that the client doesn't give up even though the entire
   // cluster is down for a little while.
@@ -253,9 +256,10 @@ TEST_F(MasterReplicationTest, TestHeartbeatAcceptedByAnyMaster) {
 
   // Information on replica management scheme.
   ReplicaManagementInfoPB rmi;
-  rmi.set_replacement_scheme(FLAGS_raft_prepare_replacement_before_eviction
-      ? ReplicaManagementInfoPB::PREPARE_REPLACEMENT_BEFORE_EVICTION
-      : ReplicaManagementInfoPB::EVICT_FIRST);
+  rmi.set_replacement_scheme(
+      FLAGS_raft_prepare_replacement_before_eviction
+          ? ReplicaManagementInfoPB::PREPARE_REPLACEMENT_BEFORE_EVICTION
+          : ReplicaManagementInfoPB::EVICT_FIRST);
 
   for (int i = 0; i < cluster_->num_masters(); i++) {
     TSHeartbeatRequestPB req;
@@ -279,7 +283,8 @@ TEST_F(MasterReplicationTest, TestHeartbeatAcceptedByAnyMaster) {
   vector<std::shared_ptr<TSDescriptor>> descs;
   ASSERT_OK(cluster_->WaitForTabletServerCount(
       kNumTabletServerReplicas + 1,
-      InternalMiniCluster::MatchMode::DO_NOT_MATCH_TSERVERS, &descs));
+      InternalMiniCluster::MatchMode::DO_NOT_MATCH_TSERVERS,
+      &descs));
 }
 
 TEST_F(MasterReplicationTest, TestMasterPeerSetsDontMatch) {
@@ -307,15 +312,16 @@ TEST_F(MasterReplicationTest, TestConnectToClusterReturnsAddresses) {
     ASSERT_EQ(cluster_->num_masters(), resp.master_addrs_size());
     for (int j = 0; j < cluster_->num_masters(); j++) {
       const auto& addr = resp.master_addrs(j);
-      ASSERT_EQ(cluster_->mini_master(j)->bound_rpc_addr().ToString(),
-                Substitute("$0:$1", addr.host(), addr.port()));
+      ASSERT_EQ(
+          cluster_->mini_master(j)->bound_rpc_addr().ToString(),
+          Substitute("$0:$1", addr.host(), addr.port()));
     }
   }
 }
 
-
-// Test for KUDU-2200: if a user specifies just one of the masters, and that master is a
-// follower, we should give a status message that explains their mistake.
+// Test for KUDU-2200: if a user specifies just one of the masters, and that
+// master is a follower, we should give a status message that explains their
+// mistake.
 TEST_F(MasterReplicationTest, TestConnectToFollowerMasterOnly) {
   int successes = 0;
   for (int i = 0; i < cluster_->num_masters(); i++) {
@@ -323,22 +329,24 @@ TEST_F(MasterReplicationTest, TestConnectToFollowerMasterOnly) {
 
     shared_ptr<KuduClient> client;
     KuduClientBuilder builder;
-    builder.add_master_server_addr(cluster_->mini_master(i)->bound_rpc_addr_str());
+    builder.add_master_server_addr(
+        cluster_->mini_master(i)->bound_rpc_addr_str());
     Status s = builder.Build(&client);
     if (s.ok()) {
       successes++;
     } else {
-      ASSERT_STR_MATCHES(s.ToString(),
-                         R"(Configuration error: .*Client configured with 1 master\(s\) \(.+\) )"
-                         R"(but cluster indicates it expects 3.*)");
+      ASSERT_STR_MATCHES(
+          s.ToString(),
+          R"(Configuration error: .*Client configured with 1 master\(s\) \(.+\) )"
+          R"(but cluster indicates it expects 3.*)");
     }
   }
   // It's possible that we get either 0 or 1 success in the above loop:
   // - 0, in the case that no master had elected itself yet
-  // - 1, in the case that one master had become leader by the time we connected.
+  // - 1, in the case that one master had become leader by the time we
+  // connected.
   EXPECT_LE(successes, 1);
 }
-
 
 } // namespace master
 } // namespace kudu

@@ -60,8 +60,13 @@ class ThreadRestrictions {
   // to improve it later.
   class ScopedAllowIO {
    public:
-    ScopedAllowIO() { previous_value_ = SetIOAllowed(true); }
-    ~ScopedAllowIO() { SetIOAllowed(previous_value_); }
+    ScopedAllowIO() {
+      previous_value_ = SetIOAllowed(true);
+    }
+    ~ScopedAllowIO() {
+      SetIOAllowed(previous_value_);
+    }
+
    private:
     // Whether IO is allowed when the ScopedAllowIO was constructed.
     bool previous_value_;
@@ -74,8 +79,13 @@ class ThreadRestrictions {
   // you should instead be deferring work to a different thread.
   class ScopedAllowWait {
    public:
-    ScopedAllowWait() { previous_value_ = SetWaitAllowed(true); }
-    ~ScopedAllowWait() { SetWaitAllowed(previous_value_); }
+    ScopedAllowWait() {
+      previous_value_ = SetWaitAllowed(true);
+    }
+    ~ScopedAllowWait() {
+      SetWaitAllowed(previous_value_);
+    }
+
    private:
     // Whether singleton use is allowed when the ScopedAllowWait was
     // constructed.
@@ -83,7 +93,6 @@ class ThreadRestrictions {
 
     DISALLOW_COPY_AND_ASSIGN(ScopedAllowWait);
   };
-
 
 #if ENABLE_THREAD_RESTRICTIONS
   // Set whether the current thread to make IO calls.
@@ -106,9 +115,13 @@ class ThreadRestrictions {
 #else
   // Inline the empty definitions of these functions so that they can be
   // compiled out.
-  static bool SetIOAllowed(bool allowed) { return true; }
+  static bool SetIOAllowed(bool allowed) {
+    return true;
+  }
   static void AssertIOAllowed() {}
-  static bool SetWaitAllowed(bool allowed) { return true; }
+  static bool SetWaitAllowed(bool allowed) {
+    return true;
+  }
   static void AssertWaitAllowed() {}
 #endif
 

@@ -39,10 +39,7 @@ class NegotiatePB;
 // interacting with the libsasl2 library.
 class SaslHelper {
  public:
-  enum PeerType {
-    CLIENT,
-    SERVER
-  };
+  enum PeerType { CLIENT, SERVER };
 
   explicit SaslHelper(PeerType peer_type);
   ~SaslHelper() = default;
@@ -62,7 +59,11 @@ class SaslHelper {
   }
 
   // Implements the client_mech_list / mech_list callbacks.
-  int GetOptionCb(const char* plugin_name, const char* option, const char** result, unsigned* len);
+  int GetOptionCb(
+      const char* plugin_name,
+      const char* option,
+      const char** result,
+      unsigned* len);
 
   // Enable the PLAIN SASL mechanism.
   Status EnablePlain();
@@ -85,7 +86,8 @@ class SaslHelper {
 
   // Returns space-delimited local mechanism list string suitable for passing
   // to libsasl2, such as via "mech_list" callbacks.
-  // The returned pointer is valid only until the next call to EnabledMechsString().
+  // The returned pointer is valid only until the next call to
+  // EnabledMechsString().
   const char* EnabledMechsString() const;
 
   std::string server_fqdn_;
@@ -93,9 +95,10 @@ class SaslHelper {
   // Authentication types and data.
   const PeerType peer_type_;
   std::string tag_;
-  std::set<SaslMechanism::Type> global_mechs_;       // Cache of global mechanisms.
-  std::set<SaslMechanism::Type> enabled_mechs_;      // Active mechanisms.
-  mutable std::string enabled_mechs_string_; // Mechanism list string returned by callbacks.
+  std::set<SaslMechanism::Type> global_mechs_; // Cache of global mechanisms.
+  std::set<SaslMechanism::Type> enabled_mechs_; // Active mechanisms.
+  mutable std::string
+      enabled_mechs_string_; // Mechanism list string returned by callbacks.
 
   bool plain_enabled_;
   bool gssapi_enabled_;
@@ -106,4 +109,4 @@ class SaslHelper {
 } // namespace rpc
 } // namespace kudu
 
-#endif  // KUDU_RPC_SASL_HELPER_H
+#endif // KUDU_RPC_SASL_HELPER_H

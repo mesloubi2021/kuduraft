@@ -8,9 +8,9 @@
 #include <string>
 #include <vector>
 
-#include <glog/logging.h>
 #include <gflags/gflags.h>
 #include <gflags/gflags_declare.h>
+#include <glog/logging.h>
 #include <gtest/gtest.h>
 
 #include "kudu/gutil/gscoped_ptr.h"
@@ -49,7 +49,6 @@ class CacheTest : public KuduTest,
                   public ::testing::WithParamInterface<CacheType>,
                   public Cache::EvictionCallback {
  public:
-
   // Implementation of the EvictionCallback interface
   void EvictedEntry(Slice key, Slice val) override {
     evicted_keys_.push_back(DecodeInt(key));
@@ -61,10 +60,9 @@ class CacheTest : public KuduTest,
   gscoped_ptr<Cache> cache_;
   MetricRegistry metric_registry_;
 
-  static const int kCacheSize = 14*1024*1024;
+  static const int kCacheSize = 14 * 1024 * 1024;
 
   virtual void SetUp() override {
-
 #if defined(HAVE_LIB_VMEM)
     if (gflags::GetCommandLineFlagInfoOrDie("nvm_cache_path").is_default) {
       FLAGS_nvm_cache_path = GetTestPath("nvm-cache");
@@ -85,13 +83,14 @@ class CacheTest : public KuduTest,
       ASSERT_TRUE(mem_tracker_.get());
     }
 
-    scoped_refptr<MetricEntity> entity = METRIC_ENTITY_server.Instantiate(
-        &metric_registry_, "test");
+    scoped_refptr<MetricEntity> entity =
+        METRIC_ENTITY_server.Instantiate(&metric_registry_, "test");
     cache_->SetMetrics(entity);
   }
 
   int Lookup(int key) {
-    Cache::Handle* handle = cache_->Lookup(EncodeInt(key), Cache::EXPECT_IN_CACHE);
+    Cache::Handle* handle =
+        cache_->Lookup(EncodeInt(key), Cache::EXPECT_IN_CACHE);
     const int r = (handle == nullptr) ? -1 : DecodeInt(cache_->Value(handle));
     if (handle != nullptr) {
       cache_->Release(handle);
@@ -102,7 +101,8 @@ class CacheTest : public KuduTest,
   void Insert(int key, int value, int charge = 1) {
     std::string key_str = EncodeInt(key);
     std::string val_str = EncodeInt(value);
-    Cache::PendingHandle* handle = CHECK_NOTNULL(cache_->Allocate(key_str, val_str.size(), charge));
+    Cache::PendingHandle* handle =
+        CHECK_NOTNULL(cache_->Allocate(key_str, val_str.size(), charge));
     memcpy(cache_->MutableValue(handle), val_str.data(), val_str.size());
 
     cache_->Release(cache_->Insert(handle, this));
@@ -114,7 +114,10 @@ class CacheTest : public KuduTest,
 };
 
 #if defined(__linux__)
-INSTANTIATE_TEST_CASE_P(CacheTypes, CacheTest, ::testing::Values(DRAM_CACHE, NVM_CACHE));
+INSTANTIATE_TEST_CASE_P(
+    CacheTypes,
+    CacheTest,
+    ::testing::Values(DRAM_CACHE, NVM_CACHE));
 #else
 INSTANTIATE_TEST_CASE_P(CacheTypes, CacheTest, ::testing::Values(DRAM_CACHE));
 #endif // defined(__linux__)
@@ -134,18 +137,18 @@ TEST_P(CacheTest, HitAndMiss) {
 
   Insert(100, 101);
   ASSERT_EQ(101, Lookup(100));
-  ASSERT_EQ(-1,  Lookup(200));
-  ASSERT_EQ(-1,  Lookup(300));
+  ASSERT_EQ(-1, Lookup(200));
+  ASSERT_EQ(-1, Lookup(300));
 
   Insert(200, 201);
   ASSERT_EQ(101, Lookup(100));
   ASSERT_EQ(201, Lookup(200));
-  ASSERT_EQ(-1,  Lookup(300));
+  ASSERT_EQ(-1, Lookup(300));
 
   Insert(100, 102);
   ASSERT_EQ(102, Lookup(100));
   ASSERT_EQ(201, Lookup(200));
-  ASSERT_EQ(-1,  Lookup(300));
+  ASSERT_EQ(-1, Lookup(300));
 
   ASSERT_EQ(1, evicted_keys_.size());
   ASSERT_EQ(100, evicted_keys_[0]);
@@ -159,14 +162,14 @@ TEST_P(CacheTest, Erase) {
   Insert(100, 101);
   Insert(200, 201);
   Erase(100);
-  ASSERT_EQ(-1,  Lookup(100));
+  ASSERT_EQ(-1, Lookup(100));
   ASSERT_EQ(201, Lookup(200));
   ASSERT_EQ(1, evicted_keys_.size());
   ASSERT_EQ(100, evicted_keys_[0]);
   ASSERT_EQ(101, evicted_values_[0]);
 
   Erase(100);
-  ASSERT_EQ(-1,  Lookup(100));
+  ASSERT_EQ(-1, Lookup(100));
   ASSERT_EQ(201, Lookup(200));
   ASSERT_EQ(1, evicted_keys_.size());
 }
@@ -203,11 +206,11 @@ TEST_P(CacheTest, EvictionPolicy) {
   const int kNumElems = 1000;
   const int kSizePerElem = kCacheSize / kNumElems;
 
-  // Loop adding and looking up new entries, but repeatedly accessing key 101. This
-  // frequently-used entry should not be evicted.
+  // Loop adding and looking up new entries, but repeatedly accessing key 101.
+  // This frequently-used entry should not be evicted.
   for (int i = 0; i < kNumElems + 1000; i++) {
-    Insert(1000+i, 2000+i, kSizePerElem);
-    ASSERT_EQ(2000+i, Lookup(1000+i));
+    Insert(1000 + i, 2000 + i, kSizePerElem);
+    ASSERT_EQ(2000 + i, Lookup(1000 + i));
     ASSERT_EQ(101, Lookup(100));
   }
   ASSERT_EQ(101, Lookup(100));
@@ -220,13 +223,13 @@ TEST_P(CacheTest, HeavyEntries) {
   // Add a bunch of light and heavy entries and then count the combined
   // size of items still in the cache, which must be approximately the
   // same as the total capacity.
-  const int kLight = kCacheSize/1000;
-  const int kHeavy = kCacheSize/100;
+  const int kLight = kCacheSize / 1000;
+  const int kHeavy = kCacheSize / 100;
   int added = 0;
   int index = 0;
-  while (added < 2*kCacheSize) {
+  while (added < 2 * kCacheSize) {
     const int weight = (index & 1) ? kLight : kHeavy;
-    Insert(index, 1000+index, weight);
+    Insert(index, 1000 + index, weight);
     added += weight;
     index++;
   }
@@ -237,10 +240,10 @@ TEST_P(CacheTest, HeavyEntries) {
     int r = Lookup(i);
     if (r >= 0) {
       cached_weight += weight;
-      ASSERT_EQ(1000+i, r);
+      ASSERT_EQ(1000 + i, r);
     }
   }
-  ASSERT_LE(cached_weight, kCacheSize + kCacheSize/10);
+  ASSERT_LE(cached_weight, kCacheSize + kCacheSize / 10);
 }
 
-}  // namespace kudu
+} // namespace kudu

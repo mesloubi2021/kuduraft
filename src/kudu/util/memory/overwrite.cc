@@ -19,15 +19,15 @@
 
 #include "kudu/gutil/strings/stringpiece.h"
 
-#include <string.h>
 #include <glog/logging.h>
+#include <string.h>
 namespace kudu {
 
 void OverwriteWithPattern(char* p, size_t len, StringPiece pattern) {
   size_t pat_len = pattern.size();
   CHECK_LT(0, pat_len);
   size_t rem = len;
-  const char *pat_ptr = pattern.data();
+  const char* pat_ptr = pattern.data();
 
   for (; rem >= pat_len; rem -= pat_len) {
     memcpy(p, pat_ptr, pat_len);

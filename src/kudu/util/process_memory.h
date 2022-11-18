@@ -20,18 +20,18 @@
 namespace kudu {
 namespace process_memory {
 
-// Probabilistically returns true if the process-wide soft memory limit is exceeded.
-// The greater the excess, the higher the chance that it returns true.
+// Probabilistically returns true if the process-wide soft memory limit is
+// exceeded. The greater the excess, the higher the chance that it returns true.
 //
-// If the soft limit is exceeded and 'current_capacity_pct' is not NULL, the percentage
-// of the hard limit consumed is written to it.
+// If the soft limit is exceeded and 'current_capacity_pct' is not NULL, the
+// percentage of the hard limit consumed is written to it.
 bool SoftLimitExceeded(double* current_capacity_pct);
 
-// Return true if we are under memory pressure (i.e if we are nearing the point at which
-// SoftLimitExceeded will begin to return true).
+// Return true if we are under memory pressure (i.e if we are nearing the point
+// at which SoftLimitExceeded will begin to return true).
 //
-// If the process is under memory pressure, and 'current_capacity_pct' is not NULL,
-// the percentage of the hard limit consumed is written to it.
+// If the process is under memory pressure, and 'current_capacity_pct' is not
+// NULL, the percentage of the hard limit consumed is written to it.
 bool UnderMemoryPressure(double* current_capacity_pct);
 
 // Potentially trigger a call to release tcmalloc memory back to the
@@ -53,8 +53,8 @@ int64_t MemoryPressureThreshold();
 #ifdef TCMALLOC_ENABLED
 // Get the current amount of allocated memory, according to tcmalloc.
 //
-// This should be equal to CurrentConsumption(), but is made available so that tests
-// can verify the correctness of CurrentConsumption().
+// This should be equal to CurrentConsumption(), but is made available so that
+// tests can verify the correctness of CurrentConsumption().
 int64_t GetTCMallocCurrentAllocatedBytes();
 #endif
 

@@ -54,7 +54,8 @@ using strings::Substitute;
 
 class FunctionRunnable : public Runnable {
  public:
-  explicit FunctionRunnable(boost::function<void()> func) : func_(std::move(func)) {}
+  explicit FunctionRunnable(boost::function<void()> func)
+      : func_(std::move(func)) {}
 
   void Run() override {
     func_();
@@ -91,7 +92,8 @@ ThreadPoolBuilder::ThreadPoolBuilder(string name)
       max_queue_size_(std::numeric_limits<int>::max()),
       idle_timeout_(MonoDelta::FromMilliseconds(500)) {}
 
-ThreadPoolBuilder& ThreadPoolBuilder::set_trace_metric_prefix(const string& prefix) {
+ThreadPoolBuilder& ThreadPoolBuilder::set_trace_metric_prefix(
+    const string& prefix) {
   trace_metric_prefix_ = prefix;
   return *this;
 }
@@ -113,7 +115,8 @@ ThreadPoolBuilder& ThreadPoolBuilder::set_max_queue_size(int max_queue_size) {
   return *this;
 }
 
-ThreadPoolBuilder& ThreadPoolBuilder::set_idle_timeout(const MonoDelta& idle_timeout) {
+ThreadPoolBuilder& ThreadPoolBuilder::set_idle_timeout(
+    const MonoDelta& idle_timeout) {
   idle_timeout_ = idle_timeout;
   return *this;
 }
@@ -133,16 +136,16 @@ Status ThreadPoolBuilder::Build(gscoped_ptr<ThreadPool>* pool) const {
 // ThreadPoolToken
 ////////////////////////////////////////////////////////
 
-ThreadPoolToken::ThreadPoolToken(ThreadPool* pool,
-                                 ThreadPool::ExecutionMode mode,
-                                 ThreadPoolMetrics metrics)
+ThreadPoolToken::ThreadPoolToken(
+    ThreadPool* pool,
+    ThreadPool::ExecutionMode mode,
+    ThreadPoolMetrics metrics)
     : mode_(mode),
       metrics_(std::move(metrics)),
       pool_(pool),
       state_(State::IDLE),
       not_running_cond_(&pool->lock_),
-      active_threads_(0) {
-}
+      active_threads_(0) {}
 
 ThreadPoolToken::~ThreadPoolToken() {
   Shutdown();
@@ -250,8 +253,7 @@ void ThreadPoolToken::Transition(State new_state) {
 
   switch (state_) {
     case State::IDLE:
-      CHECK(new_state == State::RUNNING ||
-            new_state == State::QUIESCED);
+      CHECK(new_state == State::RUNNING || new_state == State::QUIESCED);
       if (new_state == State::RUNNING) {
         CHECK(!entries_.empty());
       } else {
@@ -260,9 +262,9 @@ void ThreadPoolToken::Transition(State new_state) {
       }
       break;
     case State::RUNNING:
-      CHECK(new_state == State::IDLE ||
-            new_state == State::QUIESCING ||
-            new_state == State::QUIESCED);
+      CHECK(
+          new_state == State::IDLE || new_state == State::QUIESCING ||
+          new_state == State::QUIESCED);
       CHECK(entries_.empty());
       if (new_state == State::QUIESCING) {
         CHECK_GT(active_threads_, 0);
@@ -295,10 +297,18 @@ void ThreadPoolToken::Transition(State new_state) {
 
 const char* ThreadPoolToken::StateToString(State s) {
   switch (s) {
-    case State::IDLE: return "IDLE"; break;
-    case State::RUNNING: return "RUNNING"; break;
-    case State::QUIESCING: return "QUIESCING"; break;
-    case State::QUIESCED: return "QUIESCED"; break;
+    case State::IDLE:
+      return "IDLE";
+      break;
+    case State::RUNNING:
+      return "RUNNING";
+      break;
+    case State::QUIESCING:
+      return "QUIESCING";
+      break;
+    case State::QUIESCED:
+      return "QUIESCED";
+      break;
   }
   return "<cannot reach here>";
 }
@@ -308,34 +318,36 @@ const char* ThreadPoolToken::StateToString(State s) {
 ////////////////////////////////////////////////////////
 
 ThreadPool::ThreadPool(const ThreadPoolBuilder& builder)
-  : name_(builder.name_),
-    min_threads_(builder.min_threads_),
-    max_threads_(builder.max_threads_),
-    max_queue_size_(builder.max_queue_size_),
-    idle_timeout_(builder.idle_timeout_),
-    pool_status_(Status::Uninitialized("The pool was not initialized.")),
-    idle_cond_(&lock_),
-    no_threads_cond_(&lock_),
-    num_threads_(0),
-    num_threads_pending_start_(0),
-    active_threads_(0),
-    total_queued_tasks_(0),
-    tokenless_(NewToken(ExecutionMode::CONCURRENT)),
-    metrics_(builder.metrics_) {
-  string prefix = !builder.trace_metric_prefix_.empty() ?
-      builder.trace_metric_prefix_ : builder.name_;
+    : name_(builder.name_),
+      min_threads_(builder.min_threads_),
+      max_threads_(builder.max_threads_),
+      max_queue_size_(builder.max_queue_size_),
+      idle_timeout_(builder.idle_timeout_),
+      pool_status_(Status::Uninitialized("The pool was not initialized.")),
+      idle_cond_(&lock_),
+      no_threads_cond_(&lock_),
+      num_threads_(0),
+      num_threads_pending_start_(0),
+      active_threads_(0),
+      total_queued_tasks_(0),
+      tokenless_(NewToken(ExecutionMode::CONCURRENT)),
+      metrics_(builder.metrics_) {
+  string prefix = !builder.trace_metric_prefix_.empty()
+      ? builder.trace_metric_prefix_
+      : builder.name_;
 
-  queue_time_trace_metric_name_ = TraceMetrics::InternName(
-      prefix + ".queue_time_us");
-  run_wall_time_trace_metric_name_ = TraceMetrics::InternName(
-      prefix + ".run_wall_time_us");
+  queue_time_trace_metric_name_ =
+      TraceMetrics::InternName(prefix + ".queue_time_us");
+  run_wall_time_trace_metric_name_ =
+      TraceMetrics::InternName(prefix + ".run_wall_time_us");
 }
 
 ThreadPool::~ThreadPool() {
   // There should only be one live token: the one used in tokenless submission.
   CHECK_EQ(1, tokens_.size()) << Substitute(
       "Threadpool $0 destroyed with $1 allocated tokens",
-      name_, tokens_.size());
+      name_,
+      tokens_.size());
   Shutdown();
 }
 
@@ -385,9 +397,9 @@ void ThreadPool::Shutdown() {
         // (i.e. there are no active threads), the tasks will have been removed
         // above and we can quiesce immediately. Otherwise, we need to wait for
         // the threads to finish.
-        t->Transition(t->active_threads_ > 0 ?
-            ThreadPoolToken::State::QUIESCING :
-            ThreadPoolToken::State::QUIESCED);
+        t->Transition(
+            t->active_threads_ > 0 ? ThreadPoolToken::State::QUIESCING
+                                   : ThreadPoolToken::State::QUIESCED);
         break;
       default:
         break;
@@ -408,8 +420,9 @@ void ThreadPool::Shutdown() {
 
   // All the threads have exited. Check the state of each token.
   for (auto* t : tokens_) {
-    DCHECK(t->state() == ThreadPoolToken::State::IDLE ||
-           t->state() == ThreadPoolToken::State::QUIESCED);
+    DCHECK(
+        t->state() == ThreadPoolToken::State::IDLE ||
+        t->state() == ThreadPoolToken::State::QUIESCED);
   }
 
   // Finally release the queued tasks, outside the lock.
@@ -428,19 +441,20 @@ unique_ptr<ThreadPoolToken> ThreadPool::NewToken(ExecutionMode mode) {
 }
 
 unique_ptr<ThreadPoolToken> ThreadPool::NewTokenWithMetrics(
-    ExecutionMode mode, ThreadPoolMetrics metrics) {
+    ExecutionMode mode,
+    ThreadPoolMetrics metrics) {
   MutexLock guard(lock_);
-  unique_ptr<ThreadPoolToken> t(new ThreadPoolToken(this,
-                                                    mode,
-                                                    std::move(metrics)));
+  unique_ptr<ThreadPoolToken> t(
+      new ThreadPoolToken(this, mode, std::move(metrics)));
   InsertOrDie(&tokens_, t.get());
   return t;
 }
 
 void ThreadPool::ReleaseToken(ThreadPoolToken* t) {
   MutexLock guard(lock_);
-  CHECK(!t->IsActive()) << Substitute("Token with state $0 may not be released",
-                                      ThreadPoolToken::StateToString(t->state()));
+  CHECK(!t->IsActive()) << Substitute(
+      "Token with state $0 may not be released",
+      ThreadPoolToken::StateToString(t->state()));
   CHECK_EQ(1, tokens_.erase(t));
 }
 
@@ -470,13 +484,16 @@ Status ThreadPool::DoSubmit(shared_ptr<Runnable> r, ThreadPoolToken* token) {
   }
 
   // Size limit check.
-  int64_t capacity_remaining = static_cast<int64_t>(max_threads_) - active_threads_ +
-                               static_cast<int64_t>(max_queue_size_) - total_queued_tasks_;
+  int64_t capacity_remaining = static_cast<int64_t>(max_threads_) -
+      active_threads_ + static_cast<int64_t>(max_queue_size_) -
+      total_queued_tasks_;
   if (capacity_remaining < 1) {
-    return Status::ServiceUnavailable(
-        Substitute("Thread pool is at capacity ($0/$1 tasks running, $2/$3 tasks queued)",
-                   num_threads_ + num_threads_pending_start_, max_threads_,
-                   total_queued_tasks_, max_queue_size_));
+    return Status::ServiceUnavailable(Substitute(
+        "Thread pool is at capacity ($0/$1 tasks running, $2/$3 tasks queued)",
+        num_threads_ + num_threads_pending_start_,
+        max_threads_,
+        total_queued_tasks_,
+        max_queue_size_));
   }
 
   // Should we create another thread?
@@ -497,12 +514,13 @@ Status ThreadPool::DoSubmit(shared_ptr<Runnable> r, ThreadPoolToken* token) {
   // Of course, we never create more than max_threads_ threads no matter what.
   int threads_from_this_submit =
       token->IsActive() && token->mode() == ExecutionMode::SERIAL ? 0 : 1;
-  int inactive_threads = num_threads_ + num_threads_pending_start_ - active_threads_;
-  int additional_threads = static_cast<int>(queue_.size())
-                         + threads_from_this_submit
-                         - inactive_threads;
+  int inactive_threads =
+      num_threads_ + num_threads_pending_start_ - active_threads_;
+  int additional_threads = static_cast<int>(queue_.size()) +
+      threads_from_this_submit - inactive_threads;
   bool need_a_thread = false;
-  if (additional_threads > 0 && num_threads_ + num_threads_pending_start_ < max_threads_) {
+  if (additional_threads > 0 &&
+      num_threads_ + num_threads_pending_start_ < max_threads_) {
     need_a_thread = true;
     num_threads_pending_start_++;
   }
@@ -519,8 +537,9 @@ Status ThreadPool::DoSubmit(shared_ptr<Runnable> r, ThreadPoolToken* token) {
 
   // Add the task to the token's queue.
   ThreadPoolToken::State state = token->state();
-  DCHECK(state == ThreadPoolToken::State::IDLE ||
-         state == ThreadPoolToken::State::RUNNING);
+  DCHECK(
+      state == ThreadPoolToken::State::IDLE ||
+      state == ThreadPoolToken::State::RUNNING);
   token->entries_.emplace_back(std::move(task));
   if (state == ThreadPoolToken::State::IDLE ||
       token->mode() == ExecutionMode::CONCURRENT) {
@@ -532,7 +551,8 @@ Status ThreadPool::DoSubmit(shared_ptr<Runnable> r, ThreadPoolToken* token) {
   int length_at_submit = total_queued_tasks_++;
 
   // Wake up an idle thread for this task. Choosing the thread at the front of
-  // the list ensures LIFO semantics as idling threads are also added to the front.
+  // the list ensures LIFO semantics as idling threads are also added to the
+  // front.
   //
   // If there are no idle threads, the new task remains on the queue and is
   // processed by an active thread (or a thread we're about to create) at some
@@ -565,7 +585,6 @@ Status ThreadPool::DoSubmit(shared_ptr<Runnable> r, ThreadPoolToken* token) {
                  << status.ToString();
     }
   }
-
 
   return Status::OK();
 }
@@ -616,7 +635,8 @@ void ThreadPool::DispatchThread() {
     if (queue_.empty()) {
       // There's no work to do, let's go idle.
       //
-      // Note: if FIFO behavior is desired, it's as simple as changing this to push_back().
+      // Note: if FIFO behavior is desired, it's as simple as changing this to
+      // push_back().
       idle_threads_.push_front(me);
       SCOPED_CLEANUP({
         // For some wake ups (i.e. Shutdown or DoSubmit) this thread is
@@ -630,15 +650,17 @@ void ThreadPool::DispatchThread() {
         me.not_empty.Wait();
       } else {
         if (!me.not_empty.WaitFor(idle_timeout_)) {
-          // After much investigation, it appears that pthread condition variables have
-          // a weird behavior in which they can return ETIMEDOUT from timed_wait even if
-          // another thread did in fact signal. Apparently after a timeout there is some
-          // brief period during which another thread may actually grab the internal mutex
-          // protecting the state, signal, and release again before we get the mutex. So,
-          // we'll recheck the empty queue case regardless.
+          // After much investigation, it appears that pthread condition
+          // variables have a weird behavior in which they can return ETIMEDOUT
+          // from timed_wait even if another thread did in fact signal.
+          // Apparently after a timeout there is some brief period during which
+          // another thread may actually grab the internal mutex protecting the
+          // state, signal, and release again before we get the mutex. So, we'll
+          // recheck the empty queue case regardless.
           if (queue_.empty()) {
-            VLOG(3) << "Releasing worker thread from pool " << name_ << " after "
-                    << idle_timeout_.ToMilliseconds() << "ms of idle time.";
+            VLOG(3) << "Releasing worker thread from pool " << name_
+                    << " after " << idle_timeout_.ToMilliseconds()
+                    << "ms of idle time.";
             break;
           }
         }
@@ -706,8 +728,9 @@ void ThreadPool::DispatchThread() {
     // 2. The token has no more queued tasks. Transition back to IDLE.
     // 3. The token has more tasks. Requeue it and transition back to RUNNABLE.
     ThreadPoolToken::State state = token->state();
-    DCHECK(state == ThreadPoolToken::State::RUNNING ||
-           state == ThreadPoolToken::State::QUIESCING);
+    DCHECK(
+        state == ThreadPoolToken::State::RUNNING ||
+        state == ThreadPoolToken::State::QUIESCING);
     if (--token->active_threads_ == 0) {
       if (state == ThreadPoolToken::State::QUIESCING) {
         DCHECK(token->entries_.empty());
@@ -741,16 +764,22 @@ void ThreadPool::DispatchThread() {
 }
 
 Status ThreadPool::CreateThread() {
-  return kudu::Thread::Create("thread pool", strings::Substitute("$0_[worker]", name_),
-                              &ThreadPool::DispatchThread, this, nullptr);
+  return kudu::Thread::Create(
+      "thread pool",
+      strings::Substitute("$0_[worker]", name_),
+      &ThreadPool::DispatchThread,
+      this,
+      nullptr);
 }
 
 void ThreadPool::CheckNotPoolThreadUnlocked() {
   Thread* current = Thread::current_thread();
   if (ContainsKey(threads_, current)) {
-    LOG(FATAL) << Substitute("Thread belonging to thread pool '$0' with "
+    LOG(FATAL) << Substitute(
+        "Thread belonging to thread pool '$0' with "
         "name '$1' called pool function that would result in deadlock",
-        name_, current->name());
+        name_,
+        current->name());
   }
 }
 

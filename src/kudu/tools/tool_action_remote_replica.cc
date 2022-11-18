@@ -59,8 +59,10 @@
 #include "kudu/util/pb_util.h"
 #include "kudu/util/status.h"
 
-DEFINE_bool(force_copy, false,
-            "Force the copy when the destination tablet server has this replica");
+DEFINE_bool(
+    force_copy,
+    false,
+    "Force the copy when the destination tablet server has this replica");
 DECLARE_int64(timeout_ms); // defined in ksck
 
 namespace kudu {
@@ -91,30 +93,32 @@ using tserver::NewScanRequestPB;
 using tserver::ScanRequestPB;
 using tserver::ScanResponsePB;
 using tserver::TabletServer;
-using tserver::TabletServerErrorPB;
 using tserver::TabletServerAdminServiceProxy;
+using tserver::TabletServerErrorPB;
 using tserver::TabletServerServiceProxy;
 
 // This class only exists so that Dump() can easily be friended with
 // KuduSchema and KuduScanBatch.
 class ReplicaDumper {
  public:
-  static Status Dump(const Schema& schema,
-                     const string& tablet_id,
-                     TabletServerServiceProxy* proxy) {
+  static Status Dump(
+      const Schema& schema,
+      const string& tablet_id,
+      TabletServerServiceProxy* proxy) {
     KuduSchema client_schema(schema);
 
     ScanRequestPB req;
     ScanResponsePB resp;
 
     // Scan and dump the tablet.
-    // Note that we do a READ_LATEST scan as we might be scanning a tablet who lost majority
-    // and thus cannot do snapshot scans.
-    // TODO(dalves) When KUDU-1704 is in change this to perform stale snapshot reads, which
-    // can be ordered.
+    // Note that we do a READ_LATEST scan as we might be scanning a tablet who
+    // lost majority and thus cannot do snapshot scans.
+    // TODO(dalves) When KUDU-1704 is in change this to perform stale snapshot
+    // reads, which can be ordered.
     NewScanRequestPB* new_req = req.mutable_new_scan_request();
     RETURN_NOT_OK(SchemaToColumnPBs(
-        schema, new_req->mutable_projected_columns(),
+        schema,
+        new_req->mutable_projected_columns(),
         SCHEMA_PB_WITHOUT_IDS | SCHEMA_PB_WITHOUT_STORAGE_ATTRIBUTES));
     new_req->set_tablet_id(tablet_id);
     new_req->set_cache_blocks(false);
@@ -125,8 +129,8 @@ class ReplicaDumper {
       RETURN_NOT_OK_PREPEND(proxy->Scan(req, &resp, &rpc), "Scan() failed");
 
       if (resp.has_error()) {
-        return Status::IOError("Failed to read: ",
-                               pb_util::SecureShortDebugString(resp.error()));
+        return Status::IOError(
+            "Failed to read: ", pb_util::SecureShortDebugString(resp.error()));
       }
 
       // The first response has a scanner ID. We use this for all subsequent
@@ -143,11 +147,12 @@ class ReplicaDumper {
       }
 
       KuduScanBatch::Data results;
-      RETURN_NOT_OK(results.Reset(&rpc,
-                                  &schema,
-                                  &client_schema,
-                                  client::KuduScanner::NO_FLAGS,
-                                  unique_ptr<RowwiseRowBlockPB>(resp.release_data())));
+      RETURN_NOT_OK(results.Reset(
+          &rpc,
+          &schema,
+          &client_schema,
+          client::KuduScanner::NO_FLAGS,
+          unique_ptr<RowwiseRowBlockPB>(resp.release_data())));
       vector<KuduRowResult> rows;
       results.ExtractRows(&rows);
       for (const auto& r : rows) {
@@ -162,16 +167,19 @@ namespace {
 
 const char* const kReasonArg = "reason";
 const char* const kTServerAddressArg = "tserver_address";
-const char* const kTServerAddressDesc = "Address of a Kudu Tablet Server of "
+const char* const kTServerAddressDesc =
+    "Address of a Kudu Tablet Server of "
     "form 'hostname:port'. Port may be omitted if the Tablet Server is bound "
     "to the default port.";
 const char* const kSrcAddressArg = "src_address";
 const char* const kDstAddressArg = "dst_address";
 const char* const kPeerUUIDsArg = "peer uuids";
-const char* const kPeerUUIDsArgDesc = "List of peer uuids to be part of new config";
+const char* const kPeerUUIDsArgDesc =
+    "List of peer uuids to be part of new config";
 
-Status GetReplicas(TabletServerServiceProxy* proxy,
-                   vector<ListTabletsResponsePB::StatusAndSchemaPB>* replicas) {
+Status GetReplicas(
+    TabletServerServiceProxy* proxy,
+    vector<ListTabletsResponsePB::StatusAndSchemaPB>* replicas) {
   ListTabletsRequestPB req;
   ListTabletsResponsePB resp;
   RpcController rpc;
@@ -182,8 +190,8 @@ Status GetReplicas(TabletServerServiceProxy* proxy,
     return StatusFromPB(resp.error().status());
   }
 
-  replicas->assign(resp.status_and_schema().begin(),
-                   resp.status_and_schema().end());
+  replicas->assign(
+      resp.status_and_schema().begin(), resp.status_and_schema().end());
   return Status::OK();
 }
 
@@ -191,8 +199,8 @@ Status CheckReplicas(const RunnerContext& context) {
   const string& address = FindOrDie(context.required_args, kTServerAddressArg);
 
   unique_ptr<TabletServerServiceProxy> proxy;
-  RETURN_NOT_OK(BuildProxy(address, tserver::TabletServer::kDefaultPort,
-                           &proxy));
+  RETURN_NOT_OK(
+      BuildProxy(address, tserver::TabletServer::kDefaultPort, &proxy));
 
   vector<ListTabletsResponsePB::StatusAndSchemaPB> replicas;
   RETURN_NOT_OK(GetReplicas(proxy.get(), &replicas));
@@ -220,12 +228,12 @@ Status DeleteReplica(const RunnerContext& context) {
   const string& reason = FindOrDie(context.required_args, kReasonArg);
 
   ServerStatusPB status;
-  RETURN_NOT_OK(GetServerStatus(address, tserver::TabletServer::kDefaultPort,
-                                &status));
+  RETURN_NOT_OK(
+      GetServerStatus(address, tserver::TabletServer::kDefaultPort, &status));
 
   unique_ptr<TabletServerAdminServiceProxy> proxy;
-  RETURN_NOT_OK(BuildProxy(address, tserver::TabletServer::kDefaultPort,
-                           &proxy));
+  RETURN_NOT_OK(
+      BuildProxy(address, tserver::TabletServer::kDefaultPort, &proxy));
 
   DeleteTabletRequestPB req;
   DeleteTabletResponsePB resp;
@@ -236,11 +244,12 @@ Status DeleteReplica(const RunnerContext& context) {
   req.set_dest_uuid(status.node_instance().permanent_uuid());
   req.set_reason(reason);
   req.set_delete_type(tablet::TABLET_DATA_TOMBSTONED);
-  RETURN_NOT_OK_PREPEND(proxy->DeleteTablet(req, &resp, &rpc),
-                        "DeleteTablet() failed");
+  RETURN_NOT_OK_PREPEND(
+      proxy->DeleteTablet(req, &resp, &rpc), "DeleteTablet() failed");
   if (resp.has_error()) {
-    return Status::IOError("Failed to delete tablet: ",
-                           pb_util::SecureShortDebugString(resp.error()));
+    return Status::IOError(
+        "Failed to delete tablet: ",
+        pb_util::SecureShortDebugString(resp.error()));
   }
   return Status::OK();
 }
@@ -250,8 +259,8 @@ Status DumpReplica(const RunnerContext& context) {
   const string& tablet_id = FindOrDie(context.required_args, kTabletIdArg);
 
   unique_ptr<TabletServerServiceProxy> proxy;
-  RETURN_NOT_OK(BuildProxy(address, tserver::TabletServer::kDefaultPort,
-                           &proxy));
+  RETURN_NOT_OK(
+      BuildProxy(address, tserver::TabletServer::kDefaultPort, &proxy));
 
   vector<ListTabletsResponsePB::StatusAndSchemaPB> replicas;
   RETURN_NOT_OK(GetReplicas(proxy.get(), &replicas));
@@ -272,8 +281,8 @@ Status DumpReplica(const RunnerContext& context) {
 Status ListReplicas(const RunnerContext& context) {
   const string& address = FindOrDie(context.required_args, kTServerAddressArg);
   unique_ptr<TabletServerServiceProxy> proxy;
-  RETURN_NOT_OK(BuildProxy(address, tserver::TabletServer::kDefaultPort,
-                           &proxy));
+  RETURN_NOT_OK(
+      BuildProxy(address, tserver::TabletServer::kDefaultPort, &proxy));
 
   vector<ListTabletsResponsePB::StatusAndSchemaPB> replicas;
   RETURN_NOT_OK(GetReplicas(proxy.get(), &replicas));
@@ -285,7 +294,8 @@ Status ListReplicas(const RunnerContext& context) {
         "Unable to deserialize schema from " + address);
     PartitionSchema partition_schema;
     RETURN_NOT_OK_PREPEND(
-        PartitionSchema::FromPB(r.partition_schema(), schema, &partition_schema),
+        PartitionSchema::FromPB(
+            r.partition_schema(), schema, &partition_schema),
         "Unable to deserialize partition schema from " + address);
 
     const TabletStatusPB& rs = r.tablet_status();
@@ -301,7 +311,8 @@ Status ListReplicas(const RunnerContext& context) {
          << partition_schema.PartitionDebugString(partition, schema) << endl;
     if (rs.has_estimated_on_disk_size()) {
       cout << "Estimated on disk size: "
-           << HumanReadableNumBytes::ToString(rs.estimated_on_disk_size()) << endl;
+           << HumanReadableNumBytes::ToString(rs.estimated_on_disk_size())
+           << endl;
     }
     cout << "Schema: " << schema.ToString() << endl;
   }
@@ -315,11 +326,11 @@ Status CopyReplica(const RunnerContext& context) {
   const string& tablet_id = FindOrDie(context.required_args, kTabletIdArg);
 
   ServerStatusPB dst_status;
-  RETURN_NOT_OK(GetServerStatus(dst_address, TabletServer::kDefaultPort,
-                                &dst_status));
+  RETURN_NOT_OK(
+      GetServerStatus(dst_address, TabletServer::kDefaultPort, &dst_status));
   ServerStatusPB src_status;
-  RETURN_NOT_OK(GetServerStatus(src_address, TabletServer::kDefaultPort,
-                                &src_status));
+  RETURN_NOT_OK(
+      GetServerStatus(src_address, TabletServer::kDefaultPort, &src_status));
 
   unique_ptr<ConsensusServiceProxy> proxy;
   RETURN_NOT_OK(BuildProxy(dst_address, TabletServer::kDefaultPort, &proxy));
@@ -337,31 +348,36 @@ Status CopyReplica(const RunnerContext& context) {
     req.set_caller_term(std::numeric_limits<int64_t>::max());
   }
 
-  LOG(INFO) << "Sending copy replica request:\n" << pb_util::SecureDebugString(req);
-  LOG(WARNING) << "NOTE: this copy may happen asynchronously "
-               << "and may timeout if the tablet size is large. Watch the logs on "
-               << "the target tablet server for indication of progress.";
+  LOG(INFO) << "Sending copy replica request:\n"
+            << pb_util::SecureDebugString(req);
+  LOG(WARNING)
+      << "NOTE: this copy may happen asynchronously "
+      << "and may timeout if the tablet size is large. Watch the logs on "
+      << "the target tablet server for indication of progress.";
 
   RETURN_NOT_OK(proxy->StartTabletCopy(req, &resp, &rpc));
   if (resp.has_error()) {
     RETURN_NOT_OK_PREPEND(
         StatusFromPB(resp.error().status()),
-        strings::Substitute("Remote server returned error code $0",
-                            TabletServerErrorPB::Code_Name(resp.error().code())));
+        strings::Substitute(
+            "Remote server returned error code $0",
+            TabletServerErrorPB::Code_Name(resp.error().code())));
   }
   return Status::OK();
 }
 
 Status UnsafeChangeConfig(const RunnerContext& context) {
   // Parse and validate arguments.
-  const string& dst_address = FindOrDie(context.required_args, kTServerAddressArg);
+  const string& dst_address =
+      FindOrDie(context.required_args, kTServerAddressArg);
   const string& tablet_id = FindOrDie(context.required_args, kTabletIdArg);
   ServerStatusPB dst_status;
-  RETURN_NOT_OK(GetServerStatus(dst_address, TabletServer::kDefaultPort,
-                                &dst_status));
+  RETURN_NOT_OK(
+      GetServerStatus(dst_address, TabletServer::kDefaultPort, &dst_status));
 
   if (context.variadic_args.empty()) {
-    return Status::InvalidArgument("No peer UUIDs specified for the new config");
+    return Status::InvalidArgument(
+        "No peer UUIDs specified for the new config");
   }
 
   RaftConfigPB new_config;
@@ -394,54 +410,58 @@ Status UnsafeChangeConfig(const RunnerContext& context) {
 unique_ptr<Mode> BuildRemoteReplicaMode() {
   unique_ptr<Action> check_replicas =
       ActionBuilder("check", &CheckReplicas)
-      .Description("Check if all tablet replicas on a Kudu Tablet Server are running")
-      .AddRequiredParameter({ kTServerAddressArg, kTServerAddressDesc })
-      .Build();
+          .Description(
+              "Check if all tablet replicas on a Kudu Tablet Server are running")
+          .AddRequiredParameter({kTServerAddressArg, kTServerAddressDesc})
+          .Build();
 
   unique_ptr<Action> copy_replica =
       ActionBuilder("copy", &CopyReplica)
-      .Description("Copy a tablet replica from one Kudu Tablet Server to another")
-      .AddRequiredParameter({ kTabletIdArg, kTabletIdArgDesc })
-      .AddRequiredParameter({ kSrcAddressArg, kTServerAddressDesc })
-      .AddRequiredParameter({ kDstAddressArg, kTServerAddressDesc })
-      .AddOptionalParameter("force_copy")
-      .Build();
+          .Description(
+              "Copy a tablet replica from one Kudu Tablet Server to another")
+          .AddRequiredParameter({kTabletIdArg, kTabletIdArgDesc})
+          .AddRequiredParameter({kSrcAddressArg, kTServerAddressDesc})
+          .AddRequiredParameter({kDstAddressArg, kTServerAddressDesc})
+          .AddOptionalParameter("force_copy")
+          .Build();
 
   unique_ptr<Action> delete_replica =
       ActionBuilder("delete", &DeleteReplica)
-      .Description("Delete a tablet replica from a Kudu Tablet Server")
-      .AddRequiredParameter({ kTServerAddressArg, kTServerAddressDesc })
-      .AddRequiredParameter({ kTabletIdArg, kTabletIdArgDesc })
-      .AddRequiredParameter({ kReasonArg, "Reason for deleting the replica" })
-      .Build();
+          .Description("Delete a tablet replica from a Kudu Tablet Server")
+          .AddRequiredParameter({kTServerAddressArg, kTServerAddressDesc})
+          .AddRequiredParameter({kTabletIdArg, kTabletIdArgDesc})
+          .AddRequiredParameter({kReasonArg, "Reason for deleting the replica"})
+          .Build();
 
   unique_ptr<Action> dump_replica =
       ActionBuilder("dump", &DumpReplica)
-      .Description("Dump the data of a tablet replica on a Kudu Tablet Server")
-      .AddRequiredParameter({ kTServerAddressArg, kTServerAddressDesc })
-      .AddRequiredParameter({ kTabletIdArg, kTabletIdArgDesc })
-      .Build();
+          .Description(
+              "Dump the data of a tablet replica on a Kudu Tablet Server")
+          .AddRequiredParameter({kTServerAddressArg, kTServerAddressDesc})
+          .AddRequiredParameter({kTabletIdArg, kTabletIdArgDesc})
+          .Build();
 
   unique_ptr<Action> list =
       ActionBuilder("list", &ListReplicas)
-      .Description("List all tablet replicas on a Kudu Tablet Server")
-      .AddRequiredParameter({ kTServerAddressArg, kTServerAddressDesc })
-      .Build();
+          .Description("List all tablet replicas on a Kudu Tablet Server")
+          .AddRequiredParameter({kTServerAddressArg, kTServerAddressDesc})
+          .Build();
 
   unique_ptr<Action> unsafe_change_config =
       ActionBuilder("unsafe_change_config", &UnsafeChangeConfig)
-      .Description("Force the specified replica to adopt a new Raft config")
-      .ExtraDescription("This tool is useful when a config change is "
-                        "necessary because a tablet cannot make progress with "
-                        "its current Raft configuration (e.g. to evict "
-                        "followers when a majority is unavailable).\n\nNote: "
-                        "The members of the new Raft config must be a subset "
-                        "of (or the same as) the members of the existing "
-                        "committed Raft config.")
-      .AddRequiredParameter({ kTServerAddressArg, kTServerAddressDesc })
-      .AddRequiredParameter({ kTabletIdArg, kTabletIdArgDesc })
-      .AddRequiredVariadicParameter({ kPeerUUIDsArg, kPeerUUIDsArgDesc })
-      .Build();
+          .Description("Force the specified replica to adopt a new Raft config")
+          .ExtraDescription(
+              "This tool is useful when a config change is "
+              "necessary because a tablet cannot make progress with "
+              "its current Raft configuration (e.g. to evict "
+              "followers when a majority is unavailable).\n\nNote: "
+              "The members of the new Raft config must be a subset "
+              "of (or the same as) the members of the existing "
+              "committed Raft config.")
+          .AddRequiredParameter({kTServerAddressArg, kTServerAddressDesc})
+          .AddRequiredParameter({kTabletIdArg, kTabletIdArgDesc})
+          .AddRequiredVariadicParameter({kPeerUUIDsArg, kPeerUUIDsArgDesc})
+          .Build();
 
   return ModeBuilder("remote_replica")
       .Description("Operate on remote tablet replicas on a Kudu Tablet Server")
@@ -456,4 +476,3 @@ unique_ptr<Mode> BuildRemoteReplicaMode() {
 
 } // namespace tools
 } // namespace kudu
-

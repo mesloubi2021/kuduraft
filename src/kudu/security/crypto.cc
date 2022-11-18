@@ -69,7 +69,8 @@ int DerWritePublicKey(BIO* bio, EVP_PKEY* key) {
 
 } // anonymous namespace
 
-template<> struct SslTypeTraits<BIGNUM> {
+template <>
+struct SslTypeTraits<BIGNUM> {
   static constexpr auto kFreeFunc = &BN_free;
 };
 struct RsaPrivateKeyTraits : public SslTypeTraits<EVP_PKEY> {
@@ -84,10 +85,12 @@ struct RsaPublicKeyTraits : public SslTypeTraits<EVP_PKEY> {
   static constexpr auto kWritePemFunc = &PemWritePublicKey;
   static constexpr auto kWriteDerFunc = &DerWritePublicKey;
 };
-template<> struct SslTypeTraits<RSA> {
+template <>
+struct SslTypeTraits<RSA> {
   static constexpr auto kFreeFunc = &RSA_free;
 };
-template<> struct SslTypeTraits<EVP_MD_CTX> {
+template <>
+struct SslTypeTraits<EVP_MD_CTX> {
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
   static constexpr auto kFreeFunc = &EVP_MD_CTX_destroy;
 #else
@@ -99,14 +102,15 @@ namespace {
 
 const EVP_MD* GetMessageDigest(DigestType digest_type) {
   switch (digest_type) {
-    case DigestType::SHA256: return EVP_sha256();
-    case DigestType::SHA512: return EVP_sha512();
+    case DigestType::SHA256:
+      return EVP_sha256();
+    case DigestType::SHA512:
+      return EVP_sha512();
   }
   LOG(FATAL) << "unknown digest type";
 }
 
 } // anonymous namespace
-
 
 Status PublicKey::FromString(const std::string& data, DataFormat format) {
   return ::kudu::security::FromString<RawDataType, RsaPublicKeyTraits>(
@@ -129,34 +133,38 @@ Status PublicKey::FromBIO(BIO* bio, DataFormat format) {
 }
 
 // Modeled after code in $OPENSSL_ROOT/apps/dgst.c
-Status PublicKey::VerifySignature(DigestType digest,
-                                  const std::string& data,
-                                  const std::string& signature) const {
+Status PublicKey::VerifySignature(
+    DigestType digest,
+    const std::string& data,
+    const std::string& signature) const {
   SCOPED_OPENSSL_NO_PENDING_ERRORS;
   const EVP_MD* md = GetMessageDigest(digest);
   auto md_ctx = ssl_make_unique(EVP_MD_CTX_create());
 
-  OPENSSL_RET_NOT_OK(EVP_DigestVerifyInit(md_ctx.get(), nullptr, md, nullptr, GetRawData()),
-                     "error initializing verification digest");
-  OPENSSL_RET_NOT_OK(EVP_DigestVerifyUpdate(md_ctx.get(), data.data(), data.size()),
-                     "error verifying data signature");
+  OPENSSL_RET_NOT_OK(
+      EVP_DigestVerifyInit(md_ctx.get(), nullptr, md, nullptr, GetRawData()),
+      "error initializing verification digest");
+  OPENSSL_RET_NOT_OK(
+      EVP_DigestVerifyUpdate(md_ctx.get(), data.data(), data.size()),
+      "error verifying data signature");
 #if OPENSSL_VERSION_NUMBER < 0x10002000L
-  unsigned char* sig_data = reinterpret_cast<unsigned char*>(
-      const_cast<char*>(signature.data()));
+  unsigned char* sig_data =
+      reinterpret_cast<unsigned char*>(const_cast<char*>(signature.data()));
 #else
-  const unsigned char* sig_data = reinterpret_cast<const unsigned char*>(
-      signature.data());
+  const unsigned char* sig_data =
+      reinterpret_cast<const unsigned char*>(signature.data());
 #endif
   // The success is indicated by return code 1. All other values means
   // either wrong signature or error while performing signature verification.
-  const int rc = EVP_DigestVerifyFinal(md_ctx.get(), sig_data, signature.size());
+  const int rc =
+      EVP_DigestVerifyFinal(md_ctx.get(), sig_data, signature.size());
   if (rc < 0 || rc > 1) {
     return Status::RuntimeError(
         Substitute("error verifying data signature: $0", GetOpenSSLErrors()));
   }
   if (rc == 0) {
-    // No sense stringifying the internal OpenSSL error, since a bad verification
-    // is self-explanatory.
+    // No sense stringifying the internal OpenSSL error, since a bad
+    // verification is self-explanatory.
     ERR_clear_error();
     return Status::Corruption("data signature verification failed");
   }
@@ -171,14 +179,15 @@ Status PublicKey::Equals(const PublicKey& other, bool* equals) const {
     case -2:
       return Status::NotSupported("failed to compare public keys");
     case -1: // Key types are different; treat this as not equal
-    case 0:  // Keys are not equal
+    case 0: // Keys are not equal
       *equals = false;
       return Status::OK();
     case 1:
       *equals = true;
       return Status::OK();
     default:
-      return Status::RuntimeError("unexpected public key comparison result", std::to_string(cmp));
+      return Status::RuntimeError(
+          "unexpected public key comparison result", std::to_string(cmp));
   }
 }
 
@@ -192,8 +201,10 @@ Status PrivateKey::ToString(std::string* data, DataFormat format) const {
       data, format, data_.get());
 }
 
-Status PrivateKey::FromFile(const std::string& fpath, DataFormat format,
-                            const PasswordCallback& password_cb) {
+Status PrivateKey::FromFile(
+    const std::string& fpath,
+    DataFormat format,
+    const PasswordCallback& password_cb) {
   return ::kudu::security::FromFile<RawDataType, RsaPrivateKeyTraits>(
       fpath, format, &data_, password_cb);
 }
@@ -211,7 +222,8 @@ Status PrivateKey::GetPublicKey(PublicKey* public_key) const {
   auto tmp = ssl_make_unique(BIO_new(BIO_s_mem()));
   CHECK(tmp);
   // Export public key in DER format into the temporary buffer.
-  OPENSSL_RET_NOT_OK(i2d_RSA_PUBKEY_bio(tmp.get(), rsa.get()),
+  OPENSSL_RET_NOT_OK(
+      i2d_RSA_PUBKEY_bio(tmp.get(), rsa.get()),
       "error extracting public RSA key");
   // Read the public key into the result placeholder.
   RETURN_NOT_OK(public_key->FromBIO(tmp.get(), DataFormat::DER));
@@ -220,24 +232,28 @@ Status PrivateKey::GetPublicKey(PublicKey* public_key) const {
 }
 
 // Modeled after code in $OPENSSL_ROOT/apps/dgst.c
-Status PrivateKey::MakeSignature(DigestType digest,
-                                 const std::string& data,
-                                 std::string* signature) const {
+Status PrivateKey::MakeSignature(
+    DigestType digest,
+    const std::string& data,
+    std::string* signature) const {
   SCOPED_OPENSSL_NO_PENDING_ERRORS;
   CHECK(signature);
   const EVP_MD* md = GetMessageDigest(digest);
   auto md_ctx = ssl_make_unique(EVP_MD_CTX_create());
 
-  OPENSSL_RET_NOT_OK(EVP_DigestSignInit(md_ctx.get(), nullptr, md, nullptr, GetRawData()),
-                     "error initializing signing digest");
-  OPENSSL_RET_NOT_OK(EVP_DigestSignUpdate(md_ctx.get(), data.data(), data.size()),
-                     "error signing data");
+  OPENSSL_RET_NOT_OK(
+      EVP_DigestSignInit(md_ctx.get(), nullptr, md, nullptr, GetRawData()),
+      "error initializing signing digest");
+  OPENSSL_RET_NOT_OK(
+      EVP_DigestSignUpdate(md_ctx.get(), data.data(), data.size()),
+      "error signing data");
   size_t sig_len = EVP_PKEY_size(GetRawData());
   static const size_t kSigBufSize = 4 * 1024;
   CHECK(sig_len <= kSigBufSize);
   unsigned char buf[kSigBufSize];
-  OPENSSL_RET_NOT_OK(EVP_DigestSignFinal(md_ctx.get(), buf, &sig_len),
-                     "error finalizing data signature");
+  OPENSSL_RET_NOT_OK(
+      EVP_DigestSignFinal(md_ctx.get(), buf, &sig_len),
+      "error finalizing data signature");
   *signature = string(reinterpret_cast<char*>(buf), sig_len);
 
   return Status::OK();

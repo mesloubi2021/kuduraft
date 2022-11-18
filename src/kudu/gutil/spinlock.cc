@@ -35,7 +35,7 @@
 #include "kudu/gutil/spinlock.h"
 #include "kudu/gutil/spinlock_internal.h"
 #include "kudu/gutil/synchronization_profiling.h"
-#include "kudu/gutil/sysinfo.h"   /* for NumCPUs() */
+#include "kudu/gutil/sysinfo.h" /* for NumCPUs() */
 #include "kudu/gutil/walltime.h"
 
 namespace base {
@@ -72,7 +72,7 @@ struct SpinLockInitHelper {
 // but nothing lock-intensive should be going on at that time.
 static SpinLockInitHelper init_helper;
 
-}  // unnamed namespace
+} // unnamed namespace
 
 // Monitor the lock to see if its value changes within some time period
 // (adaptive_spin_count loop iterations).  A timestamp indicating
@@ -80,16 +80,16 @@ static SpinLockInitHelper init_helper;
 // the initial_wait_timestamp value.  The total wait time in cycles for the
 // lock is returned in the wait_cycles parameter.  The last value read
 // from the lock is returned from the method.
-Atomic32 SpinLock::SpinLoop(int64 initial_wait_timestamp,
-                            Atomic32* wait_cycles) {
+Atomic32 SpinLock::SpinLoop(
+    int64 initial_wait_timestamp,
+    Atomic32* wait_cycles) {
   int c = adaptive_spin_count;
   while (base::subtle::NoBarrier_Load(&lockword_) != kSpinLockFree && --c > 0) {
     base::subtle::PauseCPU();
   }
   Atomic32 spin_loop_wait_cycles = CalculateWaitCycles(initial_wait_timestamp);
-  Atomic32 lock_value =
-      base::subtle::Acquire_CompareAndSwap(&lockword_, kSpinLockFree,
-                                           spin_loop_wait_cycles);
+  Atomic32 lock_value = base::subtle::Acquire_CompareAndSwap(
+      &lockword_, kSpinLockFree, spin_loop_wait_cycles);
   *wait_cycles = spin_loop_wait_cycles;
   return lock_value;
 }
@@ -111,9 +111,8 @@ void SpinLock::SlowLock() {
       // Here, just "mark" that the thread is going to sleep.  Don't store the
       // lock wait time in the lock as that will cause the current lock
       // owner to think it experienced contention.
-      lock_value = base::subtle::Acquire_CompareAndSwap(&lockword_,
-                                                        kSpinLockHeld,
-                                                        kSpinLockSleeper);
+      lock_value = base::subtle::Acquire_CompareAndSwap(
+          &lockword_, kSpinLockHeld, kSpinLockSleeper);
       if (lock_value == kSpinLockHeld) {
         // Successfully transitioned to kSpinLockSleeper.  Pass
         // kSpinLockSleeper to the SpinLockWait routine to properly indicate
@@ -123,16 +122,15 @@ void SpinLock::SlowLock() {
         // Lock is free again, so try and acquire it before sleeping.  The
         // new lock state will be the number of cycles this thread waited if
         // this thread obtains the lock.
-        lock_value = base::subtle::Acquire_CompareAndSwap(&lockword_,
-                                                          kSpinLockFree,
-                                                          wait_cycles);
-        continue;  // skip the delay at the end of the loop
+        lock_value = base::subtle::Acquire_CompareAndSwap(
+            &lockword_, kSpinLockFree, wait_cycles);
+        continue; // skip the delay at the end of the loop
       }
     }
 
     // Wait for an OS specific delay.
-    base::internal::kudu::SpinLockDelay(&lockword_, lock_value,
-                                  ++lock_wait_call_count);
+    base::internal::kudu::SpinLockDelay(
+        &lockword_, lock_value, ++lock_wait_call_count);
     // Spin again after returning from the wait routine to give this thread
     // some chance of obtaining the lock.
     lock_value = SpinLoop(wait_start_time, &wait_cycles);
@@ -152,7 +150,8 @@ void SpinLock::SlowLock() {
 enum { PROFILE_TIMESTAMP_SHIFT = 7 };
 
 void SpinLock::SlowUnlock(uint64 wait_cycles) {
-  base::internal::kudu::SpinLockWake(&lockword_, false);  // wake waiter if necessary
+  base::internal::kudu::SpinLockWake(
+      &lockword_, false); // wake waiter if necessary
 
   // Collect contentionz profile info, expanding the wait_cycles back out to
   // the full value.  If wait_cycles is <= kSpinLockSleeper, then no wait
@@ -168,14 +167,14 @@ void SpinLock::SlowUnlock(uint64 wait_cycles) {
   // a little simpler.
   //
   if (wait_cycles > kSpinLockSleeper) {
-    gutil::SubmitSpinLockProfileData(this,
-                                     wait_cycles << PROFILE_TIMESTAMP_SHIFT);
+    gutil::SubmitSpinLockProfileData(
+        this, wait_cycles << PROFILE_TIMESTAMP_SHIFT);
   }
 }
 
 inline int32 SpinLock::CalculateWaitCycles(int64 wait_start_time) {
-  int32 wait_cycles = ((CycleClock::Now() - wait_start_time) >>
-                       PROFILE_TIMESTAMP_SHIFT);
+  int32 wait_cycles =
+      ((CycleClock::Now() - wait_start_time) >> PROFILE_TIMESTAMP_SHIFT);
   // The number of cycles waiting for the lock is used as both the
   // wait_cycles and lock value, so it can't be kSpinLockFree or
   // kSpinLockHeld.  Make sure the value returned is at least

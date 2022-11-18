@@ -25,17 +25,16 @@ namespace internal {
 template <typename T>
 struct NeedsScopedRefptrButGetsRawPtr {
 #if defined(OS_WIN)
-  enum {
-    value = base::false_type::value
-  };
+  enum { value = base::false_type::value };
 #else
   enum {
     // Human readable translation: you needed to be a scoped_refptr if you are a
     // raw pointer type and are convertible to a RefCounted(Base|ThreadSafeBase)
     // type.
-    value = (std::is_pointer<T>::value &&
-             (std::is_convertible<T, subtle::RefCountedBase*>::value ||
-              std::is_convertible<T, subtle::RefCountedThreadSafeBase*>::value))
+    value =
+        (std::is_pointer<T>::value &&
+         (std::is_convertible<T, subtle::RefCountedBase*>::value ||
+          std::is_convertible<T, subtle::RefCountedThreadSafeBase*>::value))
   };
 #endif
 };
@@ -52,12 +51,14 @@ struct ParamsUseScopedRefptrCorrectly<std::tuple<>> {
 
 template <typename Head, typename... Tail>
 struct ParamsUseScopedRefptrCorrectly<std::tuple<Head, Tail...>> {
-  enum { value = !NeedsScopedRefptrButGetsRawPtr<Head>::value &&
-                  ParamsUseScopedRefptrCorrectly<std::tuple<Tail...>>::value };
+  enum {
+    value = !NeedsScopedRefptrButGetsRawPtr<Head>::value &&
+        ParamsUseScopedRefptrCorrectly<std::tuple<Tail...>>::value
+  };
 };
 
-}  // namespace internal
+} // namespace internal
 
-}  // namespace kudu
+} // namespace kudu
 
-#endif  // KUDU_GUTIL_RAW_SCOPED_REFPTR_MISMATCH_CHECKER_H_
+#endif // KUDU_GUTIL_RAW_SCOPED_REFPTR_MISMATCH_CHECKER_H_

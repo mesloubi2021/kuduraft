@@ -50,8 +50,7 @@ class Status;
 class KUDU_EXPORT Slice {
  public:
   /// Create an empty slice.
-  Slice() : data_(reinterpret_cast<const uint8_t *>("")),
-            size_(0) { }
+  Slice() : data_(reinterpret_cast<const uint8_t*>("")), size_(0) {}
 
   /// Create a slice that refers to a @c uint8_t byte array.
   ///
@@ -59,7 +58,7 @@ class KUDU_EXPORT Slice {
   ///   The input array.
   /// @param [in] n
   ///   Number of bytes in the array.
-  Slice(const uint8_t* d, size_t n) : data_(d), size_(n) { }
+  Slice(const uint8_t* d, size_t n) : data_(d), size_(n) {}
 
   /// Create a slice that refers to a @c char byte array.
   ///
@@ -67,25 +66,26 @@ class KUDU_EXPORT Slice {
   ///   The input array.
   /// @param [in] n
   ///   Number of bytes in the array.
-  Slice(const char* d, size_t n) :
-    data_(reinterpret_cast<const uint8_t *>(d)),
-    size_(n) { }
+  Slice(const char* d, size_t n)
+      : data_(reinterpret_cast<const uint8_t*>(d)), size_(n) {}
 
   /// Create a slice that refers to the contents of the given string.
   ///
   /// @param [in] s
   ///   The input string.
-  Slice(const std::string& s) : // NOLINT(runtime/explicit)
-    data_(reinterpret_cast<const uint8_t *>(s.data())),
-    size_(s.size()) { }
+  Slice(const std::string& s)
+      : // NOLINT(runtime/explicit)
+        data_(reinterpret_cast<const uint8_t*>(s.data())),
+        size_(s.size()) {}
 
   /// Create a slice that refers to a C-string s[0,strlen(s)-1].
   ///
   /// @param [in] s
   ///   The input C-string.
-  Slice(const char* s) : // NOLINT(runtime/explicit)
-    data_(reinterpret_cast<const uint8_t *>(s)),
-    size_(strlen(s)) { }
+  Slice(const char* s)
+      : // NOLINT(runtime/explicit)
+        data_(reinterpret_cast<const uint8_t*>(s)),
+        size_(strlen(s)) {}
 
 #ifdef KUDU_HEADERS_USE_RICH_SLICE
   /// Create a slice that refers to the contents of a faststring.
@@ -94,46 +94,50 @@ class KUDU_EXPORT Slice {
   ///
   /// @param [in] s
   ///   The input faststring.
-  Slice(const faststring &s) // NOLINT(runtime/explicit)
-    : data_(s.data()),
-      size_(s.size()) {
-  }
+  Slice(const faststring& s) // NOLINT(runtime/explicit)
+      : data_(s.data()), size_(s.size()) {}
 
   /// Create a slice that refers to the contents of a string piece.
   ///
   /// @param [in] s
   ///   The input StringPiece.
   Slice(const StringPiece& s) // NOLINT(runtime/explicit)
-    : data_(reinterpret_cast<const uint8_t*>(s.data())),
-      size_(s.size()) {
-  }
+      : data_(reinterpret_cast<const uint8_t*>(s.data())), size_(s.size()) {}
 #endif
 
   /// @return A pointer to the beginning of the referenced data.
-  const uint8_t* data() const { return data_; }
+  const uint8_t* data() const {
+    return data_;
+  }
 
   /// @return A mutable pointer to the beginning of the referenced data.
-  uint8_t *mutable_data() { return const_cast<uint8_t *>(data_); }
+  uint8_t* mutable_data() {
+    return const_cast<uint8_t*>(data_);
+  }
 
   /// @return The length (in bytes) of the referenced data.
-  size_t size() const { return size_; }
+  size_t size() const {
+    return size_;
+  }
 
   /// @return @c true iff the length of the referenced data is zero.
-  bool empty() const { return size_ == 0; }
+  bool empty() const {
+    return size_ == 0;
+  }
 
   /// @pre n < size()
   ///
   /// @param [in] n
   ///   The index of the byte.
   /// @return the n-th byte in the referenced data.
-  const uint8_t &operator[](size_t n) const {
+  const uint8_t& operator[](size_t n) const {
     assert(n < size());
     return data_[n];
   }
 
   /// Change this slice to refer to an empty array.
   void clear() {
-    data_ = reinterpret_cast<const uint8_t *>("");
+    data_ = reinterpret_cast<const uint8_t*>("");
     size_ = 0;
   }
 
@@ -198,8 +202,7 @@ class KUDU_EXPORT Slice {
   ///   The slice in question.
   /// @return @c true iff "x" is a prefix of "*this"
   bool starts_with(const Slice& x) const {
-    return ((size_ >= x.size_) &&
-            (MemEqual(data_, x.data_, x.size_)));
+    return ((size_ >= x.size_) && (MemEqual(data_, x.data_, x.size_)));
   }
 
   /// @brief Comparator struct, useful for ordered collections (like STL maps).
@@ -262,8 +265,9 @@ class KUDU_EXPORT Slice {
 ///   Another slice.
 /// @return @c true iff two slices contain byte-for-byte identical data.
 inline bool operator==(const Slice& x, const Slice& y) {
-  return ((x.size() == y.size()) &&
-          (Slice::MemEqual(x.data(), y.data(), x.size())));
+  return (
+      (x.size() == y.size()) &&
+      (Slice::MemEqual(x.data(), y.data(), x.size())));
 }
 
 /// Check whether two slices are not identical.
@@ -292,15 +296,17 @@ inline int Slice::compare(const Slice& b) const {
   const int min_len = (size_ < b.size_) ? size_ : b.size_;
   int r = MemCompare(data_, b.data_, min_len);
   if (r == 0) {
-    if (size_ < b.size_) r = -1;
-    else if (size_ > b.size_) r = +1;
+    if (size_ < b.size_)
+      r = -1;
+    else if (size_ > b.size_)
+      r = +1;
   }
   return r;
 }
 
-// We don't run TSAN on this function because it makes it really slow and causes some
-// test timeouts. This is only used on local buffers anyway, so we don't lose much
-// by not checking it.
+// We don't run TSAN on this function because it makes it really slow and causes
+// some test timeouts. This is only used on local buffers anyway, so we don't
+// lose much by not checking it.
 #ifdef KUDU_HEADERS_NO_STUBS
 ATTRIBUTE_NO_SANITIZE_THREAD
 #endif
@@ -327,6 +333,6 @@ struct SliceMap {
   typedef std::map<Slice, T, Slice::Comparator> type;
 };
 
-}  // namespace kudu
+} // namespace kudu
 
-#endif  // KUDU_UTIL_SLICE_H_
+#endif // KUDU_UTIL_SLICE_H_

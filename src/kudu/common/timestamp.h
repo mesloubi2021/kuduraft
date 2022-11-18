@@ -56,13 +56,16 @@ class Timestamp {
   // Sets this Timestamp from 'value'
   void FromUint64(uint64_t value);
 
-  val_type value() const { return v; }
+  val_type value() const {
+    return v;
+  }
 
   // An initial transaction timestamp, higher than min so that we can have
   // a Timestamp guaranteed to be lower than all generated timestamps.
   static const Timestamp kInitialTimestamp;
 
-  // An invalid transaction timestamp -- Timestamp types initialize to this variable.
+  // An invalid transaction timestamp -- Timestamp types initialize to this
+  // variable.
   static const Timestamp kInvalidTimestamp;
 
   // The maximum timestamp.

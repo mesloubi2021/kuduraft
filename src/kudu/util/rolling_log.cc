@@ -107,50 +107,46 @@ string FormattedTimestamp() {
 
   ostringstream str;
   str.fill('0');
-  str << 1900+tm_time.tm_year
-      << setw(2) << 1+tm_time.tm_mon
-      << setw(2) << tm_time.tm_mday
-      << '-'
-      << setw(2) << tm_time.tm_hour
-      << setw(2) << tm_time.tm_min
-      << setw(2) << tm_time.tm_sec;
+  str << 1900 + tm_time.tm_year << setw(2) << 1 + tm_time.tm_mon << setw(2)
+      << tm_time.tm_mday << '-' << setw(2) << tm_time.tm_hour << setw(2)
+      << tm_time.tm_min << setw(2) << tm_time.tm_sec;
   return str.str();
 }
 
 } // anonymous namespace
 
 string RollingLog::GetLogFileName(int sequence) const {
-  return Substitute("$0.$1.$2.$3.$4.$5.$6",
-                    gflags::ProgramInvocationShortName(),
-                    HostnameOrUnknown(),
-                    UsernameOrUnknown(),
-                    log_name_,
-                    FormattedTimestamp(),
-                    sequence,
-                    getpid());
+  return Substitute(
+      "$0.$1.$2.$3.$4.$5.$6",
+      gflags::ProgramInvocationShortName(),
+      HostnameOrUnknown(),
+      UsernameOrUnknown(),
+      log_name_,
+      FormattedTimestamp(),
+      sequence,
+      getpid());
 }
 
 string RollingLog::GetLogFilePattern() const {
-  return Substitute("$0.$1.$2.$3.$4.$5.$6",
-                    gflags::ProgramInvocationShortName(),
-                    HostnameOrUnknown(),
-                    UsernameOrUnknown(),
-                    log_name_,
-                    /* any timestamp */'*',
-                    /* any sequence number */'*',
-                    /* any pid */'*');
+  return Substitute(
+      "$0.$1.$2.$3.$4.$5.$6",
+      gflags::ProgramInvocationShortName(),
+      HostnameOrUnknown(),
+      UsernameOrUnknown(),
+      log_name_,
+      /* any timestamp */ '*',
+      /* any sequence number */ '*',
+      /* any pid */ '*');
 }
 
 Status RollingLog::Open() {
   CHECK(!file_);
 
-  for (int sequence = 0; ; sequence++) {
-
+  for (int sequence = 0;; sequence++) {
     string path = JoinPathSegments(log_dir_, GetLogFileName(sequence));
     // Don't reuse an existing path if there is already a log
     // or a compressed log with the same name.
-    if (env_->FileExists(path) ||
-        env_->FileExists(path + ".gz")) {
+    if (env_->FileExists(path) || env_->FileExists(path + ".gz")) {
       continue;
     }
 
@@ -172,15 +168,15 @@ Status RollingLog::Close() {
     return Status::OK();
   }
   string path = file_->filename();
-  RETURN_NOT_OK_PREPEND(file_->Close(),
-                        Substitute("Unable to close $0", path));
+  RETURN_NOT_OK_PREPEND(file_->Close(), Substitute("Unable to close $0", path));
   file_.reset();
   if (compress_after_close_) {
     WARN_NOT_OK(CompressFile(path), "Unable to compress old log file");
   }
   auto glob = JoinPathSegments(log_dir_, GetLogFilePattern());
-  WARN_NOT_OK(env_util::DeleteExcessFilesByPattern(env_, glob, max_num_segments_),
-              Substitute("failed to delete old $0 log files", log_name_));
+  WARN_NOT_OK(
+      env_util::DeleteExcessFilesByPattern(env_, glob, max_num_segments_),
+      Substitute("failed to delete old $0 log files", log_name_));
   return Status::OK();
 }
 
@@ -220,9 +216,7 @@ Status GzClose(gzFile f) {
 
 class ScopedGzipCloser {
  public:
-  explicit ScopedGzipCloser(gzFile f)
-    : file_(f) {
-  }
+  explicit ScopedGzipCloser(gzFile f) : file_(f) {}
 
   ~ScopedGzipCloser() {
     if (file_) {
@@ -240,14 +234,15 @@ class ScopedGzipCloser {
 } // anonymous namespace
 
 // We implement CompressFile() manually using zlib APIs rather than forking
-// out to '/bin/gzip' since fork() can be expensive on processes that use a large
-// amount of memory. During the time of the fork, other threads could end up
-// blocked. Implementing it using the zlib stream APIs isn't too much code
+// out to '/bin/gzip' since fork() can be expensive on processes that use a
+// large amount of memory. During the time of the fork, other threads could end
+// up blocked. Implementing it using the zlib stream APIs isn't too much code
 // and is less likely to be problematic.
 Status RollingLog::CompressFile(const std::string& path) const {
   unique_ptr<SequentialFile> in_file;
-  RETURN_NOT_OK_PREPEND(env_->NewSequentialFile(path, &in_file),
-                        "Unable to open input file to compress");
+  RETURN_NOT_OK_PREPEND(
+      env_->NewSequentialFile(path, &in_file),
+      "Unable to open input file to compress");
 
   string gz_path = path + ".gz";
   gzFile gzf = gzopen(gz_path.c_str(), "w");
@@ -261,24 +256,24 @@ Status RollingLog::CompressFile(const std::string& path) const {
   uint8_t buf[32 * 1024];
   while (true) {
     Slice result(buf, arraysize(buf));
-    RETURN_NOT_OK_PREPEND(in_file->Read(&result),
-                          "Unable to read from gzip input");
+    RETURN_NOT_OK_PREPEND(
+        in_file->Read(&result), "Unable to read from gzip input");
     if (result.size() == 0) {
       break;
     }
     int n = gzwrite(gzf, result.data(), result.size());
     if (n == 0) {
       int errnum;
-      return Status::IOError("Unable to write to gzip output",
-                             gzerror(gzf, &errnum));
+      return Status::IOError(
+          "Unable to write to gzip output", gzerror(gzf, &errnum));
     }
   }
   closer.Cancel();
-  RETURN_NOT_OK_PREPEND(GzClose(gzf),
-                        "Unable to close gzip output");
+  RETURN_NOT_OK_PREPEND(GzClose(gzf), "Unable to close gzip output");
 
-  WARN_NOT_OK(env_->DeleteFile(path),
-              "Unable to delete gzip input file after compression");
+  WARN_NOT_OK(
+      env_->DeleteFile(path),
+      "Unable to delete gzip input file after compression");
   return Status::OK();
 }
 

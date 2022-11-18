@@ -67,12 +67,19 @@ DEFINE_int32(seconds_to_run, 5, "Number of seconds for which to run the test");
 DEFINE_int32(num_chains, 50, "Number of parallel chains to generate");
 DEFINE_int32(num_tablets, 3, "Number of tablets over which to split the data");
 DEFINE_bool(enable_mutation, true, "Enable periodic mutation of inserted rows");
-DEFINE_int32(num_snapshots, 3, "Number of snapshots to verify across replicas and reboots.");
+DEFINE_int32(
+    num_snapshots,
+    3,
+    "Number of snapshots to verify across replicas and reboots.");
 
-DEFINE_bool(stress_flush_compact, false,
-            "Flush and compact way more aggressively to try to find bugs");
-DEFINE_bool(stress_wal_gc, false,
-            "Set WAL segment size small so that logs will be GCed during the test");
+DEFINE_bool(
+    stress_flush_compact,
+    false,
+    "Flush and compact way more aggressively to try to find bugs");
+DEFINE_bool(
+    stress_wal_gc,
+    false,
+    "Set WAL segment size small so that logs will be GCed during the test");
 
 using kudu::client::sp::shared_ptr;
 using kudu::cluster::ClusterNodes;
@@ -110,21 +117,23 @@ class LinkedListTest : public tserver::TabletServerIntegrationTestBase {
 
     common_flags.emplace_back("--skip_remove_old_recovery_dir");
 
-    // Set history retention to one day, so that we don't GC history in this test.
-    // We rely on verifying "back in time" with snapshot scans.
+    // Set history retention to one day, so that we don't GC history in this
+    // test. We rely on verifying "back in time" with snapshot scans.
     common_flags.emplace_back("--tablet_history_max_age_sec=86400");
 
     vector<string> ts_flags(common_flags);
     if (FLAGS_stress_flush_compact) {
-      // Set the flush threshold low so that we have a mix of flushed and unflushed
-      // operations in the WAL, when we bootstrap.
+      // Set the flush threshold low so that we have a mix of flushed and
+      // unflushed operations in the WAL, when we bootstrap.
       ts_flags.emplace_back("--flush_threshold_mb=1");
-      // Set the compaction budget to be low so that we get multiple passes of compaction
-      // instead of selecting all of the rowsets in a single compaction of the whole
-      // tablet.
+      // Set the compaction budget to be low so that we get multiple passes of
+      // compaction instead of selecting all of the rowsets in a single
+      // compaction of the whole tablet.
       ts_flags.emplace_back("--tablet_compaction_budget_mb=4");
-      // Set the major delta compaction ratio low enough that we trigger a lot of them.
-      ts_flags.emplace_back("--tablet_delta_store_major_compact_min_ratio=0.001");
+      // Set the major delta compaction ratio low enough that we trigger a lot
+      // of them.
+      ts_flags.emplace_back(
+          "--tablet_delta_store_major_compact_min_ratio=0.001");
     }
     if (FLAGS_stress_wal_gc) {
       // Set the size of the WAL segments low so that some can be GC'd.
@@ -139,11 +148,13 @@ class LinkedListTest : public tserver::TabletServerIntegrationTestBase {
 
   void ResetClientAndTester() {
     ASSERT_OK(cluster_->CreateClient(nullptr, &client_));
-    tester_.reset(new LinkedListTester(client_, kTableId,
-                                       FLAGS_num_chains,
-                                       FLAGS_num_tablets,
-                                       FLAGS_num_replicas,
-                                       FLAGS_enable_mutation));
+    tester_.reset(new LinkedListTester(
+        client_,
+        kTableId,
+        FLAGS_num_chains,
+        FLAGS_num_tablets,
+        FLAGS_num_replicas,
+        FLAGS_enable_mutation));
   }
 
   void RestartCluster() {
@@ -175,45 +186,52 @@ TEST_F(LinkedListTest, TestLoadAndVerify) {
   MonoDelta check_freq = MonoDelta::FromSeconds(1);
 #endif
 
-  PeriodicWebUIChecker checker(*cluster_.get(), tablet_id,
-                               check_freq);
+  PeriodicWebUIChecker checker(*cluster_.get(), tablet_id, check_freq);
 
   bool can_kill_ts = FLAGS_num_tablet_servers > 1 && FLAGS_num_replicas > 2;
 
   int64_t written = 0;
-  ASSERT_OK(tester_->LoadLinkedList(MonoDelta::FromSeconds(FLAGS_seconds_to_run),
-                                           FLAGS_num_snapshots,
-                                           &written));
+  ASSERT_OK(tester_->LoadLinkedList(
+      MonoDelta::FromSeconds(FLAGS_seconds_to_run),
+      FLAGS_num_snapshots,
+      &written));
 
-  // TODO: currently we don't use hybridtime on the C++ client, so it's possible when we
-  // scan after writing we may not see all of our writes (we may scan a replica). So,
-  // we use WaitAndVerify here instead of a plain Verify.
+  // TODO: currently we don't use hybridtime on the C++ client, so it's possible
+  // when we scan after writing we may not see all of our writes (we may scan a
+  // replica). So, we use WaitAndVerify here instead of a plain Verify.
   ASSERT_OK(tester_->WaitAndVerify(FLAGS_seconds_to_run, written));
   ASSERT_OK(CheckTabletServersAreAlive(tablet_servers_.size()));
 
-  LOG(INFO) << "Successfully verified " << written << " rows before killing any servers.";
+  LOG(INFO) << "Successfully verified " << written
+            << " rows before killing any servers.";
 
   if (can_kill_ts) {
     // Restart a tserver during a scan to test scanner fault tolerance.
     WaitForTSAndReplicas();
     LOG(INFO) << "Will restart the tablet server during verification scan.";
-    ASSERT_OK(tester_->WaitAndVerify(FLAGS_seconds_to_run, written,
-                                     boost::bind(
-                                         &TabletServerIntegrationTestBase::RestartServerWithUUID,
-                                         this, _1)));
+    ASSERT_OK(tester_->WaitAndVerify(
+        FLAGS_seconds_to_run,
+        written,
+        boost::bind(
+            &TabletServerIntegrationTestBase::RestartServerWithUUID,
+            this,
+            _1)));
     LOG(INFO) << "Done with tserver restart test.";
     ASSERT_OK(CheckTabletServersAreAlive(tablet_servers_.size()));
 
     // Kill a tserver during a scan to test scanner fault tolerance.
-    // Note that the previously restarted node is likely still be bootstrapping, which makes this
-    // even harder.
+    // Note that the previously restarted node is likely still be bootstrapping,
+    // which makes this even harder.
     LOG(INFO) << "Will kill the tablet server during verification scan.";
-    ASSERT_OK(tester_->WaitAndVerify(FLAGS_seconds_to_run, written,
-                                     boost::bind(
-                                         &TabletServerIntegrationTestBase::ShutdownServerWithUUID,
-                                         this, _1)));
+    ASSERT_OK(tester_->WaitAndVerify(
+        FLAGS_seconds_to_run,
+        written,
+        boost::bind(
+            &TabletServerIntegrationTestBase::ShutdownServerWithUUID,
+            this,
+            _1)));
     LOG(INFO) << "Done with tserver kill test.";
-    ASSERT_OK(CheckTabletServersAreAlive(tablet_servers_.size()-1));
+    ASSERT_OK(CheckTabletServersAreAlive(tablet_servers_.size() - 1));
     ASSERT_NO_FATAL_FAILURE(RestartCluster());
     // Again wait for cluster to finish bootstrapping.
     WaitForTSAndReplicas();
@@ -222,8 +240,9 @@ TEST_F(LinkedListTest, TestLoadAndVerify) {
     string tablet = (*tablet_replicas_.begin()).first;
     TServerDetails* leader;
     EXPECT_OK(GetLeaderReplicaWithRetries(tablet, &leader));
-    LOG(INFO) << "Killing TS: " << leader->instance_id.permanent_uuid() << ", leader of tablet: "
-        << tablet << " and verifying that we can still read all results";
+    LOG(INFO) << "Killing TS: " << leader->instance_id.permanent_uuid()
+              << ", leader of tablet: " << tablet
+              << " and verifying that we can still read all results";
     ASSERT_OK(ShutdownServerWithUUID(leader->uuid()));
     ASSERT_OK(tester_->WaitAndVerify(FLAGS_seconds_to_run, written));
     ASSERT_OK(CheckTabletServersAreAlive(tablet_servers_.size() - 1));
@@ -234,14 +253,15 @@ TEST_F(LinkedListTest, TestLoadAndVerify) {
 
   LOG(INFO) << "Verifying rows after restarting entire cluster.";
 
-  // We need to loop here because the tablet may spend some time in BOOTSTRAPPING state
-  // initially after a restart. TODO: Scanner should support its own retries in this circumstance.
-  // Remove this loop once client is more fleshed out.
+  // We need to loop here because the tablet may spend some time in
+  // BOOTSTRAPPING state initially after a restart. TODO: Scanner should support
+  // its own retries in this circumstance. Remove this loop once client is more
+  // fleshed out.
   ASSERT_OK(tester_->WaitAndVerify(FLAGS_seconds_to_run, written));
 
-  // In slow tests mode, we'll wait for a little bit to allow time for the tablet to
-  // compact. This is a regression test for bugs where compaction post-bootstrap
-  // could cause data loss.
+  // In slow tests mode, we'll wait for a little bit to allow time for the
+  // tablet to compact. This is a regression test for bugs where compaction
+  // post-bootstrap could cause data loss.
   if (AllowSlowTests()) {
     SleepFor(MonoDelta::FromSeconds(10));
     ASSERT_OK(tester_->WaitAndVerify(FLAGS_seconds_to_run, written));
@@ -253,8 +273,9 @@ TEST_F(LinkedListTest, TestLoadAndVerify) {
     string tablet = (*tablet_replicas_.begin()).first;
     TServerDetails* leader;
     EXPECT_OK(GetLeaderReplicaWithRetries(tablet, &leader));
-    LOG(INFO) << "Killing TS: " << leader->instance_id.permanent_uuid() << ", leader of tablet: "
-        << tablet << " and verifying that we can still read all results";
+    LOG(INFO) << "Killing TS: " << leader->instance_id.permanent_uuid()
+              << ", leader of tablet: " << tablet
+              << " and verifying that we can still read all results";
     ASSERT_OK(ShutdownServerWithUUID(leader->uuid()));
     ASSERT_OK(tester_->WaitAndVerify(FLAGS_seconds_to_run, written));
     ASSERT_OK(CheckTabletServersAreAlive(tablet_servers_.size() - 1));
@@ -271,8 +292,8 @@ TEST_F(LinkedListTest, TestLoadAndVerify) {
   ASSERT_OK(tester_->WaitAndVerify(FLAGS_seconds_to_run, written));
   ASSERT_OK(CheckTabletServersAreAlive(tablet_servers_.size()));
 
-  // Dump the performance info at the very end, so it's easy to read. On a failed
-  // test, we don't care about this stuff anyway.
+  // Dump the performance info at the very end, so it's easy to read. On a
+  // failed test, we don't care about this stuff anyway.
   tester_->DumpInsertHistogram(true);
 }
 
@@ -304,8 +325,9 @@ TEST_F(LinkedListTest, TestLoadWhileOneServerDownAndVerify) {
   int64_t written;
   ASSERT_OK(tester_->LoadLinkedList(run_time, FLAGS_num_snapshots, &written));
 
-  // Start back up the server that missed all of the data being loaded. It should be
-  // able to stream the data back from the other server which is still up.
+  // Start back up the server that missed all of the data being loaded. It
+  // should be able to stream the data back from the other server which is still
+  // up.
   ASSERT_OK(cluster_->tablet_server(0)->Restart());
 
   string tablet_id = tablet_replicas_.begin()->first;
@@ -322,20 +344,27 @@ TEST_F(LinkedListTest, TestLoadWhileOneServerDownAndVerify) {
   bool has_leader;
   master::TabletLocationsPB tablet_locations;
   ASSERT_OK(WaitForReplicasReportedToMaster(
-      cluster_->master_proxy(), FLAGS_num_tablet_servers, tablet_id, wait_time,
-      WAIT_FOR_LEADER, VOTER_REPLICA, &has_leader, &tablet_locations));
+      cluster_->master_proxy(),
+      FLAGS_num_tablet_servers,
+      tablet_id,
+      wait_time,
+      WAIT_FOR_LEADER,
+      VOTER_REPLICA,
+      &has_leader,
+      &tablet_locations));
 
   // All right, having the necessary number of voter replicas, make sure all
   // replicas are up-to-date in terms of OpId index.
-  ASSERT_OK(WaitForServersToAgree(wait_time, tablet_servers_, tablet_id,
-                                  written / FLAGS_num_chains));
+  ASSERT_OK(WaitForServersToAgree(
+      wait_time, tablet_servers_, tablet_id, written / FLAGS_num_chains));
 
   cluster_->tablet_server(1)->Shutdown();
   cluster_->tablet_server(2)->Shutdown();
 
-  ASSERT_OK(tester_->WaitAndVerify(FLAGS_seconds_to_run,
-                                   written,
-                                   LinkedListTester::FINISH_WITH_SCAN_LATEST));
+  ASSERT_OK(tester_->WaitAndVerify(
+      FLAGS_seconds_to_run,
+      written,
+      LinkedListTester::FINISH_WITH_SCAN_LATEST));
 }
 
 } // namespace kudu

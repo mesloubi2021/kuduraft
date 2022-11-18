@@ -56,8 +56,8 @@ using strings::Substitute;
 
 namespace kudu {
 
-// Ensure that Impala compiles on earlier kernels. If the target kernel does not support
-// _SC_CLK_TCK, sysconf(_SC_CLK_TCK) will return -1.
+// Ensure that Impala compiles on earlier kernels. If the target kernel does not
+// support _SC_CLK_TCK, sysconf(_SC_CLK_TCK) will return -1.
 #ifndef _SC_CLK_TCK
 #define _SC_CLK_TCK 2
 #endif
@@ -75,20 +75,23 @@ static const int64_t kIoWait = 41 - 2;
 // Largest offset we are interested in, to check we get a well formed stat file.
 static const int64_t kMaxOffset = kIoWait;
 
-Status ParseStat(const std::string& buffer, std::string* name, ThreadStats* stats) {
+Status
+ParseStat(const std::string& buffer, std::string* name, ThreadStats* stats) {
   DCHECK(stats != nullptr);
 
   // The thread name should be the only field with parentheses. But the name
   // itself may contain parentheses.
   size_t open_paren = buffer.find('(');
   size_t close_paren = buffer.rfind(')');
-  if (open_paren == string::npos  ||      // '(' must exist
-      close_paren == string::npos ||      // ')' must exist
-      open_paren >= close_paren   ||      // '(' must come before ')'
-      close_paren + 2 == buffer.size()) { // there must be at least two chars after ')'
+  if (open_paren == string::npos || // '(' must exist
+      close_paren == string::npos || // ')' must exist
+      open_paren >= close_paren || // '(' must come before ')'
+      close_paren + 2 ==
+          buffer.size()) { // there must be at least two chars after ')'
     return Status::IOError("Unrecognised /proc format");
   }
-  string extracted_name = buffer.substr(open_paren + 1, close_paren - (open_paren + 1));
+  string extracted_name =
+      buffer.substr(open_paren + 1, close_paren - (open_paren + 1));
   string rest = buffer.substr(close_paren + 2);
   vector<string> splits = Split(rest, " ", strings::SkipEmpty());
   if (splits.size() < kMaxOffset) {
@@ -109,7 +112,6 @@ Status ParseStat(const std::string& buffer, std::string* name, ThreadStats* stat
     *name = extracted_name;
   }
   return Status::OK();
-
 }
 
 Status GetThreadStats(int64_t tid, ThreadStats* stats) {
@@ -125,8 +127,8 @@ Status GetThreadStats(int64_t tid, ThreadStats* stats) {
     return Status::IOError("Could not open ifstream");
   }
 
-  string buffer((istreambuf_iterator<char>(proc_file)),
-      istreambuf_iterator<char>());
+  string buffer(
+      (istreambuf_iterator<char>(proc_file)), istreambuf_iterator<char>());
 
   return ParseStat(buffer, nullptr, stats); // don't want the name
 }
@@ -157,27 +159,31 @@ bool IsBeingDebugged() {
   return false;
 #else
   // Look for the TracerPid line in /proc/self/status.
-  // If this is non-zero, we are being ptraced, which is indicative of gdb or strace
-  // being attached.
+  // If this is non-zero, we are being ptraced, which is indicative of gdb or
+  // strace being attached.
   faststring buf;
   Status s = ReadFileToString(Env::Default(), "/proc/self/status", &buf);
   if (!s.ok()) {
-    KLOG_FIRST_N(WARNING, 1) << "could not read /proc/self/status: " << s.ToString();
+    KLOG_FIRST_N(WARNING, 1)
+        << "could not read /proc/self/status: " << s.ToString();
     return false;
   }
   StringPiece buf_sp(reinterpret_cast<const char*>(buf.data()), buf.size());
   vector<StringPiece> lines = Split(buf_sp, "\n");
   for (const auto& l : lines) {
-    if (!HasPrefixString(l, "TracerPid:")) continue;
+    if (!HasPrefixString(l, "TracerPid:"))
+      continue;
     std::pair<StringPiece, StringPiece> key_val = Split(l, "\t");
     int64_t tracer_pid = -1;
-    if (!safe_strto64(key_val.second.data(), key_val.second.size(), &tracer_pid)) {
+    if (!safe_strto64(
+            key_val.second.data(), key_val.second.size(), &tracer_pid)) {
       KLOG_FIRST_N(WARNING, 1) << "Invalid line in /proc/self/status: " << l;
       return false;
     }
     return tracer_pid != 0;
   }
-  KLOG_FIRST_N(WARNING, 1) << "Could not find TracerPid line in /proc/self/status";
+  KLOG_FIRST_N(WARNING, 1)
+      << "Could not find TracerPid line in /proc/self/status";
   return false;
 #endif // __linux__
 }

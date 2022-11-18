@@ -46,12 +46,12 @@
 #include "kudu/util/test_macros.h"
 #include "kudu/util/test_util.h"
 #include "kudu/util/thread.h"
-#include "kudu/util/trace_metrics.h"
 #include "kudu/util/trace.h"
+#include "kudu/util/trace_metrics.h"
 
+using kudu::debug::CategoryFilter;
 using kudu::debug::TraceLog;
 using kudu::debug::TraceResultBuffer;
-using kudu::debug::CategoryFilter;
 using rapidjson::Document;
 using rapidjson::Value;
 using std::string;
@@ -60,8 +60,7 @@ using std::vector;
 
 namespace kudu {
 
-class TraceTest : public KuduTest {
-};
+class TraceTest : public KuduTest {};
 
 // Replace all digits in 's' with the character 'X'.
 static string XOutDigits(const string& s) {
@@ -83,9 +82,10 @@ TEST_F(TraceTest, TestBasic) {
   TRACE_TO(t, "goodbye $0, $1", "cruel world", 54321);
 
   string result = XOutDigits(t->DumpToString(Trace::NO_FLAGS));
-  ASSERT_EQ("XXXX XX:XX:XX.XXXXXX trace-test.cc:XX] hello world, XXXXX\n"
-            "XXXX XX:XX:XX.XXXXXX trace-test.cc:XX] goodbye cruel world, XXXXX\n",
-            result);
+  ASSERT_EQ(
+      "XXXX XX:XX:XX.XXXXXX trace-test.cc:XX] hello world, XXXXX\n"
+      "XXXX XX:XX:XX.XXXXXX trace-test.cc:XX] goodbye cruel world, XXXXX\n",
+      result);
 }
 
 TEST_F(TraceTest, TestAttach) {
@@ -105,10 +105,12 @@ TEST_F(TraceTest, TestAttach) {
   EXPECT_TRUE(Trace::CurrentTrace() == nullptr);
   TRACE("this goes nowhere");
 
-  EXPECT_EQ("XXXX XX:XX:XX.XXXXXX trace-test.cc:XXX] hello from traceA\n",
-            XOutDigits(traceA->DumpToString(Trace::NO_FLAGS)));
-  EXPECT_EQ("XXXX XX:XX:XX.XXXXXX trace-test.cc:XXX] hello from traceB\n",
-            XOutDigits(traceB->DumpToString(Trace::NO_FLAGS)));
+  EXPECT_EQ(
+      "XXXX XX:XX:XX.XXXXXX trace-test.cc:XXX] hello from traceA\n",
+      XOutDigits(traceA->DumpToString(Trace::NO_FLAGS)));
+  EXPECT_EQ(
+      "XXXX XX:XX:XX.XXXXXX trace-test.cc:XXX] hello from traceB\n",
+      XOutDigits(traceB->DumpToString(Trace::NO_FLAGS)));
 }
 
 TEST_F(TraceTest, TestChildTrace) {
@@ -121,14 +123,14 @@ TEST_F(TraceTest, TestChildTrace) {
     ADOPT_TRACE(traceB.get());
     TRACE("hello from traceB");
   }
-  EXPECT_EQ("XXXX XX:XX:XX.XXXXXX trace-test.cc:XXX] hello from traceA\n"
-            "Related trace 'child':\n"
-            "XXXX XX:XX:XX.XXXXXX trace-test.cc:XXX] hello from traceB\n",
-            XOutDigits(traceA->DumpToString(Trace::NO_FLAGS)));
+  EXPECT_EQ(
+      "XXXX XX:XX:XX.XXXXXX trace-test.cc:XXX] hello from traceA\n"
+      "Related trace 'child':\n"
+      "XXXX XX:XX:XX.XXXXXX trace-test.cc:XXX] hello from traceB\n",
+      XOutDigits(traceA->DumpToString(Trace::NO_FLAGS)));
 }
 
-static void GenerateTraceEvents(int thread_id,
-                                int num_events) {
+static void GenerateTraceEvents(int thread_id, int num_events) {
   for (int i = 0; i < num_events; i++) {
     TRACE_EVENT1("test", "foo", "thread_id", thread_id);
   }
@@ -160,17 +162,23 @@ TEST_F(TraceTest, TestChromeTracing) {
   const int kEventsPerThread = AllowSlowTests() ? 1000000 : 10000;
 
   TraceLog* tl = TraceLog::GetInstance();
-  tl->SetEnabled(CategoryFilter(CategoryFilter::kDefaultCategoryFilterString),
-                 TraceLog::RECORDING_MODE,
-                 TraceLog::RECORD_CONTINUOUSLY);
+  tl->SetEnabled(
+      CategoryFilter(CategoryFilter::kDefaultCategoryFilterString),
+      TraceLog::RECORDING_MODE,
+      TraceLog::RECORD_CONTINUOUSLY);
 
-  vector<scoped_refptr<Thread> > threads(kNumThreads);
+  vector<scoped_refptr<Thread>> threads(kNumThreads);
 
   Stopwatch s;
   s.start();
   for (int i = 0; i < kNumThreads; i++) {
-    CHECK_OK(Thread::Create("test", "gen-traces", &GenerateTraceEvents, i, kEventsPerThread,
-                            &threads[i]));
+    CHECK_OK(Thread::Create(
+        "test",
+        "gen-traces",
+        &GenerateTraceEvents,
+        i,
+        kEventsPerThread,
+        &threads[i]));
   }
 
   for (int i = 0; i < kNumThreads; i++) {
@@ -181,7 +189,8 @@ TEST_F(TraceTest, TestChromeTracing) {
   int total_events = kNumThreads * kEventsPerThread;
   double elapsed = s.elapsed().wall_seconds();
 
-  LOG(INFO) << "Trace performance: " << static_cast<int>(total_events / elapsed) << " traces/sec";
+  LOG(INFO) << "Trace performance: " << static_cast<int>(total_events / elapsed)
+            << " traces/sec";
 
   string trace_json = TraceResultBuffer::FlushTraceLogToString();
 
@@ -192,19 +201,20 @@ TEST_F(TraceTest, TestChromeTracing) {
 }
 
 // Test that, if a thread exits before filling a full trace buffer, we still
-// see its results. This is a regression test for a bug in the earlier integration
-// of Chromium tracing into Kudu.
+// see its results. This is a regression test for a bug in the earlier
+// integration of Chromium tracing into Kudu.
 TEST_F(TraceTest, TestTraceFromExitedThread) {
   TraceLog* tl = TraceLog::GetInstance();
-  tl->SetEnabled(CategoryFilter(CategoryFilter::kDefaultCategoryFilterString),
-                 TraceLog::RECORDING_MODE,
-                 TraceLog::RECORD_CONTINUOUSLY);
+  tl->SetEnabled(
+      CategoryFilter(CategoryFilter::kDefaultCategoryFilterString),
+      TraceLog::RECORDING_MODE,
+      TraceLog::RECORD_CONTINUOUSLY);
 
   // Generate 10 trace events in a separate thread.
   int kNumEvents = 10;
   scoped_refptr<Thread> t;
-  CHECK_OK(Thread::Create("test", "gen-traces", &GenerateTraceEvents, 1, kNumEvents,
-                          &t));
+  CHECK_OK(Thread::Create(
+      "test", "gen-traces", &GenerateTraceEvents, 1, kNumEvents, &t));
   t->Join();
   tl->SetDisabled();
   string trace_json = TraceResultBuffer::FlushTraceLogToString();
@@ -226,9 +236,10 @@ static void GenerateWideSpan() {
 // a different trace chunk.
 TEST_F(TraceTest, TestWideSpan) {
   TraceLog* tl = TraceLog::GetInstance();
-  tl->SetEnabled(CategoryFilter(CategoryFilter::kDefaultCategoryFilterString),
-                 TraceLog::RECORDING_MODE,
-                 TraceLog::RECORD_CONTINUOUSLY);
+  tl->SetEnabled(
+      CategoryFilter(CategoryFilter::kDefaultCategoryFilterString),
+      TraceLog::RECORDING_MODE,
+      TraceLog::RECORD_CONTINUOUSLY);
 
   scoped_refptr<Thread> t;
   CHECK_OK(Thread::Create("test", "gen-traces", &GenerateWideSpan, &t));
@@ -243,11 +254,16 @@ TEST_F(TraceTest, TestWideSpan) {
 // single quote characters.
 TEST_F(TraceTest, TestJsonEncodingString) {
   TraceLog* tl = TraceLog::GetInstance();
-  tl->SetEnabled(CategoryFilter(CategoryFilter::kDefaultCategoryFilterString),
-                 TraceLog::RECORDING_MODE,
-                 TraceLog::RECORD_CONTINUOUSLY);
+  tl->SetEnabled(
+      CategoryFilter(CategoryFilter::kDefaultCategoryFilterString),
+      TraceLog::RECORDING_MODE,
+      TraceLog::RECORD_CONTINUOUSLY);
   {
-    TRACE_EVENT1("test", "test", "arg", "this is a test with \"'\"' and characters\nand new lines");
+    TRACE_EVENT1(
+        "test",
+        "test",
+        "arg",
+        "this is a test with \"'\"' and characters\nand new lines");
   }
   tl->SetDisabled();
   string trace_json = TraceResultBuffer::FlushTraceLogToString();
@@ -256,8 +272,9 @@ TEST_F(TraceTest, TestJsonEncodingString) {
 
 // Generate trace events continuously until 'latch' fires.
 // Increment *num_events_generated for each event generated.
-void GenerateTracesUntilLatch(AtomicInt<int64_t>* num_events_generated,
-                              CountDownLatch* latch) {
+void GenerateTracesUntilLatch(
+    AtomicInt<int64_t>* num_events_generated,
+    CountDownLatch* latch) {
   while (latch->count()) {
     {
       // This goes in its own scope so that the event is fully generated (with
@@ -277,14 +294,20 @@ TEST_F(TraceTest, TestStartAndStopCollection) {
   CountDownLatch latch(1);
   AtomicInt<int64_t> num_events_generated(0);
   scoped_refptr<Thread> t;
-  CHECK_OK(Thread::Create("test", "gen-traces", &GenerateTracesUntilLatch,
-                          &num_events_generated, &latch, &t));
+  CHECK_OK(Thread::Create(
+      "test",
+      "gen-traces",
+      &GenerateTracesUntilLatch,
+      &num_events_generated,
+      &latch,
+      &t));
 
   const int num_flushes = AllowSlowTests() ? 50 : 3;
   for (int i = 0; i < num_flushes; i++) {
-    tl->SetEnabled(CategoryFilter(CategoryFilter::kDefaultCategoryFilterString),
-                   TraceLog::RECORDING_MODE,
-                   TraceLog::RECORD_CONTINUOUSLY);
+    tl->SetEnabled(
+        CategoryFilter(CategoryFilter::kDefaultCategoryFilterString),
+        TraceLog::RECORDING_MODE,
+        TraceLog::RECORD_CONTINUOUSLY);
 
     const int64_t num_events_before = num_events_generated.Load();
     SleepFor(MonoDelta::FromMilliseconds(10));
@@ -292,11 +315,11 @@ TEST_F(TraceTest, TestStartAndStopCollection) {
     tl->SetDisabled();
 
     string trace_json = TraceResultBuffer::FlushTraceLogToString();
-    // We might under-count the number of events, since we only measure the sleep,
-    // and tracing is enabled before and disabled after we start counting.
-    // We might also over-count by at most 1, because we could enable tracing
-    // right in between creating a trace event and incrementing the counter.
-    // But, we should never over-count by more than 1.
+    // We might under-count the number of events, since we only measure the
+    // sleep, and tracing is enabled before and disabled after we start
+    // counting. We might also over-count by at most 1, because we could enable
+    // tracing right in between creating a trace event and incrementing the
+    // counter. But, we should never over-count by more than 1.
     int expected_events_lowerbound = num_events_after - num_events_before - 1;
     int captured_events = ParseAndReturnEventCount(trace_json);
     ASSERT_GE(captured_events, expected_events_lowerbound);
@@ -308,10 +331,11 @@ TEST_F(TraceTest, TestStartAndStopCollection) {
 
 TEST_F(TraceTest, TestChromeSampling) {
   TraceLog* tl = TraceLog::GetInstance();
-  tl->SetEnabled(CategoryFilter(CategoryFilter::kDefaultCategoryFilterString),
-                 TraceLog::RECORDING_MODE,
-                 static_cast<TraceLog::Options>(TraceLog::RECORD_CONTINUOUSLY |
-                                                TraceLog::ENABLE_SAMPLING));
+  tl->SetEnabled(
+      CategoryFilter(CategoryFilter::kDefaultCategoryFilterString),
+      TraceLog::RECORDING_MODE,
+      static_cast<TraceLog::Options>(
+          TraceLog::RECORD_CONTINUOUSLY | TraceLog::ENABLE_SAMPLING));
 
   for (int i = 0; i < 100; i++) {
     switch (i % 3) {
@@ -349,7 +373,6 @@ class TraceEventCallbackTest : public KuduTest {
     ASSERT_TRUE(!!s_instance);
     s_instance = nullptr;
     KuduTest::TearDown();
-
   }
 
  protected:
@@ -390,8 +413,8 @@ class TraceEventCallbackTest : public KuduTest {
   // or value which has 'string_to_match' as a substring.
   // Returns the matching dictionary, or NULL.
   static const Value* FindTraceEntry(
-    const Value& trace_parsed,
-    const char* string_to_match) {
+      const Value& trace_parsed,
+      const char* string_to_match) {
     // Scan all items
     size_t trace_parsed_count = trace_parsed.Size();
     for (size_t i = 0; i < trace_parsed_count; i++) {
@@ -403,10 +426,12 @@ class TraceEventCallbackTest : public KuduTest {
       for (Value::ConstMemberIterator it = value.MemberBegin();
            it != value.MemberEnd();
            ++it) {
-        if (it->name.IsString() && strstr(it->name.GetString(), string_to_match) != nullptr) {
+        if (it->name.IsString() &&
+            strstr(it->name.GetString(), string_to_match) != nullptr) {
           return &value;
         }
-        if (it->value.IsString() && strstr(it->value.GetString(), string_to_match) != nullptr) {
+        if (it->value.IsString() &&
+            strstr(it->value.GetString(), string_to_match) != nullptr) {
           return &value;
         }
       }
@@ -415,8 +440,9 @@ class TraceEventCallbackTest : public KuduTest {
   }
 
   // For TraceEventCallbackAndRecordingX tests.
-  void VerifyCallbackAndRecordedEvents(size_t expected_callback_count,
-                                       size_t expected_recorded_count) {
+  void VerifyCallbackAndRecordedEvents(
+      size_t expected_callback_count,
+      size_t expected_recorded_count) {
     // Callback events.
     EXPECT_EQ(expected_callback_count, collected_events_names_.size());
     for (size_t i = 0; i < collected_events_names_.size(); ++i) {
@@ -432,10 +458,11 @@ class TraceEventCallbackTest : public KuduTest {
     EXPECT_FALSE(FindTraceEntry(trace_parsed_, "no"));
   }
 
-  void VerifyCollectedEvent(size_t i,
-                            unsigned phase,
-                            const string& category,
-                            const string& name) {
+  void VerifyCollectedEvent(
+      size_t i,
+      unsigned phase,
+      const string& category,
+      const string& name) {
     EXPECT_EQ(phase, collected_events_phases_[i]);
     EXPECT_EQ(category, collected_events_categories_[i]);
     EXPECT_EQ(name, collected_events_names_[i]);
@@ -450,16 +477,17 @@ class TraceEventCallbackTest : public KuduTest {
   vector<MicrosecondsInt64> collected_events_timestamps_;
 
   static TraceEventCallbackTest* s_instance;
-  static void Callback(MicrosecondsInt64 timestamp,
-                       char phase,
-                       const unsigned char* category_group_enabled,
-                       const char* name,
-                       uint64_t id,
-                       int num_args,
-                       const char* const arg_names[],
-                       const unsigned char arg_types[],
-                       const uint64_t arg_values[],
-                       unsigned char flags) {
+  static void Callback(
+      MicrosecondsInt64 timestamp,
+      char phase,
+      const unsigned char* category_group_enabled,
+      const char* name,
+      uint64_t id,
+      int num_args,
+      const char* const arg_names[],
+      const unsigned char arg_types[],
+      const uint64_t arg_values[],
+      unsigned char flags) {
     s_instance->collected_events_phases_.push_back(phase);
     s_instance->collected_events_categories_.emplace_back(
         TraceLog::GetCategoryGroupName(category_group_enabled));
@@ -481,8 +509,8 @@ TEST_F(TraceEventCallbackTest, TraceEventCallback) {
     TRACE_EVENT_INSTANT0("all", "event3", TRACE_EVENT_SCOPE_GLOBAL);
   }
   TraceLog::GetInstance()->SetEventCallbackDisabled();
-  TRACE_EVENT_INSTANT0("all", "after callback removed",
-                       TRACE_EVENT_SCOPE_GLOBAL);
+  TRACE_EVENT_INSTANT0(
+      "all", "after callback removed", TRACE_EVENT_SCOPE_GLOBAL);
   ASSERT_EQ(5u, collected_events_names_.size());
   EXPECT_EQ("event1", collected_events_names_[0]);
   EXPECT_EQ(TRACE_EVENT_PHASE_INSTANT, collected_events_phases_[0]);
@@ -495,8 +523,8 @@ TEST_F(TraceEventCallbackTest, TraceEventCallback) {
   EXPECT_EQ("duration", collected_events_names_[4]);
   EXPECT_EQ(TRACE_EVENT_PHASE_END, collected_events_phases_[4]);
   for (size_t i = 1; i < collected_events_timestamps_.size(); i++) {
-    EXPECT_LE(collected_events_timestamps_[i - 1],
-              collected_events_timestamps_[i]);
+    EXPECT_LE(
+        collected_events_timestamps_[i - 1], collected_events_timestamps_[i]);
   }
 }
 
@@ -508,8 +536,8 @@ TEST_F(TraceEventCallbackTest, TraceEventCallbackWhileFull) {
   do {
     TRACE_EVENT_INSTANT0("all", "badger badger", TRACE_EVENT_SCOPE_GLOBAL);
   } while (!TraceLog::GetInstance()->BufferIsFull());
-  TraceLog::GetInstance()->SetEventCallbackEnabled(CategoryFilter("*"),
-                                                   Callback);
+  TraceLog::GetInstance()->SetEventCallbackEnabled(
+      CategoryFilter("*"), Callback);
   TRACE_EVENT_INSTANT0("all", "a snake", TRACE_EVENT_SCOPE_GLOBAL);
   TraceLog::GetInstance()->SetEventCallbackDisabled();
   ASSERT_EQ(1u, collected_events_names_.size());
@@ -520,8 +548,8 @@ TEST_F(TraceEventCallbackTest, TraceEventCallbackWhileFull) {
 TEST_F(TraceEventCallbackTest, TraceEventCallbackAndRecording1) {
   TRACE_EVENT_INSTANT0("recording", "no", TRACE_EVENT_SCOPE_GLOBAL);
   TRACE_EVENT_INSTANT0("callback", "no", TRACE_EVENT_SCOPE_GLOBAL);
-  TraceLog::GetInstance()->SetEventCallbackEnabled(CategoryFilter("callback"),
-                                                   Callback);
+  TraceLog::GetInstance()->SetEventCallbackEnabled(
+      CategoryFilter("callback"), Callback);
   TRACE_EVENT_INSTANT0("recording", "no", TRACE_EVENT_SCOPE_GLOBAL);
   TRACE_EVENT_INSTANT0("callback", "yes", TRACE_EVENT_SCOPE_GLOBAL);
   TraceLog::GetInstance()->SetEnabled(
@@ -546,8 +574,8 @@ TEST_F(TraceEventCallbackTest, TraceEventCallbackAndRecording1) {
 TEST_F(TraceEventCallbackTest, TraceEventCallbackAndRecording2) {
   TRACE_EVENT_INSTANT0("recording", "no", TRACE_EVENT_SCOPE_GLOBAL);
   TRACE_EVENT_INSTANT0("callback", "no", TRACE_EVENT_SCOPE_GLOBAL);
-  TraceLog::GetInstance()->SetEventCallbackEnabled(CategoryFilter("callback"),
-                                                   Callback);
+  TraceLog::GetInstance()->SetEventCallbackEnabled(
+      CategoryFilter("callback"), Callback);
   TRACE_EVENT_INSTANT0("recording", "no", TRACE_EVENT_SCOPE_GLOBAL);
   TRACE_EVENT_INSTANT0("callback", "yes", TRACE_EVENT_SCOPE_GLOBAL);
   TraceLog::GetInstance()->SetEnabled(
@@ -577,8 +605,8 @@ TEST_F(TraceEventCallbackTest, TraceEventCallbackAndRecording3) {
       TraceLog::RECORD_UNTIL_FULL);
   TRACE_EVENT_INSTANT0("recording", "yes", TRACE_EVENT_SCOPE_GLOBAL);
   TRACE_EVENT_INSTANT0("callback", "no", TRACE_EVENT_SCOPE_GLOBAL);
-  TraceLog::GetInstance()->SetEventCallbackEnabled(CategoryFilter("callback"),
-                                                   Callback);
+  TraceLog::GetInstance()->SetEventCallbackEnabled(
+      CategoryFilter("callback"), Callback);
   TRACE_EVENT_INSTANT0("recording", "yes", TRACE_EVENT_SCOPE_GLOBAL);
   TRACE_EVENT_INSTANT0("callback", "yes", TRACE_EVENT_SCOPE_GLOBAL);
   TraceLog::GetInstance()->SetEventCallbackDisabled();
@@ -602,8 +630,8 @@ TEST_F(TraceEventCallbackTest, TraceEventCallbackAndRecording4) {
       TraceLog::RECORD_UNTIL_FULL);
   TRACE_EVENT_INSTANT0("recording", "yes", TRACE_EVENT_SCOPE_GLOBAL);
   TRACE_EVENT_INSTANT0("callback", "no", TRACE_EVENT_SCOPE_GLOBAL);
-  TraceLog::GetInstance()->SetEventCallbackEnabled(CategoryFilter("callback"),
-                                                   Callback);
+  TraceLog::GetInstance()->SetEventCallbackEnabled(
+      CategoryFilter("callback"), Callback);
   TRACE_EVENT_INSTANT0("recording", "yes", TRACE_EVENT_SCOPE_GLOBAL);
   TRACE_EVENT_INSTANT0("callback", "yes", TRACE_EVENT_SCOPE_GLOBAL);
   EndTraceAndFlush();
@@ -618,8 +646,8 @@ TEST_F(TraceEventCallbackTest, TraceEventCallbackAndRecording4) {
 }
 
 TEST_F(TraceEventCallbackTest, TraceEventCallbackAndRecordingDuration) {
-  TraceLog::GetInstance()->SetEventCallbackEnabled(CategoryFilter("*"),
-                                                   Callback);
+  TraceLog::GetInstance()->SetEventCallbackEnabled(
+      CategoryFilter("*"), Callback);
   {
     TRACE_EVENT0("callback", "duration1");
     TraceLog::GetInstance()->SetEnabled(
@@ -653,7 +681,7 @@ const int kTargetDurationMs = 100;
 // wall clock time source too.
 const int kShortDurationMs = 10;
 
-}  // namespace
+} // namespace
 
 namespace debug {
 
@@ -677,12 +705,13 @@ class TraceEventSyntheticDelayTest : public KuduTest,
   TraceEventSyntheticDelay* ConfigureDelay(const char* name) {
     TraceEventSyntheticDelay* delay = TraceEventSyntheticDelay::Lookup(name);
     delay->SetClock(this);
-    delay->SetTargetDuration(
-      MonoDelta::FromMilliseconds(kTargetDurationMs));
+    delay->SetTargetDuration(MonoDelta::FromMilliseconds(kTargetDurationMs));
     return delay;
   }
 
-  void AdvanceTime(MonoDelta delta) { now_ += delta; }
+  void AdvanceTime(MonoDelta delta) {
+    now_ += delta;
+  }
 
   int TestFunction() {
     MonoTime start = Now();
@@ -723,8 +752,7 @@ TEST_F(TraceEventSyntheticDelayTest, OneShotDelay) {
   EXPECT_GE(TestFunction(), kTargetDurationMs);
   EXPECT_LT(TestFunction(), kShortDurationMs);
 
-  delay->SetTargetDuration(
-      MonoDelta::FromMilliseconds(kTargetDurationMs));
+  delay->SetTargetDuration(MonoDelta::FromMilliseconds(kTargetDurationMs));
   EXPECT_GE(TestFunction(), kTargetDurationMs);
 }
 
@@ -801,9 +829,10 @@ TEST_F(TraceEventSyntheticDelayTest, BeginParallel) {
 TEST_F(TraceTest, TestVLogTrace) {
   for (FLAGS_v = 0; FLAGS_v <= 1; FLAGS_v++) {
     TraceLog* tl = TraceLog::GetInstance();
-    tl->SetEnabled(CategoryFilter(CategoryFilter::kDefaultCategoryFilterString),
-                   TraceLog::RECORDING_MODE,
-                   TraceLog::RECORD_CONTINUOUSLY);
+    tl->SetEnabled(
+        CategoryFilter(CategoryFilter::kDefaultCategoryFilterString),
+        TraceLog::RECORDING_MODE,
+        TraceLog::RECORD_CONTINUOUSLY);
     VLOG_AND_TRACE("test", 1) << "hello world";
     tl->SetDisabled();
     string trace_json = TraceResultBuffer::FlushTraceLogToString();
@@ -836,9 +865,10 @@ TEST_F(TraceTest, TestVLogTraceLazyEvaluation) {
 
 TEST_F(TraceTest, TestVLogAndEchoToConsole) {
   TraceLog* tl = TraceLog::GetInstance();
-  tl->SetEnabled(CategoryFilter(CategoryFilter::kDefaultCategoryFilterString),
-                 TraceLog::RECORDING_MODE,
-                 TraceLog::ECHO_TO_CONSOLE);
+  tl->SetEnabled(
+      CategoryFilter(CategoryFilter::kDefaultCategoryFilterString),
+      TraceLog::RECORDING_MODE,
+      TraceLog::ECHO_TO_CONSOLE);
   FLAGS_v = 1;
   VLOG_AND_TRACE("test", 1) << "hello world";
   tl->SetDisabled();
@@ -851,8 +881,7 @@ TEST_F(TraceTest, TestTraceMetrics) {
   for (int i = 0; i < 1000; i++) {
     trace->metrics()->Increment("baz", i);
   }
-  EXPECT_EQ("{\"bar\":10,\"baz\":499500,\"foo\":10}",
-            trace->MetricsAsJSON());
+  EXPECT_EQ("{\"bar\":10,\"baz\":499500,\"foo\":10}", trace->MetricsAsJSON());
 
   {
     ADOPT_TRACE(trace.get());
@@ -878,9 +907,7 @@ TEST_F(TraceTest, TestTraceFromVanillaThreads) {
   for (int pass = 0; pass < 10; pass++) {
     vector<thread> threads;
     for (int i = 0; i < 100; i++) {
-      threads.emplace_back([i] {
-          GenerateTraceEvents(i, 1);
-        });
+      threads.emplace_back([i] { GenerateTraceEvents(i, 1); });
     }
     for (auto& t : threads) {
       t.join();

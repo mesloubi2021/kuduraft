@@ -40,7 +40,10 @@ namespace fs {
 // Corrupts various log block manager on-disk data structures.
 class LBMCorruptor {
  public:
-  LBMCorruptor(Env* env, std::vector<std::string> data_dirs, uint32_t rand_seed);
+  LBMCorruptor(
+      Env* env,
+      std::vector<std::string> data_dirs,
+      uint32_t rand_seed);
 
   // Initializes a the corruptor, parsing all data directories for containers.
   //
@@ -104,22 +107,25 @@ class LBMCorruptor {
       std::unique_ptr<pb_util::WritablePBContainerFile>* writer);
 
   // Appends a CREATE record to 'writer'.
-  static Status AppendCreateRecord(pb_util::WritablePBContainerFile* writer,
-                                   BlockId block_id,
-                                   int64_t block_offset,
-                                   int64_t block_length);
+  static Status AppendCreateRecord(
+      pb_util::WritablePBContainerFile* writer,
+      BlockId block_id,
+      int64_t block_offset,
+      int64_t block_length);
 
   // Appends a DELETE record to 'writer'.
-  static Status AppendDeleteRecord(pb_util::WritablePBContainerFile* writer,
-                                   BlockId block_id);
+  static Status AppendDeleteRecord(
+      pb_util::WritablePBContainerFile* writer,
+      BlockId block_id);
 
   // Preallocates space at the end of a container's data file for a new block.
   //
   // On success, writes the initial data file's size to 'old_data_file_size'.
-  static Status PreallocateForBlock(RWFile* data_file,
-                                    RWFile::PreAllocateMode mode,
-                                    int64_t block_length,
-                                    int64_t* old_data_file_size);
+  static Status PreallocateForBlock(
+      RWFile* data_file,
+      RWFile::PreAllocateMode mode,
+      int64_t block_length,
+      int64_t* old_data_file_size);
 
   // Gets a random container subject to the restriction in 'mode'.
   //
@@ -128,8 +134,8 @@ class LBMCorruptor {
     ANY,
     FULL,
   };
-  Status GetRandomContainer(FindContainerMode mode,
-                            const Container** container) const;
+  Status GetRandomContainer(FindContainerMode mode, const Container** container)
+      const;
 
   // Gets a data directory chosen at random.
   const std::string& GetRandomDataDir() const;

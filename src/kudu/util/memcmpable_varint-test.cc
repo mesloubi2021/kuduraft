@@ -28,18 +28,18 @@
 #include "kudu/util/memcmpable_varint.h"
 #include "kudu/util/random.h"
 #include "kudu/util/slice.h"
-#include "kudu/util/stopwatch.h"  // IWYU pragma: keep
+#include "kudu/util/stopwatch.h" // IWYU pragma: keep
 #include "kudu/util/test_util.h"
 
 // Add operator<< to print pairs, used in a test below.
 // This has to be done in the 'std' namespace due to the way that
 // template resolution works.
 namespace std {
-template<typename T1, typename T2>
-ostream &operator <<(ostream &os, const pair<T1, T2> &pair) {
+template <typename T1, typename T2>
+ostream& operator<<(ostream& os, const pair<T1, T2>& pair) {
   return os << "(" << pair.first << ", " << pair.second << ")";
 }
-}
+} // namespace std
 
 using std::make_pair;
 using std::pair;
@@ -76,7 +76,6 @@ static void DoRoundTripTest(uint64_t to_encode) {
   ASSERT_TRUE(slice.empty());
 }
 
-
 TEST_F(TestMemcmpableVarint, TestRoundTrip) {
   // Test the first 100K integers
   // (exercises the special cases for <= 67823 in the code)
@@ -89,7 +88,6 @@ TEST_F(TestMemcmpableVarint, TestRoundTrip) {
     DoRoundTripTest(random_.Next64());
   }
 }
-
 
 // Test that a composite key can be made up of multiple memcmpable
 // varints strung together, and that the resulting key compares the
@@ -114,8 +112,11 @@ TEST_F(TestMemcmpableVarint, TestCompositeKeys) {
     PutMemcmpableVarint64(&buf2, p2.first);
     PutMemcmpableVarint64(&buf2, p2.second);
 
-    SCOPED_TRACE(testing::Message() << p1 << "\n" << HexDump(Slice(buf1))
-                 << "  vs\n" << p2 << "\n" << HexDump(Slice(buf2)));
+    SCOPED_TRACE(
+        testing::Message() << p1 << "\n"
+                           << HexDump(Slice(buf1)) << "  vs\n"
+                           << p2 << "\n"
+                           << HexDump(Slice(buf2)));
     if (p1 < p2) {
       ASSERT_LT(Slice(buf1).compare(Slice(buf2)), 0);
     } else if (p1 > p2) {
@@ -131,11 +132,21 @@ TEST_F(TestMemcmpableVarint, TestCompositeKeys) {
 // the encoding changes its number of bytes.
 TEST_F(TestMemcmpableVarint, TestInterestingCompositeKeys) {
   const vector<uint64_t> interesting_values = {
-    0, 1, 240, // 1 byte
-    241, 2000, 2287, // 2 bytes
-    2288, 40000, 67823, // 3 bytes
-    67824, 1ULL << 23, (1ULL << 24) - 1, // 4 bytes
-    1ULL << 24, 1ULL << 30, (1ULL << 32) - 1, // 5 bytes
+      0,
+      1,
+      240, // 1 byte
+      241,
+      2000,
+      2287, // 2 bytes
+      2288,
+      40000,
+      67823, // 3 bytes
+      67824,
+      1ULL << 23,
+      (1ULL << 24) - 1, // 4 bytes
+      1ULL << 24,
+      1ULL << 30,
+      (1ULL << 32) - 1, // 5 bytes
   };
 
   faststring buf1;
@@ -155,8 +166,11 @@ TEST_F(TestMemcmpableVarint, TestInterestingCompositeKeys) {
           PutMemcmpableVarint64(&buf2, p2.first);
           PutMemcmpableVarint64(&buf2, p2.second);
 
-          SCOPED_TRACE(testing::Message() << p1 << "\n" << HexDump(Slice(buf1))
-                       << "  vs\n" << p2 << "\n" << HexDump(Slice(buf2)));
+          SCOPED_TRACE(
+              testing::Message() << p1 << "\n"
+                                 << HexDump(Slice(buf1)) << "  vs\n"
+                                 << p2 << "\n"
+                                 << HexDump(Slice(buf2)));
           if (p1 < p2) {
             ASSERT_LT(Slice(buf1).compare(Slice(buf2)), 0);
           } else if (p1 > p2) {

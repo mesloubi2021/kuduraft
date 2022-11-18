@@ -40,9 +40,11 @@ using std::string;
 using strings::Substitute;
 using strings::SubstituteAndAppend;
 
-#ifdef FB_DO_NOT_REMOVE  // #ifndef NDEBUG
-DEFINE_bool(debug_mutex_collect_stacktrace, false,
-            "Whether to collect a stacktrace on Mutex contention in a DEBUG build");
+#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
+DEFINE_bool(
+    debug_mutex_collect_stacktrace,
+    false,
+    "Whether to collect a stacktrace on Mutex contention in a DEBUG build");
 TAG_FLAG(debug_mutex_collect_stacktrace, advanced);
 TAG_FLAG(debug_mutex_collect_stacktrace, hidden);
 #endif
@@ -50,12 +52,12 @@ TAG_FLAG(debug_mutex_collect_stacktrace, hidden);
 namespace kudu {
 
 Mutex::Mutex()
-#ifdef FB_DO_NOT_REMOVE  // #ifndef NDEBUG
-  : owning_tid_(0),
-    stack_trace_(new StackTrace())
+#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
+    : owning_tid_(0),
+      stack_trace_(new StackTrace())
 #endif
 {
-#ifdef FB_DO_NOT_REMOVE  // #ifndef NDEBUG
+#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
   // In debug, setup attributes for lock error checking.
   pthread_mutexattr_t mta;
   int rv = pthread_mutexattr_init(&mta);
@@ -79,8 +81,9 @@ Mutex::~Mutex() {
 
 bool Mutex::TryAcquire() {
   int rv = pthread_mutex_trylock(&native_handle_);
-#ifdef FB_DO_NOT_REMOVE  // #ifndef NDEBUG
-  DCHECK(rv == 0 || rv == EBUSY) << ". " << strerror(rv) << ". " << GetOwnerThreadInfo();
+#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
+  DCHECK(rv == 0 || rv == EBUSY)
+      << ". " << strerror(rv) << ". " << GetOwnerThreadInfo();
   if (rv == 0) {
     CheckUnheldAndMark();
   }
@@ -104,10 +107,10 @@ void Mutex::Acquire() {
   MicrosecondsInt64 start_time = GetMonoTimeMicros();
   int rv = pthread_mutex_lock(&native_handle_);
   DCHECK_EQ(0, rv) << ". " << strerror(rv)
-#ifdef FB_DO_NOT_REMOVE  // #ifndef NDEBUG
+#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
                    << ". " << GetOwnerThreadInfo()
 #endif
-  ; // NOLINT(whitespace/semicolon)
+      ; // NOLINT(whitespace/semicolon)
   MicrosecondsInt64 end_time = GetMonoTimeMicros();
 
   int64_t wait_time = end_time - start_time;
@@ -115,20 +118,20 @@ void Mutex::Acquire() {
     TRACE_COUNTER_INCREMENT("mutex_wait_us", wait_time);
   }
 
-#ifdef FB_DO_NOT_REMOVE  // #ifndef NDEBUG
+#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
   CheckUnheldAndMark();
 #endif
 }
 
 void Mutex::Release() {
-#ifdef FB_DO_NOT_REMOVE  // #ifndef NDEBUG
+#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
   CheckHeldAndUnmark();
 #endif
   int rv = pthread_mutex_unlock(&native_handle_);
   DCHECK_EQ(0, rv) << ". " << strerror(rv);
 }
 
-#ifdef FB_DO_NOT_REMOVE  // #ifndef NDEBUG
+#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
 void Mutex::AssertAcquired() const {
   DCHECK_EQ(Env::Default()->gettid(), owning_tid_);
 }
@@ -150,11 +153,13 @@ void Mutex::CheckUnheldAndMark() {
 }
 
 string Mutex::GetOwnerThreadInfo() const {
-  string str = Substitute("Owner tid: $0; Self tid: $1; ", owning_tid_, Env::Default()->gettid());
+  string str = Substitute(
+      "Owner tid: $0; Self tid: $1; ", owning_tid_, Env::Default()->gettid());
   if (FLAGS_debug_mutex_collect_stacktrace) {
     SubstituteAndAppend(&str, "Owner stack:\n$0", stack_trace_->Symbolize());
   } else {
-    str += "To collect the owner stack trace, enable the flag --debug_mutex_collect_stacktrace";
+    str +=
+        "To collect the owner stack trace, enable the flag --debug_mutex_collect_stacktrace";
   }
   return str;
 }

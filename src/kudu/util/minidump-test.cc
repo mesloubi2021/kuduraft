@@ -28,11 +28,11 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
+#include "kudu/util/env.h"
 #include "kudu/util/minidump.h"
 #include "kudu/util/path_util.h"
-#include "kudu/util/test_macros.h"
-#include "kudu/util/env.h"
 #include "kudu/util/status.h"
+#include "kudu/util/test_macros.h"
 #include "kudu/util/test_util.h"
 
 using std::string;
@@ -64,11 +64,10 @@ TEST_F(MinidumpDeathTest, TestRegisterAndDelete) {
   FLAGS_enable_minidumps = true;
   FLAGS_minidump_path = JoinPathSegments(test_dir_, "minidumps");
   MinidumpExceptionHandler minidump_handler;
-  ASSERT_DEATH({
-    abort();
-  },
-  // Ensure that a stack trace is produced.
-  "kudu::MinidumpDeathTest_TestRegisterAndDelete_Test::TestBody()");
+  ASSERT_DEATH(
+      { abort(); },
+      // Ensure that a stack trace is produced.
+      "kudu::MinidumpDeathTest_TestRegisterAndDelete_Test::TestBody()");
 
   // Ensure that a minidump is produced.
   string minidump_dir = minidump_handler.minidump_dir();
@@ -90,11 +89,10 @@ TEST_F(MinidumpDeathTest, TestCheckStackTraceAndMinidump) {
   FLAGS_enable_minidumps = true;
   FLAGS_minidump_path = JoinPathSegments(test_dir_, "minidumps");
   MinidumpExceptionHandler minidump_handler;
-  ASSERT_DEATH({
-    CHECK_EQ(1, 0);
-  },
-  // Ensure that a stack trace is produced.
-  "kudu::MinidumpDeathTest_TestCheckStackTraceAndMinidump_Test::TestBody()");
+  ASSERT_DEATH(
+      { CHECK_EQ(1, 0); },
+      // Ensure that a stack trace is produced.
+      "kudu::MinidumpDeathTest_TestCheckStackTraceAndMinidump_Test::TestBody()");
 
   // Ensure that a minidump is produced.
   string minidump_dir = minidump_handler.minidump_dir();
@@ -102,8 +100,7 @@ TEST_F(MinidumpDeathTest, TestCheckStackTraceAndMinidump) {
 }
 
 class MinidumpSignalDeathTest : public MinidumpDeathTest,
-                                public ::testing::WithParamInterface<int> {
-};
+                                public ::testing::WithParamInterface<int> {};
 
 // Test that we get both a minidump and a stack trace for each supported signal.
 TEST_P(MinidumpSignalDeathTest, TestHaveMinidumpAndStackTrace) {
@@ -111,7 +108,8 @@ TEST_P(MinidumpSignalDeathTest, TestHaveMinidumpAndStackTrace) {
   int signal = GetParam();
 
 #if defined(ADDRESS_SANITIZER)
-  // ASAN appears to catch SIGBUS, SIGSEGV, and SIGFPE and the process is not killed.
+  // ASAN appears to catch SIGBUS, SIGSEGV, and SIGFPE and the process is not
+  // killed.
   if (signal == SIGBUS || signal == SIGSEGV || signal == SIGFPE) {
     return;
   }
@@ -128,11 +126,10 @@ TEST_P(MinidumpSignalDeathTest, TestHaveMinidumpAndStackTrace) {
 
   FLAGS_minidump_path = JoinPathSegments(test_dir_, "minidumps");
   MinidumpExceptionHandler minidump_handler;
-  ASSERT_DEATH({
-    kill(getpid(), signal);
-  },
-  // Ensure that a stack trace is produced.
-  "kudu::MinidumpSignalDeathTest_TestHaveMinidumpAndStackTrace_Test::TestBody()");
+  ASSERT_DEATH(
+      { kill(getpid(), signal); },
+      // Ensure that a stack trace is produced.
+      "kudu::MinidumpSignalDeathTest_TestHaveMinidumpAndStackTrace_Test::TestBody()");
 
   // Ensure that a mindump is produced, unless it's SIGTERM, which does not
   // create a minidump.
@@ -140,10 +137,13 @@ TEST_P(MinidumpSignalDeathTest, TestHaveMinidumpAndStackTrace) {
   if (signal == SIGTERM) {
     num_expected_minidumps = 0;
   }
-  NO_FATALS(WaitForMinidumps(num_expected_minidumps, minidump_handler.minidump_dir()));
+  NO_FATALS(WaitForMinidumps(
+      num_expected_minidumps, minidump_handler.minidump_dir()));
 }
 
-INSTANTIATE_TEST_CASE_P(DeadlySignals, MinidumpSignalDeathTest,
+INSTANTIATE_TEST_CASE_P(
+    DeadlySignals,
+    MinidumpSignalDeathTest,
     ::testing::Values(SIGABRT, SIGBUS, SIGSEGV, SIGILL, SIGFPE, SIGTERM));
 
 } // namespace kudu

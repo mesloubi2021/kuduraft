@@ -29,8 +29,8 @@
 
 namespace kudu {
 
-// Constructs a sorted disjoint interval list in-place given a list of intervals.
-// The result is written back to the given 'intervals'.
+// Constructs a sorted disjoint interval list in-place given a list of
+// intervals. The result is written back to the given 'intervals'.
 //
 // Returns an error if the list contains any invalid intervals.
 //
@@ -53,37 +53,40 @@ namespace kudu {
 // e.g., [3, 6). Note that interval with the same start and end point is
 // considered to be valid in this implementation.
 // It also assumes 'PointType' has a proper defined comparator.
-template<typename PointType>
-Status CoalesceIntervals(std::vector<std::pair<PointType, PointType>>* intervals) {
-  if (intervals->empty()) return Status::OK();
+template <typename PointType>
+Status CoalesceIntervals(
+    std::vector<std::pair<PointType, PointType>>* intervals) {
+  if (intervals->empty())
+    return Status::OK();
 
   // Sort the intervals to prepare for coalescing overlapped ranges.
   for (const auto& interval : *intervals) {
     if (interval.first > interval.second) {
-      return Status::InvalidArgument(strings::Substitute("invalid interval: [$0, $1)",
-                                                         interval.first,
-                                                         interval.second));
+      return Status::InvalidArgument(strings::Substitute(
+          "invalid interval: [$0, $1)", interval.first, interval.second));
     }
   }
   std::sort(intervals->begin(), intervals->end());
 
-  // Traverse the intervals to coalesce overlapped intervals. During the process,
-  // uses 'head', 'tail' to track the start and end point of the current disjoint
-  // interval.
+  // Traverse the intervals to coalesce overlapped intervals. During the
+  // process, uses 'head', 'tail' to track the start and end point of the
+  // current disjoint interval.
   auto head = intervals->begin();
   auto tail = head;
   while (++tail != intervals->end()) {
-    // If interval 'head' and 'tail' overlap with each other, coalesce them and move
-    // to next. Otherwise, the two intervals are disjoint.
+    // If interval 'head' and 'tail' overlap with each other, coalesce them and
+    // move to next. Otherwise, the two intervals are disjoint.
     if (head->second >= tail->first) {
-      if (tail->second > head->second) head->second = std::move(tail->second);
+      if (tail->second > head->second)
+        head->second = std::move(tail->second);
     } else {
-      // The two intervals are disjoint. If the 'head' previously already coalesced
-      // some intervals, 'head' and 'tail' will not be adjacent. If so, move 'tail'
-      // to the next 'head' to make sure we do not include any of the previously-coalesced
-      // intervals.
+      // The two intervals are disjoint. If the 'head' previously already
+      // coalesced some intervals, 'head' and 'tail' will not be adjacent. If
+      // so, move 'tail' to the next 'head' to make sure we do not include any
+      // of the previously-coalesced intervals.
       ++head;
-      if (head != tail) *head = std::move(*tail);
+      if (head != tail)
+        *head = std::move(*tail);
     }
   }
 

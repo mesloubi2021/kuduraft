@@ -24,7 +24,7 @@
 #include "kudu/util/safe_math.h"
 
 namespace kudu {
-template<typename T>
+template <typename T>
 static void DoTest(T a, T b, bool expected) {
   SCOPED_TRACE(a);
   SCOPED_TRACE(b);
@@ -44,7 +44,6 @@ TEST(TestSafeMath, TestSignedInts) {
   // Underflow around negative
   DoTest<int32_t>(MathLimits<int32_t>::kMin + 10, -15, true);
   DoTest<int32_t>(MathLimits<int32_t>::kMin + 10, -5, false);
-
 }
 
 TEST(TestSafeMath, TestUnsignedInts) {

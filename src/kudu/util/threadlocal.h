@@ -36,14 +36,15 @@
 // BLOCK_STATIC_THREAD_LOCAL(SomeClass, instance, arg1, arg2, arg3);
 // instance->DoSomething();
 //
-#define BLOCK_STATIC_THREAD_LOCAL(T, t, ...)                                    \
-static __thread T* t;                                                           \
-do {                                                                            \
-  if (PREDICT_FALSE(t == NULL)) {                                               \
-    t = new T(__VA_ARGS__);                                                     \
-    threadlocal::internal::AddDestructor(threadlocal::internal::Destroy<T>, t); \
-  }                                                                             \
-} while (false)
+#define BLOCK_STATIC_THREAD_LOCAL(T, t, ...)     \
+  static __thread T* t;                          \
+  do {                                           \
+    if (PREDICT_FALSE(t == NULL)) {              \
+      t = new T(__VA_ARGS__);                    \
+      threadlocal::internal::AddDestructor(      \
+          threadlocal::internal::Destroy<T>, t); \
+    }                                            \
+  } while (false)
 
 // Class-scoped static thread local implementation.
 //
@@ -89,21 +90,20 @@ do {                                                                            
 // dtor must be destructed _after_ t, so it gets defined first.
 // Uses a mangled variable name for dtor since it must also be a member of the
 // class.
-#define DECLARE_STATIC_THREAD_LOCAL(T, t)                                                     \
-static __thread T* t
+#define DECLARE_STATIC_THREAD_LOCAL(T, t) static __thread T* t
 
 // You must also define the instance in the .cc file.
-#define DEFINE_STATIC_THREAD_LOCAL(T, Class, t)                                               \
-(__thread (T)* Class::t)
+#define DEFINE_STATIC_THREAD_LOCAL(T, Class, t) (__thread(T) * Class::t)
 
 // Must be invoked at least once by each thread that will access t.
-#define INIT_STATIC_THREAD_LOCAL(T, t, ...)                                       \
-do {                                                                              \
-  if (PREDICT_FALSE(t == NULL)) {                                                 \
-    t = new T(__VA_ARGS__);                                                       \
-    threadlocal::internal::AddDestructor(threadlocal::internal::Destroy<T>, t);   \
-  }                                                                               \
-} while (false)
+#define INIT_STATIC_THREAD_LOCAL(T, t, ...)      \
+  do {                                           \
+    if (PREDICT_FALSE(t == NULL)) {              \
+      t = new T(__VA_ARGS__);                    \
+      threadlocal::internal::AddDestructor(      \
+          threadlocal::internal::Destroy<T>, t); \
+    }                                            \
+  } while (false)
 
 // Internal implementation below.
 
@@ -115,7 +115,7 @@ namespace internal {
 void AddDestructor(void (*destructor)(void*), void* arg);
 
 // Destroy the passed object of type T.
-template<class T>
+template <class T>
 static void Destroy(void* t) {
   // With tcmalloc, this should be pretty cheap (same thread as new).
   delete reinterpret_cast<T*>(t);

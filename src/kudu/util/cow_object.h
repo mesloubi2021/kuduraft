@@ -34,7 +34,7 @@ namespace kudu {
 // CowLock template class defined below.
 //
 // The 'State' template parameter must be swappable using std::swap.
-template<class State>
+template <class State>
 class CowObject {
  public:
   CowObject() {}
@@ -164,39 +164,39 @@ std::ostream& operator<<(std::ostream& o, LockMode m);
 //     ...
 //     l.Commit();
 //   }
-template<class State>
+template <class State>
 class CowLock {
  public:
-
-   // An unlocked CowLock. This is useful for default constructing a lock to be
-   // moved in to.
-   CowLock()
-    : cow_(nullptr),
-      mode_(LockMode::RELEASED) {
-   }
+  // An unlocked CowLock. This is useful for default constructing a lock to be
+  // moved in to.
+  CowLock() : cow_(nullptr), mode_(LockMode::RELEASED) {}
 
   // Lock in either read or write mode.
-  CowLock(CowObject<State>* cow,
-          LockMode mode)
-    : cow_(cow),
-      mode_(mode) {
+  CowLock(CowObject<State>* cow, LockMode mode) : cow_(cow), mode_(mode) {
     switch (mode) {
-      case LockMode::READ: cow_->ReadLock(); break;
-      case LockMode::WRITE: cow_->StartMutation(); break;
-      default: LOG(FATAL) << "Cannot lock in mode " << mode;
+      case LockMode::READ:
+        cow_->ReadLock();
+        break;
+      case LockMode::WRITE:
+        cow_->StartMutation();
+        break;
+      default:
+        LOG(FATAL) << "Cannot lock in mode " << mode;
     }
   }
 
   // Lock in read mode.
   // A const object may not be locked in write mode.
-  CowLock(const CowObject<State>* info,
-          LockMode mode)
-    : cow_(const_cast<CowObject<State>*>(info)),
-      mode_(mode) {
+  CowLock(const CowObject<State>* info, LockMode mode)
+      : cow_(const_cast<CowObject<State>*>(info)), mode_(mode) {
     switch (mode) {
-      case LockMode::READ: cow_->ReadLock(); break;
-      case LockMode::WRITE: LOG(FATAL) << "Cannot write-lock a const pointer";
-      default: LOG(FATAL) << "Cannot lock in mode " << mode;
+      case LockMode::READ:
+        cow_->ReadLock();
+        break;
+      case LockMode::WRITE:
+        LOG(FATAL) << "Cannot write-lock a const pointer";
+      default:
+        LOG(FATAL) << "Cannot lock in mode " << mode;
     }
   }
 
@@ -205,9 +205,7 @@ class CowLock {
   CowLock& operator=(const CowLock&) = delete;
 
   // Allow moving.
-  CowLock(CowLock&& other) noexcept
-    : cow_(other.cow_),
-      mode_(other.mode_) {
+  CowLock(CowLock&& other) noexcept : cow_(other.cow_), mode_(other.mode_) {
     other.cow_ = nullptr;
     other.mode_ = LockMode::RELEASED;
   }
@@ -229,9 +227,15 @@ class CowLock {
 
   void Unlock() {
     switch (mode_) {
-      case LockMode::READ: cow_->ReadUnlock(); break;
-      case LockMode::WRITE: cow_->AbortMutation(); break;
-      default: DCHECK_EQ(LockMode::RELEASED, mode_); break;
+      case LockMode::READ:
+        cow_->ReadUnlock();
+        break;
+      case LockMode::WRITE:
+        cow_->AbortMutation();
+        break;
+      default:
+        DCHECK_EQ(LockMode::RELEASED, mode_);
+        break;
     }
     mode_ = LockMode::RELEASED;
   }
@@ -240,18 +244,24 @@ class CowLock {
   // same data as mutable_data() (not the safe unchanging copy).
   const State& data() const {
     switch (mode_) {
-      case LockMode::READ: return cow_->state();
-      case LockMode::WRITE: return cow_->dirty();
-      default: LOG(FATAL) << "Cannot access data after committing";
+      case LockMode::READ:
+        return cow_->state();
+      case LockMode::WRITE:
+        return cow_->dirty();
+      default:
+        LOG(FATAL) << "Cannot access data after committing";
     }
   }
 
   // Obtain the mutable data. This may only be called in WRITE mode.
   State* mutable_data() {
     switch (mode_) {
-      case LockMode::READ: LOG(FATAL) << "Cannot mutate data with READ lock";
-      case LockMode::WRITE: return cow_->mutable_dirty();
-      default: LOG(FATAL) << "Cannot access data after committing";
+      case LockMode::READ:
+        LOG(FATAL) << "Cannot mutate data with READ lock";
+      case LockMode::WRITE:
+        return cow_->mutable_dirty();
+      default:
+        LOG(FATAL) << "Cannot access data after committing";
     }
   }
 
@@ -275,7 +285,8 @@ class CowLock {
 // When locked for writing and mutations are completed, can also commit those
 // mutations, which releases the lock.
 //
-// CowObjects are stored in an std::map, which provides two important properties:
+// CowObjects are stored in an std::map, which provides two important
+// properties:
 // 1. AddObject() can deduplicate CowObjects already inserted.
 // 2. When locking for writing, the deterministic iteration order provided by
 //    std::map prevents deadlocks.
@@ -317,7 +328,8 @@ class CowLock {
 //   }
 //   l.Commit();
 //
-// 3. Aggregating unlocked CowObjects, locking them safely, and committing them together:
+// 3. Aggregating unlocked CowObjects, locking them safely, and committing them
+// together:
 //
 //   CowGroupLock<string, Foo> l(LockMode::RELEASED);
 //   for (const auto& f : foos) {
@@ -328,12 +340,10 @@ class CowLock {
 //     f.mutable_dirty().data_ = "modified";
 //   }
 //   l.Commit();
-template<class Key, class Value>
+template <class Key, class Value>
 class CowGroupLock {
  public:
-  explicit CowGroupLock(LockMode mode)
-    : mode_(mode) {
-  }
+  explicit CowGroupLock(LockMode mode) : mode_(mode) {}
 
   ~CowGroupLock() {
     Unlock();
@@ -400,7 +410,8 @@ class CowGroupLock {
   //    'object' is also already locked in that mode.
   void AddObject(Key key, const CowObject<Value>* object) {
     AssertObjectLocked(object);
-    auto r = cows_.emplace(std::move(key), const_cast<CowObject<Value>*>(object));
+    auto r =
+        cows_.emplace(std::move(key), const_cast<CowObject<Value>*>(object));
     DCHECK_EQ(r.first->second, object);
   }
 

@@ -29,9 +29,7 @@ namespace kudu {
 class HighWaterMark {
  public:
   explicit HighWaterMark(int64_t initial_value)
-    : current_value_(initial_value),
-      max_value_(initial_value) {
-  }
+      : current_value_(initial_value), max_value_(initial_value) {}
 
   // Return the current value.
   int64_t current_value() const {
@@ -52,9 +50,8 @@ class HighWaterMark {
       if (new_val > max) {
         return false;
       }
-      if (PREDICT_TRUE(current_value_.CompareAndSet(old_val,
-                                                    new_val,
-                                                    kMemOrderNoBarrier))) {
+      if (PREDICT_TRUE(current_value_.CompareAndSet(
+              old_val, new_val, kMemOrderNoBarrier))) {
         UpdateMax(new_val);
         return true;
       }
@@ -81,5 +78,3 @@ class HighWaterMark {
 
 } // namespace kudu
 #endif /* KUDU_UTIL_HIGH_WATER_MARK_H */
-
-

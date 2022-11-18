@@ -58,7 +58,7 @@ namespace strings {
 //   large strings, it may be orders of magnitude faster.
 // ----------------------------------------------------------------------
 
-namespace internal {  // Implementation details.
+namespace internal { // Implementation details.
 
 // This class has implicit constructors.
 // Style guide exception granted:
@@ -70,12 +70,12 @@ class SubstituteArg {
   // cast it to bool to construct a DynamicSubstituteArg.  Might as well
   // overload const string& as well, since this allows us to avoid a temporary
   // object.
-  inline SubstituteArg(const char* value)  // NOLINT(runtime/explicit)
-    : text_(value), size_(value == NULL ? 0 : strlen(text_)) {}
-  inline SubstituteArg(const std::string& value)  // NOLINT(runtime/explicit)
-    : text_(value.data()), size_(value.size()) {}
-  inline SubstituteArg(const StringPiece& value)  // NOLINT(runtime/explicit)
-    : text_(value.data()), size_(value.size()) {}
+  inline SubstituteArg(const char* value) // NOLINT(runtime/explicit)
+      : text_(value), size_(value == NULL ? 0 : strlen(text_)) {}
+  inline SubstituteArg(const std::string& value) // NOLINT(runtime/explicit)
+      : text_(value.data()), size_(value.size()) {}
+  inline SubstituteArg(const StringPiece& value) // NOLINT(runtime/explicit)
+      : text_(value.data()), size_(value.size()) {}
 
   // Primitives
   // We don't overload for signed and unsigned char because if people are
@@ -83,55 +83,63 @@ class SubstituteArg {
   // probably actually using them as 8-bit integers and would probably
   // prefer an integer representation.  But, we don't really know.  So, we
   // make the caller decide what to do.
-  inline SubstituteArg(char value)  // NOLINT(runtime/explicit)
-    : text_(scratch_), size_(1) { scratch_[0] = value; }
-  inline SubstituteArg(short value)  // NOLINT(runtime/explicit)
-    : text_(scratch_),
-      size_(FastInt32ToBufferLeft(value, scratch_) - scratch_) {}
-  inline SubstituteArg(unsigned short value)  // NOLINT(runtime/explicit)
-    : text_(scratch_),
-      size_(FastUInt32ToBufferLeft(value, scratch_) - scratch_) {}
-  inline SubstituteArg(int value)  // NOLINT(runtime/explicit)
-    : text_(scratch_),
-      size_(FastInt32ToBufferLeft(value, scratch_) - scratch_) {}
-  inline SubstituteArg(unsigned int value)  // NOLINT(runtime/explicit)
-    : text_(scratch_),
-      size_(FastUInt32ToBufferLeft(value, scratch_) - scratch_) {}
-  inline SubstituteArg(long value)  // NOLINT(runtime/explicit)
-    : text_(scratch_),
-      size_((sizeof(value) == 4 ? FastInt32ToBufferLeft(value, scratch_)
-                                : FastInt64ToBufferLeft(value, scratch_))
-            - scratch_) {}
-  inline SubstituteArg(unsigned long value)  // NOLINT(runtime/explicit)
-    : text_(scratch_),
-      size_((sizeof(value) == 4 ? FastUInt32ToBufferLeft(value, scratch_)
-                                : FastUInt64ToBufferLeft(value, scratch_))
-            - scratch_) {}
-  inline SubstituteArg(long long value)  // NOLINT(runtime/explicit)
-    : text_(scratch_),
-      size_(FastInt64ToBufferLeft(value, scratch_) - scratch_) {}
-  inline SubstituteArg(unsigned long long value)  // NOLINT(runtime/explicit)
-    : text_(scratch_),
-      size_(FastUInt64ToBufferLeft(value, scratch_) - scratch_) {}
-  inline SubstituteArg(__int128 value)  // NOLINT(runtime/explicit)
+  inline SubstituteArg(char value) // NOLINT(runtime/explicit)
+      : text_(scratch_), size_(1) {
+    scratch_[0] = value;
+  }
+  inline SubstituteArg(short value) // NOLINT(runtime/explicit)
+      : text_(scratch_),
+        size_(FastInt32ToBufferLeft(value, scratch_) - scratch_) {}
+  inline SubstituteArg(unsigned short value) // NOLINT(runtime/explicit)
+      : text_(scratch_),
+        size_(FastUInt32ToBufferLeft(value, scratch_) - scratch_) {}
+  inline SubstituteArg(int value) // NOLINT(runtime/explicit)
+      : text_(scratch_),
+        size_(FastInt32ToBufferLeft(value, scratch_) - scratch_) {}
+  inline SubstituteArg(unsigned int value) // NOLINT(runtime/explicit)
+      : text_(scratch_),
+        size_(FastUInt32ToBufferLeft(value, scratch_) - scratch_) {}
+  inline SubstituteArg(long value) // NOLINT(runtime/explicit)
+      : text_(scratch_),
+        size_(
+            (sizeof(value) == 4 ? FastInt32ToBufferLeft(value, scratch_)
+                                : FastInt64ToBufferLeft(value, scratch_)) -
+            scratch_) {}
+  inline SubstituteArg(unsigned long value) // NOLINT(runtime/explicit)
+      : text_(scratch_),
+        size_(
+            (sizeof(value) == 4 ? FastUInt32ToBufferLeft(value, scratch_)
+                                : FastUInt64ToBufferLeft(value, scratch_)) -
+            scratch_) {}
+  inline SubstituteArg(long long value) // NOLINT(runtime/explicit)
       : text_(scratch_),
         size_(FastInt64ToBufferLeft(value, scratch_) - scratch_) {}
-  inline SubstituteArg(unsigned __int128 value)  // NOLINT(runtime/explicit)
+  inline SubstituteArg(unsigned long long value) // NOLINT(runtime/explicit)
       : text_(scratch_),
         size_(FastUInt64ToBufferLeft(value, scratch_) - scratch_) {}
-  inline SubstituteArg(float value)  // NOLINT(runtime/explicit)
-    : text_(FloatToBuffer(value, scratch_)), size_(strlen(text_)) {}
-  inline SubstituteArg(double value)  // NOLINT(runtime/explicit)
-    : text_(DoubleToBuffer(value, scratch_)), size_(strlen(text_)) {}
-  inline SubstituteArg(bool value)  // NOLINT(runtime/explicit)
-    : text_(value ? "true" : "false"), size_(strlen(text_)) {}
+  inline SubstituteArg(__int128 value) // NOLINT(runtime/explicit)
+      : text_(scratch_),
+        size_(FastInt64ToBufferLeft(value, scratch_) - scratch_) {}
+  inline SubstituteArg(unsigned __int128 value) // NOLINT(runtime/explicit)
+      : text_(scratch_),
+        size_(FastUInt64ToBufferLeft(value, scratch_) - scratch_) {}
+  inline SubstituteArg(float value) // NOLINT(runtime/explicit)
+      : text_(FloatToBuffer(value, scratch_)), size_(strlen(text_)) {}
+  inline SubstituteArg(double value) // NOLINT(runtime/explicit)
+      : text_(DoubleToBuffer(value, scratch_)), size_(strlen(text_)) {}
+  inline SubstituteArg(bool value) // NOLINT(runtime/explicit)
+      : text_(value ? "true" : "false"), size_(strlen(text_)) {}
   // void* values, with the exception of char*, are printed as
   // StringPrintf with format "%p" would ("0x<hex value>"), with the
   // exception of NULL, which is printed as "NULL".
-  SubstituteArg(const void* value);  // NOLINT(runtime/explicit)
+  SubstituteArg(const void* value); // NOLINT(runtime/explicit)
 
-  inline const char* data() const { return text_; }
-  inline int size() const { return size_; }
+  inline const char* data() const {
+    return text_;
+  }
+  inline int size() const {
+    return size_;
+  }
 
   // Indicates that no argument was given.
   static const SubstituteArg kNoArg;
@@ -146,50 +154,62 @@ class SubstituteArg {
 
 // Return the length of the resulting string after performing the given
 // substitution.
-int SubstitutedSize(StringPiece format,
-                    const SubstituteArg* const* args_array);
+int SubstitutedSize(StringPiece format, const SubstituteArg* const* args_array);
 
 // Perform the given substitution into 'target'. 'target' must have
 // space for the result -- use SubstitutedSize() to determine how many
 // bytes are required.  Returns a pointer to the next byte following
 // the result in 'target'.
-char* SubstituteToBuffer(StringPiece format,
-                         const SubstituteArg* const* args_array,
-                         char* target);
+char* SubstituteToBuffer(
+    StringPiece format,
+    const SubstituteArg* const* args_array,
+    char* target);
 
-}  // namespace internal
+} // namespace internal
 
 void SubstituteAndAppend(
-  std::string* output, StringPiece format,
-  const internal::SubstituteArg& arg0 = internal::SubstituteArg::kNoArg,
-  const internal::SubstituteArg& arg1 = internal::SubstituteArg::kNoArg,
-  const internal::SubstituteArg& arg2 = internal::SubstituteArg::kNoArg,
-  const internal::SubstituteArg& arg3 = internal::SubstituteArg::kNoArg,
-  const internal::SubstituteArg& arg4 = internal::SubstituteArg::kNoArg,
-  const internal::SubstituteArg& arg5 = internal::SubstituteArg::kNoArg,
-  const internal::SubstituteArg& arg6 = internal::SubstituteArg::kNoArg,
-  const internal::SubstituteArg& arg7 = internal::SubstituteArg::kNoArg,
-  const internal::SubstituteArg& arg8 = internal::SubstituteArg::kNoArg,
-  const internal::SubstituteArg& arg9 = internal::SubstituteArg::kNoArg);
+    std::string* output,
+    StringPiece format,
+    const internal::SubstituteArg& arg0 = internal::SubstituteArg::kNoArg,
+    const internal::SubstituteArg& arg1 = internal::SubstituteArg::kNoArg,
+    const internal::SubstituteArg& arg2 = internal::SubstituteArg::kNoArg,
+    const internal::SubstituteArg& arg3 = internal::SubstituteArg::kNoArg,
+    const internal::SubstituteArg& arg4 = internal::SubstituteArg::kNoArg,
+    const internal::SubstituteArg& arg5 = internal::SubstituteArg::kNoArg,
+    const internal::SubstituteArg& arg6 = internal::SubstituteArg::kNoArg,
+    const internal::SubstituteArg& arg7 = internal::SubstituteArg::kNoArg,
+    const internal::SubstituteArg& arg8 = internal::SubstituteArg::kNoArg,
+    const internal::SubstituteArg& arg9 = internal::SubstituteArg::kNoArg);
 
 inline std::string Substitute(
-  StringPiece format,
-  const internal::SubstituteArg& arg0 = internal::SubstituteArg::kNoArg,
-  const internal::SubstituteArg& arg1 = internal::SubstituteArg::kNoArg,
-  const internal::SubstituteArg& arg2 = internal::SubstituteArg::kNoArg,
-  const internal::SubstituteArg& arg3 = internal::SubstituteArg::kNoArg,
-  const internal::SubstituteArg& arg4 = internal::SubstituteArg::kNoArg,
-  const internal::SubstituteArg& arg5 = internal::SubstituteArg::kNoArg,
-  const internal::SubstituteArg& arg6 = internal::SubstituteArg::kNoArg,
-  const internal::SubstituteArg& arg7 = internal::SubstituteArg::kNoArg,
-  const internal::SubstituteArg& arg8 = internal::SubstituteArg::kNoArg,
-  const internal::SubstituteArg& arg9 = internal::SubstituteArg::kNoArg) {
+    StringPiece format,
+    const internal::SubstituteArg& arg0 = internal::SubstituteArg::kNoArg,
+    const internal::SubstituteArg& arg1 = internal::SubstituteArg::kNoArg,
+    const internal::SubstituteArg& arg2 = internal::SubstituteArg::kNoArg,
+    const internal::SubstituteArg& arg3 = internal::SubstituteArg::kNoArg,
+    const internal::SubstituteArg& arg4 = internal::SubstituteArg::kNoArg,
+    const internal::SubstituteArg& arg5 = internal::SubstituteArg::kNoArg,
+    const internal::SubstituteArg& arg6 = internal::SubstituteArg::kNoArg,
+    const internal::SubstituteArg& arg7 = internal::SubstituteArg::kNoArg,
+    const internal::SubstituteArg& arg8 = internal::SubstituteArg::kNoArg,
+    const internal::SubstituteArg& arg9 = internal::SubstituteArg::kNoArg) {
   std::string result;
-  SubstituteAndAppend(&result, format, arg0, arg1, arg2, arg3, arg4,
-                                       arg5, arg6, arg7, arg8, arg9);
+  SubstituteAndAppend(
+      &result,
+      format,
+      arg0,
+      arg1,
+      arg2,
+      arg3,
+      arg4,
+      arg5,
+      arg6,
+      arg7,
+      arg8,
+      arg9);
   return result;
 }
 
-}  // namespace strings
+} // namespace strings
 
-#endif  // STRINGS_SUBSTITUTE_H_
+#endif // STRINGS_SUBSTITUTE_H_

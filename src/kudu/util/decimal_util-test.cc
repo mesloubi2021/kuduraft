@@ -30,7 +30,8 @@ TEST(TestDecimalUtil, TestMaxUnscaledDecimal) {
   ASSERT_EQ(99999, MaxUnscaledDecimal(5));
   ASSERT_EQ(kMaxUnscaledDecimal32, MaxUnscaledDecimal(kMaxDecimal32Precision));
   ASSERT_EQ(kMaxUnscaledDecimal64, MaxUnscaledDecimal(kMaxDecimal64Precision));
-  ASSERT_EQ(kMaxUnscaledDecimal128, MaxUnscaledDecimal(kMaxDecimal128Precision));
+  ASSERT_EQ(
+      kMaxUnscaledDecimal128, MaxUnscaledDecimal(kMaxDecimal128Precision));
 }
 
 TEST(TestDecimalUtil, TestMinUnscaledDecimal) {
@@ -38,36 +39,49 @@ TEST(TestDecimalUtil, TestMinUnscaledDecimal) {
   ASSERT_EQ(-99999, MinUnscaledDecimal(5));
   ASSERT_EQ(kMinUnscaledDecimal32, MinUnscaledDecimal(kMaxDecimal32Precision));
   ASSERT_EQ(kMinUnscaledDecimal64, MinUnscaledDecimal(kMaxDecimal64Precision));
-  ASSERT_EQ(kMinUnscaledDecimal128, MinUnscaledDecimal(kMaxDecimal128Precision));
+  ASSERT_EQ(
+      kMinUnscaledDecimal128, MinUnscaledDecimal(kMaxDecimal128Precision));
 }
 
 TEST(TestDecimalUtil, TestToString) {
-  ASSERT_EQ("999999999",
-            DecimalToString(kMaxUnscaledDecimal32, kDefaultDecimalScale));
-  ASSERT_EQ("0.999999999",
-            DecimalToString(kMaxUnscaledDecimal32, kMaxDecimal32Precision));
-  ASSERT_EQ("-999999999",
-            DecimalToString(kMinUnscaledDecimal32, kDefaultDecimalScale));
-  ASSERT_EQ("-0.999999999",
-            DecimalToString(kMinUnscaledDecimal32, kMaxDecimal32Precision));
+  ASSERT_EQ(
+      "999999999",
+      DecimalToString(kMaxUnscaledDecimal32, kDefaultDecimalScale));
+  ASSERT_EQ(
+      "0.999999999",
+      DecimalToString(kMaxUnscaledDecimal32, kMaxDecimal32Precision));
+  ASSERT_EQ(
+      "-999999999",
+      DecimalToString(kMinUnscaledDecimal32, kDefaultDecimalScale));
+  ASSERT_EQ(
+      "-0.999999999",
+      DecimalToString(kMinUnscaledDecimal32, kMaxDecimal32Precision));
 
-  ASSERT_EQ("999999999999999999",
-            DecimalToString(kMaxUnscaledDecimal64, kDefaultDecimalScale));
-  ASSERT_EQ("0.999999999999999999",
-            DecimalToString(kMaxUnscaledDecimal64, kMaxDecimal64Precision));
-  ASSERT_EQ("-999999999999999999",
-            DecimalToString(kMinUnscaledDecimal64, kDefaultDecimalScale));
-  ASSERT_EQ("-0.999999999999999999",
-            DecimalToString(kMinUnscaledDecimal64, kMaxDecimal64Precision));
+  ASSERT_EQ(
+      "999999999999999999",
+      DecimalToString(kMaxUnscaledDecimal64, kDefaultDecimalScale));
+  ASSERT_EQ(
+      "0.999999999999999999",
+      DecimalToString(kMaxUnscaledDecimal64, kMaxDecimal64Precision));
+  ASSERT_EQ(
+      "-999999999999999999",
+      DecimalToString(kMinUnscaledDecimal64, kDefaultDecimalScale));
+  ASSERT_EQ(
+      "-0.999999999999999999",
+      DecimalToString(kMinUnscaledDecimal64, kMaxDecimal64Precision));
 
-  ASSERT_EQ("99999999999999999999999999999999999999",
-            DecimalToString(kMaxUnscaledDecimal128, kDefaultDecimalScale));
-  ASSERT_EQ("0.99999999999999999999999999999999999999",
-            DecimalToString(kMaxUnscaledDecimal128, kMaxDecimal128Precision));
-  ASSERT_EQ("-99999999999999999999999999999999999999",
-            DecimalToString(kMinUnscaledDecimal128, kDefaultDecimalScale));
-  ASSERT_EQ("-0.99999999999999999999999999999999999999",
-            DecimalToString(kMinUnscaledDecimal128, kMaxDecimal128Precision));
+  ASSERT_EQ(
+      "99999999999999999999999999999999999999",
+      DecimalToString(kMaxUnscaledDecimal128, kDefaultDecimalScale));
+  ASSERT_EQ(
+      "0.99999999999999999999999999999999999999",
+      DecimalToString(kMaxUnscaledDecimal128, kMaxDecimal128Precision));
+  ASSERT_EQ(
+      "-99999999999999999999999999999999999999",
+      DecimalToString(kMinUnscaledDecimal128, kDefaultDecimalScale));
+  ASSERT_EQ(
+      "-0.99999999999999999999999999999999999999",
+      DecimalToString(kMinUnscaledDecimal128, kMaxDecimal128Precision));
 
   ASSERT_EQ("0", DecimalToString(0, 0));
   ASSERT_EQ("12345", DecimalToString(12345, 0));

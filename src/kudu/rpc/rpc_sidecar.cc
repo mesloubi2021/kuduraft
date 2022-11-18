@@ -33,13 +33,15 @@ using std::unique_ptr;
 namespace kudu {
 namespace rpc {
 
-// Sidecar that simply wraps a Slice. The data associated with the slice is therefore not
-// owned by this class, and it's the caller's responsibility to ensure it has a lifetime
-// at least as long as this sidecar.
+// Sidecar that simply wraps a Slice. The data associated with the slice is
+// therefore not owned by this class, and it's the caller's responsibility to
+// ensure it has a lifetime at least as long as this sidecar.
 class SliceSidecar : public RpcSidecar {
  public:
-  explicit SliceSidecar(Slice slice) : slice_(slice) { }
-  Slice AsSlice() const override { return slice_; }
+  explicit SliceSidecar(Slice slice) : slice_(slice) {}
+  Slice AsSlice() const override {
+    return slice_;
+  }
 
  private:
   const Slice slice_;
@@ -47,8 +49,11 @@ class SliceSidecar : public RpcSidecar {
 
 class FaststringSidecar : public RpcSidecar {
  public:
-  explicit FaststringSidecar(unique_ptr<faststring> data) : data_(std::move(data)) { }
-  Slice AsSlice() const override { return *data_; }
+  explicit FaststringSidecar(unique_ptr<faststring> data)
+      : data_(std::move(data)) {}
+  Slice AsSlice() const override {
+    return *data_;
+  }
 
  private:
   const unique_ptr<faststring> data_;
@@ -62,23 +67,27 @@ unique_ptr<RpcSidecar> RpcSidecar::FromSlice(Slice slice) {
   return unique_ptr<RpcSidecar>(new SliceSidecar(slice));
 }
 
-
 Status RpcSidecar::ParseSidecars(
-    const ::google::protobuf::RepeatedField<::google::protobuf::uint32>& offsets,
-    Slice buffer, Slice* sidecars) {
-  if (offsets.size() == 0) return Status::OK();
+    const ::google::protobuf::RepeatedField<::google::protobuf::uint32>&
+        offsets,
+    Slice buffer,
+    Slice* sidecars) {
+  if (offsets.size() == 0)
+    return Status::OK();
 
   int last = offsets.size() - 1;
   if (last >= TransferLimits::kMaxSidecars) {
     return Status::Corruption(strings::Substitute(
-            "Received $0 additional payload slices, expected at most $1",
-            last, TransferLimits::kMaxSidecars));
+        "Received $0 additional payload slices, expected at most $1",
+        last,
+        TransferLimits::kMaxSidecars));
   }
 
   if (buffer.size() > TransferLimits::kMaxTotalSidecarBytes) {
     return Status::Corruption(strings::Substitute(
-            "Received $0 payload bytes, expected at most $1",
-            buffer.size(), TransferLimits::kMaxTotalSidecarBytes));
+        "Received $0 payload bytes, expected at most $1",
+        buffer.size(),
+        TransferLimits::kMaxTotalSidecarBytes));
   }
 
   for (int i = 0; i < last; ++i) {
@@ -86,14 +95,20 @@ Status RpcSidecar::ParseSidecars(
     int64_t next_offset = offsets.Get(i + 1);
     if (next_offset > buffer.size()) {
       return Status::Corruption(strings::Substitute(
-              "Invalid sidecar offsets; sidecar $0 apparently starts at $1,"
-              " has length $2, but the entire message has length $3",
-              i, cur_offset, (next_offset - cur_offset), buffer.size()));
+          "Invalid sidecar offsets; sidecar $0 apparently starts at $1,"
+          " has length $2, but the entire message has length $3",
+          i,
+          cur_offset,
+          (next_offset - cur_offset),
+          buffer.size()));
     }
     if (next_offset < cur_offset) {
       return Status::Corruption(strings::Substitute(
-              "Invalid sidecar offsets; sidecar $0 apparently starts at $1,"
-              " but ends before that at offset $1.", i, cur_offset, next_offset));
+          "Invalid sidecar offsets; sidecar $0 apparently starts at $1,"
+          " but ends before that at offset $1.",
+          i,
+          cur_offset,
+          next_offset));
     }
 
     sidecars[i] = Slice(buffer.data() + cur_offset, next_offset - cur_offset);
@@ -101,15 +116,18 @@ Status RpcSidecar::ParseSidecars(
 
   int64_t cur_offset = offsets.Get(last);
   if (cur_offset > buffer.size()) {
-    return Status::Corruption(strings::Substitute("Invalid sidecar offsets: sidecar $0 "
-            "starts at offset $1after message ends (message length $2).", last,
-            cur_offset, buffer.size()));
+    return Status::Corruption(strings::Substitute(
+        "Invalid sidecar offsets: sidecar $0 "
+        "starts at offset $1after message ends (message length $2).",
+        last,
+        cur_offset,
+        buffer.size()));
   }
-  sidecars[last] = Slice(buffer.data() + cur_offset, buffer.size() - cur_offset);
+  sidecars[last] =
+      Slice(buffer.data() + cur_offset, buffer.size() - cur_offset);
 
   return Status::OK();
 }
-
 
 } // namespace rpc
 } // namespace kudu

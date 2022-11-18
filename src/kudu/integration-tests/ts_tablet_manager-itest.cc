@@ -65,10 +65,13 @@ DECLARE_bool(catalog_manager_evict_excess_replicas);
 DECLARE_bool(catalog_manager_wait_for_new_tablets_to_elect_leader);
 DECLARE_bool(enable_leader_failure_detection);
 DECLARE_bool(raft_prepare_replacement_before_eviction);
-DEFINE_int32(num_election_test_loops, 3,
-             "Number of random EmulateElection() loops to execute in "
-             "TestReportNewLeaderOnLeaderChange");
+DEFINE_int32(
+    num_election_test_loops,
+    3,
+    "Number of random EmulateElection() loops to execute in "
+    "TestReportNewLeaderOnLeaderChange");
 
+using kudu::ClusterVerifier;
 using kudu::client::KuduClient;
 using kudu::client::KuduSchema;
 using kudu::client::KuduTable;
@@ -90,7 +93,6 @@ using kudu::rpc::Messenger;
 using kudu::rpc::MessengerBuilder;
 using kudu::tablet::TabletReplica;
 using kudu::tserver::MiniTabletServer;
-using kudu::ClusterVerifier;
 using std::map;
 using std::shared_ptr;
 using std::string;
@@ -105,9 +107,7 @@ static const char* const kTableName = "test-table";
 
 class TsTabletManagerITest : public KuduTest {
  public:
-  TsTabletManagerITest()
-      : schema_(SimpleIntKeyKuduSchema()) {
-  }
+  TsTabletManagerITest() : schema_(SimpleIntKeyKuduSchema()) {}
   void SetUp() override {
     KuduTest::SetUp();
 
@@ -129,13 +129,15 @@ class TsTabletManagerITest : public KuduTest {
   // there is at least one tablet replica per tablet server. Also, this utility
   // method awaits up to the specified timeout for the consensus to be running
   // before adding an element into the output container.
-  Status PrepareTabletReplicas(MonoDelta timeout,
-                               vector<scoped_refptr<TabletReplica>>* replicas);
+  Status PrepareTabletReplicas(
+      MonoDelta timeout,
+      vector<scoped_refptr<TabletReplica>>* replicas);
 
   // Generate incremental tablet reports using test-specific method
   // GenerateIncrementalTabletReportsForTests() of the specified heartbeater.
-  void GetIncrementalTabletReports(Heartbeater* heartbeater,
-                                   vector<TabletReportPB>* reports);
+  void GetIncrementalTabletReports(
+      Heartbeater* heartbeater,
+      vector<TabletReportPB>* reports);
 
   const KuduSchema schema_;
 
@@ -152,7 +154,8 @@ void TsTabletManagerITest::DisableHeartbeatingToMaster() {
 }
 
 Status TsTabletManagerITest::PrepareTabletReplicas(
-    MonoDelta timeout, vector<scoped_refptr<TabletReplica>>* replicas) {
+    MonoDelta timeout,
+    vector<scoped_refptr<TabletReplica>>* replicas) {
   const MonoTime deadline = MonoTime::Now() + timeout;
   for (auto i = 0; i < cluster_->num_tablet_servers(); ++i) {
     MiniTabletServer* ts = cluster_->mini_tablet_server(i);
@@ -166,7 +169,8 @@ Status TsTabletManagerITest::PrepareTabletReplicas(
       SleepFor(MonoDelta::FromMilliseconds(10));
     }
     if (ts_replicas.empty()) {
-      return Status::TimedOut("waiting for tablet replicas register with ts manager");
+      return Status::TimedOut(
+          "waiting for tablet replicas register with ts manager");
     }
     RETURN_NOT_OK(ts_replicas.front()->WaitUntilConsensusRunning(
         deadline - MonoTime::Now()));
@@ -176,7 +180,8 @@ Status TsTabletManagerITest::PrepareTabletReplicas(
 }
 
 void TsTabletManagerITest::GetIncrementalTabletReports(
-    Heartbeater* heartbeater, vector<TabletReportPB>* reports) {
+    Heartbeater* heartbeater,
+    vector<TabletReportPB>* reports) {
   vector<TabletReportPB> r;
   // The MarkDirty() callback is on an async thread so it might take the
   // follower a few milliseconds to execute it. Wait for that to happen.
@@ -188,10 +193,9 @@ void TsTabletManagerITest::GetIncrementalTabletReports(
   reports->swap(r);
 }
 
-class FailedTabletsAreReplacedITest :
-    public TsTabletManagerITest,
-    public ::testing::WithParamInterface<bool> {
-};
+class FailedTabletsAreReplacedITest
+    : public TsTabletManagerITest,
+      public ::testing::WithParamInterface<bool> {};
 // Test that when a tablet replica is marked as failed, it will eventually be
 // evicted and replaced.
 TEST_P(FailedTabletsAreReplacedITest, OneReplica) {
@@ -214,7 +218,8 @@ TEST_P(FailedTabletsAreReplacedITest, OneReplica) {
   string tablet_id;
   ASSERT_EVENTUALLY([&] {
     auto idx = rand() % kNumTabletServers;
-    vector<string> tablet_ids = cluster_->mini_tablet_server(idx)->ListTablets();
+    vector<string> tablet_ids =
+        cluster_->mini_tablet_server(idx)->ListTablets();
     ASSERT_EQ(1, tablet_ids.size());
     tablet_id = tablet_ids[0];
   });
@@ -231,7 +236,8 @@ TEST_P(FailedTabletsAreReplacedITest, OneReplica) {
     ASSERT_EVENTUALLY([&] {
       auto idx = rand() % kNumTabletServers;
       MiniTabletServer* ts = cluster_->mini_tablet_server(idx);
-      ASSERT_OK(ts->server()->tablet_manager()->GetTabletReplica(tablet_id, &replica));
+      ASSERT_OK(ts->server()->tablet_manager()->GetTabletReplica(
+          tablet_id, &replica));
     });
     replica->SetError(Status::IOError("INJECTED ERROR: tablet failed"));
     replica->Shutdown();
@@ -241,9 +247,7 @@ TEST_P(FailedTabletsAreReplacedITest, OneReplica) {
   // Ensure the tablet eventually is replicated.
   NO_FATALS(v.CheckCluster());
 }
-INSTANTIATE_TEST_CASE_P(,
-                        FailedTabletsAreReplacedITest,
-                        ::testing::Bool());
+INSTANTIATE_TEST_CASE_P(, FailedTabletsAreReplacedITest, ::testing::Bool());
 
 // Test that when the leader changes, the tablet manager gets notified and
 // includes that information in the next tablet report.
@@ -270,10 +274,10 @@ TEST_F(TsTabletManagerITest, TestReportNewLeaderOnLeaderChange) {
   client::sp::shared_ptr<KuduTable> table;
   unique_ptr<KuduTableCreator> table_creator(client_->NewTableCreator());
   ASSERT_OK(table_creator->table_name(kTableName)
-            .schema(&schema_)
-            .set_range_partition_columns({ "key" })
-            .num_replicas(kNumReplicas)
-            .Create());
+                .schema(&schema_)
+                .set_range_partition_columns({"key"})
+                .num_replicas(kNumReplicas)
+                .Create());
   ASSERT_OK(client_->OpenTable(kTableName, &table));
 
   // Build a TServerDetails map so we can check for convergence.
@@ -287,7 +291,8 @@ TEST_F(TsTabletManagerITest, TestReportNewLeaderOnLeaderChange) {
 
   // Collect the TabletReplicas so we get direct access to RaftConsensus.
   vector<scoped_refptr<TabletReplica>> tablet_replicas;
-  ASSERT_OK(PrepareTabletReplicas(MonoDelta::FromSeconds(60), &tablet_replicas));
+  ASSERT_OK(
+      PrepareTabletReplicas(MonoDelta::FromSeconds(60), &tablet_replicas));
   ASSERT_EQ(kNumReplicas, tablet_replicas.size());
 
   // Stop heartbeating we don't race against the Master.
@@ -299,13 +304,18 @@ TEST_F(TsTabletManagerITest, TestReportNewLeaderOnLeaderChange) {
     SCOPED_TRACE(Substitute("Iter: $0", i));
     int new_leader_idx = rand() % 2;
     LOG(INFO) << "Electing peer " << new_leader_idx << "...";
-    RaftConsensus* con = CHECK_NOTNULL(tablet_replicas[new_leader_idx]->consensus());
+    RaftConsensus* con =
+        CHECK_NOTNULL(tablet_replicas[new_leader_idx]->consensus());
     ASSERT_OK(con->EmulateElection());
     LOG(INFO) << "Waiting for servers to agree...";
-    ASSERT_OK(WaitForServersToAgree(MonoDelta::FromSeconds(5),
-                                    ts_map, tablet_replicas[0]->tablet_id(), i + 1));
+    ASSERT_OK(WaitForServersToAgree(
+        MonoDelta::FromSeconds(5),
+        ts_map,
+        tablet_replicas[0]->tablet_id(),
+        i + 1));
 
-    // Now check that the tablet report reports the correct role for both servers.
+    // Now check that the tablet report reports the correct role for both
+    // servers.
     for (int replica = 0; replica < kNumReplicas; replica++) {
       vector<TabletReportPB> reports;
       NO_FATALS(GetIncrementalTabletReports(
@@ -315,12 +325,14 @@ TEST_F(TsTabletManagerITest, TestReportNewLeaderOnLeaderChange) {
       // Ensure that our tablet reports are consistent.
       TabletReportPB& report = reports[0];
       ASSERT_EQ(1, report.updated_tablets_size())
-          << "Wrong report size:\n" << pb_util::SecureDebugString(report);
+          << "Wrong report size:\n"
+          << pb_util::SecureDebugString(report);
       const ReportedTabletPB& reported_tablet = report.updated_tablets(0);
       ASSERT_TRUE(reported_tablet.has_consensus_state());
 
       string uuid = tablet_replicas[replica]->permanent_uuid();
-      RaftPeerPB::Role role = GetConsensusRole(uuid, reported_tablet.consensus_state());
+      RaftPeerPB::Role role =
+          GetConsensusRole(uuid, reported_tablet.consensus_state());
       if (replica == new_leader_idx) {
         ASSERT_EQ(RaftPeerPB::LEADER, role)
             << "Tablet report: " << pb_util::SecureShortDebugString(report);
@@ -358,10 +370,10 @@ TEST_F(TsTabletManagerITest, ReportOnReplicaHealthStatus) {
   client::sp::shared_ptr<KuduTable> table;
   unique_ptr<KuduTableCreator> table_creator(client_->NewTableCreator());
   ASSERT_OK(table_creator->table_name(kTableName)
-            .schema(&schema_)
-            .set_range_partition_columns({})  // need just one tablet
-            .num_replicas(kNumReplicas)
-            .Create());
+                .schema(&schema_)
+                .set_range_partition_columns({}) // need just one tablet
+                .num_replicas(kNumReplicas)
+                .Create());
   ASSERT_OK(client_->OpenTable(kTableName, &table));
 
   // Build a TServerDetails map so we can check for convergence.
@@ -398,7 +410,8 @@ TEST_F(TsTabletManagerITest, ReportOnReplicaHealthStatus) {
       ConsensusStatePB cs;
       Status s = consensus->ConsensusState(&cs, INCLUDE_HEALTH_REPORT);
       if (!s.ok()) {
-        ASSERT_TRUE(s.IsIllegalState()) << s.ToString(); // Replica is shut down.
+        ASSERT_TRUE(s.IsIllegalState())
+            << s.ToString(); // Replica is shut down.
         continue;
       }
       if (consensus->peer_uuid() == cs.leader_uuid()) {
@@ -427,36 +440,38 @@ TEST_F(TsTabletManagerITest, ReportOnReplicaHealthStatus) {
   // Get the information on committed Raft configuration from tablet reports
   // generated by the heartbeater of the server running the specified leader
   // tablet replica.
-  auto get_committed_config_from_reports = [&](const string& leader_replica_uuid,
-                                               RaftConfigPB* config) {
-    TabletServer* leader_server = nullptr;
-    for (auto i = 0; i < kNumReplicas; ++i) {
-      MiniTabletServer* mts = cluster_->mini_tablet_server(i);
-      if (mts->uuid() == leader_replica_uuid) {
-        leader_server = mts->server();
-        break;
-      }
-    }
-    ASSERT_NE(nullptr, leader_server);
+  auto get_committed_config_from_reports =
+      [&](const string& leader_replica_uuid, RaftConfigPB* config) {
+        TabletServer* leader_server = nullptr;
+        for (auto i = 0; i < kNumReplicas; ++i) {
+          MiniTabletServer* mts = cluster_->mini_tablet_server(i);
+          if (mts->uuid() == leader_replica_uuid) {
+            leader_server = mts->server();
+            break;
+          }
+        }
+        ASSERT_NE(nullptr, leader_server);
 
-    // TSTabletManager should acknowledge the status change via tablet reports.
-    Heartbeater* heartbeater = leader_server->heartbeater();
-    ASSERT_NE(nullptr, heartbeater);
+        // TSTabletManager should acknowledge the status change via tablet
+        // reports.
+        Heartbeater* heartbeater = leader_server->heartbeater();
+        ASSERT_NE(nullptr, heartbeater);
 
-    vector<TabletReportPB> reports;
-    NO_FATALS(GetIncrementalTabletReports(heartbeater, &reports));
-    ASSERT_EQ(1, reports.size());
-    const TabletReportPB& report = reports[0];
-    SCOPED_TRACE("Tablet report: " + pb_util::SecureDebugString(report));
-    ASSERT_EQ(1, report.updated_tablets_size());
-    const ReportedTabletPB& reported_tablet = report.updated_tablets(0);
-    ASSERT_TRUE(reported_tablet.has_consensus_state());
-    const ConsensusStatePB& cstate = reported_tablet.consensus_state();
-    ASSERT_EQ(RaftPeerPB::LEADER, GetConsensusRole(leader_replica_uuid, cstate));
-    ASSERT_TRUE(cstate.has_committed_config());
-    RaftConfigPB cfg = cstate.committed_config();
-    config->Swap(&cfg);
-  };
+        vector<TabletReportPB> reports;
+        NO_FATALS(GetIncrementalTabletReports(heartbeater, &reports));
+        ASSERT_EQ(1, reports.size());
+        const TabletReportPB& report = reports[0];
+        SCOPED_TRACE("Tablet report: " + pb_util::SecureDebugString(report));
+        ASSERT_EQ(1, report.updated_tablets_size());
+        const ReportedTabletPB& reported_tablet = report.updated_tablets(0);
+        ASSERT_TRUE(reported_tablet.has_consensus_state());
+        const ConsensusStatePB& cstate = reported_tablet.consensus_state();
+        ASSERT_EQ(
+            RaftPeerPB::LEADER, GetConsensusRole(leader_replica_uuid, cstate));
+        ASSERT_TRUE(cstate.has_committed_config());
+        RaftConfigPB cfg = cstate.committed_config();
+        config->Swap(&cfg);
+      };
 
   // All replicas are up and running, so the leader replica should eventually
   // report their health status as HEALTHY.
@@ -476,8 +491,7 @@ TEST_F(TsTabletManagerITest, ReportOnReplicaHealthStatus) {
     // UNKNOWN to the HEALTHY state, an incremental tablet reports should
     // reflect those health status changes.
     RaftConfigPB config;
-    NO_FATALS(get_committed_config_from_reports(leader_replica_uuid,
-                                                &config));
+    NO_FATALS(get_committed_config_from_reports(leader_replica_uuid, &config));
     ASSERT_EQ(kNumReplicas, config.peers_size());
     for (const auto& p : config.peers()) {
       ASSERT_TRUE(p.has_health_report());
@@ -504,7 +518,8 @@ TEST_F(TsTabletManagerITest, ReportOnReplicaHealthStatus) {
       const auto& replica_uuid = e.first;
       SCOPED_TRACE("replica UUID: " + replica_uuid);
       if (replica_uuid == failed_replica_uuid) {
-        ASSERT_EQ(HealthReportPB::FAILED_UNRECOVERABLE, e.second.overall_health());
+        ASSERT_EQ(
+            HealthReportPB::FAILED_UNRECOVERABLE, e.second.overall_health());
       } else {
         ASSERT_EQ(HealthReportPB::HEALTHY, e.second.overall_health());
       }
@@ -518,15 +533,15 @@ TEST_F(TsTabletManagerITest, ReportOnReplicaHealthStatus) {
     string leader_replica_uuid;
     NO_FATALS(get_health_reports(nullptr, &leader_replica_uuid));
     RaftConfigPB config;
-    NO_FATALS(get_committed_config_from_reports(leader_replica_uuid,
-                                                &config));
+    NO_FATALS(get_committed_config_from_reports(leader_replica_uuid, &config));
     for (const auto& peer : config.peers()) {
       ASSERT_TRUE(peer.has_permanent_uuid());
       const auto& uuid = peer.permanent_uuid();
       ASSERT_TRUE(peer.has_health_report());
       const HealthReportPB& report(peer.health_report());
       if (uuid == failed_replica_uuid) {
-        EXPECT_EQ(HealthReportPB::FAILED_UNRECOVERABLE, report.overall_health());
+        EXPECT_EQ(
+            HealthReportPB::FAILED_UNRECOVERABLE, report.overall_health());
       } else {
         EXPECT_EQ(HealthReportPB::HEALTHY, report.overall_health());
       }

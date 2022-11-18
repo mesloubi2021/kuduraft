@@ -61,13 +61,16 @@
 // The IWYU confuses BehindWalGcBehavior::SHUTDOWN with TabletStatePB::SHUTDOWN.
 // IWYU pragma: no_include "kudu/tablet/metadata.pb.h"
 
-DEFINE_int32(num_client_threads, 8,
-             "Number of client threads to launch");
-DEFINE_int64(client_inserts_per_thread, 50,
-             "Number of rows inserted by each client thread");
+DEFINE_int32(num_client_threads, 8, "Number of client threads to launch");
+DEFINE_int64(
+    client_inserts_per_thread,
+    50,
+    "Number of rows inserted by each client thread");
 DECLARE_int32(consensus_rpc_timeout_ms);
-DEFINE_int64(client_num_batches_per_thread, 5,
-             "In how many batches to group the rows, for each client");
+DEFINE_int64(
+    client_num_batches_per_thread,
+    5,
+    "In how many batches to group the rows, for each client");
 
 METRIC_DECLARE_entity(tablet);
 METRIC_DECLARE_counter(transaction_memory_pressure_rejections);
@@ -92,16 +95,16 @@ namespace tserver {
 static const int kConsensusRpcTimeoutForTests = 50;
 
 RaftConsensusITestBase::RaftConsensusITestBase()
-      : inserters_(FLAGS_num_client_threads) {
-}
+    : inserters_(FLAGS_num_client_threads) {}
 
 void RaftConsensusITestBase::SetUp() {
   TabletServerIntegrationTestBase::SetUp();
   FLAGS_consensus_rpc_timeout_ms = kConsensusRpcTimeoutForTests;
 }
 
-void RaftConsensusITestBase::ScanReplica(TabletServerServiceProxy* replica_proxy,
-                                         vector<string>* results) {
+void RaftConsensusITestBase::ScanReplica(
+    TabletServerServiceProxy* replica_proxy,
+    vector<string>* results) {
   ScanRequestPB req;
   ScanResponsePB resp;
   RpcController rpc;
@@ -127,10 +130,8 @@ void RaftConsensusITestBase::ScanReplica(TabletServerServiceProxy* replica_proxy
   }
 
   // Drain all the rows from the scanner.
-  NO_FATALS(DrainScannerToStrings(resp.scanner_id(),
-                                  schema_,
-                                  results,
-                                  replica_proxy));
+  NO_FATALS(DrainScannerToStrings(
+      resp.scanner_id(), schema_, results, replica_proxy));
 
   std::sort(results->begin(), results->end());
 }
@@ -171,7 +172,8 @@ void RaftConsensusITestBase::InsertTestRowsRemoteThread(
   inserters_.CountDown();
 }
 
-void RaftConsensusITestBase::AddFlagsForLogRolls(vector<string>* extra_tserver_flags) {
+void RaftConsensusITestBase::AddFlagsForLogRolls(
+    vector<string>* extra_tserver_flags) {
   // We configure a small log segment size so that we roll frequently,
   // configure a small cache size so that we evict data from the cache, and
   // retain as few segments as possible. We also turn off async segment
@@ -187,7 +189,8 @@ void RaftConsensusITestBase::AddFlagsForLogRolls(vector<string>* extra_tserver_f
   extra_tserver_flags->push_back("--log_async_preallocate_segments=false");
   extra_tserver_flags->push_back("--log_min_segments_to_retain=1");
   extra_tserver_flags->push_back("--log_max_segments_to_retain=3");
-  extra_tserver_flags->push_back("--maintenance_manager_polling_interval_ms=100");
+  extra_tserver_flags->push_back(
+      "--maintenance_manager_polling_interval_ms=100");
   extra_tserver_flags->push_back("--log_target_replay_size_mb=1");
   // We write 128KB cells in CauseFollowerToFallBehindLogGC(): bump the limit.
   extra_tserver_flags->push_back("--max_cell_size_bytes=1000000");
@@ -208,10 +211,15 @@ void RaftConsensusITestBase::CauseFollowerToFallBehindLogGC(
   // Pause or shutdown one server. This might be the leader, and making it
   // unresponsive will cause a leader election to happen.
   TServerDetails* replica = tablet_replicas_.begin()->second;
-  CauseSpecificFollowerToFallBehindLogGC(tablet_servers, replica->uuid(),
-                                         leader_uuid, orig_term,
-                                         tserver_behavior, pre_workload_delay);
-  if (fell_behind_uuid) *fell_behind_uuid = replica->uuid();
+  CauseSpecificFollowerToFallBehindLogGC(
+      tablet_servers,
+      replica->uuid(),
+      leader_uuid,
+      orig_term,
+      tserver_behavior,
+      pre_workload_delay);
+  if (fell_behind_uuid)
+    *fell_behind_uuid = replica->uuid();
 }
 
 void RaftConsensusITestBase::CauseSpecificFollowerToFallBehindLogGC(
@@ -224,12 +232,14 @@ void RaftConsensusITestBase::CauseSpecificFollowerToFallBehindLogGC(
   MonoDelta kTimeout = MonoDelta::FromSeconds(10);
 
   TServerDetails* replica = FindOrDie(tablet_servers_, follower_uuid_to_fail);
-  ExternalTabletServer* replica_ets = cluster_->tablet_server_by_uuid(replica->uuid());
+  ExternalTabletServer* replica_ets =
+      cluster_->tablet_server_by_uuid(replica->uuid());
   switch (tserver_behavior) {
     case BehindWalGcBehavior::STOP_CONTINUE:
       ASSERT_OK(replica_ets->Pause());
       break;
-    case BehindWalGcBehavior::SHUTDOWN_RESTART: FALLTHROUGH_INTENDED;
+    case BehindWalGcBehavior::SHUTDOWN_RESTART:
+      FALLTHROUGH_INTENDED;
     case BehindWalGcBehavior::SHUTDOWN:
       replica_ets->Shutdown();
       break;
@@ -252,7 +262,8 @@ void RaftConsensusITestBase::CauseSpecificFollowerToFallBehindLogGC(
     }
     SleepFor(MonoDelta::FromMilliseconds(10));
   }
-  if (leader_uuid) *leader_uuid = leader->uuid();
+  if (leader_uuid)
+    *leader_uuid = leader->uuid();
   int leader_index = cluster_->tablet_server_index_by_uuid(leader->uuid());
 
   if (pre_workload_delay.Initialized()) {
@@ -277,7 +288,7 @@ void RaftConsensusITestBase::CauseSpecificFollowerToFallBehindLogGC(
   LOG(INFO) << "Waiting for log GC on " << leader->uuid();
   // Some WAL segments must exist, but wal segment 1 must not exist.
   ASSERT_OK(inspect_->WaitForFilePatternInTabletWalDirOnTs(
-      leader_index, tablet_id_, { "wal-" }, { "wal-000000001" }));
+      leader_index, tablet_id_, {"wal-"}, {"wal-000000001"}));
 
   LOG(INFO) << "Log GC complete on " << leader->uuid();
 
@@ -292,9 +303,10 @@ void RaftConsensusITestBase::CauseSpecificFollowerToFallBehindLogGC(
   // before we resume the follower.
   {
     OpId op_id;
-    ASSERT_OK(GetLastOpIdForReplica(tablet_id_, leader, consensus::RECEIVED_OPID, kTimeout,
-                                    &op_id));
-    if (orig_term) *orig_term = op_id.term();
+    ASSERT_OK(GetLastOpIdForReplica(
+        tablet_id_, leader, consensus::RECEIVED_OPID, kTimeout, &op_id));
+    if (orig_term)
+      *orig_term = op_id.term();
     LOG(INFO) << "Servers converged with original term " << op_id.term();
   }
 
@@ -308,7 +320,7 @@ void RaftConsensusITestBase::CauseSpecificFollowerToFallBehindLogGC(
   }
 
   // Make sure the involved servsers didn't crash.
-  for (const auto& e: tablet_servers) {
+  for (const auto& e : tablet_servers) {
     const auto& uuid = e.first;
     if (tserver_behavior == BehindWalGcBehavior::SHUTDOWN &&
         uuid == replica->uuid()) {
@@ -321,13 +333,17 @@ void RaftConsensusITestBase::CauseSpecificFollowerToFallBehindLogGC(
   }
 }
 
-Status RaftConsensusITestBase::GetTermMetricValue(ExternalTabletServer* ts,
-                                                  int64_t *term) {
-  return GetInt64Metric(ts->bound_http_hostport(),
-                        &METRIC_ENTITY_tablet, nullptr, &METRIC_raft_term,
-                        "value", term);
+Status RaftConsensusITestBase::GetTermMetricValue(
+    ExternalTabletServer* ts,
+    int64_t* term) {
+  return GetInt64Metric(
+      ts->bound_http_hostport(),
+      &METRIC_ENTITY_tablet,
+      nullptr,
+      &METRIC_raft_term,
+      "value",
+      term);
 }
 
-}  // namespace tserver
-}  // namespace kudu
-
+} // namespace tserver
+} // namespace kudu

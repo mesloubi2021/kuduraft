@@ -59,15 +59,19 @@ static const int64_t kSnapshotAtNow = -1;
 static const int64_t kNoParticularCountExpected = -1;
 
 // Vector of snapshot timestamp, count pairs.
-typedef std::vector<std::pair<uint64_t, int64_t> > SnapsAndCounts;
+typedef std::vector<std::pair<uint64_t, int64_t>> SnapsAndCounts;
 
 // Provides methods for writing data and reading it back in such a way that
 // facilitates checking for data integrity.
 class LinkedListTester {
  public:
-  LinkedListTester(client::sp::shared_ptr<client::KuduClient> client,
-                   std::string table_name, int num_chains, int num_tablets,
-                   int num_replicas, bool enable_mutation)
+  LinkedListTester(
+      client::sp::shared_ptr<client::KuduClient> client,
+      std::string table_name,
+      int num_chains,
+      int num_tablets,
+      int num_replicas,
+      bool enable_mutation)
       : verify_projection_(
             {kKeyColumnName, kLinkColumnName, kUpdatedColumnName}),
         table_name_(std::move(table_name)),
@@ -79,11 +83,20 @@ class LinkedListTester {
         client_(std::move(client)) {
     client::KuduSchemaBuilder b;
 
-    b.AddColumn(kKeyColumnName)->Type(client::KuduColumnSchema::INT64)->NotNull()->PrimaryKey();
-    b.AddColumn(kLinkColumnName)->Type(client::KuduColumnSchema::INT64)->NotNull();
-    b.AddColumn(kInsertTsColumnName)->Type(client::KuduColumnSchema::INT64)->NotNull();
-    b.AddColumn(kUpdatedColumnName)->Type(client::KuduColumnSchema::BOOL)->NotNull()
-      ->Default(client::KuduValue::FromBool(false));
+    b.AddColumn(kKeyColumnName)
+        ->Type(client::KuduColumnSchema::INT64)
+        ->NotNull()
+        ->PrimaryKey();
+    b.AddColumn(kLinkColumnName)
+        ->Type(client::KuduColumnSchema::INT64)
+        ->NotNull();
+    b.AddColumn(kInsertTsColumnName)
+        ->Type(client::KuduColumnSchema::INT64)
+        ->NotNull();
+    b.AddColumn(kUpdatedColumnName)
+        ->Type(client::KuduColumnSchema::BOOL)
+        ->NotNull()
+        ->Default(client::KuduValue::FromBool(false));
     CHECK_OK(b.Build(&schema_));
   }
 
@@ -92,7 +105,8 @@ class LinkedListTester {
     // Perform snapshots scans in the past but finish with a "READ_LATEST" scan.
     // This should be used when the a majority of the cluster is down.
     FINISH_WITH_SCAN_LATEST,
-    // Perform the snapshot scans in the past and finish with a snapshot scan in the present.
+    // Perform the snapshot scans in the past and finish with a snapshot scan in
+    // the present.
     FINISH_WITH_SNAPSHOT_SCAN
   };
 
@@ -106,77 +120,79 @@ class LinkedListTester {
   Status LoadLinkedList(
       const MonoDelta& run_for,
       int num_samples,
-      int64_t *written_count);
+      int64_t* written_count);
 
-  // Variant of VerifyLinkedListRemote that verifies at the specified snapshot timestamp.
-  Status VerifyLinkedListAtSnapshotRemote(const uint64_t snapshot_timestamp,
-                                          const int64_t expected,
-                                          const bool log_errors,
-                                          const boost::function<Status(const std::string&)>& cb,
-                                          int64_t* verified_count) {
-    return VerifyLinkedListRemote(snapshot_timestamp,
-                                  expected,
-                                  log_errors,
-                                  cb,
-                                  verified_count);
+  // Variant of VerifyLinkedListRemote that verifies at the specified snapshot
+  // timestamp.
+  Status VerifyLinkedListAtSnapshotRemote(
+      const uint64_t snapshot_timestamp,
+      const int64_t expected,
+      const bool log_errors,
+      const boost::function<Status(const std::string&)>& cb,
+      int64_t* verified_count) {
+    return VerifyLinkedListRemote(
+        snapshot_timestamp, expected, log_errors, cb, verified_count);
   }
 
-  Status VerifyLinkedListAtLatestRemote(const int64_t expected,
-                                        const bool log_errors,
-                                        const boost::function<Status(const std::string&)>& cb,
-                                        int64_t* verified_count) {
-    return VerifyLinkedListRemote(kNoSnapshot,
-                                  expected,
-                                  log_errors,
-                                  cb,
-                                  verified_count);
+  Status VerifyLinkedListAtLatestRemote(
+      const int64_t expected,
+      const bool log_errors,
+      const boost::function<Status(const std::string&)>& cb,
+      int64_t* verified_count) {
+    return VerifyLinkedListRemote(
+        kNoSnapshot, expected, log_errors, cb, verified_count);
   }
 
   // Variant of VerifyLinkedListremote that verifies at 'now'.
-  Status VerifyLinkedListAtNowSnapshotRemote(const int64_t expected,
-                                             const bool log_errors,
-                                             const boost::function<Status(const std::string&)>& cb,
-                                             int64_t* verified_count) {
-    return VerifyLinkedListRemote(kSnapshotAtNow,
-                                  expected,
-                                  log_errors,
-                                  cb,
-                                  verified_count);
+  Status VerifyLinkedListAtNowSnapshotRemote(
+      const int64_t expected,
+      const bool log_errors,
+      const boost::function<Status(const std::string&)>& cb,
+      int64_t* verified_count) {
+    return VerifyLinkedListRemote(
+        kSnapshotAtNow, expected, log_errors, cb, verified_count);
   }
 
-  // Run the verify step on a table with RPCs. Calls the provided callback 'cb' once during
-  // verification to test scanner fault tolerance.
-  Status VerifyLinkedListRemote(const uint64_t snapshot_timestamp,
-                                const int64_t expected,
-                                const bool log_errors,
-                                const boost::function<Status(const std::string&)>& cb,
-                                int64_t* verified_count);
+  // Run the verify step on a table with RPCs. Calls the provided callback 'cb'
+  // once during verification to test scanner fault tolerance.
+  Status VerifyLinkedListRemote(
+      const uint64_t snapshot_timestamp,
+      const int64_t expected,
+      const bool log_errors,
+      const boost::function<Status(const std::string&)>& cb,
+      int64_t* verified_count);
 
   // Run the verify step on a specific tablet.
-  Status VerifyLinkedListLocal(const tablet::Tablet* tablet,
-                               const int64_t expected,
-                               int64_t* verified_count);
+  Status VerifyLinkedListLocal(
+      const tablet::Tablet* tablet,
+      const int64_t expected,
+      int64_t* verified_count);
 
   // A variant of VerifyLinkedListRemote that is more robust towards ongoing
   // bootstrapping and replication.
-  Status WaitAndVerify(int seconds_to_run,
-                       int64_t expected,
-                       WaitAndVerifyMode mode = FINISH_WITH_SNAPSHOT_SCAN) {
-    return WaitAndVerify(seconds_to_run,
-                         expected,
-                         boost::bind(&LinkedListTester::ReturnOk, this, _1),
-                         mode);
+  Status WaitAndVerify(
+      int seconds_to_run,
+      int64_t expected,
+      WaitAndVerifyMode mode = FINISH_WITH_SNAPSHOT_SCAN) {
+    return WaitAndVerify(
+        seconds_to_run,
+        expected,
+        boost::bind(&LinkedListTester::ReturnOk, this, _1),
+        mode);
   }
 
-  // A variant of WaitAndVerify that also takes a callback to be run once during verification.
-  Status WaitAndVerify(int seconds_to_run,
-                       int64_t expected,
-                       const boost::function<Status(const std::string&)>& cb,
-                       WaitAndVerifyMode mode = FINISH_WITH_SNAPSHOT_SCAN);
+  // A variant of WaitAndVerify that also takes a callback to be run once during
+  // verification.
+  Status WaitAndVerify(
+      int seconds_to_run,
+      int64_t expected,
+      const boost::function<Status(const std::string&)>& cb,
+      WaitAndVerifyMode mode = FINISH_WITH_SNAPSHOT_SCAN);
 
   // Generates a vector of keys for the table such that each tablet is
   // responsible for an equal fraction of the int64 key space.
-  std::vector<const KuduPartialRow*> GenerateSplitRows(const client::KuduSchema& schema);
+  std::vector<const KuduPartialRow*> GenerateSplitRows(
+      const client::KuduSchema& schema);
 
   // Generate a vector of ints which form the split keys.
   std::vector<int64_t> GenerateSplitInts();
@@ -196,7 +212,9 @@ class LinkedListTester {
   SnapsAndCounts sampled_timestamps_and_counts_;
 
  private:
-  Status ReturnOk(const std::string& str) { return Status::OK(); }
+  Status ReturnOk(const std::string& str) {
+    return Status::OK();
+  }
 };
 
 // Generates the linked list pattern.
@@ -205,28 +223,27 @@ class LinkedListTester {
 class LinkedListChainGenerator {
  public:
   // 'chain_idx' is a unique ID for this chain. Chains with different indexes
-  // will always generate distinct sets of keys (thus avoiding the possibility of
-  // a collision even in a longer run).
+  // will always generate distinct sets of keys (thus avoiding the possibility
+  // of a collision even in a longer run).
   ATTRIBUTE_NO_SANITIZE_INTEGER
   explicit LinkedListChainGenerator(int chain_idx)
-    : chain_idx_(chain_idx),
-      rand_(chain_idx * 0xDEADBEEF),
-      prev_key_(0) {
+      : chain_idx_(chain_idx), rand_(chain_idx * 0xDEADBEEF), prev_key_(0) {
     CHECK_GE(chain_idx, 0);
     CHECK_LT(chain_idx, 65536);
   }
 
-  ~LinkedListChainGenerator() {
-  }
+  ~LinkedListChainGenerator() {}
 
   // Generate a random 64-bit unsigned int.
   uint64_t Rand64() {
     return (implicit_cast<uint64_t>(rand_.Next()) << 32) | rand_.Next();
   }
 
-  Status GenerateNextInsert(client::KuduTable* table, client::KuduSession* session) {
-    // Encode the chain index in the lowest 16 bits so that different chains never
-    // intersect.
+  Status GenerateNextInsert(
+      client::KuduTable* table,
+      client::KuduSession* session) {
+    // Encode the chain index in the lowest 16 bits so that different chains
+    // never intersect.
     int64_t this_key = (Rand64() << 16) | chain_idx_;
     int64_t ts = GetCurrentTimeMicros();
 
@@ -234,9 +251,10 @@ class LinkedListChainGenerator {
     CHECK_OK(insert->mutable_row()->SetInt64(kKeyColumnName, this_key));
     CHECK_OK(insert->mutable_row()->SetInt64(kInsertTsColumnName, ts));
     CHECK_OK(insert->mutable_row()->SetInt64(kLinkColumnName, prev_key_));
-    RETURN_NOT_OK_PREPEND(session->Apply(insert.release()),
-                          strings::Substitute("Unable to apply insert with key $0 at ts $1",
-                                              this_key, ts));
+    RETURN_NOT_OK_PREPEND(
+        session->Apply(insert.release()),
+        strings::Substitute(
+            "Unable to apply insert with key $0 at ts $1", this_key, ts));
     prev_key_ = this_key;
     return Status::OK();
   }
@@ -248,8 +266,8 @@ class LinkedListChainGenerator {
  private:
   const int chain_idx_;
 
-  // This is a linear congruential random number generator, so it won't repeat until
-  // it has exhausted its period (which is quite large)
+  // This is a linear congruential random number generator, so it won't repeat
+  // until it has exhausted its period (which is quite large)
   Random rand_;
 
   // The previously output key.
@@ -258,17 +276,20 @@ class LinkedListChainGenerator {
   DISALLOW_COPY_AND_ASSIGN(LinkedListChainGenerator);
 };
 
-// A thread that updates the timestamps of rows whose keys are put in its BlockingQueue.
+// A thread that updates the timestamps of rows whose keys are put in its
+// BlockingQueue.
 class ScopedRowUpdater {
  public:
-
   // Create and start a new ScopedUpdater. 'table' must remain valid for
   // the lifetime of this object.
   explicit ScopedRowUpdater(client::KuduTable* table)
-    : table_(table),
-      to_update_(kint64max) { // no limit
-    CHECK_OK(Thread::Create("linked_list-test", "updater",
-                            &ScopedRowUpdater::RowUpdaterThread, this, &updater_));
+      : table_(table), to_update_(kint64max) { // no limit
+    CHECK_OK(Thread::Create(
+        "linked_list-test",
+        "updater",
+        &ScopedRowUpdater::RowUpdaterThread,
+        this,
+        &updater_));
   }
 
   ~ScopedRowUpdater() {
@@ -278,11 +299,14 @@ class ScopedRowUpdater {
     }
   }
 
-  BlockingQueue<int64_t>* to_update() { return &to_update_; }
+  BlockingQueue<int64_t>* to_update() {
+    return &to_update_;
+  }
 
  private:
   void RowUpdaterThread() {
-    client::sp::shared_ptr<client::KuduSession> session(table_->client()->NewSession());
+    client::sp::shared_ptr<client::KuduSession> session(
+        table_->client()->NewSession());
     session->SetTimeoutMillis(60000 /* 60 seconds */);
     CHECK_OK(session->SetFlushMode(client::KuduSession::AUTO_FLUSH_BACKGROUND));
 
@@ -306,8 +330,10 @@ class ScopedRowUpdater {
 // linked list test.
 class PeriodicWebUIChecker {
  public:
-  PeriodicWebUIChecker(const cluster::ExternalMiniCluster& cluster,
-                       const std::string& tablet_id, MonoDelta period)
+  PeriodicWebUIChecker(
+      const cluster::ExternalMiniCluster& cluster,
+      const std::string& tablet_id,
+      MonoDelta period)
       : period_(period), is_running_(true) {
     // List of master and ts web pages to fetch
     std::vector<std::string> master_pages, ts_pages;
@@ -327,8 +353,8 @@ class PeriodicWebUIChecker {
     ts_pages.emplace_back("/stacks");
     ts_pages.emplace_back("/tablets");
     if (!tablet_id.empty()) {
-      ts_pages.push_back(strings::Substitute("/transactions?tablet_id=$0",
-                                             tablet_id));
+      ts_pages.push_back(
+          strings::Substitute("/transactions?tablet_id=$0", tablet_id));
     }
 
     // Generate list of urls for each master and tablet server
@@ -348,8 +374,12 @@ class PeriodicWebUIChecker {
             page));
       }
     }
-    CHECK_OK(Thread::Create("linked_list-test", "checker",
-                            &PeriodicWebUIChecker::CheckThread, this, &checker_));
+    CHECK_OK(Thread::Create(
+        "linked_list-test",
+        "checker",
+        &PeriodicWebUIChecker::CheckThread,
+        this,
+        &checker_));
   }
 
   ~PeriodicWebUIChecker() {
@@ -366,8 +396,8 @@ class PeriodicWebUIChecker {
     // Set some timeout so that if the page deadlocks, we fail the test.
     curl.set_timeout(MonoDelta::FromSeconds(120));
     faststring dst;
-    LOG(INFO) << "Curl thread will poll the following URLs every " << period_.ToMilliseconds()
-        << " ms: ";
+    LOG(INFO) << "Curl thread will poll the following URLs every "
+              << period_.ToMilliseconds() << " ms: ";
     for (std::string url : urls_) {
       LOG(INFO) << url;
     }
@@ -377,8 +407,9 @@ class PeriodicWebUIChecker {
       bool compression_enabled = true;
       for (const auto& url : urls_) {
         // Switch compression back and forth.
-        Status s = compression_enabled ? curl.FetchURL(url, &dst, {"Accept-Encoding: gzip"})
-                                       : curl.FetchURL(url, &dst);
+        Status s = compression_enabled
+            ? curl.FetchURL(url, &dst, {"Accept-Encoding: gzip"})
+            : curl.FetchURL(url, &dst);
         compression_enabled = !compression_enabled;
         if (s.ok()) {
           CHECK_GT(dst.length(), 0);
@@ -387,7 +418,8 @@ class PeriodicWebUIChecker {
       }
       // Sleep until the next period
       const MonoDelta elapsed = MonoTime::Now() - start;
-      const int64_t sleep_ns = period_.ToNanoseconds() - elapsed.ToNanoseconds();
+      const int64_t sleep_ns =
+          period_.ToNanoseconds() - elapsed.ToNanoseconds();
       if (sleep_ns > 0) {
         SleepFor(MonoDelta::FromNanoseconds(sleep_ns));
       }
@@ -404,8 +436,11 @@ class PeriodicWebUIChecker {
 // verification step on the data.
 class LinkedListVerifier {
  public:
-  LinkedListVerifier(int num_chains, bool enable_mutation, int64_t expected,
-                     std::vector<int64_t> split_key_ints);
+  LinkedListVerifier(
+      int num_chains,
+      bool enable_mutation,
+      int64_t expected,
+      std::vector<int64_t> split_key_ints);
 
   // Start the scan timer. The duration between starting the scan and verifying
   // the data is logged in the VerifyData() step, so this should be called
@@ -458,34 +493,37 @@ std::vector<int64_t> LinkedListTester::GenerateSplitInts() {
 }
 
 Status LinkedListTester::CreateLinkedListTable() {
-  gscoped_ptr<client::KuduTableCreator> table_creator(client_->NewTableCreator());
-  RETURN_NOT_OK_PREPEND(table_creator->table_name(table_name_)
-                        .schema(&schema_)
-                        .set_range_partition_columns({ kKeyColumnName })
-                        .split_rows(GenerateSplitRows(schema_))
-                        .num_replicas(num_replicas_)
-                        .Create(),
-                        "Failed to create table");
+  gscoped_ptr<client::KuduTableCreator> table_creator(
+      client_->NewTableCreator());
+  RETURN_NOT_OK_PREPEND(
+      table_creator->table_name(table_name_)
+          .schema(&schema_)
+          .set_range_partition_columns({kKeyColumnName})
+          .split_rows(GenerateSplitRows(schema_))
+          .num_replicas(num_replicas_)
+          .Create(),
+      "Failed to create table");
   return Status::OK();
 }
 
 Status LinkedListTester::LoadLinkedList(
     const MonoDelta& run_for,
     int num_samples,
-    int64_t *written_count) {
-
+    int64_t* written_count) {
   sampled_timestamps_and_counts_.clear();
   client::sp::shared_ptr<client::KuduTable> table;
-  RETURN_NOT_OK_PREPEND(client_->OpenTable(table_name_, &table),
-                        "Could not open table " + table_name_);
+  RETURN_NOT_OK_PREPEND(
+      client_->OpenTable(table_name_, &table),
+      "Could not open table " + table_name_);
 
   MonoTime start = MonoTime::Now();
   MonoTime deadline = start + run_for;
 
   client::sp::shared_ptr<client::KuduSession> session = client_->NewSession();
   session->SetTimeoutMillis(60000 /* 60 seconds */);
-  RETURN_NOT_OK_PREPEND(session->SetFlushMode(client::KuduSession::MANUAL_FLUSH),
-                        "Couldn't set flush mode");
+  RETURN_NOT_OK_PREPEND(
+      session->SetFlushMode(client::KuduSession::MANUAL_FLUSH),
+      "Couldn't set flush mode");
 
   ScopedRowUpdater updater(table.get());
   std::vector<LinkedListChainGenerator*> chains;
@@ -494,7 +532,8 @@ Status LinkedListTester::LoadLinkedList(
     chains.push_back(new LinkedListChainGenerator(i));
   }
 
-  MonoDelta sample_interval = MonoDelta::FromMicroseconds(run_for.ToMicroseconds() / num_samples);
+  MonoDelta sample_interval =
+      MonoDelta::FromMicroseconds(run_for.ToMicroseconds() / num_samples);
   MonoTime next_sample = start + sample_interval;
   LOG(INFO) << "Running for: " << run_for.ToString();
   LOG(INFO) << "Sampling every " << sample_interval.ToMicroseconds() << " us";
@@ -510,13 +549,15 @@ Status LinkedListTester::LoadLinkedList(
     MonoTime now = MonoTime::Now();
     if (next_sample < now) {
       Timestamp now(client_->GetLatestObservedTimestamp());
-      sampled_timestamps_and_counts_.emplace_back(now.ToUint64() + 1, *written_count);
+      sampled_timestamps_and_counts_.emplace_back(
+          now.ToUint64() + 1, *written_count);
       next_sample += sample_interval;
       LOG(INFO) << "Sample at HT timestamp: " << now.ToString()
                 << " Inserted count: " << *written_count;
     }
     if (deadline < now) {
-      LOG(INFO) << "Finished inserting list. Added " << (*written_count) << " in chain";
+      LOG(INFO) << "Finished inserting list. Added " << (*written_count)
+                << " in chain";
       LOG(INFO) << "Last entries inserted had keys:";
       for (int i = 0; i < num_chains_; i++) {
         LOG(INFO) << i << ": " << chains[i]->prev_key();
@@ -524,8 +565,9 @@ Status LinkedListTester::LoadLinkedList(
       return Status::OK();
     }
     for (LinkedListChainGenerator* chain : chains) {
-      RETURN_NOT_OK_PREPEND(chain->GenerateNextInsert(table.get(), session.get()),
-                            "Unable to generate next insert into linked list chain");
+      RETURN_NOT_OK_PREPEND(
+          chain->GenerateNextInsert(table.get(), session.get()),
+          "Unable to generate next insert into linked list chain");
     }
 
     MonoTime flush_start(MonoTime::Now());
@@ -552,13 +594,15 @@ void LinkedListTester::DumpInsertHistogram(bool print_flags) {
 
   const HdrHistogram* h = &latency_histogram_;
 
-  cout << "------------------------------------------------------------" << endl;
+  cout << "------------------------------------------------------------"
+       << endl;
   cout << "Histogram for latency of insert operations (microseconds)" << endl;
   if (print_flags) {
     cout << "Flags: " << google::CommandlineFlagsIntoString() << endl;
   }
   cout << "Note: each insert is a batch of " << num_chains_ << " rows." << endl;
-  cout << "------------------------------------------------------------" << endl;
+  cout << "------------------------------------------------------------"
+       << endl;
   cout << "Count: " << h->TotalCount() << endl;
   cout << "Mean: " << h->MeanValue() << endl;
   cout << "Percentiles:" << endl;
@@ -572,15 +616,18 @@ void LinkedListTester::DumpInsertHistogram(bool print_flags) {
   cout << "  99.99%     = " << h->ValueAtPercentile(99.99) << endl;
   cout << "  100% (max) = " << h->MaxValue() << endl;
   if (h->MaxValue() >= h->highest_trackable_value()) {
-    cout << "*NOTE: some values were greater than highest trackable value" << endl;
+    cout << "*NOTE: some values were greater than highest trackable value"
+         << endl;
   }
 }
 
 // Verify that the given sorted vector does not contain any duplicate entries.
-// If it does, *errors will be incremented once per duplicate and the given message
-// will be logged.
-static void VerifyNoDuplicateEntries(const std::vector<int64_t>& ints, int* errors,
-                                     const std::string& message) {
+// If it does, *errors will be incremented once per duplicate and the given
+// message will be logged.
+static void VerifyNoDuplicateEntries(
+    const std::vector<int64_t>& ints,
+    int* errors,
+    const std::string& message) {
   for (int i = 1; i < ints.size(); i++) {
     if (ints[i] == ints[i - 1]) {
       LOG(ERROR) << message << ": " << ints[i];
@@ -590,9 +637,11 @@ static void VerifyNoDuplicateEntries(const std::vector<int64_t>& ints, int* erro
 }
 
 Status LinkedListTester::VerifyLinkedListRemote(
-    const uint64_t snapshot_timestamp, const int64_t expected, bool log_errors,
-    const boost::function<Status(const std::string&)>& cb, int64_t* verified_count) {
-
+    const uint64_t snapshot_timestamp,
+    const int64_t expected,
+    bool log_errors,
+    const boost::function<Status(const std::string&)>& cb,
+    int64_t* verified_count) {
   client::sp::shared_ptr<client::KuduTable> table;
   RETURN_NOT_OK(client_->OpenTable(table_name_, &table));
 
@@ -600,12 +649,15 @@ Status LinkedListTester::VerifyLinkedListRemote(
   if (snapshot_timestamp == kSnapshotAtNow) {
     snapshot_str = "NOW";
   } else {
-    snapshot_str = clock::HybridClock::StringifyTimestamp(Timestamp(snapshot_timestamp));
+    snapshot_str =
+        clock::HybridClock::StringifyTimestamp(Timestamp(snapshot_timestamp));
   }
 
   client::KuduScanner scanner(table.get());
-  RETURN_NOT_OK_PREPEND(scanner.SetProjectedColumns(verify_projection_), "Bad projection");
-  RETURN_NOT_OK(scanner.SetBatchSizeBytes(0)); // Force at least one NextBatch RPC.
+  RETURN_NOT_OK_PREPEND(
+      scanner.SetProjectedColumns(verify_projection_), "Bad projection");
+  RETURN_NOT_OK(
+      scanner.SetBatchSizeBytes(0)); // Force at least one NextBatch RPC.
   RETURN_NOT_OK(scanner.SetTimeoutMillis(60 * 1000 /* 60 seconds */));
 
   if (snapshot_timestamp != kNoSnapshot) {
@@ -618,21 +670,22 @@ Status LinkedListTester::VerifyLinkedListRemote(
     RETURN_NOT_OK(scanner.SetReadMode(client::KuduScanner::READ_LATEST));
   }
 
-  LOG(INFO) << "Verifying Snapshot: " << snapshot_str << " Expected Rows: " << expected;
+  LOG(INFO) << "Verifying Snapshot: " << snapshot_str
+            << " Expected Rows: " << expected;
 
   RETURN_NOT_OK_PREPEND(scanner.Open(), "Couldn't open scanner");
 
   RETURN_NOT_OK(scanner.SetBatchSizeBytes(1024)); // More normal batch size.
 
-  LinkedListVerifier verifier(num_chains_, enable_mutation_, expected,
-                              GenerateSplitInts());
+  LinkedListVerifier verifier(
+      num_chains_, enable_mutation_, expected, GenerateSplitInts());
   verifier.StartScanTimer();
 
   bool cb_called = false;
   std::vector<client::KuduRowResult> rows;
   while (scanner.HasMoreRows()) {
-    // If we're doing a snapshot scan with a big enough cluster, call the callback on the scanner's
-    // tserver. Do this only once.
+    // If we're doing a snapshot scan with a big enough cluster, call the
+    // callback on the scanner's tserver. Do this only once.
     if (snapshot_timestamp != kSnapshotAtNow && !cb_called) {
       client::KuduTabletServer* kts_ptr;
       scanner.GetCurrentServer(&kts_ptr);
@@ -642,7 +695,8 @@ Status LinkedListTester::VerifyLinkedListRemote(
       RETURN_NOT_OK(cb(down_ts));
       cb_called = true;
     }
-    RETURN_NOT_OK_PREPEND(scanner.NextBatch(&rows), "Couldn't fetch next row batch");
+    RETURN_NOT_OK_PREPEND(
+        scanner.NextBatch(&rows), "Couldn't fetch next row batch");
     for (const client::KuduRowResult& row : rows) {
       int64_t key;
       int64_t link;
@@ -650,10 +704,10 @@ Status LinkedListTester::VerifyLinkedListRemote(
       RETURN_NOT_OK(row.GetInt64(0, &key));
       RETURN_NOT_OK(row.GetInt64(1, &link));
 
-      // For non-snapshot reads we also verify that all rows were updated. We don't
-      // for snapshot reads as updates are performed by their own thread. This means
-      // that there is no guarantee that, for any snapshot timestamp that comes before
-      // all writes are completed, all rows will be updated.
+      // For non-snapshot reads we also verify that all rows were updated. We
+      // don't for snapshot reads as updates are performed by their own thread.
+      // This means that there is no guarantee that, for any snapshot timestamp
+      // that comes before all writes are completed, all rows will be updated.
       if (snapshot_timestamp == kSnapshotAtNow) {
         RETURN_NOT_OK(row.GetBool(2, &updated));
       } else {
@@ -665,24 +719,27 @@ Status LinkedListTester::VerifyLinkedListRemote(
   }
 
   Status s = verifier.VerifyData(verified_count, log_errors);
-  LOG(INFO) << "Snapshot: " << snapshot_str << " verified. Result: " << s.ToString();
+  LOG(INFO) << "Snapshot: " << snapshot_str
+            << " verified. Result: " << s.ToString();
   return s;
 }
 
-Status LinkedListTester::VerifyLinkedListLocal(const tablet::Tablet* tablet,
-                                               int64_t expected,
-                                               int64_t* verified_count) {
+Status LinkedListTester::VerifyLinkedListLocal(
+    const tablet::Tablet* tablet,
+    int64_t expected,
+    int64_t* verified_count) {
   DCHECK(tablet != NULL);
-  LinkedListVerifier verifier(num_chains_, enable_mutation_, expected,
-                              GenerateSplitInts());
+  LinkedListVerifier verifier(
+      num_chains_, enable_mutation_, expected, GenerateSplitInts());
   verifier.StartScanTimer();
 
   const Schema* tablet_schema = tablet->schema();
   // Cannot use schemas with col indexes in a scan (assertions fire).
   Schema projection(tablet_schema->columns(), tablet_schema->num_key_columns());
   gscoped_ptr<RowwiseIterator> iter;
-  RETURN_NOT_OK_PREPEND(tablet->NewRowIterator(projection, &iter),
-                        "Cannot create new row iterator");
+  RETURN_NOT_OK_PREPEND(
+      tablet->NewRowIterator(projection, &iter),
+      "Cannot create new row iterator");
   RETURN_NOT_OK_PREPEND(iter->Init(NULL), "Cannot initialize row iterator");
 
   Arena arena(1024);
@@ -706,11 +763,11 @@ Status LinkedListTester::VerifyLinkedListLocal(const tablet::Tablet* tablet,
   return verifier.VerifyData(verified_count, true);
 }
 
-Status LinkedListTester::WaitAndVerify(int seconds_to_run,
-                                       int64_t expected,
-                                       const boost::function<Status(const std::string&)>& cb,
-                                       WaitAndVerifyMode mode) {
-
+Status LinkedListTester::WaitAndVerify(
+    int seconds_to_run,
+    int64_t expected,
+    const boost::function<Status(const std::string&)>& cb,
+    WaitAndVerifyMode mode) {
   std::list<std::pair<int64_t, int64_t>> samples_as_list(
       sampled_timestamps_and_counts_.begin(),
       sampled_timestamps_and_counts_.end());
@@ -726,42 +783,57 @@ Status LinkedListTester::WaitAndVerify(int seconds_to_run,
     // inserted for. There's some fixed cost startup time, especially when
     // replication is enabled.
     const int kBaseTimeToWaitSecs = 5;
-    bool last_attempt = sw.elapsed().wall_seconds() > kBaseTimeToWaitSecs + seconds_to_run;
+    bool last_attempt =
+        sw.elapsed().wall_seconds() > kBaseTimeToWaitSecs + seconds_to_run;
     s = Status::OK();
     auto iter = samples_as_list.begin();
 
     while (iter != samples_as_list.end()) {
-      // Only call the callback once, on the first verify pass, since it may be destructive.
+      // Only call the callback once, on the first verify pass, since it may be
+      // destructive.
       if (iter == samples_as_list.begin() && !called) {
-        s = VerifyLinkedListAtSnapshotRemote((*iter).first, (*iter).second, last_attempt, cb,
-                                             &seen);
+        s = VerifyLinkedListAtSnapshotRemote(
+            (*iter).first, (*iter).second, last_attempt, cb, &seen);
         called = true;
       } else {
-        s = VerifyLinkedListAtSnapshotRemote((*iter).first, (*iter).second, last_attempt,
-                                             boost::bind(&LinkedListTester::ReturnOk, this, _1),
-                                             &seen);
+        s = VerifyLinkedListAtSnapshotRemote(
+            (*iter).first,
+            (*iter).second,
+            last_attempt,
+            boost::bind(&LinkedListTester::ReturnOk, this, _1),
+            &seen);
       }
 
       if (s.ok() && (*iter).second != seen) {
-        // If we've seen less rows than we were expecting we should fail and not retry.
+        // If we've seen less rows than we were expecting we should fail and not
+        // retry.
         //
         // The reasoning is the following:
         //
-        // - We know that when we read this snapshot's timestamp the writes had completed, thus
-        //   at timestamp '(*iter).first' any replica should have precisely '(*iter).second' rows.
-        // - We also chose to perform a snapshot scan, which, when passed a timestamp, waits for
-        //   that timestamp to become "clean", i.e. it makes sure that all transactions with lower
-        //   timestamps have completed before it actually performs the scan.
+        // - We know that when we read this snapshot's timestamp the writes had
+        // completed, thus
+        //   at timestamp '(*iter).first' any replica should have precisely
+        //   '(*iter).second' rows.
+        // - We also chose to perform a snapshot scan, which, when passed a
+        // timestamp, waits for
+        //   that timestamp to become "clean", i.e. it makes sure that all
+        //   transactions with lower timestamps have completed before it
+        //   actually performs the scan.
         //
-        // Together these conditions mean that if we don't get the expected rows back something
-        // is wrong with the read path or with the write path and we should fail immediately.
-        return Status::Corruption(strings::Substitute("Got wrong row count on snapshot. "
-            "Expected: $0, Got:$1", (*iter).second, seen));
+        // Together these conditions mean that if we don't get the expected rows
+        // back something is wrong with the read path or with the write path and
+        // we should fail immediately.
+        return Status::Corruption(strings::Substitute(
+            "Got wrong row count on snapshot. "
+            "Expected: $0, Got:$1",
+            (*iter).second,
+            seen));
       }
 
-      if (!s.ok()) break;
-      // If the snapshot verification returned OK erase it so that we don't recheck
-      // even if a later snapshot or the final verification failed.
+      if (!s.ok())
+        break;
+      // If the snapshot verification returned OK erase it so that we don't
+      // recheck even if a later snapshot or the final verification failed.
       iter = samples_as_list.erase(iter);
     }
 
@@ -770,28 +842,34 @@ Status LinkedListTester::WaitAndVerify(int seconds_to_run,
       case FINISH_WITH_SNAPSHOT_SCAN:
         if (s.ok()) {
           RETURN_NOT_OK(VerifyLinkedListAtNowSnapshotRemote(
-              expected, last_attempt, boost::bind(&LinkedListTester::ReturnOk, this, _1), &seen));
+              expected,
+              last_attempt,
+              boost::bind(&LinkedListTester::ReturnOk, this, _1),
+              &seen));
         }
         break;
       case FINISH_WITH_SCAN_LATEST:
-        // Scans in READ_LATEST mode will, by design, likely return a stale view of the tablet
-        // so, in this case, retry.
+        // Scans in READ_LATEST mode will, by design, likely return a stale view
+        // of the tablet so, in this case, retry.
         if (s.ok()) {
           s = VerifyLinkedListAtLatestRemote(
-              expected, last_attempt, boost::bind(&LinkedListTester::ReturnOk, this, _1), &seen);
+              expected,
+              last_attempt,
+              boost::bind(&LinkedListTester::ReturnOk, this, _1),
+              &seen);
         }
         break;
     }
 
     if (!s.ok()) {
-      KLOG_EVERY_N(INFO, 10) << "Table not yet ready: " << seen << "/"
-                             << expected << " rows (status: "
-                             << s.ToString() << ")";
+      KLOG_EVERY_N(INFO, 10)
+          << "Table not yet ready: " << seen << "/" << expected
+          << " rows (status: " << s.ToString() << ")";
       if (last_attempt) {
         // We'll give it an equal amount of time to re-load the data as it took
         // to write it in. Typically it completes much faster than that.
-        return Status::TimedOut("Timed out waiting for table to be accessible again",
-                                s.ToString());
+        return Status::TimedOut(
+            "Timed out waiting for table to be accessible again", s.ToString());
       }
 
       // Sleep and retry until timeout.
@@ -808,9 +886,11 @@ Status LinkedListTester::WaitAndVerify(int seconds_to_run,
 // LinkedListVerifier
 /////////////////////////////////////////////////////////////
 
-LinkedListVerifier::LinkedListVerifier(int num_chains, bool enable_mutation,
-                                       int64_t expected,
-                                       std::vector<int64_t> split_key_ints)
+LinkedListVerifier::LinkedListVerifier(
+    int num_chains,
+    bool enable_mutation,
+    int64_t expected,
+    std::vector<int64_t> split_key_ints)
     : num_chains_(num_chains),
       expected_(expected),
       enable_mutation_(enable_mutation),
@@ -827,7 +907,10 @@ void LinkedListVerifier::StartScanTimer() {
   scan_timer_.start();
 }
 
-void LinkedListVerifier::RegisterResult(int64_t key, int64_t link, bool updated) {
+void LinkedListVerifier::RegisterResult(
+    int64_t key,
+    int64_t link,
+    bool updated) {
   seen_key_.push_back(key);
   if (link != 0) {
     // Links to entry 0 don't count - the first inserts use this link
@@ -836,21 +919,22 @@ void LinkedListVerifier::RegisterResult(int64_t key, int64_t link, bool updated)
 
   if (updated != enable_mutation_) {
     LOG(ERROR) << "Entry " << key << " was incorrectly "
-      << (enable_mutation_ ? "not " : "") << "updated";
+               << (enable_mutation_ ? "not " : "") << "updated";
     errors_++;
   }
 }
 
-void LinkedListVerifier::SummarizeBrokenLinks(const std::vector<int64_t>& broken_links) {
+void LinkedListVerifier::SummarizeBrokenLinks(
+    const std::vector<int64_t>& broken_links) {
   std::vector<int64_t> errors_by_tablet(split_key_ints_.size() + 1);
 
   int n_logged = 0;
   const int kMaxToLog = 100;
 
   for (int64_t broken : broken_links) {
-    int tablet = std::upper_bound(split_key_ints_.begin(),
-                                  split_key_ints_.end(),
-                                  broken) - split_key_ints_.begin();
+    int tablet = std::upper_bound(
+                     split_key_ints_.begin(), split_key_ints_.end(), broken) -
+        split_key_ints_.begin();
     DCHECK_GE(tablet, 0);
     DCHECK_LT(tablet, errors_by_tablet.size());
     errors_by_tablet[tablet]++;
@@ -867,12 +951,15 @@ void LinkedListVerifier::SummarizeBrokenLinks(const std::vector<int64_t>& broken
   // Summarize the broken links by which tablet they fell into.
   if (!broken_links.empty()) {
     for (int tablet = 0; tablet < errors_by_tablet.size(); tablet++) {
-      LOG(ERROR) << "Error count for tablet #" << tablet << ": " << errors_by_tablet[tablet];
+      LOG(ERROR) << "Error count for tablet #" << tablet << ": "
+                 << errors_by_tablet[tablet];
     }
   }
 }
 
-Status LinkedListVerifier::VerifyData(int64_t* verified_count, bool log_errors) {
+Status LinkedListVerifier::VerifyData(
+    int64_t* verified_count,
+    bool log_errors) {
   *verified_count = seen_key_.size();
   LOG(INFO) << "Done collecting results (" << (*verified_count) << " rows in "
             << scan_timer_.elapsed().wall_millis() << "ms)";
@@ -884,9 +971,11 @@ Status LinkedListVerifier::VerifyData(int64_t* verified_count, bool log_errors) 
 
   // Verify that no key was seen multiple times or linked to multiple times
   VerifyNoDuplicateEntries(seen_key_, &errors_, "Seen row key multiple times");
-  VerifyNoDuplicateEntries(seen_link_to_, &errors_, "Seen link to row multiple times");
+  VerifyNoDuplicateEntries(
+      seen_link_to_, &errors_, "Seen link to row multiple times");
   // Verify that every key that was linked to was present
-  std::vector<int64_t> broken_links = STLSetDifference(seen_link_to_, seen_key_);
+  std::vector<int64_t> broken_links =
+      STLSetDifference(seen_link_to_, seen_key_);
   errors_ += broken_links.size();
   if (log_errors) {
     SummarizeBrokenLinks(broken_links);
@@ -894,23 +983,26 @@ Status LinkedListVerifier::VerifyData(int64_t* verified_count, bool log_errors) 
 
   // Verify that only the expected number of keys were seen but not linked to.
   // Only the last "batch" should have this characteristic.
-  std::vector<int64_t> not_linked_to = STLSetDifference(seen_key_, seen_link_to_);
+  std::vector<int64_t> not_linked_to =
+      STLSetDifference(seen_key_, seen_link_to_);
   if (not_linked_to.size() != num_chains_) {
     LOG_IF(ERROR, log_errors)
-      << "Had " << not_linked_to.size() << " entries which were seen but not"
-      << " linked to. Expected only " << num_chains_;
+        << "Had " << not_linked_to.size() << " entries which were seen but not"
+        << " linked to. Expected only " << num_chains_;
     errors_++;
   }
 
   if (errors_ > 0) {
-    return Status::Corruption("Had one or more errors during verification (see log)");
+    return Status::Corruption(
+        "Had one or more errors during verification (see log)");
   }
 
   if (expected_ != *verified_count) {
     return Status::IllegalState(strings::Substitute(
         "Missing rows, but with no broken link in the chain. This means that "
         "a suffix of the inserted rows went missing. Expected=$0, seen=$1.",
-        expected_, *verified_count));
+        expected_,
+        *verified_count));
   }
 
   return Status::OK();

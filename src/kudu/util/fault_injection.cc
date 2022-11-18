@@ -43,8 +43,8 @@ void InitRandom() {
 
   debug::ScopedLeakCheckDisabler d;
   g_random = new Random(GetRandomSeed32());
-  ANNOTATE_BENIGN_RACE_SIZED(g_random, sizeof(Random),
-                             "Racy random numbers are OK");
+  ANNOTATE_BENIGN_RACE_SIZED(
+      g_random, sizeof(Random), "Racy random numbers are OK");
 }
 
 } // anonymous namespace
@@ -62,7 +62,8 @@ void DoMaybeFault(const char* fault_str, double fraction) {
 
 void DoInjectRandomLatency(double max_latency_ms) {
   GoogleOnceInit(&g_random_once, InitRandom);
-  SleepFor(MonoDelta::FromMilliseconds(g_random->NextDoubleFraction() * max_latency_ms));
+  SleepFor(MonoDelta::FromMilliseconds(
+      g_random->NextDoubleFraction() * max_latency_ms));
 }
 
 void DoInjectFixedLatency(int32_t latency_ms) {

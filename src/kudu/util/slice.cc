@@ -21,22 +21,27 @@
 
 #include "kudu/gutil/port.h"
 #include "kudu/gutil/stringprintf.h"
-#include "kudu/util/status.h"
 #include "kudu/util/logging.h"
+#include "kudu/util/status.h"
 
 namespace kudu {
 
 Status Slice::check_size(size_t expected_size) const {
   if (PREDICT_FALSE(size() != expected_size)) {
-    return Status::Corruption(StringPrintf("Unexpected Slice size. "
-        "Expected %zu but got %zu.", expected_size, size()), KUDU_REDACT(ToDebugString(100)));
+    return Status::Corruption(
+        StringPrintf(
+            "Unexpected Slice size. "
+            "Expected %zu but got %zu.",
+            expected_size,
+            size()),
+        KUDU_REDACT(ToDebugString(100)));
   }
   return Status::OK();
 }
 
 // Return a string that contains the copy of the referenced data.
 std::string Slice::ToString() const {
-  return std::string(reinterpret_cast<const char *>(data_), size_);
+  return std::string(reinterpret_cast<const char*>(data_), size_);
 }
 
 std::string Slice::ToDebugString(size_t max_len) const {
@@ -56,7 +61,7 @@ std::string Slice::ToDebugString(size_t max_len) const {
     }
   }
   if (abbreviated) {
-    size += 20;  // extra padding
+    size += 20; // extra padding
   }
 
   std::string ret;
@@ -82,16 +87,18 @@ bool IsAllZeros(const Slice& s) {
   int rem = s.size();
 
   while (rem >= 8) {
-    if (UNALIGNED_LOAD64(p) != 0) return false;
+    if (UNALIGNED_LOAD64(p) != 0)
+      return false;
     rem -= 8;
     p += 8;
   }
 
   while (rem > 0) {
-    if (*p++ != '\0') return false;
+    if (*p++ != '\0')
+      return false;
     rem--;
   }
   return true;
 }
 
-}  // namespace kudu
+} // namespace kudu

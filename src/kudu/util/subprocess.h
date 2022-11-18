@@ -39,13 +39,13 @@ namespace kudu {
 //
 // This takes care of creating pipes to/from the subprocess and offers
 // basic functionality to wait on it or send signals.
-// By default, child process only has stdin captured and separate from the parent.
-// The stdout/stderr streams are shared with the parent by default.
+// By default, child process only has stdin captured and separate from the
+// parent. The stdout/stderr streams are shared with the parent by default.
 //
 // The process may only be started and waited on/killed once.
 //
-// Optionally, user may change parent/child stream sharing. Also, a user may disable
-// a subprocess stream. A user cannot do both.
+// Optionally, user may change parent/child stream sharing. Also, a user may
+// disable a subprocess stream. A user cannot do both.
 //
 // Note that, when the Subprocess object is destructed, the child process
 // will be forcibly SIGKILLed to avoid orphaning processes.
@@ -55,10 +55,13 @@ class Subprocess {
   //
   // If the process isn't explicitly killed, 'sig_on_destroy' will be delivered
   // to it when the Subprocess goes out of scope.
-  explicit Subprocess(std::vector<std::string> argv, int sig_on_destruct = SIGKILL);
+  explicit Subprocess(
+      std::vector<std::string> argv,
+      int sig_on_destruct = SIGKILL);
   ~Subprocess();
 
-  // Disables subprocess stream output. Is mutually exclusive with stream sharing.
+  // Disables subprocess stream output. Is mutually exclusive with stream
+  // sharing.
   //
   // Must be called before subprocess starts.
   void DisableStderr();
@@ -68,9 +71,15 @@ class Subprocess {
   // exclusive with stream disabling.
   //
   // Must be called before subprocess starts.
-  void ShareParentStdin(bool  share = true) { SetFdShared(STDIN_FILENO,  share); }
-  void ShareParentStdout(bool share = true) { SetFdShared(STDOUT_FILENO, share); }
-  void ShareParentStderr(bool share = true) { SetFdShared(STDERR_FILENO, share); }
+  void ShareParentStdin(bool share = true) {
+    SetFdShared(STDIN_FILENO, share);
+  }
+  void ShareParentStdout(bool share = true) {
+    SetFdShared(STDOUT_FILENO, share);
+  }
+  void ShareParentStderr(bool share = true) {
+    SetFdShared(STDERR_FILENO, share);
+  }
 
   // Add environment variables to be set before executing the subprocess.
   //
@@ -143,38 +152,49 @@ class Subprocess {
   //
   // Also collects the output from the child process stdout and stderr into
   // 'stdout_out' and 'stderr_out' respectively.
-  static Status Call(const std::vector<std::string>& argv,
-                     const std::string& stdin_in = "",
-                     std::string* stdout_out = nullptr,
-                     std::string* stderr_out = nullptr) WARN_UNUSED_RESULT;
+  static Status Call(
+      const std::vector<std::string>& argv,
+      const std::string& stdin_in = "",
+      std::string* stdout_out = nullptr,
+      std::string* stderr_out = nullptr) WARN_UNUSED_RESULT;
 
   // Return the pipe fd to the child's standard stream.
   // Stream should not be disabled or shared.
-  int to_child_stdin_fd()    const { return CheckAndOffer(STDIN_FILENO); }
-  int from_child_stdout_fd() const { return CheckAndOffer(STDOUT_FILENO); }
-  int from_child_stderr_fd() const { return CheckAndOffer(STDERR_FILENO); }
+  int to_child_stdin_fd() const {
+    return CheckAndOffer(STDIN_FILENO);
+  }
+  int from_child_stdout_fd() const {
+    return CheckAndOffer(STDOUT_FILENO);
+  }
+  int from_child_stderr_fd() const {
+    return CheckAndOffer(STDERR_FILENO);
+  }
 
-  // Release control of the file descriptor for the child's stream, only if piped.
-  // Writes to this FD show up on stdin in the subprocess
-  int ReleaseChildStdinFd()  { return ReleaseChildFd(STDIN_FILENO ); }
+  // Release control of the file descriptor for the child's stream, only if
+  // piped. Writes to this FD show up on stdin in the subprocess
+  int ReleaseChildStdinFd() {
+    return ReleaseChildFd(STDIN_FILENO);
+  }
   // Reads from this FD come from stdout of the subprocess
-  int ReleaseChildStdoutFd() { return ReleaseChildFd(STDOUT_FILENO); }
+  int ReleaseChildStdoutFd() {
+    return ReleaseChildFd(STDOUT_FILENO);
+  }
   // Reads from this FD come from stderr of the subprocess
-  int ReleaseChildStderrFd() { return ReleaseChildFd(STDERR_FILENO); }
+  int ReleaseChildStderrFd() {
+    return ReleaseChildFd(STDERR_FILENO);
+  }
 
   pid_t pid() const;
-  const std::string& argv0() const { return argv_[0]; }
+  const std::string& argv0() const {
+    return argv_[0];
+  }
 
  private:
   FRIEND_TEST(SubprocessTest, TestGetProcfsState);
 
-  enum State {
-    kNotStarted,
-    kRunning,
-    kExited
-  };
-  enum StreamMode {SHARED, DISABLED, PIPED};
-  enum WaitMode {BLOCKING, NON_BLOCKING};
+  enum State { kNotStarted, kRunning, kExited };
+  enum StreamMode { SHARED, DISABLED, PIPED };
+  enum WaitMode { BLOCKING, NON_BLOCKING };
 
   // Process state according to /proc/<pid>/stat.
   enum class ProcfsState {

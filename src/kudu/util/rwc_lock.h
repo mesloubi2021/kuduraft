@@ -63,12 +63,13 @@ namespace kudu {
 // mutation is only protected against other concurrent mutators, and readers
 // may continue to run with no contention.
 //
-// For the common pattern described above, the 'CowObject<>' template class defined
-// in cow_object.h is more convenient than manual locking.
+// For the common pattern described above, the 'CowObject<>' template class
+// defined in cow_object.h is more convenient than manual locking.
 //
-// NOTE: this implementation currently does not implement any starvation protection
-// or fairness. If the read lock is being constantly acquired (i.e reader count
-// never drops to 0) then UpgradeToCommitLock() may block arbitrarily long.
+// NOTE: this implementation currently does not implement any starvation
+// protection or fairness. If the read lock is being constantly acquired (i.e
+// reader count never drops to 0) then UpgradeToCommitLock() may block
+// arbitrarily long.
 class RWCLock {
  public:
   RWCLock();
@@ -94,8 +95,12 @@ class RWCLock {
   bool HasWriteLock() const;
 
   // Boost-like wrappers, so boost lock guards work
-  void lock_shared() { ReadLock(); }
-  void unlock_shared() { ReadUnlock(); }
+  void lock_shared() {
+    ReadLock();
+  }
+  void unlock_shared() {
+    ReadUnlock();
+  }
 
   // Acquire the lock in write mode. Upon return, guarantees that:
   // - Other threads may concurrently hold the lock for Read.
@@ -104,8 +109,12 @@ class RWCLock {
   void WriteUnlock();
 
   // Boost-like wrappers
-  void lock() { WriteLock(); }
-  void unlock() { WriteUnlock(); }
+  void lock() {
+    WriteLock();
+  }
+  void unlock() {
+    WriteUnlock();
+  }
 
   // Upgrade the lock from Write mode to Commit mode.
   // Requires that the current thread holds the lock in Write mode.
@@ -128,7 +137,7 @@ class RWCLock {
   int reader_count_;
   bool write_locked_;
 
-#ifdef FB_DO_NOT_REMOVE  // #ifndef NDEBUG
+#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
   static const int kBacktraceBufSize = 1024;
   int64_t writer_tid_;
   int64_t last_writelock_acquire_time_;

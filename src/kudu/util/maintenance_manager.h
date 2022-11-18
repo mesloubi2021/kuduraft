@@ -42,7 +42,7 @@
 
 namespace kudu {
 
-template<class T>
+template <class T>
 class AtomicGauge;
 class Histogram;
 class MaintenanceManager;
@@ -158,7 +158,8 @@ struct OpInstance {
   int64_t thread_id;
   // Name of operation.
   std::string name;
-  // Time the operation took to run. Value is unitialized if instance is still running.
+  // Time the operation took to run. Value is unitialized if instance is still
+  // running.
   MonoDelta duration;
   MonoTime start_mono_time;
 
@@ -176,7 +177,8 @@ class MaintenanceOp {
 
   // General indicator of how much IO the Op will use.
   enum IOUsage {
-    LOW_IO_USAGE, // Low impact operations like removing a file, updating metadata.
+    LOW_IO_USAGE, // Low impact operations like removing a file, updating
+                  // metadata.
     HIGH_IO_USAGE // Everything else.
   };
 
@@ -206,24 +208,32 @@ class MaintenanceOp {
   // Returns the histogram for this op that tracks duration. Cannot be NULL.
   virtual scoped_refptr<Histogram> DurationHistogram() const = 0;
 
-  // Returns the gauge for this op that tracks when this op is running. Cannot be NULL.
-  virtual scoped_refptr<AtomicGauge<uint32_t> > RunningGauge() const = 0;
+  // Returns the gauge for this op that tracks when this op is running. Cannot
+  // be NULL.
+  virtual scoped_refptr<AtomicGauge<uint32_t>> RunningGauge() const = 0;
 
-  uint32_t running() { return running_; }
+  uint32_t running() {
+    return running_;
+  }
 
-  std::string name() const { return name_; }
+  std::string name() const {
+    return name_;
+  }
 
-  IOUsage io_usage() const { return io_usage_; }
+  IOUsage io_usage() const {
+    return io_usage_;
+  }
 
-  // Return true if the operation has been cancelled due to Unregister() pending.
+  // Return true if the operation has been cancelled due to Unregister()
+  // pending.
   bool cancelled() const {
     return cancel_.Load();
   }
 
-  // Cancel this operation, which prevents new instances of it from being scheduled
-  // regardless of whether the statistics indicate it is runnable. Instances may also
-  // optionally poll 'cancelled()' on a periodic basis to know if they should abort a
-  // lengthy operation in the middle of Perform().
+  // Cancel this operation, which prevents new instances of it from being
+  // scheduled regardless of whether the statistics indicate it is runnable.
+  // Instances may also optionally poll 'cancelled()' on a periodic basis to
+  // know if they should abort a lengthy operation in the middle of Perform().
   void CancelAndDisable() {
     cancel_.Store(true);
   }
@@ -256,8 +266,7 @@ class MaintenanceOp {
 };
 
 struct MaintenanceOpComparator {
-  bool operator() (const MaintenanceOp* lhs,
-                   const MaintenanceOp* rhs) const {
+  bool operator()(const MaintenanceOp* lhs, const MaintenanceOp* rhs) const {
     return lhs->name().compare(rhs->name()) < 0;
   }
 };
@@ -266,7 +275,8 @@ struct MaintenanceOpComparator {
 // as flushes or compactions.  It runs these operations in the background, in a
 // thread pool.  It uses information provided in MaintenanceOpStats objects to
 // decide which operations, if any, to run.
-class MaintenanceManager : public std::enable_shared_from_this<MaintenanceManager> {
+class MaintenanceManager
+    : public std::enable_shared_from_this<MaintenanceManager> {
  public:
   struct Options {
     int32_t num_threads;
@@ -301,8 +311,8 @@ class MaintenanceManager : public std::enable_shared_from_this<MaintenanceManage
 
  private:
   FRIEND_TEST(MaintenanceManagerTest, TestLogRetentionPrioritization);
-  typedef std::map<MaintenanceOp*, MaintenanceOpStats,
-          MaintenanceOpComparator> OpMapTy;
+  typedef std::map<MaintenanceOp*, MaintenanceOpStats, MaintenanceOpComparator>
+      OpMapTy;
 
   // Return true if tests have currently disabled the maintenance
   // manager by way of changing the gflags at runtime.
@@ -330,14 +340,15 @@ class MaintenanceManager : public std::enable_shared_from_this<MaintenanceManage
   bool shutdown_;
   int32_t polling_interval_ms_;
   uint64_t running_ops_;
-  // Vector used as a circular buffer for recently completed ops. Elements need to be added at
-  // the completed_ops_count_ % the vector's size and then the count needs to be incremented.
+  // Vector used as a circular buffer for recently completed ops. Elements need
+  // to be added at the completed_ops_count_ % the vector's size and then the
+  // count needs to be incremented.
   std::vector<OpInstance> completed_ops_;
   int64_t completed_ops_count_;
   Random rand_;
 
-  // Function which should return true if the server is under global memory pressure.
-  // This is indirected for testing purposes.
+  // Function which should return true if the server is under global memory
+  // pressure. This is indirected for testing purposes.
   std::function<bool(double*)> memory_pressure_func_;
 
   // Running instances lock.
@@ -347,10 +358,11 @@ class MaintenanceManager : public std::enable_shared_from_this<MaintenanceManage
   // running_instances_lock_ and lock_, lock_ must be acquired first.
   Mutex running_instances_lock_;
 
-  // Maps thread ids to instances of an op that they're running. Instances should be added
-  // right before MaintenanceOp::Perform() is called, and should be removed right after
-  // MaintenanceOp::Perform() completes. Any thread that adds an instance to this map
-  // owns that instance, and the instance should exist until the same thread removes it.
+  // Maps thread ids to instances of an op that they're running. Instances
+  // should be added right before MaintenanceOp::Perform() is called, and should
+  // be removed right after MaintenanceOp::Perform() completes. Any thread that
+  // adds an instance to this map owns that instance, and the instance should
+  // exist until the same thread removes it.
   //
   // Protected by running_instances_lock_;
   std::unordered_map<int64_t, OpInstance*> running_instances_;

@@ -50,25 +50,25 @@
 #include "kudu/util/status.h"
 #include "kudu/util/thread.h"
 
-using std::string;
 using kudu::fs::ErrorHandlerType;
 using kudu::rpc::ServiceIf;
+using std::string;
 
 namespace kudu {
 namespace tserver {
 
 TabletServer::TabletServer(const TabletServerOptions& opts)
-  : KuduServer("TabletServer", opts, "kudu.tabletserver"),
-    initted_(false),
+    : KuduServer("TabletServer", opts, "kudu.tabletserver"),
+      initted_(false),
 #ifdef FB_DO_NOT_REMOVE
-    fail_heartbeats_for_tests_(false),
+      fail_heartbeats_for_tests_(false),
 #endif
-    opts_(opts),
-    tablet_manager_(new TSTabletManager(this))
+      opts_(opts),
+      tablet_manager_(new TSTabletManager(this))
 
 #ifdef FB_DO_NOT_REMOVE
-    scanner_manager_(new ScannerManager(metric_entity())),
-    path_handlers_(new TabletServerPathHandlers(this))
+          scanner_manager_(new ScannerManager(metric_entity())),
+      path_handlers_(new TabletServerPathHandlers(this))
 #endif
 {
 }
@@ -85,10 +85,11 @@ string TabletServer::ToString() const {
 #ifdef FB_DO_NOT_REMOVE
 Status TabletServer::ValidateMasterAddressResolution() const {
   for (const HostPort& master_addr : opts_.master_addresses) {
-    RETURN_NOT_OK_PREPEND(master_addr.ResolveAddresses(NULL),
-                          strings::Substitute(
-                              "Couldn't resolve master service address '$0'",
-                              master_addr.ToString()));
+    RETURN_NOT_OK_PREPEND(
+        master_addr.ResolveAddresses(NULL),
+        strings::Substitute(
+            "Couldn't resolve master service address '$0'",
+            master_addr.ToString()));
   }
   return Status::OK();
 }
@@ -108,7 +109,8 @@ Status TabletServer::Init() {
 #endif
 
   // This pool will be used to wait for Raft
-  RETURN_NOT_OK(ThreadPoolBuilder("init").set_max_threads(1).Build(&init_pool_));
+  RETURN_NOT_OK(
+      ThreadPoolBuilder("init").set_max_threads(1).Build(&init_pool_));
 
   // Initialize FS, rpc_server, rpc messenger and Raft pool
   RETURN_NOT_OK(KuduServer::Init());
@@ -122,15 +124,17 @@ Status TabletServer::Init() {
       MaintenanceManager::kDefaultOptions, fs_manager_->uuid()));
 
   heartbeater_.reset(new Heartbeater(opts_, this));
-  RETURN_NOT_OK_PREPEND(scanner_manager_->StartRemovalThread(),
-                        "Could not start expired Scanner removal thread");
+  RETURN_NOT_OK_PREPEND(
+      scanner_manager_->StartRemovalThread(),
+      "Could not start expired Scanner removal thread");
 #endif
 
   // Moving registration of consensus service and RPC server
   // start to Init. This allows us to create a barebones Raft
   // distributed config. We need the service to be here, because
   // Raft::create makes remote GetNodeInstance RPC calls.
-  gscoped_ptr<ServiceIf> consensus_service(new ConsensusServiceImpl(this, tablet_manager_.get()));
+  gscoped_ptr<ServiceIf> consensus_service(
+      new ConsensusServiceImpl(this, tablet_manager_.get()));
   RETURN_NOT_OK(RegisterService(std::move(consensus_service)));
   RETURN_NOT_OK(KuduServer::Start());
 
@@ -139,8 +143,9 @@ Status TabletServer::Init() {
   if (tablet_manager_->IsInitialized()) {
     return Status::IllegalState("Catalog manager is already initialized");
   }
-  RETURN_NOT_OK_PREPEND(tablet_manager_->Init(is_first_run_),
-                        "Unable to initialize catalog manager");
+  RETURN_NOT_OK_PREPEND(
+      tablet_manager_->Init(is_first_run_),
+      "Unable to initialize catalog manager");
 
   google::FlushLogFiles(google::INFO); // Flush the startup messages.
   initted_ = true;
@@ -151,16 +156,22 @@ Status TabletServer::Start() {
   CHECK(initted_);
 
 #ifdef FB_DO_NOT_REMOVE
-  fs_manager_->SetErrorNotificationCb(ErrorHandlerType::DISK_ERROR,
-      Bind(&TSTabletManager::FailTabletsInDataDir, Unretained(tablet_manager_.get())));
-  fs_manager_->SetErrorNotificationCb(ErrorHandlerType::CFILE_CORRUPTION,
-      Bind(&TSTabletManager::FailTabletAndScheduleShutdown, Unretained(tablet_manager_.get())));
+  fs_manager_->SetErrorNotificationCb(
+      ErrorHandlerType::DISK_ERROR,
+      Bind(
+          &TSTabletManager::FailTabletsInDataDir,
+          Unretained(tablet_manager_.get())));
+  fs_manager_->SetErrorNotificationCb(
+      ErrorHandlerType::CFILE_CORRUPTION,
+      Bind(
+          &TSTabletManager::FailTabletAndScheduleShutdown,
+          Unretained(tablet_manager_.get())));
 
   gscoped_ptr<ServiceIf> ts_service(new TabletServiceImpl(this));
   gscoped_ptr<ServiceIf> admin_service(new TabletServiceAdminImpl(this));
 
-  gscoped_ptr<ServiceIf> tablet_copy_service(new TabletCopyServiceImpl(
-      this, tablet_manager_.get()));
+  gscoped_ptr<ServiceIf> tablet_copy_service(
+      new TabletCopyServiceImpl(this, tablet_manager_.get()));
 
   RETURN_NOT_OK(RegisterService(std::move(ts_service)));
   RETURN_NOT_OK(RegisterService(std::move(admin_service)));
@@ -175,8 +186,9 @@ Status TabletServer::Start() {
     return Status::IllegalState("Tablet manager is not initialized");
   }
 
-  RETURN_NOT_OK_PREPEND(tablet_manager_->Start(is_first_run_),
-                        "Unable to start raft in tablet manager");
+  RETURN_NOT_OK_PREPEND(
+      tablet_manager_->Start(is_first_run_),
+      "Unable to start raft in tablet manager");
   google::FlushLogFiles(google::INFO); // Flush the startup messages.
   return Status::OK();
 }
@@ -207,14 +219,15 @@ void TabletServer::Shutdown() {
 
 std::string TabletServer::ConsensusServiceRpcQueueToString() const {
   const kudu::rpc::ServicePool* pool = rpc_server_->service_pool(
-     kudu::consensus::ConsensusServiceIf::static_service_name());
+      kudu::consensus::ConsensusServiceIf::static_service_name());
   if (pool) {
     return pool->RpcServiceQueueToString();
   }
   return "";
 }
 
-Status TabletServer::ShowKuduThreadStatus(std::vector<ThreadDescriptor>* threads) {
+Status TabletServer::ShowKuduThreadStatus(
+    std::vector<ThreadDescriptor>* threads) {
   return GlobalShowThreadStatus(threads);
 }
 

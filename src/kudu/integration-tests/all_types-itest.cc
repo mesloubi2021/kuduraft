@@ -52,7 +52,10 @@
 #include "kudu/util/test_macros.h"
 #include "kudu/util/test_util.h"
 
-DEFINE_int32(num_rows_per_tablet, 100, "The number of rows to be inserted into each tablet");
+DEFINE_int32(
+    num_rows_per_tablet,
+    100,
+    "The number of rows to be inserted into each tablet");
 
 using std::string;
 using std::vector;
@@ -68,19 +71,19 @@ static const int kNumTabletServers = 3;
 static const int kNumTablets = 3;
 static const int kMaxBatchSize = 8 * 1024 * 1024;
 
-template<typename KeyTypeWrapper>
+template <typename KeyTypeWrapper>
 struct SliceKeysTestSetup {
-
   SliceKeysTestSetup()
-   : max_rows_(MathLimits<int>::kMax),
-     rows_per_tablet_(std::min(max_rows_/ kNumTablets, FLAGS_num_rows_per_tablet)),
-     increment_(static_cast<int>(MathLimits<int>::kMax / kNumTablets)) {
-  }
+      : max_rows_(MathLimits<int>::kMax),
+        rows_per_tablet_(
+            std::min(max_rows_ / kNumTablets, FLAGS_num_rows_per_tablet)),
+        increment_(static_cast<int>(MathLimits<int>::kMax / kNumTablets)) {}
 
   void AddKeyColumnsToSchema(KuduSchemaBuilder* builder) const {
     auto column_spec = builder->AddColumn("key");
     column_spec->Type(client::FromInternalDataType(KeyTypeWrapper::kType))
-        ->NotNull()->PrimaryKey();
+        ->NotNull()
+        ->PrimaryKey();
     if (KeyTypeWrapper::kType == DECIMAL32) {
       column_spec->Precision(kMaxDecimal32Precision);
     } else if (KeyTypeWrapper::kType == DECIMAL64) {
@@ -90,10 +93,11 @@ struct SliceKeysTestSetup {
     }
   }
 
-  // Split points are calculated by equally partitioning the int64_t key space and then
-  // using the stringified hexadecimal representation to create the split keys (with
-  // zero padding).
-  vector<const KuduPartialRow*> GenerateSplitRows(const KuduSchema& schema) const {
+  // Split points are calculated by equally partitioning the int64_t key space
+  // and then using the stringified hexadecimal representation to create the
+  // split keys (with zero padding).
+  vector<const KuduPartialRow*> GenerateSplitRows(
+      const KuduSchema& schema) const {
     vector<string> splits;
     splits.reserve(kNumTablets - 1);
     for (int i = 1; i < kNumTablets; i++) {
@@ -104,7 +108,7 @@ struct SliceKeysTestSetup {
     for (string val : splits) {
       Slice slice(val);
       KuduPartialRow* row = schema.NewRow();
-      CHECK_OK(row->SetSliceCopy<TypeTraits<KeyTypeWrapper::kType> >(0, slice));
+      CHECK_OK(row->SetSliceCopy<TypeTraits<KeyTypeWrapper::kType>>(0, slice));
       rows.push_back(row);
     }
     return rows;
@@ -114,29 +118,33 @@ struct SliceKeysTestSetup {
     int row_key_num = (split_idx * increment_) + row_idx;
     string row_key = StringPrintf("%08x", row_key_num);
     Slice row_key_slice(row_key);
-    return insert->mutable_row()->SetSliceCopy<TypeTraits<KeyTypeWrapper::kType> >(0,
-                                                                                  row_key_slice);
+    return insert->mutable_row()
+        ->SetSliceCopy<TypeTraits<KeyTypeWrapper::kType>>(0, row_key_slice);
   }
 
-  Status VerifyRowKeySlice(Slice row_key_slice, int split_idx, int row_idx) const {
+  Status VerifyRowKeySlice(Slice row_key_slice, int split_idx, int row_idx)
+      const {
     int expected_row_key_num = (split_idx * increment_) + row_idx;
     string expected_row_key = StringPrintf("%08x", expected_row_key_num);
     Slice expected_row_key_slice(expected_row_key);
     if (expected_row_key_slice.compare(row_key_slice) != 0) {
-      return Status::Corruption(strings::Substitute("Keys didn't match. Expected: $0 Got: $1",
-                                                    expected_row_key_slice.ToDebugString(),
-                                                    row_key_slice.ToDebugString()));
+      return Status::Corruption(strings::Substitute(
+          "Keys didn't match. Expected: $0 Got: $1",
+          expected_row_key_slice.ToDebugString(),
+          row_key_slice.ToDebugString()));
     }
     return Status::OK();
   }
 
-  Status VerifyRowKey(const KuduRowResult& result, int split_idx, int row_idx) const {
+  Status VerifyRowKey(const KuduRowResult& result, int split_idx, int row_idx)
+      const {
     Slice row_key;
     RETURN_NOT_OK(result.Get<TypeTraits<KeyTypeWrapper::kType>>(0, &row_key));
     return VerifyRowKeySlice(row_key, split_idx, row_idx);
   }
 
-  Status VerifyRowKeyRaw(const uint8_t* raw_key, int split_idx, int row_idx) const {
+  Status VerifyRowKeyRaw(const uint8_t* raw_key, int split_idx, int row_idx)
+      const {
     Slice row_key = *reinterpret_cast<const Slice*>(raw_key);
     return VerifyRowKeySlice(row_key, split_idx, row_idx);
   }
@@ -160,24 +168,28 @@ struct SliceKeysTestSetup {
   int increment_;
 };
 
-template<typename KeyTypeWrapper>
+template <typename KeyTypeWrapper>
 struct IntKeysTestSetup {
   typedef typename TypeTraits<KeyTypeWrapper::kType>::cpp_type CppType;
 
   IntKeysTestSetup()
-     // If CppType is actually bigger than int (e.g. int64_t) casting the max to int
-     // returns -1, so we make sure in that case we get max from int directly.
-   : max_rows_(static_cast<int>(MathLimits<CppType>::kMax) != -1 ?
-       static_cast<int>(MathLimits<CppType>::kMax) : MathLimits<int>::kMax),
-     increment_(max_rows_ / kNumTablets),
-     rows_per_tablet_(std::min(increment_, FLAGS_num_rows_per_tablet)) {
+      // If CppType is actually bigger than int (e.g. int64_t) casting the max
+      // to int returns -1, so we make sure in that case we get max from int
+      // directly.
+      : max_rows_(
+            static_cast<int>(MathLimits<CppType>::kMax) != -1
+                ? static_cast<int>(MathLimits<CppType>::kMax)
+                : MathLimits<int>::kMax),
+        increment_(max_rows_ / kNumTablets),
+        rows_per_tablet_(std::min(increment_, FLAGS_num_rows_per_tablet)) {
     DCHECK(base::is_integral<CppType>::value);
   }
 
   void AddKeyColumnsToSchema(KuduSchemaBuilder* builder) const {
     auto column_spec = builder->AddColumn("key");
     column_spec->Type(client::FromInternalDataType(KeyTypeWrapper::kType))
-        ->NotNull()->PrimaryKey();
+        ->NotNull()
+        ->PrimaryKey();
     if (KeyTypeWrapper::kType == DECIMAL32) {
       column_spec->Precision(kMaxDecimal32Precision);
     } else if (KeyTypeWrapper::kType == DECIMAL64) {
@@ -187,7 +199,8 @@ struct IntKeysTestSetup {
     }
   }
 
-  vector<const KuduPartialRow*> GenerateSplitRows(const KuduSchema& schema) const {
+  vector<const KuduPartialRow*> GenerateSplitRows(
+      const KuduSchema& schema) const {
     vector<CppType> splits;
     splits.reserve(kNumTablets - 1);
     for (int64_t i = 1; i < kNumTablets; i++) {
@@ -196,7 +209,7 @@ struct IntKeysTestSetup {
     vector<const KuduPartialRow*> rows;
     for (CppType val : splits) {
       KuduPartialRow* row = schema.NewRow();
-      CHECK_OK(row->Set<TypeTraits<KeyTypeWrapper::kType> >(0, val));
+      CHECK_OK(row->Set<TypeTraits<KeyTypeWrapper::kType>>(0, val));
       rows.push_back(row);
     }
     return rows;
@@ -204,25 +217,28 @@ struct IntKeysTestSetup {
 
   Status GenerateRowKey(KuduInsert* insert, int split_idx, int row_idx) const {
     CppType val = (split_idx * increment_) + row_idx;
-    return insert->mutable_row()->Set<TypeTraits<KeyTypeWrapper::kType> >(0, val);
+    return insert->mutable_row()->Set<TypeTraits<KeyTypeWrapper::kType>>(
+        0, val);
   }
 
   Status VerifyIntRowKey(CppType val, int split_idx, int row_idx) const {
     int expected = (split_idx * increment_) + row_idx;
     if (val != expected) {
-      return Status::Corruption(strings::Substitute("Keys didn't match. Expected: $0 Got: $1",
-                                                    expected, val));
+      return Status::Corruption(strings::Substitute(
+          "Keys didn't match. Expected: $0 Got: $1", expected, val));
     }
     return Status::OK();
   }
 
-  Status VerifyRowKey(const KuduRowResult& result, int split_idx, int row_idx) const {
+  Status VerifyRowKey(const KuduRowResult& result, int split_idx, int row_idx)
+      const {
     CppType val;
     RETURN_NOT_OK(result.Get<TypeTraits<KeyTypeWrapper::kType>>(0, &val));
     return VerifyIntRowKey(val, split_idx, row_idx);
   }
 
-  Status VerifyRowKeyRaw(const uint8_t* raw_key, int split_idx, int row_idx) const {
+  Status VerifyRowKeyRaw(const uint8_t* raw_key, int split_idx, int row_idx)
+      const {
     CppType val = UnalignedLoad<CppType>(raw_key);
     return VerifyIntRowKey(val, split_idx, row_idx);
   }
@@ -288,29 +304,35 @@ class AllTypesItest : public KuduTest {
     builder.AddColumn("float_val")->Type(KuduColumnSchema::FLOAT);
     builder.AddColumn("double_val")->Type(KuduColumnSchema::DOUBLE);
     builder.AddColumn("binary_val")->Type(KuduColumnSchema::BINARY);
-    builder.AddColumn("decimal32_val")->Type(KuduColumnSchema::DECIMAL)
+    builder.AddColumn("decimal32_val")
+        ->Type(KuduColumnSchema::DECIMAL)
         ->Precision(kMaxDecimal32Precision);
-    builder.AddColumn("decimal64_val")->Type(KuduColumnSchema::DECIMAL)
+    builder.AddColumn("decimal64_val")
+        ->Type(KuduColumnSchema::DECIMAL)
         ->Precision(kMaxDecimal64Precision);
-    builder.AddColumn("decimal128_val")->Type(KuduColumnSchema::DECIMAL)
+    builder.AddColumn("decimal128_val")
+        ->Type(KuduColumnSchema::DECIMAL)
         ->Precision(kMaxDecimal128Precision);
     CHECK_OK(builder.Build(&schema_));
   }
 
   Status CreateCluster() {
     static const vector<string> kTsFlags = {
-      // Set the flush threshold low so that we have flushes and test the on-disk formats.
-      "--flush_threshold_mb=1",
+        // Set the flush threshold low so that we have flushes and test the
+        // on-disk formats.
+        "--flush_threshold_mb=1",
 
-      // Set the major delta compaction ratio low enough that we trigger a lot of them.
-      "--tablet_delta_store_major_compact_min_ratio=0.001",
+        // Set the major delta compaction ratio low enough that we trigger a lot
+        // of them.
+        "--tablet_delta_store_major_compact_min_ratio=0.001",
 
-      // TODO(KUDU-1346) Remove custom consensus_max_batch_size_bytes setting
-      // once KUDU-1346 is fixed. It's necessary to change the default
-      // value of the consensus_max_batch_size_bytes flag to avoid
-      // triggering debug assert when a relatively big chunk of write operations
-      // is flushed to the tablet server.
-      "--consensus_max_batch_size_bytes=2097152",
+        // TODO(KUDU-1346) Remove custom consensus_max_batch_size_bytes setting
+        // once KUDU-1346 is fixed. It's necessary to change the default
+        // value of the consensus_max_batch_size_bytes flag to avoid
+        // triggering debug assert when a relatively big chunk of write
+        // operations
+        // is flushed to the tablet server.
+        "--consensus_max_batch_size_bytes=2097152",
     };
 
     ExternalMiniClusterOptions opts;
@@ -327,19 +349,21 @@ class AllTypesItest : public KuduTest {
 
   Status CreateTable() {
     CreateAllTypesSchema();
-    vector<const KuduPartialRow*> split_rows = setup_.GenerateSplitRows(schema_);
-    gscoped_ptr<client::KuduTableCreator> table_creator(client_->NewTableCreator());
+    vector<const KuduPartialRow*> split_rows =
+        setup_.GenerateSplitRows(schema_);
+    gscoped_ptr<client::KuduTableCreator> table_creator(
+        client_->NewTableCreator());
 
     for (const KuduPartialRow* row : split_rows) {
       split_rows_.push_back(*row);
     }
 
     RETURN_NOT_OK(table_creator->table_name("all-types-table")
-                  .schema(&schema_)
-                  .set_range_partition_columns({ "key" })
-                  .split_rows(split_rows)
-                  .num_replicas(kNumTabletServers)
-                  .Create());
+                      .schema(&schema_)
+                      .set_range_partition_columns({"key"})
+                      .split_rows(split_rows)
+                      .num_replicas(kNumTabletServers)
+                      .Create());
     return client_->OpenTable("all-types-table", &table_);
   }
 
@@ -364,14 +388,15 @@ class AllTypesItest : public KuduTest {
     RETURN_NOT_OK(row->SetUnscaledDecimal("decimal32_val", int_val));
     RETURN_NOT_OK(row->SetUnscaledDecimal("decimal64_val", int_val));
     RETURN_NOT_OK(row->SetUnscaledDecimal("decimal128_val", int_val));
-    VLOG(1) << "Inserting row[" << split_idx << "," << row_idx << "]" << insert->ToString();
+    VLOG(1) << "Inserting row[" << split_idx << "," << row_idx << "]"
+            << insert->ToString();
     RETURN_NOT_OK(session->Apply(insert));
     return Status::OK();
   }
 
-  // This inserts kNumRowsPerTablet in each of the tablets. In the end we should have
-  // perfectly partitioned table, if the encoding of the keys was correct and the rows
-  // ended up in the right place.
+  // This inserts kNumRowsPerTablet in each of the tablets. In the end we should
+  // have perfectly partitioned table, if the encoding of the keys was correct
+  // and the rows ended up in the right place.
   Status InsertRows() {
     shared_ptr<KuduSession> session = client_->NewSession();
     RETURN_NOT_OK(session->SetFlushMode(KuduSession::AUTO_FLUSH_BACKGROUND));
@@ -407,7 +432,8 @@ class AllTypesItest : public KuduTest {
 
   ExpectedVals GetExpectedValsForRow(int split_idx, int row_idx) {
     ExpectedVals vals;
-    int64_t expected_int_val = (split_idx * setup_.GetRowsPerTablet()) + row_idx;
+    int64_t expected_int_val =
+        (split_idx * setup_.GetRowsPerTablet()) + row_idx;
     vals.expected_int8_val = static_cast<int8_t>(expected_int_val);
     vals.expected_int16_val = static_cast<int16_t>(expected_int_val);
     vals.expected_int32_val = static_cast<int32_t>(expected_int_val);
@@ -469,15 +495,19 @@ class AllTypesItest : public KuduTest {
     ASSERT_EQ(decimal128_val, vals.expected_decimal_val);
   }
 
-  typedef std::function<Status (KuduScanner* scanner)> ScannerSetup;
-  typedef std::function<void (const KuduScanBatch& batch,
-                              int num_tablet,
-                              int* total_rows_in_tablet)> RowVerifier;
+  typedef std::function<Status(KuduScanner* scanner)> ScannerSetup;
+  typedef std::function<void(
+      const KuduScanBatch& batch,
+      int num_tablet,
+      int* total_rows_in_tablet)>
+      RowVerifier;
 
-  Status VerifyRows(const ScannerSetup& scanner_setup, const RowVerifier& verifier) {
+  Status VerifyRows(
+      const ScannerSetup& scanner_setup,
+      const RowVerifier& verifier) {
     int total_rows = 0;
-    // Scan a single tablet and make sure it has the rows we expect in the amount we
-    // expect.
+    // Scan a single tablet and make sure it has the rows we expect in the
+    // amount we expect.
     for (int i = 0; i < kNumTablets; ++i) {
       KuduScanner scanner(table_.get());
       string low_split;
@@ -499,7 +529,8 @@ class AllTypesItest : public KuduTest {
       RETURN_NOT_OK(scanner.SetReadMode(KuduScanner::READ_AT_SNAPSHOT));
 
       RETURN_NOT_OK(scanner.Open());
-      LOG(INFO) << "Scanning tablet: [" << low_split << ", " << high_split << ")";
+      LOG(INFO) << "Scanning tablet: [" << low_split << ", " << high_split
+                << ")";
 
       int total_rows_in_tablet = 0;
       while (scanner.HasMoreRows()) {
@@ -518,9 +549,9 @@ class AllTypesItest : public KuduTest {
     ASSERT_OK(CreateCluster());
     ASSERT_OK(CreateTable());
     ASSERT_OK(InsertRows());
-    // Check that all of the replicas agree on the inserted data. This retries until
-    // all replicas are up-to-date, which is important to ensure that the following
-    // Verify always passes.
+    // Check that all of the replicas agree on the inserted data. This retries
+    // until all replicas are up-to-date, which is important to ensure that the
+    // following Verify always passes.
     NO_FATALS(ClusterVerifier(cluster_.get()).CheckCluster());
     // Check that the inserted data matches what we thought we inserted.
     ASSERT_OK(VerifyRows(scanner_setup, verifier));
@@ -540,24 +571,25 @@ class AllTypesItest : public KuduTest {
   shared_ptr<KuduTable> table_;
 };
 
-// Wrap the actual DataType so that we can have the setup structs be friends of other classes
-// without leaking DataType.
-template<DataType KeyType>
+// Wrap the actual DataType so that we can have the setup structs be friends of
+// other classes without leaking DataType.
+template <DataType KeyType>
 struct KeyTypeWrapper {
   static const DataType kType = KeyType;
 };
 
-typedef ::testing::Types<IntKeysTestSetup<KeyTypeWrapper<INT8> >,
-                         IntKeysTestSetup<KeyTypeWrapper<INT16> >,
-                         IntKeysTestSetup<KeyTypeWrapper<INT32> >,
-                         IntKeysTestSetup<KeyTypeWrapper<INT64> >,
-                         IntKeysTestSetup<KeyTypeWrapper<DECIMAL32> >,
-                         IntKeysTestSetup<KeyTypeWrapper<DECIMAL64> >,
-                         IntKeysTestSetup<KeyTypeWrapper<DECIMAL128> >,
-                         IntKeysTestSetup<KeyTypeWrapper<UNIXTIME_MICROS> >,
-                         SliceKeysTestSetup<KeyTypeWrapper<STRING> >,
-                         SliceKeysTestSetup<KeyTypeWrapper<BINARY> >
-                         > KeyTypes;
+typedef ::testing::Types<
+    IntKeysTestSetup<KeyTypeWrapper<INT8>>,
+    IntKeysTestSetup<KeyTypeWrapper<INT16>>,
+    IntKeysTestSetup<KeyTypeWrapper<INT32>>,
+    IntKeysTestSetup<KeyTypeWrapper<INT64>>,
+    IntKeysTestSetup<KeyTypeWrapper<DECIMAL32>>,
+    IntKeysTestSetup<KeyTypeWrapper<DECIMAL64>>,
+    IntKeysTestSetup<KeyTypeWrapper<DECIMAL128>>,
+    IntKeysTestSetup<KeyTypeWrapper<UNIXTIME_MICROS>>,
+    SliceKeysTestSetup<KeyTypeWrapper<STRING>>,
+    SliceKeysTestSetup<KeyTypeWrapper<BINARY>>>
+    KeyTypes;
 
 TYPED_TEST_CASE(AllTypesItest, KeyTypes);
 
@@ -567,9 +599,12 @@ TYPED_TEST(AllTypesItest, TestAllKeyTypes) {
   auto scanner_setup = [&](KuduScanner* scanner) {
     return scanner->SetProjectedColumnNames(projection);
   };
-  auto row_verifier = [&](const KuduScanBatch& batch, int num_tablet, int* total_rows_in_tablet) {
+  auto row_verifier = [&](const KuduScanBatch& batch,
+                          int num_tablet,
+                          int* total_rows_in_tablet) {
     for (int i = 0; i < batch.NumRows(); i++) {
-      NO_FATALS(this->VerifyRow(batch.Row(i), num_tablet, *total_rows_in_tablet + i));
+      NO_FATALS(
+          this->VerifyRow(batch.Row(i), num_tablet, *total_rows_in_tablet + i));
     }
     *total_rows_in_tablet += batch.NumRows();
   };
@@ -581,9 +616,9 @@ TYPED_TEST(AllTypesItest, TestTimestampPadding) {
   vector<string> projection;
   this->SetupProjection(&projection);
   auto scanner_setup = [&](KuduScanner* scanner) -> Status {
-    // Each time this function is called we shuffle the projection to get the chance
-    // of having timestamps in different places of the projection and before/after
-    // different types.
+    // Each time this function is called we shuffle the projection to get the
+    // chance of having timestamps in different places of the projection and
+    // before/after different types.
     std::random_shuffle(projection.begin(), projection.end());
     RETURN_NOT_OK(scanner->SetProjectedColumnNames(projection));
     int row_format_flags = KuduScanner::NO_FLAGS;
@@ -591,26 +626,32 @@ TYPED_TEST(AllTypesItest, TestTimestampPadding) {
     return scanner->SetRowFormatFlags(row_format_flags);
   };
 
-  auto row_verifier = [&](const KuduScanBatch& batch, int num_tablet, int* total_rows_in_tablet) {
+  auto row_verifier = [&](const KuduScanBatch& batch,
+                          int num_tablet,
+                          int* total_rows_in_tablet) {
     // Timestamps are padded to 16 bytes.
     int kPaddedTimestampSize = 16;
 
-    // Calculate the projection size, each of the column offsets and the size of the null bitmap.
+    // Calculate the projection size, each of the column offsets and the size of
+    // the null bitmap.
     const KuduSchema* schema = batch.projection_schema();
     vector<int> projection_offsets;
     int row_stride = 0;
     int num_nullable_cols = 0;
     for (int i = 0; i < schema->num_columns(); i++) {
       KuduColumnSchema col_schema = schema->Column(i);
-      if (col_schema.is_nullable()) num_nullable_cols++;
+      if (col_schema.is_nullable())
+        num_nullable_cols++;
       switch (col_schema.type()) {
         case KuduColumnSchema::UNIXTIME_MICROS:
           projection_offsets.push_back(kPaddedTimestampSize);
           row_stride += kPaddedTimestampSize;
           break;
         default:
-          int col_size = GetTypeInfo(ToInternalDataType(col_schema.type(),
-                                                        col_schema.type_attributes()))->size();
+          int col_size =
+              GetTypeInfo(ToInternalDataType(
+                              col_schema.type(), col_schema.type_attributes()))
+                  ->size();
           projection_offsets.push_back(col_size);
           row_stride += col_size;
       }
@@ -630,58 +671,84 @@ TYPED_TEST(AllTypesItest, TestTimestampPadding) {
         KuduColumnSchema col_schema = schema->Column(j);
 
         if (col_schema.name() == "key") {
-          ASSERT_OK(this->setup_.VerifyRowKeyRaw(row_data, num_tablet, *total_rows_in_tablet + i));
+          ASSERT_OK(this->setup_.VerifyRowKeyRaw(
+              row_data, num_tablet, *total_rows_in_tablet + i));
         } else {
-          ExpectedVals vals = this->GetExpectedValsForRow(num_tablet, *total_rows_in_tablet + i);
-          DataType internal_type = ToInternalDataType(col_schema.type(),
-                                                      col_schema.type_attributes());
+          ExpectedVals vals = this->GetExpectedValsForRow(
+              num_tablet, *total_rows_in_tablet + i);
+          DataType internal_type = ToInternalDataType(
+              col_schema.type(), col_schema.type_attributes());
           switch (col_schema.type()) {
             case KuduColumnSchema::INT8:
-              ASSERT_EQ(*reinterpret_cast<const int8_t*>(row_data), vals.expected_int8_val);
+              ASSERT_EQ(
+                  *reinterpret_cast<const int8_t*>(row_data),
+                  vals.expected_int8_val);
               break;
             case KuduColumnSchema::INT16:
-              ASSERT_EQ(*reinterpret_cast<const int16_t*>(row_data), vals.expected_int16_val);
+              ASSERT_EQ(
+                  *reinterpret_cast<const int16_t*>(row_data),
+                  vals.expected_int16_val);
               break;
             case KuduColumnSchema::INT32:
-              ASSERT_EQ(*reinterpret_cast<const int32_t*>(row_data), vals.expected_int32_val);
+              ASSERT_EQ(
+                  *reinterpret_cast<const int32_t*>(row_data),
+                  vals.expected_int32_val);
               break;
             case KuduColumnSchema::INT64:
-              ASSERT_EQ(*reinterpret_cast<const int64_t*>(row_data), vals.expected_int64_val);
+              ASSERT_EQ(
+                  *reinterpret_cast<const int64_t*>(row_data),
+                  vals.expected_int64_val);
               break;
             case KuduColumnSchema::UNIXTIME_MICROS:
-              ASSERT_EQ(*reinterpret_cast<const int64_t*>(row_data), vals.expected_timestamp_val);
+              ASSERT_EQ(
+                  *reinterpret_cast<const int64_t*>(row_data),
+                  vals.expected_timestamp_val);
               break;
             case KuduColumnSchema::STRING:
-              ASSERT_EQ(*reinterpret_cast<const Slice*>(row_data), vals.expected_slice_val);
+              ASSERT_EQ(
+                  *reinterpret_cast<const Slice*>(row_data),
+                  vals.expected_slice_val);
               break;
             case KuduColumnSchema::BINARY:
-              ASSERT_EQ(*reinterpret_cast<const Slice*>(row_data), vals.expected_binary_val);
+              ASSERT_EQ(
+                  *reinterpret_cast<const Slice*>(row_data),
+                  vals.expected_binary_val);
               break;
             case KuduColumnSchema::BOOL:
-              ASSERT_EQ(*reinterpret_cast<const bool*>(row_data), vals.expected_bool_val);
+              ASSERT_EQ(
+                  *reinterpret_cast<const bool*>(row_data),
+                  vals.expected_bool_val);
               break;
             case KuduColumnSchema::FLOAT:
-              ASSERT_EQ(*reinterpret_cast<const float*>(row_data), vals.expected_float_val);
+              ASSERT_EQ(
+                  *reinterpret_cast<const float*>(row_data),
+                  vals.expected_float_val);
               break;
             case KuduColumnSchema::DOUBLE:
-              ASSERT_EQ(*reinterpret_cast<const double*>(row_data), vals.expected_double_val);
+              ASSERT_EQ(
+                  *reinterpret_cast<const double*>(row_data),
+                  vals.expected_double_val);
               break;
             case KuduColumnSchema::DECIMAL:
               switch (internal_type) {
                 case DECIMAL32:
-                  ASSERT_EQ(*reinterpret_cast<const int32_t*>(row_data),
-                            vals.expected_decimal_val);
+                  ASSERT_EQ(
+                      *reinterpret_cast<const int32_t*>(row_data),
+                      vals.expected_decimal_val);
                   break;
                 case DECIMAL64:
-                  ASSERT_EQ(*reinterpret_cast<const int64_t*>(row_data),
-                            vals.expected_decimal_val);
+                  ASSERT_EQ(
+                      *reinterpret_cast<const int64_t*>(row_data),
+                      vals.expected_decimal_val);
                   break;
                 case DECIMAL128:
-                  ASSERT_EQ(UnalignedLoad<int128_t>(row_data),
-                            vals.expected_decimal_val);
+                  ASSERT_EQ(
+                      UnalignedLoad<int128_t>(row_data),
+                      vals.expected_decimal_val);
                   break;
                 default:
-                  LOG(FATAL) << "Unexpected internal decimal type: " << internal_type;
+                  LOG(FATAL)
+                      << "Unexpected internal decimal type: " << internal_type;
               }
               break;
             default:

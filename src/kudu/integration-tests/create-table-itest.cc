@@ -62,7 +62,8 @@ using std::string;
 using std::vector;
 
 METRIC_DECLARE_entity(server);
-METRIC_DECLARE_histogram(handler_latency_kudu_tserver_TabletServerAdminService_CreateTablet);
+METRIC_DECLARE_histogram(
+    handler_latency_kudu_tserver_TabletServerAdminService_CreateTablet);
 
 namespace kudu {
 
@@ -70,8 +71,7 @@ using cluster::ClusterNodes;
 
 const char* const kTableName = "test-table";
 
-class CreateTableITest : public ExternalMiniClusterITestBase {
-};
+class CreateTableITest : public ExternalMiniClusterITestBase {};
 
 // Regression test for an issue seen when we fail to create a majority of the
 // replicas in a tablet. Previously, we'd still consider the tablet "RUNNING"
@@ -91,14 +91,16 @@ TEST_F(CreateTableITest, TestCreateWhenMajorityOfReplicasFailCreation) {
   // Try to create a single-tablet table.
   // This won't succeed because we can't create enough replicas to get
   // a quorum.
-  gscoped_ptr<client::KuduTableCreator> table_creator(client_->NewTableCreator());
-  client::KuduSchema client_schema(client::KuduSchemaFromSchema(GetSimpleTestSchema()));
+  gscoped_ptr<client::KuduTableCreator> table_creator(
+      client_->NewTableCreator());
+  client::KuduSchema client_schema(
+      client::KuduSchemaFromSchema(GetSimpleTestSchema()));
   ASSERT_OK(table_creator->table_name(kTableName)
-            .schema(&client_schema)
-            .set_range_partition_columns({ "key" })
-            .num_replicas(3)
-            .wait(false)
-            .Create());
+                .schema(&client_schema)
+                .set_range_partition_columns({"key"})
+                .num_replicas(3)
+                .wait(false)
+                .Create());
 
   // Sleep until we've seen a couple retries on our live server.
   int64_t num_create_attempts = 0;
@@ -111,11 +113,12 @@ TEST_F(CreateTableITest, TestCreateWhenMajorityOfReplicasFailCreation) {
         &METRIC_handler_latency_kudu_tserver_TabletServerAdminService_CreateTablet,
         "total_count",
         &num_create_attempts));
-    LOG(INFO) << "Waiting for the master to retry creating the tablet 3 times... "
-              << num_create_attempts << " RPCs seen so far";
+    LOG(INFO)
+        << "Waiting for the master to retry creating the tablet 3 times... "
+        << num_create_attempts << " RPCs seen so far";
 
-    // The CreateTable operation should still be considered in progress, even though
-    // we'll be successful at creating a single replica.
+    // The CreateTable operation should still be considered in progress, even
+    // though we'll be successful at creating a single replica.
     bool in_progress = false;
     ASSERT_OK(client_->IsCreateTableInProgress(kTableName, &in_progress));
     ASSERT_TRUE(in_progress);
@@ -140,8 +143,9 @@ TEST_F(CreateTableITest, TestCreateWhenMajorityOfReplicasFailCreation) {
   vector<string> tablets;
   int wait_iter = 0;
   while (tablets.size() != 1 && wait_iter++ < 100) {
-    LOG(INFO) << "Waiting for only one tablet to be left on TS 0. Currently have: "
-              << tablets;
+    LOG(INFO)
+        << "Waiting for only one tablet to be left on TS 0. Currently have: "
+        << tablets;
     SleepFor(MonoDelta::FromMilliseconds(100));
     tablets = inspect_->ListTabletsWithDataOnTS(0);
   }
@@ -156,14 +160,16 @@ TEST_F(CreateTableITest, TestSpreadReplicasEvenly) {
   const int kNumTablets = 20;
   NO_FATALS(StartCluster({}, {}, kNumServers));
 
-  gscoped_ptr<client::KuduTableCreator> table_creator(client_->NewTableCreator());
-  client::KuduSchema client_schema(client::KuduSchemaFromSchema(GetSimpleTestSchema()));
+  gscoped_ptr<client::KuduTableCreator> table_creator(
+      client_->NewTableCreator());
+  client::KuduSchema client_schema(
+      client::KuduSchemaFromSchema(GetSimpleTestSchema()));
   ASSERT_OK(table_creator->table_name(kTableName)
-            .schema(&client_schema)
-            .set_range_partition_columns({ "key" })
-            .num_replicas(3)
-            .add_hash_partitions({ "key" }, kNumTablets)
-            .Create());
+                .schema(&client_schema)
+                .set_range_partition_columns({"key"})
+                .num_replicas(3)
+                .add_hash_partitions({"key"}, kNumTablets)
+                .Create());
 
   // Check that the replicas are fairly well spread by computing the standard
   // deviation of the number of replicas per server.
@@ -182,7 +188,8 @@ TEST_F(CreateTableITest, TestSpreadReplicasEvenly) {
   // be a safe non-flaky choice.
   ASSERT_LE(stddev, 3.0);
 
-  // Construct a map from tablet ID to the set of servers that each tablet is hosted on.
+  // Construct a map from tablet ID to the set of servers that each tablet is
+  // hosted on.
   multimap<string, int> tablet_to_servers;
   for (int ts_idx = 0; ts_idx < kNumServers; ts_idx++) {
     vector<string> tablets = inspect_->ListTabletsOnTS(ts_idx);
@@ -206,7 +213,8 @@ TEST_F(CreateTableITest, TestSpreadReplicasEvenly) {
     }
 
     peer_servers.erase(ts_idx);
-    LOG(INFO) << "Server " << ts_idx << " has " << peer_servers.size() << " peers";
+    LOG(INFO) << "Server " << ts_idx << " has " << peer_servers.size()
+              << " peers";
     sum_num_peers += peer_servers.size();
   }
 
@@ -216,9 +224,10 @@ TEST_F(CreateTableITest, TestSpreadReplicasEvenly) {
   ASSERT_GE(avg_num_peers, kNumServers / 2);
 }
 
-static void LookUpRandomKeysLoop(std::shared_ptr<master::MasterServiceProxy> master,
-                                 const char* table_name,
-                                 AtomicBool* quit) {
+static void LookUpRandomKeysLoop(
+    std::shared_ptr<master::MasterServiceProxy> master,
+    const char* table_name,
+    AtomicBool* quit) {
   Schema schema(GetSimpleTestSchema());
   client::KuduSchema client_schema(client::KuduSchemaFromSchema(schema));
   gscoped_ptr<KuduPartialRow> r(client_schema.NewRow());
@@ -276,37 +285,43 @@ TEST_F(CreateTableITest, TestCreateTableWithDeadTServers) {
   // create table request, but won't actually be able to create the tablets.
   NO_FATALS(StartCluster(
       {},
-      {
-          // The master should quickly time out create tablet tasks. The
-          // tservers will all be dead, so there's no point in waiting long.
-          "--tablet_creation_timeout_ms=1000",
-          // This timeout needs to be long enough that we don't immediately
-          // fail the client's create table request, but short enough that the
-          // master considers the tservers unresponsive (and recreates the
-          // outstanding table's tablets) during the test.
-          "--tserver_unresponsive_timeout_ms=5000" }));
+      {// The master should quickly time out create tablet tasks. The
+       // tservers will all be dead, so there's no point in waiting long.
+       "--tablet_creation_timeout_ms=1000",
+       // This timeout needs to be long enough that we don't immediately
+       // fail the client's create table request, but short enough that the
+       // master considers the tservers unresponsive (and recreates the
+       // outstanding table's tablets) during the test.
+       "--tserver_unresponsive_timeout_ms=5000"}));
   cluster_->ShutdownNodes(ClusterNodes::TS_ONLY);
 
   Schema schema(GetSimpleTestSchema());
   client::KuduSchema client_schema(client::KuduSchemaFromSchema(schema));
-  gscoped_ptr<client::KuduTableCreator> table_creator(client_->NewTableCreator());
+  gscoped_ptr<client::KuduTableCreator> table_creator(
+      client_->NewTableCreator());
 
   // Don't bother waiting for table creation to finish; it'll never happen
   // because all of the tservers are dead.
   CHECK_OK(table_creator->table_name(kTableName)
-           .schema(&client_schema)
-           .set_range_partition_columns({ "key" })
-           .wait(false)
-           .Create());
+               .schema(&client_schema)
+               .set_range_partition_columns({"key"})
+               .wait(false)
+               .Create());
 
-  // Spin off a bunch of threads that repeatedly look up random key ranges in the table.
+  // Spin off a bunch of threads that repeatedly look up random key ranges in
+  // the table.
   AtomicBool quit(false);
   vector<scoped_refptr<Thread>> threads;
   for (int i = 0; i < 16; i++) {
     scoped_refptr<Thread> t;
-    ASSERT_OK(Thread::Create("test", "lookup_thread",
-                             &LookUpRandomKeysLoop, cluster_->master_proxy(),
-                             kTableName, &quit, &t));
+    ASSERT_OK(Thread::Create(
+        "test",
+        "lookup_thread",
+        &LookUpRandomKeysLoop,
+        cluster_->master_proxy(),
+        kTableName,
+        &quit,
+        &t));
     threads.push_back(t);
   }
 

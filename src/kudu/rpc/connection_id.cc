@@ -32,9 +32,10 @@ namespace rpc {
 
 ConnectionId::ConnectionId() {}
 
-ConnectionId::ConnectionId(const Sockaddr& remote,
-                           std::string hostname,
-                           UserCredentials user_credentials)
+ConnectionId::ConnectionId(
+    const Sockaddr& remote,
+    std::string hostname,
+    UserCredentials user_credentials)
     : remote_(remote),
       hostname_(std::move(hostname)),
       user_credentials_(std::move(user_credentials)) {
@@ -54,9 +55,8 @@ string ConnectionId::ToString() const {
     remote = remote_.ToString();
   }
 
-  return strings::Substitute("{remote=$0, user_credentials=$1}",
-                             remote,
-                             user_credentials_.ToString());
+  return strings::Substitute(
+      "{remote=$0, user_credentials=$1}", remote, user_credentials_.ToString());
 }
 
 size_t ConnectionId::HashCode() const {
@@ -68,16 +68,17 @@ size_t ConnectionId::HashCode() const {
 }
 
 bool ConnectionId::Equals(const ConnectionId& other) const {
-  return remote() == other.remote() &&
-      hostname_ == other.hostname_ &&
+  return remote() == other.remote() && hostname_ == other.hostname_ &&
       user_credentials().Equals(other.user_credentials());
 }
 
-size_t ConnectionIdHash::operator() (const ConnectionId& conn_id) const {
+size_t ConnectionIdHash::operator()(const ConnectionId& conn_id) const {
   return conn_id.HashCode();
 }
 
-bool ConnectionIdEqual::operator() (const ConnectionId& cid1, const ConnectionId& cid2) const {
+bool ConnectionIdEqual::operator()(
+    const ConnectionId& cid1,
+    const ConnectionId& cid2) const {
   return cid1.Equals(cid2);
 }
 

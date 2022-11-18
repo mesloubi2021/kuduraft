@@ -48,20 +48,19 @@ namespace kudu {
 // thread blocks.
 //
 // The semantics provided by this wrapper are slightly weaker than the default
-// glog semantics. By default, glog will immediately (synchronously) flush WARNING
-// and above to the underlying file, whereas here we are deferring that flush to
-// the separate thread. This means that a crash just after a 'LOG(WARNING)' would
-// may be missing the message in the logs, but the perf benefit is probably
-// worth it. We do take care that a glog FATAL message flushes all buffered log
-// messages before exiting.
+// glog semantics. By default, glog will immediately (synchronously) flush
+// WARNING and above to the underlying file, whereas here we are deferring that
+// flush to the separate thread. This means that a crash just after a
+// 'LOG(WARNING)' would may be missing the message in the logs, but the perf
+// benefit is probably worth it. We do take care that a glog FATAL message
+// flushes all buffered log messages before exiting.
 //
-// NOTE: the logger limits the total amount of buffer space, so if the underlying
-// log blocks for too long, eventually the threads generating the log messages
-// will block as well. This prevents runaway memory usage.
+// NOTE: the logger limits the total amount of buffer space, so if the
+// underlying log blocks for too long, eventually the threads generating the log
+// messages will block as well. This prevents runaway memory usage.
 class AsyncLogger : public google::base::Logger {
  public:
-  AsyncLogger(google::base::Logger* wrapped,
-              int max_buffer_bytes);
+  AsyncLogger(google::base::Logger* wrapped, int max_buffer_bytes);
   ~AsyncLogger();
 
   void Start();
@@ -76,17 +75,19 @@ class AsyncLogger : public google::base::Logger {
 
   // Write a message to the log.
   //
-  // 'force_flush' is set by the GLog library based on the configured '--logbuflevel'
-  // flag. Any messages logged at the configured level or higher result in 'force_flush'
-  // being set to true, indicating that the message should be immediately written to the
-  // log rather than buffered in memory. See the class-level docs above for more detail
-  // about the implementation provided here.
+  // 'force_flush' is set by the GLog library based on the configured
+  // '--logbuflevel' flag. Any messages logged at the configured level or higher
+  // result in 'force_flush' being set to true, indicating that the message
+  // should be immediately written to the log rather than buffered in memory.
+  // See the class-level docs above for more detail about the implementation
+  // provided here.
   //
   // REQUIRES: Start() must have been called.
-  void Write(bool force_flush,
-             time_t timestamp,
-             const char* message,
-             int message_len) override;
+  void Write(
+      bool force_flush,
+      time_t timestamp,
+      const char* message,
+      int message_len) override;
 
   // Flush any buffered messages.
   void Flush() override;
@@ -115,10 +116,7 @@ class AsyncLogger : public google::base::Logger {
     time_t ts;
     std::string message;
 
-    Msg(time_t ts, std::string message)
-        : ts(ts),
-          message(std::move(message)) {
-    }
+    Msg(time_t ts, std::string message) : ts(ts), message(std::move(message)) {}
   };
 
   // A buffer of messages waiting to be flushed.
@@ -193,11 +191,7 @@ class AsyncLogger : public google::base::Logger {
   std::unique_ptr<Buffer> flushing_buf_;
 
   // Trigger for the logger thread to stop.
-  enum State {
-    INITTED,
-    RUNNING,
-    STOPPED
-  };
+  enum State { INITTED, RUNNING, STOPPED };
   State state_ = INITTED;
 
   DISALLOW_COPY_AND_ASSIGN(AsyncLogger);

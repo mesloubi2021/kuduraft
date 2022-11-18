@@ -12,6 +12,6 @@ class Callback;
 
 typedef Callback<void(void)> Closure;
 
-}  // namespace kudu
+} // namespace kudu
 
-#endif  // KUDU_GUTIL_CALLBACK_FORWARD_H
+#endif // KUDU_GUTIL_CALLBACK_FORWARD_H

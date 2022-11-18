@@ -39,8 +39,10 @@
 #include "kudu/util/locks.h"
 #include "kudu/util/status.h"
 
-DEFINE_int32(tsk_num_rsa_bits, 2048,
-             "Number of bits in RSA keys used for token signing.");
+DEFINE_int32(
+    tsk_num_rsa_bits,
+    2048,
+    "Number of bits in RSA keys used for token signing.");
 TAG_FLAG(tsk_num_rsa_bits, experimental);
 
 using std::lock_guard;
@@ -55,23 +57,24 @@ using strings::Substitute;
 namespace kudu {
 namespace security {
 
-TokenSigner::TokenSigner(int64_t authn_token_validity_seconds,
-                         int64_t key_rotation_seconds,
-                         shared_ptr<TokenVerifier> verifier)
-    : verifier_(verifier ? std::move(verifier)
-                         : std::make_shared<TokenVerifier>()),
+TokenSigner::TokenSigner(
+    int64_t authn_token_validity_seconds,
+    int64_t key_rotation_seconds,
+    shared_ptr<TokenVerifier> verifier)
+    : verifier_(
+          verifier ? std::move(verifier) : std::make_shared<TokenVerifier>()),
       authn_token_validity_seconds_(authn_token_validity_seconds),
       key_rotation_seconds_(key_rotation_seconds),
       // The TSK propagation interval is equal to the rotation interval.
-      key_validity_seconds_(2 * key_rotation_seconds_ + authn_token_validity_seconds_),
+      key_validity_seconds_(
+          2 * key_rotation_seconds_ + authn_token_validity_seconds_),
       last_key_seq_num_(-1) {
   CHECK_GE(key_rotation_seconds_, 0);
   CHECK_GE(authn_token_validity_seconds_, 0);
   CHECK(verifier_);
 }
 
-TokenSigner::~TokenSigner() {
-}
+TokenSigner::~TokenSigner() {}
 
 Status TokenSigner::ImportKeys(const vector<TokenSigningPrivateKeyPB>& keys) {
   lock_guard<RWMutex> l(lock_);
@@ -134,8 +137,9 @@ Status TokenSigner::ImportKeys(const vector<TokenSigningPrivateKeyPB>& keys) {
   return Status::OK();
 }
 
-Status TokenSigner::GenerateAuthnToken(string username,
-                                       SignedTokenPB* signed_token) const {
+Status TokenSigner::GenerateAuthnToken(
+    string username,
+    SignedTokenPB* signed_token) const {
   if (username.empty()) {
     return Status::InvalidArgument("no username provided for authn token");
   }
@@ -174,7 +178,8 @@ bool TokenSigner::IsCurrentKeyValid() const {
   return (tsk_deque_.front()->expire_time() > WallTime_Now());
 }
 
-Status TokenSigner::CheckNeedKey(unique_ptr<TokenSigningPrivateKey>* tsk) const {
+Status TokenSigner::CheckNeedKey(
+    unique_ptr<TokenSigningPrivateKey>* tsk) const {
   CHECK(tsk);
   const int64_t now = WallTime_Now();
 
@@ -238,9 +243,10 @@ Status TokenSigner::AddKey(unique_ptr<TokenSigningPrivateKey> tsk) {
     // The AddKey() method is designed for adding new keys: that should be done
     // using CheckNeedKey()/AddKey() sequence. Use the ImportKeys() method
     // for importing keys in bulk.
-    return Status::InvalidArgument(
-        Substitute("$0: invalid key sequence number, should be at least $1",
-                   key_seq_num, last_key_seq_num_ + 1));
+    return Status::InvalidArgument(Substitute(
+        "$0: invalid key sequence number, should be at least $1",
+        key_seq_num,
+        last_key_seq_num_ + 1));
   }
   last_key_seq_num_ = std::max(last_key_seq_num_, key_seq_num);
   // Register the public part of the key in TokenVerifier first.
@@ -282,16 +288,16 @@ Status TokenSigner::TryRotateKey(bool* has_rotated) {
   return Status::OK();
 }
 
-Status TokenSigner::GenerateSigningKey(int64_t key_seq_num,
-                                       int64_t key_expiration,
-                                       unique_ptr<TokenSigningPrivateKey>* tsk) {
+Status TokenSigner::GenerateSigningKey(
+    int64_t key_seq_num,
+    int64_t key_expiration,
+    unique_ptr<TokenSigningPrivateKey>* tsk) {
   unique_ptr<PrivateKey> key(new PrivateKey());
   RETURN_NOT_OK_PREPEND(
       GeneratePrivateKey(FLAGS_tsk_num_rsa_bits, key.get()),
       "could not generate new RSA token-signing key");
-  tsk->reset(new TokenSigningPrivateKey(key_seq_num,
-                                        key_expiration,
-                                        std::move(key)));
+  tsk->reset(
+      new TokenSigningPrivateKey(key_seq_num, key_expiration, std::move(key)));
   return Status::OK();
 }
 

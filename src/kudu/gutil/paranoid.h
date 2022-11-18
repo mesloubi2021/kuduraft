@@ -76,11 +76,12 @@ inline bool IsSaneBool(bool b) {
 #if (defined __i386__ || defined __x86_64__) && defined __GNUC__
   bool result;
   // Set result to true if b is below or equal to 0x1.
-  __asm__("cmpb  $0x1, %1\n\t"
-          "setbe %0"
-          : "=m" (result)  // Output spec
-          : "m" (b)        // Input spec
-          : "cc");         // Clobbers condition-codes
+  __asm__(
+      "cmpb  $0x1, %1\n\t"
+      "setbe %0"
+      : "=m"(result) // Output spec
+      : "m"(b) // Input spec
+      : "cc"); // Clobbers condition-codes
   return result;
 #else
   unsigned char c = static_cast<unsigned char>(b);
@@ -89,4 +90,4 @@ inline bool IsSaneBool(bool b) {
 #endif
 }
 
-#endif  // BASE_PARANOID_H_
+#endif // BASE_PARANOID_H_

@@ -44,7 +44,7 @@ class CallbackBase {
   // another type. It is not okay to use void*. We create a InvokeFuncStorage
   // that that can store our function pointer, and then cast it back to
   // the original type on usage.
-  typedef void(*InvokeFuncStorage)(void);
+  typedef void (*InvokeFuncStorage)(void);
 
   // Returns true if this callback equals |other|. |other| may be null.
   bool Equals(const CallbackBase& other) const;
@@ -67,15 +67,16 @@ class CallbackBase {
 // A helper template to determine if given type is non-const move-only-type,
 // i.e. if a value of the given type should be passed via .Pass() in a
 // destructive way.
-template <typename T> struct IsMoveOnlyType {
+template <typename T>
+struct IsMoveOnlyType {
   template <typename U>
   static base::YesType Test(const typename U::MoveOnlyTypeForCPP03*);
 
   template <typename U>
   static base::NoType Test(...);
 
-  static const bool value = sizeof(Test<T>(0)) == sizeof(base::YesType) &&
-                            !base::is_const<T>::value;
+  static const bool value =
+      sizeof(Test<T>(0)) == sizeof(base::YesType) && !base::is_const<T>::value;
 };
 
 // This is a typetraits object that's used to take an argument type, and
@@ -160,16 +161,18 @@ struct CallbackParamTraits<T, true> {
 // parameter to another callback. This is to support Callbacks that return
 // the movable-but-not-copyable types whitelisted above.
 template <typename T>
-typename base::enable_if<!IsMoveOnlyType<T>::value, T>::type& CallbackForward(T& t) {
+typename base::enable_if<!IsMoveOnlyType<T>::value, T>::type& CallbackForward(
+    T& t) {
   return t;
 }
 
 template <typename T>
-typename base::enable_if<IsMoveOnlyType<T>::value, T>::type CallbackForward(T& t) {
+typename base::enable_if<IsMoveOnlyType<T>::value, T>::type CallbackForward(
+    T& t) {
   return t.Pass();
 }
 
-}  // namespace internal
-}  // namespace kudu
+} // namespace internal
+} // namespace kudu
 
-#endif  // KUDU_GUTIL_CALLBACK_INTERNAL_H_
+#endif // KUDU_GUTIL_CALLBACK_INTERNAL_H_

@@ -57,11 +57,10 @@ TEST(TestPstackWatcher, TestDumpStacks) {
   ASSERT_OK(PstackWatcher::DumpStacks());
 }
 
-static FILE* RedirectStdout(string *temp_path) {
+static FILE* RedirectStdout(string* temp_path) {
   string temp_dir;
   CHECK_OK(Env::Default()->GetTestDirectory(&temp_dir));
-  *temp_path = Substitute("$0/pstack_watcher-dump.$1.txt",
-                      temp_dir, getpid());
+  *temp_path = Substitute("$0/pstack_watcher-dump.$1.txt", temp_dir, getpid());
   FILE* reopened;
   POINTER_RETRY_ON_EINTR(reopened, freopen(temp_path->c_str(), "w", stdout));
   return reopened;
@@ -76,9 +75,9 @@ TEST(TestPstackWatcher, TestPstackWatcherRunning) {
     FILE* out_fp = RedirectStdout(&stdout_file);
     PCHECK(out_fp != nullptr);
     SCOPED_CLEANUP({
-        int err;
-        RETRY_ON_EINTR(err, fclose(out_fp));
-      });
+      int err;
+      RETRY_ON_EINTR(err, fclose(out_fp));
+    });
     PstackWatcher watcher(MonoDelta::FromMilliseconds(500));
     while (watcher.IsRunning()) {
       SleepFor(MonoDelta::FromMilliseconds(1));

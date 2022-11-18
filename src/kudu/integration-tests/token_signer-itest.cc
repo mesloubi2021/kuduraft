@@ -46,15 +46,15 @@ DECLARE_int64(authn_token_validity_seconds);
 DECLARE_int64(tsk_rotation_seconds);
 DECLARE_int32(heartbeat_interval_ms);
 
+using kudu::cluster::InternalMiniCluster;
+using kudu::cluster::InternalMiniClusterOptions;
+using kudu::security::SignedTokenPB;
+using kudu::security::TokenPB;
+using kudu::security::TokenSigningPublicKeyPB;
+using kudu::security::VerificationResult;
 using std::string;
 using std::unique_ptr;
 using std::vector;
-using kudu::cluster::InternalMiniCluster;
-using kudu::cluster::InternalMiniClusterOptions;
-using kudu::security::TokenPB;
-using kudu::security::TokenSigningPublicKeyPB;
-using kudu::security::SignedTokenPB;
-using kudu::security::VerificationResult;
 
 namespace kudu {
 namespace master {
@@ -168,8 +168,9 @@ TEST_F(TokenSignerITest, TskClusterRestart) {
   vector<TokenSigningPublicKeyPB> public_keys_after;
   ASSERT_OK(GetLeaderPublicKeys(&public_keys_after));
   ASSERT_EQ(1, public_keys_after.size());
-  EXPECT_EQ(public_keys_before[0].SerializeAsString(),
-            public_keys_after[0].SerializeAsString());
+  EXPECT_EQ(
+      public_keys_before[0].SerializeAsString(),
+      public_keys_after[0].SerializeAsString());
 }
 
 // Test that if leadership changes, the new leader has the same TSK information
@@ -189,14 +190,16 @@ TEST_F(TokenSignerITest, TskMasterLeadershipChange) {
   // The new leader should use the same signing key.
   SignedTokenPB t_new_leader;
   ASSERT_OK(MakeSignedToken(&t_new_leader));
-  EXPECT_EQ(t_new_leader.signing_key_seq_num(),
-            t_former_leader.signing_key_seq_num());
+  EXPECT_EQ(
+      t_new_leader.signing_key_seq_num(),
+      t_former_leader.signing_key_seq_num());
 
   vector<TokenSigningPublicKeyPB> public_keys_new_leader;
   ASSERT_OK(GetLeaderPublicKeys(&public_keys_new_leader));
   ASSERT_EQ(1, public_keys_new_leader.size());
-  EXPECT_EQ(public_keys[0].SerializeAsString(),
-            public_keys_new_leader[0].SerializeAsString());
+  EXPECT_EQ(
+      public_keys[0].SerializeAsString(),
+      public_keys_new_leader[0].SerializeAsString());
 }
 
 // Check for authn token verification results during and past its lifetime.
@@ -240,11 +243,14 @@ TEST_F(TokenSignerITest, AuthnTokenLifecycle) {
     TokenPB token;
     // There might be some delay due to parallel OS activity, but the public
     // part of TSK should reach all tablet servers in a few heartbeat intervals.
-    AssertEventually([&] {
-        const VerificationResult res = ts->messenger()->token_verifier().
-            VerifyTokenSignature(stoken, &token);
-        ASSERT_EQ(VerificationResult::VALID, res);
-    }, MonoDelta::FromMilliseconds(5L * FLAGS_heartbeat_interval_ms));
+    AssertEventually(
+        [&] {
+          const VerificationResult res =
+              ts->messenger()->token_verifier().VerifyTokenSignature(
+                  stoken, &token);
+          ASSERT_EQ(VerificationResult::VALID, res);
+        },
+        MonoDelta::FromMilliseconds(5L * FLAGS_heartbeat_interval_ms));
     NO_PENDING_FATALS();
   }
 
@@ -278,12 +284,14 @@ TEST_F(TokenSignerITest, AuthnTokenLifecycle) {
       if (expired_at_tserver[i]) {
         continue;
       }
-      const tserver::TabletServer* ts = cluster_->mini_tablet_server(i)->server();
+      const tserver::TabletServer* ts =
+          cluster_->mini_tablet_server(i)->server();
       ASSERT_NE(nullptr, ts);
       const int64_t time_pre = WallTime_Now();
       TokenPB token;
-      const VerificationResult res = ts->messenger()->token_verifier().
-          VerifyTokenSignature(stoken_eotai, &token);
+      const VerificationResult res =
+          ts->messenger()->token_verifier().VerifyTokenSignature(
+              stoken_eotai, &token);
       if (res == VerificationResult::VALID) {
         // Both authn token and its TSK should be valid.
         valid_at_tserver[i] = true;
@@ -297,8 +305,10 @@ TEST_F(TokenSignerITest, AuthnTokenLifecycle) {
         ASSERT_LT(token.expire_unix_epoch_seconds(), time_post);
       }
     }
-    if (all_of(expired_at_tserver.begin(), expired_at_tserver.end(),
-               bind(equal_to<bool>(), _1, true))) {
+    if (all_of(
+            expired_at_tserver.begin(),
+            expired_at_tserver.end(),
+            bind(equal_to<bool>(), _1, true))) {
       break;
     }
     SleepFor(MonoDelta::FromMilliseconds(500));
@@ -306,8 +316,10 @@ TEST_F(TokenSignerITest, AuthnTokenLifecycle) {
 
   // The end-of-TSK-activity-interval authn token should have been successfully
   // validated by all tablet servers.
-  ASSERT_TRUE(all_of(valid_at_tserver.begin(), valid_at_tserver.end(),
-              bind(equal_to<bool>(), _1, true)));
+  ASSERT_TRUE(all_of(
+      valid_at_tserver.begin(),
+      valid_at_tserver.end(),
+      bind(equal_to<bool>(), _1, true)));
 
   while (WallTime_Now() < key_expire) {
     SleepFor(MonoDelta::FromMilliseconds(500));
@@ -318,9 +330,10 @@ TEST_F(TokenSignerITest, AuthnTokenLifecycle) {
     const tserver::TabletServer* ts = cluster_->mini_tablet_server(i)->server();
     ASSERT_NE(nullptr, ts);
     TokenPB token;
-    ASSERT_EQ(VerificationResult::EXPIRED_TOKEN,
-              ts->messenger()->token_verifier().
-              VerifyTokenSignature(stoken_eotai, &token));
+    ASSERT_EQ(
+        VerificationResult::EXPIRED_TOKEN,
+        ts->messenger()->token_verifier().VerifyTokenSignature(
+            stoken_eotai, &token));
   }
 }
 

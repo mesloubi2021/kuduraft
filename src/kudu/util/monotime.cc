@@ -36,8 +36,7 @@
 namespace kudu {
 
 #define MAX_MONOTONIC_SECONDS \
-  (((1ULL<<63) - 1ULL) /(int64_t)MonoTime::kNanosecondsPerSecond)
-
+  (((1ULL << 63) - 1ULL) / (int64_t)MonoTime::kNanosecondsPerSecond)
 
 ///
 /// MonoDelta
@@ -62,27 +61,25 @@ MonoDelta MonoDelta::FromNanoseconds(int64_t ns) {
   return MonoDelta(ns);
 }
 
-MonoDelta::MonoDelta()
-  : nano_delta_(kUninitialized) {
-}
+MonoDelta::MonoDelta() : nano_delta_(kUninitialized) {}
 
 bool MonoDelta::Initialized() const {
   return nano_delta_ != kUninitialized;
 }
 
-bool MonoDelta::LessThan(const MonoDelta &rhs) const {
+bool MonoDelta::LessThan(const MonoDelta& rhs) const {
   DCHECK(Initialized());
   DCHECK(rhs.Initialized());
   return nano_delta_ < rhs.nano_delta_;
 }
 
-bool MonoDelta::MoreThan(const MonoDelta &rhs) const {
+bool MonoDelta::MoreThan(const MonoDelta& rhs) const {
   DCHECK(Initialized());
   DCHECK(rhs.Initialized());
   return nano_delta_ > rhs.nano_delta_;
 }
 
-bool MonoDelta::Equals(const MonoDelta &rhs) const {
+bool MonoDelta::Equals(const MonoDelta& rhs) const {
   DCHECK(Initialized());
   DCHECK(rhs.Initialized());
   return nano_delta_ == rhs.nano_delta_;
@@ -92,9 +89,7 @@ std::string MonoDelta::ToString() const {
   return StringPrintf("%.3fs", ToSeconds());
 }
 
-MonoDelta::MonoDelta(int64_t delta)
-  : nano_delta_(delta) {
-}
+MonoDelta::MonoDelta(int64_t delta) : nano_delta_(delta) {}
 
 double MonoDelta::ToSeconds() const {
   DCHECK(Initialized());
@@ -110,7 +105,7 @@ int64_t MonoDelta::ToNanoseconds() const {
 
 int64_t MonoDelta::ToMicroseconds() const {
   DCHECK(Initialized());
- return nano_delta_ / MonoTime::kNanosecondsPerMicrosecond;
+  return nano_delta_ / MonoTime::kNanosecondsPerMicrosecond;
 }
 
 int64_t MonoDelta::ToMilliseconds() const {
@@ -118,11 +113,11 @@ int64_t MonoDelta::ToMilliseconds() const {
   return nano_delta_ / MonoTime::kNanosecondsPerMillisecond;
 }
 
-void MonoDelta::ToTimeVal(struct timeval *tv) const {
+void MonoDelta::ToTimeVal(struct timeval* tv) const {
   DCHECK(Initialized());
   tv->tv_sec = nano_delta_ / MonoTime::kNanosecondsPerSecond;
-  tv->tv_usec = (nano_delta_ - (tv->tv_sec * MonoTime::kNanosecondsPerSecond))
-      / MonoTime::kNanosecondsPerMicrosecond;
+  tv->tv_usec = (nano_delta_ - (tv->tv_sec * MonoTime::kNanosecondsPerSecond)) /
+      MonoTime::kNanosecondsPerMicrosecond;
 
   // tv_usec must be between 0 and 999999.
   // There is little use for negative timevals so wrap it in PREDICT_FALSE.
@@ -131,20 +126,20 @@ void MonoDelta::ToTimeVal(struct timeval *tv) const {
     tv->tv_usec += 1000000;
   }
 
-  // Catch positive corner case where we "round down" and could potentially set a timeout of 0.
-  // Make it 1 usec.
+  // Catch positive corner case where we "round down" and could potentially set
+  // a timeout of 0. Make it 1 usec.
   if (PREDICT_FALSE(tv->tv_usec == 0 && tv->tv_sec == 0 && nano_delta_ > 0)) {
     tv->tv_usec = 1;
   }
 
-  // Catch negative corner case where we "round down" and could potentially set a timeout of 0.
-  // Make it -1 usec (but normalized, so tv_usec is not negative).
+  // Catch negative corner case where we "round down" and could potentially set
+  // a timeout of 0. Make it -1 usec (but normalized, so tv_usec is not
+  // negative).
   if (PREDICT_FALSE(tv->tv_usec == 0 && tv->tv_sec == 0 && nano_delta_ < 0)) {
     tv->tv_sec = -1;
     tv->tv_usec = 999999;
   }
 }
-
 
 void MonoDelta::NanosToTimeSpec(int64_t nanos, struct timespec* ts) {
   ts->tv_sec = nanos / MonoTime::kNanosecondsPerSecond;
@@ -158,7 +153,7 @@ void MonoDelta::NanosToTimeSpec(int64_t nanos, struct timespec* ts) {
   }
 }
 
-void MonoDelta::ToTimeSpec(struct timespec *ts) const {
+void MonoDelta::ToTimeSpec(struct timespec* ts) const {
   DCHECK(Initialized());
   NanosToTimeSpec(nano_delta_, ts);
 }
@@ -170,7 +165,7 @@ void MonoDelta::ToTimeSpec(struct timespec *ts) const {
 MonoTime MonoTime::Now() {
 #if defined(__APPLE__)
   return MonoTime(walltime_internal::GetMonoTimeNanos());
-# else
+#else
   struct timespec ts;
   PCHECK(clock_gettime(CLOCK_MONOTONIC, &ts) == 0);
   return MonoTime(ts);
@@ -192,15 +187,13 @@ const MonoTime& MonoTime::Earliest(const MonoTime& a, const MonoTime& b) {
   return a;
 }
 
-MonoTime::MonoTime()
-  : nanos_(0) {
-}
+MonoTime::MonoTime() : nanos_(0) {}
 
 bool MonoTime::Initialized() const {
   return nanos_ != 0;
 }
 
-MonoDelta MonoTime::GetDeltaSince(const MonoTime &rhs) const {
+MonoDelta MonoTime::GetDeltaSince(const MonoTime& rhs) const {
   DCHECK(Initialized());
   DCHECK(rhs.Initialized());
   int64_t delta(nanos_);
@@ -208,12 +201,12 @@ MonoDelta MonoTime::GetDeltaSince(const MonoTime &rhs) const {
   return MonoDelta(delta);
 }
 
-void MonoTime::AddDelta(const MonoDelta &delta) {
+void MonoTime::AddDelta(const MonoDelta& delta) {
   DCHECK(Initialized());
   nanos_ += delta.nano_delta_;
 }
 
-bool MonoTime::ComesBefore(const MonoTime &rhs) const {
+bool MonoTime::ComesBefore(const MonoTime& rhs) const {
   DCHECK(Initialized());
   DCHECK(rhs.Initialized());
   return nanos_ < rhs.nanos_;
@@ -242,7 +235,7 @@ MonoTime& MonoTime::operator-=(const MonoDelta& delta) {
   return *this;
 }
 
-MonoTime::MonoTime(const struct timespec &ts) {
+MonoTime::MonoTime(const struct timespec& ts) {
   // Monotonic time resets when the machine reboots.  The 64-bit limitation
   // means that we can't represent times larger than 292 years, which should be
   // adequate.
@@ -252,9 +245,7 @@ MonoTime::MonoTime(const struct timespec &ts) {
   nanos_ += ts.tv_nsec;
 }
 
-MonoTime::MonoTime(int64_t nanos)
-  : nanos_(nanos) {
-}
+MonoTime::MonoTime(int64_t nanos) : nanos_(nanos) {}
 
 double MonoTime::ToSeconds() const {
   double d(nanos_);
@@ -267,27 +258,27 @@ void SleepFor(const MonoDelta& delta) {
   base::SleepForNanoseconds(delta.ToNanoseconds());
 }
 
-bool operator==(const MonoDelta &lhs, const MonoDelta &rhs) {
+bool operator==(const MonoDelta& lhs, const MonoDelta& rhs) {
   return lhs.Equals(rhs);
 }
 
-bool operator!=(const MonoDelta &lhs, const MonoDelta &rhs) {
+bool operator!=(const MonoDelta& lhs, const MonoDelta& rhs) {
   return !lhs.Equals(rhs);
 }
 
-bool operator<(const MonoDelta &lhs, const MonoDelta &rhs) {
+bool operator<(const MonoDelta& lhs, const MonoDelta& rhs) {
   return lhs.LessThan(rhs);
 }
 
-bool operator<=(const MonoDelta &lhs, const MonoDelta &rhs) {
+bool operator<=(const MonoDelta& lhs, const MonoDelta& rhs) {
   return lhs.LessThan(rhs) || lhs.Equals(rhs);
 }
 
-bool operator>(const MonoDelta &lhs, const MonoDelta &rhs) {
+bool operator>(const MonoDelta& lhs, const MonoDelta& rhs) {
   return lhs.MoreThan(rhs);
 }
 
-bool operator>=(const MonoDelta &lhs, const MonoDelta &rhs) {
+bool operator>=(const MonoDelta& lhs, const MonoDelta& rhs) {
   return lhs.MoreThan(rhs) || lhs.Equals(rhs);
 }
 

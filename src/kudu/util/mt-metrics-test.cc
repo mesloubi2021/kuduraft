@@ -38,8 +38,10 @@
 #include "kudu/util/test_util.h"
 #include "kudu/util/thread.h"
 
-DEFINE_int32(mt_metrics_test_num_threads, 4,
-             "Number of threads to spawn in mt metrics tests");
+DEFINE_int32(
+    mt_metrics_test_num_threads,
+    4,
+    "Number of threads to spawn in mt metrics tests");
 
 METRIC_DEFINE_entity(test_entity);
 
@@ -51,14 +53,18 @@ using std::vector;
 
 class MultiThreadedMetricsTest : public KuduTest {
  public:
-  static void RegisterCounters(const scoped_refptr<MetricEntity>& metric_entity,
-                               const string& name_prefix, int num_counters);
+  static void RegisterCounters(
+      const scoped_refptr<MetricEntity>& metric_entity,
+      const string& name_prefix,
+      int num_counters);
 
   MetricRegistry registry_;
 };
 
 // Call increment on a Counter a bunch of times.
-static void CountWithCounter(scoped_refptr<Counter> counter, int num_increments) {
+static void CountWithCounter(
+    scoped_refptr<Counter> counter,
+    int num_increments) {
   for (int i = 0; i < num_increments; i++) {
     counter->Increment();
   }
@@ -66,11 +72,11 @@ static void CountWithCounter(scoped_refptr<Counter> counter, int num_increments)
 
 // Helper function that spawns and then joins a bunch of threads.
 static void RunWithManyThreads(boost::function<void()>* f, int num_threads) {
-  vector<scoped_refptr<kudu::Thread> > threads;
+  vector<scoped_refptr<kudu::Thread>> threads;
   for (int i = 0; i < num_threads; i++) {
     scoped_refptr<kudu::Thread> new_thread;
-    CHECK_OK(kudu::Thread::Create("test", StringPrintf("thread%d", i),
-          *f, &new_thread));
+    CHECK_OK(kudu::Thread::Create(
+        "test", StringPrintf("thread%d", i), *f, &new_thread));
     threads.push_back(new_thread);
   }
   for (int i = 0; i < num_threads; i++) {
@@ -78,8 +84,12 @@ static void RunWithManyThreads(boost::function<void()>* f, int num_threads) {
   }
 }
 
-METRIC_DEFINE_counter(test_entity, test_counter, "Test Counter",
-                      MetricUnit::kRequests, "Test counter");
+METRIC_DEFINE_counter(
+    test_entity,
+    test_counter,
+    "Test Counter",
+    MetricUnit::kRequests,
+    "Test counter");
 
 // Ensure that incrementing a counter is thread-safe.
 TEST_F(MultiThreadedMetricsTest, CounterIncrementTest) {
@@ -99,30 +109,35 @@ void MultiThreadedMetricsTest::RegisterCounters(
     int num_counters) {
   uint64_t tid = Env::Default()->gettid();
   for (int i = 0; i < num_counters; i++) {
-    // This loop purposefully leaks metrics prototypes, because the metrics system
-    // expects the prototypes and their names to live forever. This is the only
-    // place we dynamically generate them for the purposes of a test, so it's easier
-    // to just leak them than to figure out a way to manage lifecycle of objects that
-    // are typically static.
+    // This loop purposefully leaks metrics prototypes, because the metrics
+    // system expects the prototypes and their names to live forever. This is
+    // the only place we dynamically generate them for the purposes of a test,
+    // so it's easier to just leak them than to figure out a way to manage
+    // lifecycle of objects that are typically static.
     ScopedLeakCheckDisabler disabler;
 
     string name = strings::Substitute("$0-$1-$2", name_prefix, tid, i);
     auto proto = new CounterPrototype(MetricPrototype::CtorArgs(
-        "test_entity", strdup(name.c_str()), "Test Counter",
-        MetricUnit::kOperations, "test counter"));
+        "test_entity",
+        strdup(name.c_str()),
+        "Test Counter",
+        MetricUnit::kOperations,
+        "test counter"));
     proto->Instantiate(metric_entity)->Increment();
   }
 }
 
 // Ensure that adding a counter to a registry is thread-safe.
 TEST_F(MultiThreadedMetricsTest, AddCounterToRegistryTest) {
-  scoped_refptr<MetricEntity> entity = METRIC_ENTITY_test_entity.Instantiate(&registry_, "my-test");
+  scoped_refptr<MetricEntity> entity =
+      METRIC_ENTITY_test_entity.Instantiate(&registry_, "my-test");
   int num_threads = FLAGS_mt_metrics_test_num_threads;
   int num_counters = 1000;
   boost::function<void()> f =
       boost::bind(RegisterCounters, entity, "prefix", num_counters);
   RunWithManyThreads(&f, num_threads);
-  ASSERT_EQ(num_threads * num_counters, entity->UnsafeMetricsMapForTests().size());
+  ASSERT_EQ(
+      num_threads * num_counters, entity->UnsafeMetricsMapForTests().size());
 }
 
 } // namespace kudu

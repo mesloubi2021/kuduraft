@@ -25,8 +25,8 @@ import "kudu/util/version_info.proto";
 
 // The status information dumped by a server after it starts.
 //
-// This is optionally exposed on the local host in a text file which the server writes out
-// at startup.
+// This is optionally exposed on the local host in a text file which the server
+// writes out at startup.
 //
 // Additionally, it is exposed via RPC through the GenericService interface.
 message ServerStatusPB {
@@ -35,6 +35,6 @@ message ServerStatusPB {
   // ifdef FB_DO_NOT_REMOVE
   // repeated HostPortPB bound_http_addresses = 3;
   optional VersionInfoPB version_info = 4;
-  // NOTE: this PB may be fetched by any authenticated user, not just superusers.
-  // So, do not expose anything here which may be sensitive!
+  // NOTE: this PB may be fetched by any authenticated user, not just
+  // superusers. So, do not expose anything here which may be sensitive!
 }

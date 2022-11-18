@@ -5,9 +5,9 @@
 #include <glog/logging.h>
 
 #include "kudu/gutil/atomicops.h"
-#include "kudu/gutil/macros.h"
 #include "kudu/gutil/integral_types.h"
 #include "kudu/gutil/logging-inl.h"
+#include "kudu/gutil/macros.h"
 #include "kudu/gutil/once.h"
 #include "kudu/gutil/spinlock_internal.h"
 
@@ -16,8 +16,11 @@
 // This is safe provided we always perform a memory barrier
 // immediately before setting the value to GOOGLE_ONCE_INTERNAL_DONE.
 
-void GoogleOnceInternalInit(Atomic32 *control, void (*func)(),
-                            void (*func_with_arg)(void*), void* arg) {
+void GoogleOnceInternalInit(
+    Atomic32* control,
+    void (*func)(),
+    void (*func_with_arg)(void*),
+    void* arg) {
   if (DEBUG_MODE) {
     int32 old_control = base::subtle::Acquire_Load(control);
     if (old_control != GOOGLE_ONCE_INTERNAL_INIT &&
@@ -30,15 +33,15 @@ void GoogleOnceInternalInit(Atomic32 *control, void (*func)(),
     }
   }
   static const base::internal::kudu::SpinLockWaitTransition trans[] = {
-    { GOOGLE_ONCE_INTERNAL_INIT, GOOGLE_ONCE_INTERNAL_RUNNING, true },
-    { GOOGLE_ONCE_INTERNAL_RUNNING, GOOGLE_ONCE_INTERNAL_WAITER, false },
-    { GOOGLE_ONCE_INTERNAL_DONE, GOOGLE_ONCE_INTERNAL_DONE, true }
-  };
+      {GOOGLE_ONCE_INTERNAL_INIT, GOOGLE_ONCE_INTERNAL_RUNNING, true},
+      {GOOGLE_ONCE_INTERNAL_RUNNING, GOOGLE_ONCE_INTERNAL_WAITER, false},
+      {GOOGLE_ONCE_INTERNAL_DONE, GOOGLE_ONCE_INTERNAL_DONE, true}};
   // Short circuit the simplest case to avoid procedure call overhead.
-  if (base::subtle::Acquire_CompareAndSwap(control, GOOGLE_ONCE_INTERNAL_INIT,
-          GOOGLE_ONCE_INTERNAL_RUNNING) == GOOGLE_ONCE_INTERNAL_INIT ||
-      base::internal::kudu::SpinLockWait(control, KUDU_ARRAYSIZE(trans), trans) ==
-      GOOGLE_ONCE_INTERNAL_INIT) {
+  if (base::subtle::Acquire_CompareAndSwap(
+          control, GOOGLE_ONCE_INTERNAL_INIT, GOOGLE_ONCE_INTERNAL_RUNNING) ==
+          GOOGLE_ONCE_INTERNAL_INIT ||
+      base::internal::kudu::SpinLockWait(
+          control, KUDU_ARRAYSIZE(trans), trans) == GOOGLE_ONCE_INTERNAL_INIT) {
     if (func != nullptr) {
       (*func)();
     } else {

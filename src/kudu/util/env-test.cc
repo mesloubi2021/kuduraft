@@ -17,14 +17,14 @@
 
 #if !defined(__APPLE__)
 #include <linux/falloc.h>
-#endif  // !defined(__APPLE__)
+#endif // !defined(__APPLE__)
 // Copied from falloc.h. Useful for older kernels that lack support for
 // hole punching; fallocate(2) will return EOPNOTSUPP.
 #ifndef FALLOC_FL_KEEP_SIZE
 #define FALLOC_FL_KEEP_SIZE 0x01 /* default is extend size */
 #endif
 #ifndef FALLOC_FL_PUNCH_HOLE
-#define FALLOC_FL_PUNCH_HOLE  0x02 /* de-allocates range */
+#define FALLOC_FL_PUNCH_HOLE 0x02 /* de-allocates range */
 #endif
 
 #include "kudu/util/env.h"
@@ -104,7 +104,8 @@ class TestEnv : public KuduTest {
   // Sets fallocate_supported_ based on the result.
   void CheckFallocateSupport() {
     static bool checked = false;
-    if (checked) return;
+    if (checked)
+      return;
 
 #if defined(__linux__)
     int fd;
@@ -117,8 +118,10 @@ class TestEnv : public KuduTest {
     } else {
       fallocate_supported_ = true;
 
-      RETRY_ON_EINTR(err, fallocate(fd, FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE,
-                                    1024, 1024));
+      RETRY_ON_EINTR(
+          err,
+          fallocate(
+              fd, FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE, 1024, 1024));
       if (err != 0) {
         PCHECK(errno == ENOTSUP);
       } else {
@@ -133,7 +136,6 @@ class TestEnv : public KuduTest {
   }
 
  protected:
-
   void VerifyTestData(const Slice& read_data, size_t offset) {
     for (int i = 0; i < read_data.size(); i++) {
       size_t file_offset = offset + i;
@@ -141,8 +143,12 @@ class TestEnv : public KuduTest {
     }
   }
 
-  void MakeVectors(int num_slices, int slice_size, int num_iterations,
-                   unique_ptr<faststring[]>* data, vector<vector<Slice > >* vec) {
+  void MakeVectors(
+      int num_slices,
+      int slice_size,
+      int num_iterations,
+      unique_ptr<faststring[]>* data,
+      vector<vector<Slice>>* vec) {
     data->reset(new faststring[num_iterations * num_slices]);
     vec->resize(num_iterations);
 
@@ -157,7 +163,7 @@ class TestEnv : public KuduTest {
           (*data)[data_idx][j] = (byte_idx * 31) & 0xff;
           ++byte_idx;
         }
-        iter_vec[i]= Slice((*data)[data_idx]);
+        iter_vec[i] = Slice((*data)[data_idx]);
         ++data_idx;
       }
     }
@@ -170,9 +176,13 @@ class TestEnv : public KuduTest {
     ASSERT_NO_FATAL_FAILURE(VerifyTestData(s, offset));
   }
 
-  void TestAppendV(size_t num_slices, size_t slice_size, size_t iterations,
-                   bool fast, bool pre_allocate,
-                   const WritableFileOptions &opts) {
+  void TestAppendV(
+      size_t num_slices,
+      size_t slice_size,
+      size_t iterations,
+      bool fast,
+      bool pre_allocate,
+      const WritableFileOptions& opts) {
     const string kTestPath = GetTestPath("test_env_appendvec_read_append");
     shared_ptr<WritableFile> file;
     ASSERT_OK(env_util::OpenFileForWrite(opts, env_, kTestPath, &file));
@@ -183,7 +193,7 @@ class TestEnv : public KuduTest {
     }
 
     unique_ptr<faststring[]> data;
-    vector<vector<Slice> > input;
+    vector<vector<Slice>> input;
 
     MakeVectors(num_slices, slice_size, iterations, &data, &input);
 
@@ -200,8 +210,10 @@ class TestEnv : public KuduTest {
 
     const string test_descr = Substitute(
         "appending a vector of slices(number of slices=$0,size of slice=$1 b) $2 times",
-        num_slices, slice_size, iterations);
-    LOG_TIMING(INFO, test_descr)  {
+        num_slices,
+        slice_size,
+        iterations);
+    LOG_TIMING(INFO, test_descr) {
       for (int i = 0; i < iterations; i++) {
         if (fast || random() % 2) {
           ASSERT_OK(file->AppendV(input[i]));
@@ -211,10 +223,10 @@ class TestEnv : public KuduTest {
           }
         }
         if (!fast) {
-          // Verify as write. Note: this requires that file is pre-allocated, otherwise
-          // the Read() fails with EINVAL.
-          ASSERT_NO_FATAL_FAILURE(ReadAndVerifyTestData(raf.get(), num_slices * slice_size * i,
-                                                        num_slices * slice_size));
+          // Verify as write. Note: this requires that file is pre-allocated,
+          // otherwise the Read() fails with EINVAL.
+          ASSERT_NO_FATAL_FAILURE(ReadAndVerifyTestData(
+              raf.get(), num_slices * slice_size * i, num_slices * slice_size));
         }
       }
     }
@@ -226,8 +238,8 @@ class TestEnv : public KuduTest {
       ASSERT_OK(env_util::OpenFileForRandom(env_, kTestPath, &raf));
     }
     for (int i = 0; i < iterations; i++) {
-      ASSERT_NO_FATAL_FAILURE(ReadAndVerifyTestData(raf.get(), num_slices * slice_size * i,
-                                                    num_slices * slice_size));
+      ASSERT_NO_FATAL_FAILURE(ReadAndVerifyTestData(
+          raf.get(), num_slices * slice_size * i, num_slices * slice_size));
     }
   }
 
@@ -275,8 +287,8 @@ TEST_F(TestEnv, TestPreallocate) {
 }
 
 // To test consecutive pre-allocations we need higher pre-allocations since the
-// mmapped regions grow in size until 2MBs (so smaller pre-allocations will easily
-// be smaller than the mmapped regions size).
+// mmapped regions grow in size until 2MBs (so smaller pre-allocations will
+// easily be smaller than the mmapped regions size).
 TEST_F(TestEnv, TestConsecutivePreallocate) {
   if (!fallocate_supported_) {
     LOG(INFO) << "fallocate not supported, skipping test";
@@ -333,8 +345,7 @@ TEST_F(TestEnv, TestConsecutivePreallocate) {
   ASSERT_OK(file->Close());
   // and the real size for the file on disk should match only the written size
   ASSERT_OK(env_->GetFileSize(test_path, &size));
-  ASSERT_EQ(2* kOneMb, size);
-
+  ASSERT_EQ(2 * kOneMb, size);
 }
 
 TEST_F(TestEnv, TestHolePunch) {
@@ -409,8 +420,8 @@ TEST_F(TestEnv, TestHolePunchBenchmark) {
   }
 
   // Run the benchmark.
-  LOG_TIMING(INFO, Substitute("repunching $0 holes of size $1",
-                              kNumRuns, kHoleSize)) {
+  LOG_TIMING(
+      INFO, Substitute("repunching $0 holes of size $1", kNumRuns, kHoleSize)) {
     for (int i = 0; i < kNumRuns; i++) {
       ASSERT_OK(file->PunchHole(0, kHoleSize));
     }
@@ -518,7 +529,7 @@ TEST_F(TestEnv, TestReadVFully) {
   size_t size2 = 5;
   uint8_t scratch2[size2];
   Slice result2(scratch2, size2);
-  vector<Slice> results = { result1, result2 };
+  vector<Slice> results = {result1, result2};
 
   // Force a short read
   FLAGS_env_inject_short_read_bytes = 3;
@@ -578,7 +589,8 @@ TEST_F(TestEnv, TestAppendV) {
   } else {
     LOG(INFO) << "Testing AppendV() only, WITH pre-allocation";
     ASSERT_NO_FATAL_FAILURE(TestAppendV(2000, 1024, 5, true, true, opts));
-    LOG(INFO) << "Testing AppendV() together with Append() and Read(), WITH pre-allocation";
+    LOG(INFO)
+        << "Testing AppendV() together with Append() and Read(), WITH pre-allocation";
     ASSERT_NO_FATAL_FAILURE(TestAppendV(128, 4096, 5, false, true, opts));
   }
 }
@@ -613,8 +625,7 @@ TEST_F(TestEnv, TestOverwrite) {
   // File exists, try to overwrite (and fail).
   WritableFileOptions opts;
   opts.mode = Env::CREATE_NON_EXISTING;
-  Status s = env_util::OpenFileForWrite(opts,
-                                        env_, test_path, &writer);
+  Status s = env_util::OpenFileForWrite(opts, env_, test_path, &writer);
   ASSERT_TRUE(s.IsAlreadyPresent());
 }
 
@@ -626,8 +637,8 @@ TEST_F(TestEnv, TestReopen) {
 
   // Create the file and write to it.
   shared_ptr<WritableFile> writer;
-  ASSERT_OK(env_util::OpenFileForWrite(WritableFileOptions(),
-                                       env_, test_path, &writer));
+  ASSERT_OK(env_util::OpenFileForWrite(
+      WritableFileOptions(), env_, test_path, &writer));
   ASSERT_OK(writer->Append(first));
   ASSERT_EQ(first.length(), writer->Size());
   ASSERT_OK(writer->Close());
@@ -635,8 +646,7 @@ TEST_F(TestEnv, TestReopen) {
   // Reopen it and append to it.
   WritableFileOptions reopen_opts;
   reopen_opts.mode = Env::OPEN_EXISTING;
-  ASSERT_OK(env_util::OpenFileForWrite(reopen_opts,
-                                       env_, test_path, &writer));
+  ASSERT_OK(env_util::OpenFileForWrite(reopen_opts, env_, test_path, &writer));
   ASSERT_EQ(first.length(), writer->Size());
   ASSERT_OK(writer->Append(second));
   ASSERT_EQ(first.length() + second.length(), writer->Size());
@@ -668,13 +678,16 @@ TEST_F(TestEnv, TestIsDirectory) {
   ASSERT_FALSE(is_dir);
 }
 
-class ResourceLimitTypeTest : public TestEnv,
-                              public ::testing::WithParamInterface<Env::ResourceLimitType> {};
+class ResourceLimitTypeTest
+    : public TestEnv,
+      public ::testing::WithParamInterface<Env::ResourceLimitType> {};
 
-INSTANTIATE_TEST_CASE_P(ResourceLimitTypes,
-                        ResourceLimitTypeTest,
-                        ::testing::Values(Env::ResourceLimitType::OPEN_FILES_PER_PROCESS,
-                                          Env::ResourceLimitType::RUNNING_THREADS_PER_EUID));
+INSTANTIATE_TEST_CASE_P(
+    ResourceLimitTypes,
+    ResourceLimitTypeTest,
+    ::testing::Values(
+        Env::ResourceLimitType::OPEN_FILES_PER_PROCESS,
+        Env::ResourceLimitType::RUNNING_THREADS_PER_EUID));
 
 // Regression test for KUDU-1798.
 TEST_P(ResourceLimitTypeTest, TestIncreaseLimit) {
@@ -691,17 +704,20 @@ TEST_P(ResourceLimitTypeTest, TestIncreaseLimit) {
   ASSERT_EQ(limit_after, limit_after_again);
 }
 
-static Status TestWalkCb(unordered_set<string>* actual,
-                         Env::FileType type,
-                         const string& dirname, const string& basename) {
+static Status TestWalkCb(
+    unordered_set<string>* actual,
+    Env::FileType type,
+    const string& dirname,
+    const string& basename) {
   VLOG(1) << type << ":" << dirname << ":" << basename;
   InsertOrDie(actual, (JoinPathSegments(dirname, basename)));
   return Status::OK();
 }
 
-static Status NoopTestWalkCb(Env::FileType /*type*/,
-                             const string& /*dirname*/,
-                             const string& /*basename*/) {
+static Status NoopTestWalkCb(
+    Env::FileType /*type*/,
+    const string& /*dirname*/,
+    const string& /*basename*/) {
   return Status::OK();
 }
 
@@ -754,7 +770,8 @@ TEST_F(TestEnv, TestWalk) {
 
 TEST_F(TestEnv, TestWalkNonExistentPath) {
   // A walk on a non-existent path should fail.
-  Status s = env_->Walk("/not/a/real/path", Env::PRE_ORDER, Bind(&NoopTestWalkCb));
+  Status s =
+      env_->Walk("/not/a/real/path", Env::PRE_ORDER, Bind(&NoopTestWalkCb));
   ASSERT_TRUE(s.IsIOError());
   ASSERT_STR_CONTAINS(s.ToString(), "One or more errors occurred");
 }
@@ -777,10 +794,11 @@ TEST_F(TestEnv, TestWalkBadPermissions) {
   ASSERT_STR_CONTAINS(s.ToString(), "One or more errors occurred");
 }
 
-static Status TestWalkErrorCb(int* num_calls,
-                              Env::FileType /*type*/,
-                              const string& /*dirname*/,
-                              const string& /*basename*/) {
+static Status TestWalkErrorCb(
+    int* num_calls,
+    Env::FileType /*type*/,
+    const string& /*dirname*/,
+    const string& /*basename*/) {
   (*num_calls)++;
   return Status::Aborted("Returning abort status");
 }
@@ -790,10 +808,12 @@ TEST_F(TestEnv, TestWalkCbReturnsError) {
   string new_file = "myfile";
   ASSERT_OK(env_->CreateDir(new_dir));
   unique_ptr<WritableFile> writer;
-  ASSERT_OK(env_->NewWritableFile(JoinPathSegments(new_dir, new_file), &writer));
+  ASSERT_OK(
+      env_->NewWritableFile(JoinPathSegments(new_dir, new_file), &writer));
   int num_calls = 0;
-  ASSERT_TRUE(env_->Walk(new_dir, Env::PRE_ORDER,
-                         Bind(&TestWalkErrorCb, &num_calls)).IsIOError());
+  ASSERT_TRUE(
+      env_->Walk(new_dir, Env::PRE_ORDER, Bind(&TestWalkErrorCb, &num_calls))
+          .IsIOError());
 
   // Once for the directory and once for the file inside it.
   ASSERT_EQ(2, num_calls);
@@ -803,12 +823,12 @@ TEST_F(TestEnv, TestGlob) {
   string dir = GetTestPath("glob");
   ASSERT_OK(env_->CreateDir(dir));
 
-  vector<string> filenames = { "fuzz", "fuzzy", "fuzzyiest", "buzz" };
+  vector<string> filenames = {"fuzz", "fuzzy", "fuzzyiest", "buzz"};
   vector<pair<string, size_t>> matchers = {
-    { "file", 0 },
-    { "fuzz", 1 },
-    { "fuzz*", 3 },
-    { "?uzz", 2 },
+      {"file", 0},
+      {"fuzz", 1},
+      {"fuzz*", 3},
+      {"?uzz", 2},
   };
 
   for (const auto& name : filenames) {
@@ -817,8 +837,8 @@ TEST_F(TestEnv, TestGlob) {
   }
 
   for (const auto& matcher : matchers) {
-    SCOPED_TRACE(Substitute("pattern: $0, expected matches: $1",
-                                     matcher.first, matcher.second));
+    SCOPED_TRACE(Substitute(
+        "pattern: $0, expected matches: $1", matcher.first, matcher.second));
     vector<string> matches;
     ASSERT_OK(env_->Glob(JoinPathSegments(dir, matcher.first), &matches));
     ASSERT_EQ(matcher.second, matches.size());
@@ -831,12 +851,11 @@ TEST_F(TestEnv, TestGlobPermissionDenied) {
   string dir = GetTestPath("glob");
   ASSERT_OK(env_->CreateDir(dir));
   chmod(dir.c_str(), 0000);
-  SCOPED_CLEANUP({
-      chmod(dir.c_str(), 0700);
-    });
+  SCOPED_CLEANUP({ chmod(dir.c_str(), 0700); });
   vector<string> matches;
   Status s = env_->Glob(JoinPathSegments(dir, "*"), &matches);
-  ASSERT_STR_MATCHES(s.ToString(), "IO error: glob failed for /.*: Permission denied");
+  ASSERT_STR_MATCHES(
+      s.ToString(), "IO error: glob failed for /.*: Permission denied");
 }
 
 TEST_F(TestEnv, TestGetBlockSize) {
@@ -866,13 +885,15 @@ TEST_F(TestEnv, TestGetFileModifiedTime) {
   ASSERT_OK(env_->GetFileModifiedTime(writer->filename(), &initial_time));
 
   // HFS has 1 second mtime granularity.
-  AssertEventually([&] {
-    int64_t after_time;
-    writer->Append(" ");
-    writer->Sync();
-    ASSERT_OK(env_->GetFileModifiedTime(writer->filename(), &after_time));
-    ASSERT_LT(initial_time, after_time);
-  }, MonoDelta::FromSeconds(5));
+  AssertEventually(
+      [&] {
+        int64_t after_time;
+        writer->Append(" ");
+        writer->Sync();
+        ASSERT_OK(env_->GetFileModifiedTime(writer->filename(), &after_time));
+        ASSERT_LT(initial_time, after_time);
+      },
+      MonoDelta::FromSeconds(5));
   NO_PENDING_FATALS();
 }
 
@@ -901,7 +922,7 @@ TEST_F(TestEnv, TestRWFile) {
   size_t size2 = 2;
   uint8_t scratch2[size2];
   Slice result2(scratch2, size2);
-  vector<Slice> results = { result1, result2 };
+  vector<Slice> results = {result1, result2};
   ASSERT_OK(file->ReadV(0, results));
   ASSERT_EQ(result1, "abc");
   ASSERT_EQ(result2, "de");
@@ -923,7 +944,8 @@ TEST_F(TestEnv, TestRWFile) {
   // Make sure we can't overwrite it.
   RWFileOptions opts;
   opts.mode = Env::CREATE_NON_EXISTING;
-  ASSERT_TRUE(env_->NewRWFile(opts, GetTestPath("foo"), &file).IsAlreadyPresent());
+  ASSERT_TRUE(
+      env_->NewRWFile(opts, GetTestPath("foo"), &file).IsAlreadyPresent());
 
   // Reopen it without truncating the existing data.
   opts.mode = Env::OPEN_EXISTING;
@@ -935,7 +957,8 @@ TEST_F(TestEnv, TestRWFile) {
 }
 
 TEST_F(TestEnv, TestCanonicalize) {
-  vector<string> synonyms = { GetTestPath("."), GetTestPath("./."), GetTestPath(".//./") };
+  vector<string> synonyms = {
+      GetTestPath("."), GetTestPath("./."), GetTestPath(".//./")};
   for (const string& synonym : synonyms) {
     string result;
     ASSERT_OK(env_->Canonicalize(synonym, &result));
@@ -967,7 +990,8 @@ TEST_F(TestEnv, TestCopyFile) {
 
   Env* env = Env::Default();
   NO_FATALS(WriteTestFile(env, orig_path, kFileSize));
-  ASSERT_OK(env_util::CopyFile(env, orig_path, copy_path, WritableFileOptions()));
+  ASSERT_OK(
+      env_util::CopyFile(env, orig_path, copy_path, WritableFileOptions()));
   unique_ptr<RandomAccessFile> copy;
   ASSERT_OK(env->NewRandomAccessFile(copy_path, &copy));
   NO_FATALS(ReadAndVerifyTestData(copy.get(), 0, kFileSize));
@@ -997,7 +1021,8 @@ TEST_F(TestEnv, TestGetSpaceInfoFreeBytes) {
   // filesystem.
   ASSERT_EVENTUALLY([&] {
     if (env_->FileExists(kTestFilePath)) {
-      ASSERT_OK(env_->DeleteFile(kTestFilePath)); // Clean up the previous iteration.
+      ASSERT_OK(
+          env_->DeleteFile(kTestFilePath)); // Clean up the previous iteration.
     }
     SpaceInfo before_space_info;
     ASSERT_OK(env_->GetSpaceInfo(kDataDir, &before_space_info));
@@ -1006,7 +1031,9 @@ TEST_F(TestEnv, TestGetSpaceInfoFreeBytes) {
 
     SpaceInfo after_space_info;
     ASSERT_OK(env_->GetSpaceInfo(kDataDir, &after_space_info));
-    ASSERT_GE(before_space_info.free_bytes - after_space_info.free_bytes, kFileSizeBytes);
+    ASSERT_GE(
+        before_space_info.free_bytes - after_space_info.free_bytes,
+        kFileSizeBytes);
   });
 }
 
@@ -1018,8 +1045,8 @@ TEST_F(TestEnv, TestGetSpaceInfoBasicInvariants) {
   ASSERT_GT(space_info.capacity_bytes, 0);
   ASSERT_LE(space_info.free_bytes, space_info.capacity_bytes);
   VLOG(1) << "Path " << path << " has capacity "
-          << HumanReadableNumBytes::ToString(space_info.capacity_bytes)
-          << " (" << HumanReadableNumBytes::ToString(space_info.free_bytes) << " free)";
+          << HumanReadableNumBytes::ToString(space_info.capacity_bytes) << " ("
+          << HumanReadableNumBytes::ToString(space_info.free_bytes) << " free)";
 }
 
 TEST_F(TestEnv, TestChangeDir) {
@@ -1047,7 +1074,7 @@ TEST_F(TestEnv, TestGetExtentMap) {
   FLAGS_never_fsync = false;
 
   const string kTestFilePath = GetTestPath("foo");
-  const int kFileSizeBytes = 1024*1024;
+  const int kFileSizeBytes = 1024 * 1024;
 
   // Create a test file of a particular size.
   unique_ptr<RWFile> f;
@@ -1066,8 +1093,8 @@ TEST_F(TestEnv, TestGetExtentMap) {
   ASSERT_OK(s);
   SCOPED_TRACE(extents);
   int num_extents = extents.size();
-  ASSERT_GT(num_extents, 0) <<
-      "There should have been at least one extent in the file";
+  ASSERT_GT(num_extents, 0)
+      << "There should have been at least one extent in the file";
 
   uint64_t fs_block_size;
   ASSERT_OK(env_->GetBlockSize(kTestFilePath, &fs_block_size));
@@ -1095,8 +1122,8 @@ TEST_F(TestEnv, TestGetExtentMap) {
 
   // Test the extent map; there should be one more extent.
   ASSERT_OK(f->GetExtentMap(&extents));
-  ASSERT_EQ(num_extents + 1, extents.size()) <<
-      "Punching a hole should have increased the number of extents by one";
+  ASSERT_EQ(num_extents + 1, extents.size())
+      << "Punching a hole should have increased the number of extents by one";
 }
 
 TEST_F(TestEnv, TestInjectEIO) {
@@ -1170,4 +1197,4 @@ TEST_F(TestEnv, TestInjectEIO) {
   ASSERT_OK(rw2->Close());
 }
 
-}  // namespace kudu
+} // namespace kudu

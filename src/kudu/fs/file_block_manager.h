@@ -73,20 +73,23 @@ class FileBlockManager : public BlockManager {
  public:
   // Note: all objects passed as pointers should remain alive for the lifetime
   // of the block manager.
-  FileBlockManager(Env* env,
-                   DataDirManager* dd_manager,
-                   FsErrorManager* error_manager,
-                   BlockManagerOptions opts);
+  FileBlockManager(
+      Env* env,
+      DataDirManager* dd_manager,
+      FsErrorManager* error_manager,
+      BlockManagerOptions opts);
 
   virtual ~FileBlockManager();
 
   Status Open(FsReport* report) override;
 
-  Status CreateBlock(const CreateBlockOptions& opts,
-                     std::unique_ptr<WritableBlock>* block) override;
+  Status CreateBlock(
+      const CreateBlockOptions& opts,
+      std::unique_ptr<WritableBlock>* block) override;
 
-  Status OpenBlock(const BlockId& block_id,
-                   std::unique_ptr<ReadableBlock>* block) override;
+  Status OpenBlock(
+      const BlockId& block_id,
+      std::unique_ptr<ReadableBlock>* block) override;
 
   std::unique_ptr<BlockCreationTransaction> NewCreationTransaction() override;
 
@@ -96,7 +99,9 @@ class FileBlockManager : public BlockManager {
 
   void NotifyBlockId(BlockId block_id) override;
 
-  FsErrorManager* error_manager() override { return error_manager_; }
+  FsErrorManager* error_manager() override {
+    return error_manager_;
+  }
 
  private:
   friend class internal::FileBlockDeletionTransaction;
@@ -120,7 +125,9 @@ class FileBlockManager : public BlockManager {
   // On success, overwrites 'path' with the file's path.
   bool FindBlockPath(const BlockId& block_id, std::string* path) const;
 
-  Env* env() const { return env_; }
+  Env* env() const {
+    return env_;
+  }
 
   // For manipulating files.
   Env* env_;

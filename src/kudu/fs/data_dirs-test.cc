@@ -47,8 +47,8 @@
 
 using std::set;
 using std::string;
-using std::vector;
 using std::unique_ptr;
+using std::vector;
 using strings::Substitute;
 
 DECLARE_bool(crash_on_eio);
@@ -71,10 +71,10 @@ static const int kNumDirs = 10;
 
 class DataDirsTest : public KuduTest {
  public:
-  DataDirsTest() :
-      test_tablet_name_("test_tablet"),
-      test_block_opts_(CreateBlockOptions({ test_tablet_name_ })),
-      entity_(METRIC_ENTITY_server.Instantiate(&registry_, "test")) {}
+  DataDirsTest()
+      : test_tablet_name_("test_tablet"),
+        test_block_opts_(CreateBlockOptions({test_tablet_name_})),
+        entity_(METRIC_ENTITY_server.Instantiate(&registry_, "test")) {}
 
   virtual void SetUp() override {
     KuduTest::SetUp();
@@ -111,8 +111,10 @@ TEST_F(DataDirsTest, TestCreateGroup) {
   Status s = dd_manager_->GetNextDataDir(test_block_opts_, &dd);
   ASSERT_EQ(nullptr, dd);
   ASSERT_TRUE(s.IsNotFound()) << s.ToString();
-  ASSERT_STR_CONTAINS(s.ToString(), "Tried to get directory but no directory group "
-                                    "registered for tablet");
+  ASSERT_STR_CONTAINS(
+      s.ToString(),
+      "Tried to get directory but no directory group "
+      "registered for tablet");
 
   DataDirGroupPB orig_pb;
   ASSERT_OK(dd_manager_->CreateDataDirGroup(test_tablet_name_));
@@ -122,8 +124,10 @@ TEST_F(DataDirsTest, TestCreateGroup) {
   // it already knows about.
   s = dd_manager_->CreateDataDirGroup(test_tablet_name_);
   ASSERT_TRUE(s.IsAlreadyPresent()) << s.ToString();
-  ASSERT_STR_CONTAINS(s.ToString(), "Tried to create directory group for tablet "
-                                    "but one is already registered");
+  ASSERT_STR_CONTAINS(
+      s.ToString(),
+      "Tried to create directory group for tablet "
+      "but one is already registered");
   DataDirGroupPB pb;
   ASSERT_OK(dd_manager_->GetDataDirGroupPB(test_tablet_name_, &pb));
 
@@ -136,7 +140,7 @@ TEST_F(DataDirsTest, TestCreateGroup) {
 
   // Check that the tablet's DataDirGroup spans the right number of dirs.
   int num_dirs_with_tablets = 0;
-  for (const auto& e: dd_manager_->tablets_by_uuid_idx_map_) {
+  for (const auto& e : dd_manager_->tablets_by_uuid_idx_map_) {
     if (!e.second.empty()) {
       ASSERT_EQ(1, e.second.size());
       num_dirs_with_tablets++;
@@ -159,7 +163,7 @@ TEST_F(DataDirsTest, TestLoadFromPB) {
 
   // Check that the tablet's DataDirGroup spans the right number of dirs.
   int num_dirs_with_tablets = 0;
-  for (const auto& e: dd_manager_->tablets_by_uuid_idx_map_) {
+  for (const auto& e : dd_manager_->tablets_by_uuid_idx_map_) {
     if (!e.second.empty()) {
       ASSERT_EQ(1, e.second.size());
       num_dirs_with_tablets++;
@@ -183,14 +187,17 @@ TEST_F(DataDirsTest, TestDeleteDataDirGroup) {
   Status s = dd_manager_->GetNextDataDir(test_block_opts_, &dd);
   ASSERT_FALSE(dd->is_full());
   ASSERT_TRUE(s.IsNotFound()) << s.ToString();
-  ASSERT_STR_CONTAINS(s.ToString(), "Tried to get directory but no directory group "
-                                    "registered for tablet");
+  ASSERT_STR_CONTAINS(
+      s.ToString(),
+      "Tried to get directory but no directory group "
+      "registered for tablet");
 }
 
 TEST_F(DataDirsTest, TestFullDisk) {
-  FLAGS_fs_data_dirs_full_disk_cache_seconds = 0;       // Don't cache device fullness.
-  FLAGS_fs_data_dirs_reserved_bytes = 1;                // Reserved space.
-  FLAGS_disk_reserved_bytes_free_for_testing = 0;       // Free space.
+  FLAGS_fs_data_dirs_full_disk_cache_seconds =
+      0; // Don't cache device fullness.
+  FLAGS_fs_data_dirs_reserved_bytes = 1; // Reserved space.
+  FLAGS_disk_reserved_bytes_free_for_testing = 0; // Free space.
 
   Status s = dd_manager_->CreateDataDirGroup(test_tablet_name_);
   ASSERT_TRUE(s.IsIOError()) << s.ToString();
@@ -210,8 +217,11 @@ TEST_F(DataDirsTest, TestFailedDirNotReturned) {
   ASSERT_OK(dd_manager_->MarkDataDirFailed(uuid_idx));
   ASSERT_OK(dd_manager_->MarkDataDirFailed(uuid_idx));
   ASSERT_OK(dd_manager_->MarkDataDirFailed(uuid_idx));
-  ASSERT_EQ(1, down_cast<AtomicGauge<uint64_t>*>(
-        entity_->FindOrNull(METRIC_data_dirs_failed).get())->value());
+  ASSERT_EQ(
+      1,
+      down_cast<AtomicGauge<uint64_t>*>(
+          entity_->FindOrNull(METRIC_data_dirs_failed).get())
+          ->value());
   for (int i = 0; i < 10; i++) {
     ASSERT_OK(dd_manager_->GetNextDataDir(test_block_opts_, &dd));
     ASSERT_NE(dd, failed_dd);
@@ -220,11 +230,15 @@ TEST_F(DataDirsTest, TestFailedDirNotReturned) {
   // Fail the other directory and verify that neither will be used.
   ASSERT_TRUE(dd_manager_->FindUuidIndexByDataDir(dd, &uuid_idx));
   ASSERT_OK(dd_manager_->MarkDataDirFailed(uuid_idx));
-  ASSERT_EQ(2, down_cast<AtomicGauge<uint64_t>*>(
-        entity_->FindOrNull(METRIC_data_dirs_failed).get())->value());
+  ASSERT_EQ(
+      2,
+      down_cast<AtomicGauge<uint64_t>*>(
+          entity_->FindOrNull(METRIC_data_dirs_failed).get())
+          ->value());
   Status s = dd_manager_->GetNextDataDir(test_block_opts_, &failed_dd);
   ASSERT_TRUE(s.IsIOError());
-  ASSERT_STR_CONTAINS(s.ToString(), "No healthy directories exist in tablet's directory group");
+  ASSERT_STR_CONTAINS(
+      s.ToString(), "No healthy directories exist in tablet's directory group");
 }
 
 TEST_F(DataDirsTest, TestFailedDirNotAddedToGroup) {
@@ -232,8 +246,11 @@ TEST_F(DataDirsTest, TestFailedDirNotAddedToGroup) {
   // shouldn't be in the group.
   FLAGS_fs_target_data_dirs_per_tablet = kNumDirs;
   ASSERT_OK(dd_manager_->MarkDataDirFailed(0));
-  ASSERT_EQ(1, down_cast<AtomicGauge<uint64_t>*>(
-        entity_->FindOrNull(METRIC_data_dirs_failed).get())->value());
+  ASSERT_EQ(
+      1,
+      down_cast<AtomicGauge<uint64_t>*>(
+          entity_->FindOrNull(METRIC_data_dirs_failed).get())
+          ->value());
   ASSERT_OK(dd_manager_->CreateDataDirGroup(test_tablet_name_));
   DataDirGroupPB pb;
   ASSERT_OK(dd_manager_->GetDataDirGroupPB(test_tablet_name_, &pb));
@@ -267,27 +284,32 @@ TEST_F(DataDirsTest, TestLoadBalancingDistribution) {
   // Add 'kNumTablets' tablets, each with groups of size
   // 'FLAGS_fs_target_data_dirs_per_tablet'.
   for (int tablet_idx = 0; tablet_idx < kNumTablets; tablet_idx++) {
-    ASSERT_OK(dd_manager_->CreateDataDirGroup(Substitute("$0-$1", test_tablet_name_, tablet_idx)));
+    ASSERT_OK(dd_manager_->CreateDataDirGroup(
+        Substitute("$0-$1", test_tablet_name_, tablet_idx)));
   }
-  const double kMeanTabletsPerDir = kNumTablets * FLAGS_fs_target_data_dirs_per_tablet / kNumDirs;
+  const double kMeanTabletsPerDir =
+      kNumTablets * FLAGS_fs_target_data_dirs_per_tablet / kNumDirs;
 
   // Calculate the standard deviation of the number of tablets per disk.
   // If tablets are evenly spread across directories, this should be small.
   double sum_squared_dev = 0;
   for (const auto& e : dd_manager_->tablets_by_uuid_idx_map_) {
-    LOG(INFO) << Substitute("$0 is storing data from $1 tablets.",
-        dd_manager_->data_dir_by_uuid_idx_[e.first]->dir(), e.second.size());
-    double deviation = static_cast<double>(e.second.size()) - kMeanTabletsPerDir;
+    LOG(INFO) << Substitute(
+        "$0 is storing data from $1 tablets.",
+        dd_manager_->data_dir_by_uuid_idx_[e.first]->dir(),
+        e.second.size());
+    double deviation =
+        static_cast<double>(e.second.size()) - kMeanTabletsPerDir;
     sum_squared_dev += deviation * deviation;
   }
   double stddev = sqrt(sum_squared_dev / kNumDirs);
-  LOG(INFO) << Substitute("$0 tablets stored across $1 directories.", kNumTablets, kNumDirs);
+  LOG(INFO) << Substitute(
+      "$0 tablets stored across $1 directories.", kNumTablets, kNumDirs);
 
   // Looping this 1000 times yielded a couple stddev values over 2.0. A high
   // standard deviation does not necessarily reveal an error, but does indicate
   // a relatively unlikely distribution of data directory groups.
   LOG(INFO) << "Standard deviation: " << stddev;
-
 }
 
 TEST_F(DataDirsTest, TestLoadBalancingBias) {
@@ -319,27 +341,40 @@ TEST_F(DataDirsTest, TestLoadBalancingBias) {
   }
 
   // Add tablets to each skewed directory.
-  for (int skew_tablet_idx = 0; skew_tablet_idx < kTabletsPerSkewedDir; skew_tablet_idx++) {
-    string skew_tablet = Substitute("$0-$1", kSkewTabletPrefix, skew_tablet_idx);
-    InsertOrDie(&dd_manager_->group_by_tablet_map_, skew_tablet, DataDirGroup(skewed_dir_indices));
+  for (int skew_tablet_idx = 0; skew_tablet_idx < kTabletsPerSkewedDir;
+       skew_tablet_idx++) {
+    string skew_tablet =
+        Substitute("$0-$1", kSkewTabletPrefix, skew_tablet_idx);
+    InsertOrDie(
+        &dd_manager_->group_by_tablet_map_,
+        skew_tablet,
+        DataDirGroup(skewed_dir_indices));
     for (int uuid_idx : skewed_dir_indices) {
-      InsertOrDie(&FindOrDie(dd_manager_->tablets_by_uuid_idx_map_, uuid_idx), skew_tablet);
+      InsertOrDie(
+          &FindOrDie(dd_manager_->tablets_by_uuid_idx_map_, uuid_idx),
+          skew_tablet);
     }
   }
 
   // Add the additional tablets.
   for (int tablet_idx = 0; tablet_idx < kNumAdditionalTablets; tablet_idx++) {
-    ASSERT_OK(dd_manager_->CreateDataDirGroup(Substitute("$0-$1", test_tablet_name_, tablet_idx)));
+    ASSERT_OK(dd_manager_->CreateDataDirGroup(
+        Substitute("$0-$1", test_tablet_name_, tablet_idx)));
   }
 
   // Calculate the standard deviation of the number of tablets per disk.
   double sum_squared_dev = 0;
-  const double kMeanTabletsPerDir = (kTabletsPerSkewedDir * kNumSkewedDirs +
-      kNumAdditionalTablets * FLAGS_fs_target_data_dirs_per_tablet) / kNumDirs;
+  const double kMeanTabletsPerDir =
+      (kTabletsPerSkewedDir * kNumSkewedDirs +
+       kNumAdditionalTablets * FLAGS_fs_target_data_dirs_per_tablet) /
+      kNumDirs;
   for (const auto& e : dd_manager_->tablets_by_uuid_idx_map_) {
-    LOG(INFO) << Substitute("$0 is storing data from $1 tablets.",
-        dd_manager_->data_dir_by_uuid_idx_[e.first]->dir(), e.second.size());
-    double deviation = static_cast<double>(e.second.size()) - kMeanTabletsPerDir;
+    LOG(INFO) << Substitute(
+        "$0 is storing data from $1 tablets.",
+        dd_manager_->data_dir_by_uuid_idx_[e.first]->dir(),
+        e.second.size());
+    double deviation =
+        static_cast<double>(e.second.size()) - kMeanTabletsPerDir;
     sum_squared_dev += deviation * deviation;
   }
   double stddev = sqrt(sum_squared_dev / kNumDirs);
@@ -354,7 +389,8 @@ TEST_F(DataDirsTest, TestLoadBalancingBias) {
   // not completely ignore the initially skewed dirs.
   bool some_added_to_skewed_dirs = false;
   for (int skewed_uuid_index : skewed_dir_indices) {
-    set<string>* tablets = FindOrNull(dd_manager_->tablets_by_uuid_idx_map_, skewed_uuid_index);
+    set<string>* tablets =
+        FindOrNull(dd_manager_->tablets_by_uuid_idx_map_, skewed_uuid_index);
     ASSERT_NE(nullptr, tablets);
     if (tablets->size() > kTabletsPerSkewedDir) {
       some_added_to_skewed_dirs = true;
@@ -374,11 +410,13 @@ class DataDirManagerTest : public DataDirsTest {
   }
 
   Status OpenDataDirManager() {
-    return DataDirManager::OpenExistingForTests(env_, test_roots_,
-        DataDirManagerOptions(), &dd_manager_);
+    return DataDirManager::OpenExistingForTests(
+        env_, test_roots_, DataDirManagerOptions(), &dd_manager_);
   }
 
-  virtual int GetNumDirs() const { return kNumDirs; }
+  virtual int GetNumDirs() const {
+    return kNumDirs;
+  }
 
  protected:
   // The test roots. Data will be placed in a data directory within the root.
@@ -401,15 +439,18 @@ TEST_F(DataDirManagerTest, TestOpenWithFailedDirs) {
   FLAGS_env_inject_eio = 1.0;
   FLAGS_env_inject_eio_globs = JoinPathSegments(test_roots_[0], "**");
 
-  // The directory manager will successfully open with the single failed directory.
+  // The directory manager will successfully open with the single failed
+  // directory.
   ASSERT_OK(OpenDataDirManager());
   set<int> failed_dirs;
   ASSERT_EQ(1, dd_manager_->GetFailedDataDirs().size());
 
   // Now fail almost all of the other directories, leaving the last intact.
   for (int i = 1; i < kNumDirs - 1; i++) {
-    FLAGS_env_inject_eio_globs = Substitute("$0,$1", FLAGS_env_inject_eio_globs,
-                                            JoinPathSegments(test_roots_[i], "**"));
+    FLAGS_env_inject_eio_globs = Substitute(
+        "$0,$1",
+        FLAGS_env_inject_eio_globs,
+        JoinPathSegments(test_roots_[i], "**"));
   }
   // The directory manager should be aware of the new failures.
   ASSERT_OK(OpenDataDirManager());
@@ -417,9 +458,10 @@ TEST_F(DataDirManagerTest, TestOpenWithFailedDirs) {
 
   // Ensure that when there are no healthy data directories, the open will
   // yield an error.
-  FLAGS_env_inject_eio_globs = JoinStrings(JoinPathSegmentsV(test_roots_, "**"), ",");
-  Status s = DataDirManager::OpenExistingForTests(env_, test_roots_,
-      DataDirManagerOptions(), &dd_manager_);
+  FLAGS_env_inject_eio_globs =
+      JoinStrings(JoinPathSegmentsV(test_roots_, "**"), ",");
+  Status s = DataDirManager::OpenExistingForTests(
+      env_, test_roots_, DataDirManagerOptions(), &dd_manager_);
   ASSERT_STR_CONTAINS(s.ToString(), "could not open directory manager");
   ASSERT_TRUE(s.IsNotFound());
 }
@@ -429,7 +471,9 @@ class TooManyDataDirManagerTest : public DataDirManagerTest {
   // TraceMetrics::g_intern_map has a limited number of entries, and each data
   // dir used to consume three of them via its threadpool. This value was just
   // enough to exceed the map's capacity.
-  int GetNumDirs() const override { return 34; }
+  int GetNumDirs() const override {
+    return 34;
+  }
 };
 
 // Regression test for KUDU-2194.
@@ -437,9 +481,9 @@ TEST_F(TooManyDataDirManagerTest, TestTooManyInternedStrings) {
   for (const auto& r : test_roots_) {
     ASSERT_OK(env_->CreateDir(r));
   }
-  ASSERT_OK(DataDirManager::CreateNewForTests(env_, test_roots_,
-      DataDirManagerOptions(), &dd_manager_));
+  ASSERT_OK(DataDirManager::CreateNewForTests(
+      env_, test_roots_, DataDirManagerOptions(), &dd_manager_));
 }
 
 } // namespace fs
-} //namespace kudu
+} // namespace kudu

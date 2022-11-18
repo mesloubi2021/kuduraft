@@ -39,7 +39,6 @@ static void DecrementLatch(CountDownLatch* latch, int amount) {
 // Tests that we can decrement the latch by arbitrary amounts, as well
 // as 1 by one.
 TEST(TestCountDownLatch, TestLatch) {
-
   gscoped_ptr<ThreadPool> pool;
   ASSERT_OK(ThreadPoolBuilder("cdl-test").set_max_threads(1).Build(&pool));
 
@@ -63,7 +62,8 @@ TEST(TestCountDownLatch, TestLatch) {
 TEST(TestCountDownLatch, TestResetToZero) {
   CountDownLatch cdl(100);
   scoped_refptr<Thread> t;
-  ASSERT_OK(Thread::Create("test", "cdl-test", &CountDownLatch::Wait, &cdl, &t));
+  ASSERT_OK(
+      Thread::Create("test", "cdl-test", &CountDownLatch::Wait, &cdl, &t));
 
   // Sleep for a bit until it's likely the other thread is waiting on the latch.
   SleepFor(MonoDelta::FromMilliseconds(10));

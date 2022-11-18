@@ -75,14 +75,22 @@ class TabletServer : public kserver::KuduServer {
 
   std::string ToString() const;
 
-  TSTabletManager* tablet_manager() { return tablet_manager_.get(); }
+  TSTabletManager* tablet_manager() {
+    return tablet_manager_.get();
+  }
 
-  const TabletServerOptions& opts() { return opts_; }
+  const TabletServerOptions& opts() {
+    return opts_;
+  }
 
 #ifdef FB_DO_NOT_REMOVE
-  ScannerManager* scanner_manager() { return scanner_manager_.get(); }
+  ScannerManager* scanner_manager() {
+    return scanner_manager_.get();
+  }
 
-  Heartbeater* heartbeater() { return heartbeater_.get(); }
+  Heartbeater* heartbeater() {
+    return heartbeater_.get();
+  }
 
   void set_fail_heartbeats_for_tests(bool fail_heartbeats_for_tests) {
     base::subtle::NoBarrier_Store(&fail_heartbeats_for_tests_, 1);

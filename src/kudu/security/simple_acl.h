@@ -26,19 +26,19 @@ namespace security {
 
 // Represent a very simple access control list which contains a set of users.
 //
-// This is basically just a wrapper around a set<string> with a bit of parsing logic and
-// support for the '*' wildcard.
+// This is basically just a wrapper around a set<string> with a bit of parsing
+// logic and support for the '*' wildcard.
 class SimpleAcl {
  public:
   SimpleAcl();
   ~SimpleAcl();
 
-  // Parse a flag value, which should be of the form 'user1,user2,user3' to indicate a
-  // list of users, or '*' to indicate a wildcard. This syntax may be expanded later to
-  // include groups, "allow/deny" style access, etc.
+  // Parse a flag value, which should be of the form 'user1,user2,user3' to
+  // indicate a list of users, or '*' to indicate a wildcard. This syntax may be
+  // expanded later to include groups, "allow/deny" style access, etc.
   //
-  // Thread-unsafe: must be called before the ACL may be consulted, and may not be
-  // called a second time concurrent with reads of the ACL.
+  // Thread-unsafe: must be called before the ACL may be consulted, and may not
+  // be called a second time concurrent with reads of the ACL.
   Status ParseFlag(const std::string& flag);
 
   // Return true if the given user is allowed by the ACL.

@@ -31,14 +31,17 @@ using std::string;
 namespace kudu {
 
 TEST(TestInt128, TestOstreamSigned) {
-  int128_t INTEGERS[] = {0, -1, 1, -1234567890,
-                         INT64_MIN, UINT64_MAX,
-                         INT128_MIN,
-                         INT128_MAX};
-  std::string STRINGS[] = {"0", "-1", "1", "-1234567890",
-                           "-9223372036854775808", "18446744073709551615",
-                           "-170141183460469231731687303715884105728",
-                           "170141183460469231731687303715884105727"};
+  int128_t INTEGERS[] = {
+      0, -1, 1, -1234567890, INT64_MIN, UINT64_MAX, INT128_MIN, INT128_MAX};
+  std::string STRINGS[] = {
+      "0",
+      "-1",
+      "1",
+      "-1234567890",
+      "-9223372036854775808",
+      "18446744073709551615",
+      "-170141183460469231731687303715884105728",
+      "170141183460469231731687303715884105727"};
   for (size_t i = 0; i < arraysize(INTEGERS); i++) {
     std::ostringstream ss;
     ss << INTEGERS[i];
@@ -47,10 +50,9 @@ TEST(TestInt128, TestOstreamSigned) {
 }
 
 TEST(TestInt128, TestOstreamUnsigned) {
-  uint128_t INTEGERS[] = {0, 1, 1234567890,
-                          UINT128_MIN, UINT128_MAX};
-  string STRINGS[] = {"0", "1", "1234567890",
-                      "0", "340282366920938463463374607431768211455"};
+  uint128_t INTEGERS[] = {0, 1, 1234567890, UINT128_MIN, UINT128_MAX};
+  string STRINGS[] = {
+      "0", "1", "1234567890", "0", "340282366920938463463374607431768211455"};
   for (size_t i = 0; i < arraysize(INTEGERS); i++) {
     std::ostringstream ss;
     ss << INTEGERS[i];

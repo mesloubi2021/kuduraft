@@ -17,18 +17,19 @@
 
 #include "kudu/util/errno.h"
 
-#include <cstring>
 #include <glog/logging.h>
+#include <cstring>
 
 #include "kudu/gutil/dynamic_annotations.h"
 // IWYU pragma: no_include <features.h>
 
 namespace kudu {
 
-void ErrnoToCString(int err, char *buf, size_t buf_len) {
+void ErrnoToCString(int err, char* buf, size_t buf_len) {
   CHECK_GT(buf_len, 0);
-#if !defined(__GLIBC__) || \
-  ((_POSIX_C_SOURCE >= 200112 || _XOPEN_SOURCE >= 600) && !defined(_GNU_SOURCE))
+#if !defined(__GLIBC__) ||                                  \
+    ((_POSIX_C_SOURCE >= 200112 || _XOPEN_SOURCE >= 600) && \
+     !defined(_GNU_SOURCE))
   // Using POSIX version 'int strerror_r(...)'.
   int ret = strerror_r(err, buf, buf_len);
   if (ret && ret != ERANGE && ret != EINVAL) {

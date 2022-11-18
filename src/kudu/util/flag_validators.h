@@ -74,10 +74,11 @@ typedef std::map<std::string, FlagValidator> FlagValidatorsMap;
 //  }
 //  GROUP_FLAG_VALIDATOR(grouped_flags_validator, ValidateGroupedFlags);
 //
-#define GROUP_FLAG_VALIDATOR(name, func) \
-  namespace {                                               \
-    ::kudu::flag_validation_internal::Registrator v_##name( \
-        AS_STRING(name), (func));                           \
+#define GROUP_FLAG_VALIDATOR(name, func)                  \
+  namespace {                                             \
+  ::kudu::flag_validation_internal::Registrator v_##name( \
+      AS_STRING(name),                                    \
+      (func));                                            \
   }
 
 // Get all registered group flag validators.

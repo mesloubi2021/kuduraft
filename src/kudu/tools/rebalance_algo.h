@@ -27,7 +27,8 @@
 #include "kudu/util/status.h"
 
 namespace boost {
-template <class T> class optional;
+template <class T>
+class optional;
 } // namespace boost
 
 namespace kudu {
@@ -69,8 +70,8 @@ struct ClusterBalanceInfo {
 // A directive to move some replica of a table between two tablet servers.
 struct TableReplicaMove {
   std::string table_id;
-  std::string from;     // Unique identifier of the source tablet server.
-  std::string to;       // Unique identifier of the target tablet server.
+  std::string from; // Unique identifier of the source tablet server.
+  std::string to; // Unique identifier of the target tablet server.
 };
 
 // A rebalancing algorithm, which orders replica moves aiming to balance a
@@ -91,23 +92,27 @@ class RebalancingAlgo {
   // is considered balanced.
   //
   // 'moves' must be non-NULL.
-  virtual Status GetNextMoves(const ClusterBalanceInfo& cluster_info,
-                              int max_moves_num,
-                              std::vector<TableReplicaMove>* moves);
+  virtual Status GetNextMoves(
+      const ClusterBalanceInfo& cluster_info,
+      int max_moves_num,
+      std::vector<TableReplicaMove>* moves);
+
  protected:
   // Get the next rebalancing move from the algorithm. If there is no such move,
   // the 'move' output parameter is set to 'boost::none'.
   //
   // 'move' must be non-NULL.
-  virtual Status GetNextMove(const ClusterBalanceInfo& cluster_info,
-                             boost::optional<TableReplicaMove>* move) = 0;
+  virtual Status GetNextMove(
+      const ClusterBalanceInfo& cluster_info,
+      boost::optional<TableReplicaMove>* move) = 0;
 
   // Update the balance state in 'cluster_info' with the outcome of the move
   // 'move'. 'cluster_info' is an in-out parameter.
   //
   // 'cluster_info' must be non-NULL.
-  static Status ApplyMove(const TableReplicaMove& move,
-                          ClusterBalanceInfo* cluster_info);
+  static Status ApplyMove(
+      const TableReplicaMove& move,
+      ClusterBalanceInfo* cluster_info);
 };
 
 // A two-dimensional greedy rebalancing algorithm. From among moves that
@@ -128,11 +133,15 @@ class TwoDimensionalGreedyAlgo : public RebalancingAlgo {
   explicit TwoDimensionalGreedyAlgo(
       EqualSkewOption opt = EqualSkewOption::PICK_RANDOM);
 
-  Status GetNextMove(const ClusterBalanceInfo& cluster_info,
-                     boost::optional<TableReplicaMove>* move) override;
+  Status GetNextMove(
+      const ClusterBalanceInfo& cluster_info,
+      boost::optional<TableReplicaMove>* move) override;
 
  private:
-  enum class ExtremumType { MAX, MIN, };
+  enum class ExtremumType {
+    MAX,
+    MIN,
+  };
 
   FRIEND_TEST(RebalanceAlgoUnitTest, RandomizedTest);
   FRIEND_TEST(RebalanceAlgoUnitTest, EmptyClusterBalanceInfoGetNextMove);

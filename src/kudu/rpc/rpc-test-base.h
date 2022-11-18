@@ -88,48 +88,57 @@ using kudu::rpc_test_diff_package::RespDiffPackagePB;
 // RPC handler (no generated code).
 class GenericCalculatorService : public ServiceIf {
  public:
-  static const char *kFullServiceName;
-  static const char *kAddMethodName;
-  static const char *kSleepMethodName;
-  static const char *kSleepWithSidecarMethodName;
-  static const char *kPushTwoStringsMethodName;
-  static const char *kSendTwoStringsMethodName;
-  static const char *kAddExactlyOnce;
+  static const char* kFullServiceName;
+  static const char* kAddMethodName;
+  static const char* kSleepMethodName;
+  static const char* kSleepWithSidecarMethodName;
+  static const char* kPushTwoStringsMethodName;
+  static const char* kSendTwoStringsMethodName;
+  static const char* kAddExactlyOnce;
 
   static const char* kFirstString;
   static const char* kSecondString;
 
-  GenericCalculatorService() {
-  }
+  GenericCalculatorService() {}
 
   // To match the argument list of the generated CalculatorService.
-  explicit GenericCalculatorService(const scoped_refptr<MetricEntity>& entity,
-                                    const scoped_refptr<ResultTracker>& result_tracker) {
+  explicit GenericCalculatorService(
+      const scoped_refptr<MetricEntity>& entity,
+      const scoped_refptr<ResultTracker>& result_tracker) {
     // this test doesn't generate metrics, so we ignore the argument.
   }
 
-  void Handle(InboundCall *incoming) override {
+  void Handle(InboundCall* incoming) override {
     if (incoming->remote_method().method_name() == kAddMethodName) {
       DoAdd(incoming);
     } else if (incoming->remote_method().method_name() == kSleepMethodName) {
       DoSleep(incoming);
-    } else if (incoming->remote_method().method_name() == kSleepWithSidecarMethodName) {
+    } else if (
+        incoming->remote_method().method_name() ==
+        kSleepWithSidecarMethodName) {
       DoSleepWithSidecar(incoming);
-    } else if (incoming->remote_method().method_name() == kSendTwoStringsMethodName) {
+    } else if (
+        incoming->remote_method().method_name() == kSendTwoStringsMethodName) {
       DoSendTwoStrings(incoming);
-    } else if (incoming->remote_method().method_name() == kPushTwoStringsMethodName) {
+    } else if (
+        incoming->remote_method().method_name() == kPushTwoStringsMethodName) {
       DoPushTwoStrings(incoming);
     } else {
-      incoming->RespondFailure(ErrorStatusPB::ERROR_NO_SUCH_METHOD,
-                               Status::InvalidArgument("bad method"));
+      incoming->RespondFailure(
+          ErrorStatusPB::ERROR_NO_SUCH_METHOD,
+          Status::InvalidArgument("bad method"));
     }
   }
 
-  std::string service_name() const override { return kFullServiceName; }
-  static std::string static_service_name() { return kFullServiceName; }
+  std::string service_name() const override {
+    return kFullServiceName;
+  }
+  static std::string static_service_name() {
+    return kFullServiceName;
+  }
 
  private:
-  void DoAdd(InboundCall *incoming) {
+  void DoAdd(InboundCall* incoming) {
     Slice param(incoming->serialized_request());
     AddRequestPB req;
     if (!req.ParseFromArray(param.data(), param.size())) {
@@ -161,9 +170,9 @@ class GenericCalculatorService : public ServiceIf {
     SendTwoStringsResponsePB resp;
     int idx1, idx2;
     CHECK_OK(incoming->AddOutboundSidecar(
-            RpcSidecar::FromFaststring(std::move(first)), &idx1));
+        RpcSidecar::FromFaststring(std::move(first)), &idx1));
     CHECK_OK(incoming->AddOutboundSidecar(
-            RpcSidecar::FromFaststring(std::move(second)), &idx2));
+        RpcSidecar::FromFaststring(std::move(second)), &idx2));
     resp.set_sidecar1(idx1);
     resp.set_sidecar2(idx2);
 
@@ -189,9 +198,11 @@ class GenericCalculatorService : public ServiceIf {
 
     PushTwoStringsResponsePB resp;
     resp.set_size1(sidecar1.size());
-    resp.set_data1(reinterpret_cast<const char*>(sidecar1.data()), sidecar1.size());
+    resp.set_data1(
+        reinterpret_cast<const char*>(sidecar1.data()), sidecar1.size());
     resp.set_size2(sidecar2.size());
-    resp.set_data2(reinterpret_cast<const char*>(sidecar2.data()), sidecar2.size());
+    resp.set_data2(
+        reinterpret_cast<const char*>(sidecar2.data()), sidecar2.size());
 
     // Drop the sidecars etc, just to confirm that it's safe to do so.
     CHECK_GT(incoming->GetTransferSize(), 0);
@@ -200,31 +211,34 @@ class GenericCalculatorService : public ServiceIf {
     incoming->RespondSuccess(resp);
   }
 
-  void DoSleep(InboundCall *incoming) {
+  void DoSleep(InboundCall* incoming) {
     Slice param(incoming->serialized_request());
     SleepRequestPB req;
     if (!req.ParseFromArray(param.data(), param.size())) {
-      incoming->RespondFailure(ErrorStatusPB::ERROR_INVALID_REQUEST,
-        Status::InvalidArgument("Couldn't parse pb",
-                                req.InitializationErrorString()));
+      incoming->RespondFailure(
+          ErrorStatusPB::ERROR_INVALID_REQUEST,
+          Status::InvalidArgument(
+              "Couldn't parse pb", req.InitializationErrorString()));
       return;
     }
 
     LOG(INFO) << "got call: " << pb_util::SecureShortDebugString(req);
     SleepFor(MonoDelta::FromMicroseconds(req.sleep_micros()));
-    MonoDelta duration(MonoTime::Now().GetDeltaSince(incoming->GetTimeReceived()));
+    MonoDelta duration(
+        MonoTime::Now().GetDeltaSince(incoming->GetTimeReceived()));
     CHECK_GE(duration.ToMicroseconds(), req.sleep_micros());
     SleepResponsePB resp;
     incoming->RespondSuccess(resp);
   }
 
-  void DoSleepWithSidecar(InboundCall *incoming) {
+  void DoSleepWithSidecar(InboundCall* incoming) {
     Slice param(incoming->serialized_request());
     SleepWithSidecarRequestPB req;
     if (!req.ParseFromArray(param.data(), param.size())) {
-      incoming->RespondFailure(ErrorStatusPB::ERROR_INVALID_REQUEST,
-        Status::InvalidArgument("Couldn't parse pb",
-                                req.InitializationErrorString()));
+      incoming->RespondFailure(
+          ErrorStatusPB::ERROR_INVALID_REQUEST,
+          Status::InvalidArgument(
+              "Couldn't parse pb", req.InitializationErrorString()));
       return;
     }
 
@@ -236,8 +250,9 @@ class GenericCalculatorService : public ServiceIf {
     Slice sidecar;
     CHECK_OK(incoming->GetInboundSidecar(req.sidecar_idx(), &sidecar));
     CHECK_EQ(sidecar.size(), sizeof(uint32) * num_repetitions);
-    const uint32_t *data = reinterpret_cast<const uint32_t*>(sidecar.data());
-    for (int i = 0; i < num_repetitions; ++i) CHECK_EQ(data[i], pattern);
+    const uint32_t* data = reinterpret_cast<const uint32_t*>(sidecar.data());
+    for (int i = 0; i < num_repetitions; ++i)
+      CHECK_EQ(data[i], pattern);
 
     SleepResponsePB resp;
     incoming->RespondSuccess(resp);
@@ -246,24 +261,28 @@ class GenericCalculatorService : public ServiceIf {
 
 class CalculatorService : public CalculatorServiceIf {
  public:
-  explicit CalculatorService(const scoped_refptr<MetricEntity>& entity,
-                             const scoped_refptr<ResultTracker> result_tracker)
-    : CalculatorServiceIf(entity, result_tracker),
-      exactly_once_test_val_(0) {
-  }
+  explicit CalculatorService(
+      const scoped_refptr<MetricEntity>& entity,
+      const scoped_refptr<ResultTracker> result_tracker)
+      : CalculatorServiceIf(entity, result_tracker),
+        exactly_once_test_val_(0) {}
 
-  void Add(const AddRequestPB *req, AddResponsePB *resp, RpcContext *context) override {
+  void Add(const AddRequestPB* req, AddResponsePB* resp, RpcContext* context)
+      override {
     CHECK_GT(context->GetTransferSize(), 0);
     resp->set_result(req->x() + req->y());
     context->RespondSuccess();
   }
 
-  void Sleep(const SleepRequestPB *req, SleepResponsePB *resp, RpcContext *context) override {
+  void Sleep(
+      const SleepRequestPB* req,
+      SleepResponsePB* resp,
+      RpcContext* context) override {
     if (req->return_app_error()) {
       CalculatorError my_error;
       my_error.set_extra_error_data("some application-specific error data");
-      context->RespondApplicationError(CalculatorError::app_error_ext.number(),
-                                       "Got some error", my_error);
+      context->RespondApplicationError(
+          CalculatorError::app_error_ext.number(), "Got some error", my_error);
       return;
     }
 
@@ -274,8 +293,10 @@ class CalculatorService : public CalculatorServiceIf {
       if (deadline == MonoTime::Max()) {
         CalculatorError my_error;
         my_error.set_extra_error_data("Timeout not set");
-        context->RespondApplicationError(CalculatorError::app_error_ext.number(),
-                                        "Missing required timeout", my_error);
+        context->RespondApplicationError(
+            CalculatorError::app_error_ext.number(),
+            "Missing required timeout",
+            my_error);
         return;
       }
     }
@@ -283,46 +304,60 @@ class CalculatorService : public CalculatorServiceIf {
     if (req->deferred()) {
       // Spawn a new thread which does the sleep and responds later.
       scoped_refptr<Thread> thread;
-      CHECK_OK(Thread::Create("rpc-test", "deferred",
-                              &CalculatorService::DoSleep, this, req, context,
-                              &thread));
+      CHECK_OK(Thread::Create(
+          "rpc-test",
+          "deferred",
+          &CalculatorService::DoSleep,
+          this,
+          req,
+          context,
+          &thread));
       return;
     }
     DoSleep(req, context);
   }
 
-  void Echo(const EchoRequestPB *req, EchoResponsePB *resp, RpcContext *context) override {
+  void Echo(const EchoRequestPB* req, EchoResponsePB* resp, RpcContext* context)
+      override {
     resp->set_data(req->data());
     context->RespondSuccess();
   }
 
-  void WhoAmI(const WhoAmIRequestPB* /*req*/,
-              WhoAmIResponsePB* resp,
-              RpcContext* context) override {
+  void WhoAmI(
+      const WhoAmIRequestPB* /*req*/,
+      WhoAmIResponsePB* resp,
+      RpcContext* context) override {
     const RemoteUser& user = context->remote_user();
     resp->mutable_credentials()->set_real_user(user.username());
     resp->set_address(context->remote_address().ToString());
     context->RespondSuccess();
   }
 
-  void TestArgumentsInDiffPackage(const ReqDiffPackagePB *req,
-                                  RespDiffPackagePB *resp,
-                                  ::kudu::rpc::RpcContext *context) override {
+  void TestArgumentsInDiffPackage(
+      const ReqDiffPackagePB* req,
+      RespDiffPackagePB* resp,
+      ::kudu::rpc::RpcContext* context) override {
     context->RespondSuccess();
   }
 
-  void Panic(const PanicRequestPB* req, PanicResponsePB* resp, RpcContext* context) override {
+  void Panic(
+      const PanicRequestPB* req,
+      PanicResponsePB* resp,
+      RpcContext* context) override {
     TRACE("Got panic request");
     PANIC_RPC(context, "Test method panicking!");
   }
 
-  void TestInvalidResponse(const TestInvalidResponseRequestPB* req,
-                           TestInvalidResponseResponsePB* resp,
-                           RpcContext* context) override {
+  void TestInvalidResponse(
+      const TestInvalidResponseRequestPB* req,
+      TestInvalidResponseResponsePB* resp,
+      RpcContext* context) override {
     switch (req->error_type()) {
-      case rpc_test::TestInvalidResponseRequestPB_ErrorType_MISSING_REQUIRED_FIELD:
+      case rpc_test::
+          TestInvalidResponseRequestPB_ErrorType_MISSING_REQUIRED_FIELD:
         // Respond without setting the 'resp->response' protobuf field, which is
-        // marked as required. This exercises the error path of invalid responses.
+        // marked as required. This exercises the error path of invalid
+        // responses.
         context->RespondSuccess();
         break;
       case rpc_test::TestInvalidResponseRequestPB_ErrorType_RESPONSE_TOO_LARGE:
@@ -338,15 +373,18 @@ class CalculatorService : public CalculatorServiceIf {
     return feature == FeatureFlags::FOO;
   }
 
-  void AddExactlyOnce(const ExactlyOnceRequestPB* req, ExactlyOnceResponsePB* resp,
-                      ::kudu::rpc::RpcContext* context) override {
+  void AddExactlyOnce(
+      const ExactlyOnceRequestPB* req,
+      ExactlyOnceResponsePB* resp,
+      ::kudu::rpc::RpcContext* context) override {
     if (req->sleep_for_ms() > 0) {
       usleep(req->sleep_for_ms() * 1000);
     }
     // If failures are enabled, cause them some percentage of the time.
     if (req->randomly_fail()) {
       if (rand() % 10 < 3) {
-        context->RespondFailure(Status::ServiceUnavailable("Random injected failure."));
+        context->RespondFailure(
+            Status::ServiceUnavailable("Random injected failure."));
         return;
       }
     }
@@ -356,29 +394,32 @@ class CalculatorService : public CalculatorServiceIf {
     context->RespondSuccess();
   }
 
-  bool AuthorizeDisallowAlice(const google::protobuf::Message* /*req*/,
-                              google::protobuf::Message* /*resp*/,
-                              RpcContext* context) override {
+  bool AuthorizeDisallowAlice(
+      const google::protobuf::Message* /*req*/,
+      google::protobuf::Message* /*resp*/,
+      RpcContext* context) override {
     if (context->remote_user().username() == "alice") {
-      context->RespondFailure(Status::NotAuthorized("alice is not allowed to call this method"));
+      context->RespondFailure(
+          Status::NotAuthorized("alice is not allowed to call this method"));
       return false;
     }
     return true;
   }
 
-  bool AuthorizeDisallowBob(const google::protobuf::Message* /*req*/,
-                            google::protobuf::Message* /*resp*/,
-                            RpcContext* context) override {
+  bool AuthorizeDisallowBob(
+      const google::protobuf::Message* /*req*/,
+      google::protobuf::Message* /*resp*/,
+      RpcContext* context) override {
     if (context->remote_user().username() == "bob") {
-      context->RespondFailure(Status::NotAuthorized("bob is not allowed to call this method"));
+      context->RespondFailure(
+          Status::NotAuthorized("bob is not allowed to call this method"));
       return false;
     }
     return true;
   }
 
  private:
-  void DoSleep(const SleepRequestPB *req,
-               RpcContext *context) {
+  void DoSleep(const SleepRequestPB* req, RpcContext* context) {
     TRACE_COUNTER_INCREMENT("test_sleep_us", req->sleep_micros());
     if (Trace::CurrentTrace()) {
       scoped_refptr<Trace> child_trace(new Trace());
@@ -392,31 +433,35 @@ class CalculatorService : public CalculatorServiceIf {
   }
 
   std::atomic_int exactly_once_test_val_;
-
 };
 
-const char *GenericCalculatorService::kFullServiceName = "kudu.rpc.GenericCalculatorService";
-const char *GenericCalculatorService::kAddMethodName = "Add";
-const char *GenericCalculatorService::kSleepMethodName = "Sleep";
-const char *GenericCalculatorService::kSleepWithSidecarMethodName = "SleepWithSidecar";
-const char *GenericCalculatorService::kPushTwoStringsMethodName = "PushTwoStrings";
-const char *GenericCalculatorService::kSendTwoStringsMethodName = "SendTwoStrings";
-const char *GenericCalculatorService::kAddExactlyOnce = "AddExactlyOnce";
+const char* GenericCalculatorService::kFullServiceName =
+    "kudu.rpc.GenericCalculatorService";
+const char* GenericCalculatorService::kAddMethodName = "Add";
+const char* GenericCalculatorService::kSleepMethodName = "Sleep";
+const char* GenericCalculatorService::kSleepWithSidecarMethodName =
+    "SleepWithSidecar";
+const char* GenericCalculatorService::kPushTwoStringsMethodName =
+    "PushTwoStrings";
+const char* GenericCalculatorService::kSendTwoStringsMethodName =
+    "SendTwoStrings";
+const char* GenericCalculatorService::kAddExactlyOnce = "AddExactlyOnce";
 
-const char *GenericCalculatorService::kFirstString =
+const char* GenericCalculatorService::kFirstString =
     "1111111111111111111111111111111111111111111111111111111111";
-const char *GenericCalculatorService::kSecondString =
+const char* GenericCalculatorService::kSecondString =
     "2222222222222222222222222222222222222222222222222222222222222222222222";
 
 class RpcTestBase : public KuduTest {
  public:
   RpcTestBase()
-    : n_worker_threads_(3),
-      service_queue_length_(100),
-      n_server_reactor_threads_(3),
-      keepalive_time_ms_(1000),
-      metric_entity_(METRIC_ENTITY_server.Instantiate(&metric_registry_, "test.rpc_test")) {
-  }
+      : n_worker_threads_(3),
+        service_queue_length_(100),
+        n_server_reactor_threads_(3),
+        keepalive_time_ms_(1000),
+        metric_entity_(METRIC_ENTITY_server.Instantiate(
+            &metric_registry_,
+            "test.rpc_test")) {}
 
   void TearDown() override {
     if (service_pool_) {
@@ -430,14 +475,15 @@ class RpcTestBase : public KuduTest {
   }
 
  protected:
-  Status CreateMessenger(const std::string& name,
-                         std::shared_ptr<Messenger>* messenger,
-                         int n_reactors = 1,
-                         bool enable_ssl = false,
-                         const std::string& rpc_certificate_file = "",
-                         const std::string& rpc_private_key_file = "",
-                         const std::string& rpc_ca_certificate_file = "",
-                         const std::string& rpc_private_key_password_cmd = "") {
+  Status CreateMessenger(
+      const std::string& name,
+      std::shared_ptr<Messenger>* messenger,
+      int n_reactors = 1,
+      bool enable_ssl = false,
+      const std::string& rpc_certificate_file = "",
+      const std::string& rpc_private_key_file = "",
+      const std::string& rpc_ca_certificate_file = "",
+      const std::string& rpc_private_key_password_cmd = "") {
     MessengerBuilder bld(name);
 
     if (enable_ssl) {
@@ -450,11 +496,12 @@ class RpcTestBase : public KuduTest {
     }
 
     bld.set_num_reactors(n_reactors);
-    bld.set_connection_keepalive_time(MonoDelta::FromMilliseconds(keepalive_time_ms_));
+    bld.set_connection_keepalive_time(
+        MonoDelta::FromMilliseconds(keepalive_time_ms_));
     if (keepalive_time_ms_ >= 0) {
-      // In order for the keepalive timing to be accurate, we need to scan connections
-      // significantly more frequently than the keepalive time. This "coarse timer"
-      // granularity determines this.
+      // In order for the keepalive timing to be accurate, we need to scan
+      // connections significantly more frequently than the keepalive time. This
+      // "coarse timer" granularity determines this.
       bld.set_coarse_timer_granularity(
           MonoDelta::FromMilliseconds(std::min(keepalive_time_ms_ / 5, 100)));
     }
@@ -462,8 +509,10 @@ class RpcTestBase : public KuduTest {
     return bld.Build(messenger);
   }
 
-  Status DoTestSyncCall(const Proxy &p, const char *method,
-                        CredentialsPolicy policy = CredentialsPolicy::ANY_CREDENTIALS) {
+  Status DoTestSyncCall(
+      const Proxy& p,
+      const char* method,
+      CredentialsPolicy policy = CredentialsPolicy::ANY_CREDENTIALS) {
     AddRequestPB req;
     req.set_x(rand());
     req.set_y(rand());
@@ -477,7 +526,7 @@ class RpcTestBase : public KuduTest {
     return Status::OK();
   }
 
-  void DoTestSidecar(const Proxy &p, int size1, int size2) {
+  void DoTestSidecar(const Proxy& p, int size1, int size2) {
     const uint32_t kSeed = 12345;
 
     SendTwoStringsRequestPB req;
@@ -488,8 +537,11 @@ class RpcTestBase : public KuduTest {
     SendTwoStringsResponsePB resp;
     RpcController controller;
     controller.set_timeout(MonoDelta::FromMilliseconds(10000));
-    CHECK_OK(p.SyncRequest(GenericCalculatorService::kSendTwoStringsMethodName,
-                           req, &resp, &controller));
+    CHECK_OK(p.SyncRequest(
+        GenericCalculatorService::kSendTwoStringsMethodName,
+        req,
+        &resp,
+        &controller));
 
     Slice first = GetSidecarPointer(controller, resp.sidecar1(), size1);
     Slice second = GetSidecarPointer(controller, resp.sidecar2(), size2);
@@ -505,24 +557,29 @@ class RpcTestBase : public KuduTest {
     CHECK_EQ(0, second.compare(Slice(expected)));
   }
 
-  Status DoTestOutgoingSidecar(const Proxy &p, int size1, int size2) {
+  Status DoTestOutgoingSidecar(const Proxy& p, int size1, int size2) {
     PushTwoStringsRequestPB request;
     RpcController controller;
 
     int idx1;
     std::string s1(size1, 'a');
-    CHECK_OK(controller.AddOutboundSidecar(RpcSidecar::FromSlice(Slice(s1)), &idx1));
+    CHECK_OK(
+        controller.AddOutboundSidecar(RpcSidecar::FromSlice(Slice(s1)), &idx1));
 
     int idx2;
     std::string s2(size2, 'b');
-    CHECK_OK(controller.AddOutboundSidecar(RpcSidecar::FromSlice(Slice(s2)), &idx2));
+    CHECK_OK(
+        controller.AddOutboundSidecar(RpcSidecar::FromSlice(Slice(s2)), &idx2));
 
     request.set_sidecar1_idx(idx1);
     request.set_sidecar2_idx(idx2);
 
     PushTwoStringsResponsePB resp;
-    KUDU_RETURN_NOT_OK(p.SyncRequest(GenericCalculatorService::kPushTwoStringsMethodName,
-                                     request, &resp, &controller));
+    KUDU_RETURN_NOT_OK(p.SyncRequest(
+        GenericCalculatorService::kPushTwoStringsMethodName,
+        request,
+        &resp,
+        &controller));
     CHECK_EQ(size1, resp.size1());
     CHECK_EQ(resp.data1(), s1);
     CHECK_EQ(size2, resp.size2());
@@ -530,13 +587,14 @@ class RpcTestBase : public KuduTest {
     return Status::OK();
   }
 
-  void DoTestOutgoingSidecarExpectOK(const Proxy &p, int size1, int size2) {
+  void DoTestOutgoingSidecarExpectOK(const Proxy& p, int size1, int size2) {
     CHECK_OK(DoTestOutgoingSidecar(p, size1, size2));
   }
 
-  void DoTestExpectTimeout(const Proxy& p,
-                           const MonoDelta& timeout,
-                           bool* is_negotiaton_error = nullptr) {
+  void DoTestExpectTimeout(
+      const Proxy& p,
+      const MonoDelta& timeout,
+      bool* is_negotiaton_error = nullptr) {
     SleepRequestPB req;
     SleepResponsePB resp;
     // Sleep for 500ms longer than the call timeout.
@@ -547,7 +605,8 @@ class RpcTestBase : public KuduTest {
     c.set_timeout(timeout);
     Stopwatch sw;
     sw.start();
-    Status s = p.SyncRequest(GenericCalculatorService::kSleepMethodName, req, &resp, &c);
+    Status s = p.SyncRequest(
+        GenericCalculatorService::kSleepMethodName, req, &resp, &c);
     sw.stop();
     ASSERT_FALSE(s.ok());
     if (is_negotiaton_error != nullptr) {
@@ -562,34 +621,46 @@ class RpcTestBase : public KuduTest {
     // And we also shouldn't take the full time that we asked for
     EXPECT_LT(elapsed_millis * 1000, sleep_micros);
     EXPECT_TRUE(s.IsTimedOut());
-    LOG(INFO) << "status: " << s.ToString() << ", seconds elapsed: " << sw.elapsed().wall_seconds();
+    LOG(INFO) << "status: " << s.ToString()
+              << ", seconds elapsed: " << sw.elapsed().wall_seconds();
   }
 
-  Status StartTestServer(Sockaddr *server_addr,
-                         bool enable_ssl = false,
-                         const std::string& rpc_certificate_file = "",
-                         const std::string& rpc_private_key_file = "",
-                         const std::string& rpc_ca_certificate_file = "",
-                         const std::string& rpc_private_key_password_cmd = "",
-                         const std::shared_ptr<Messenger>& messenger = nullptr) {
+  Status StartTestServer(
+      Sockaddr* server_addr,
+      bool enable_ssl = false,
+      const std::string& rpc_certificate_file = "",
+      const std::string& rpc_private_key_file = "",
+      const std::string& rpc_ca_certificate_file = "",
+      const std::string& rpc_private_key_password_cmd = "",
+      const std::shared_ptr<Messenger>& messenger = nullptr) {
     return DoStartTestServer<GenericCalculatorService>(
-        server_addr, enable_ssl, rpc_certificate_file, rpc_private_key_file,
-        rpc_ca_certificate_file, rpc_private_key_password_cmd, messenger);
+        server_addr,
+        enable_ssl,
+        rpc_certificate_file,
+        rpc_private_key_file,
+        rpc_ca_certificate_file,
+        rpc_private_key_password_cmd,
+        messenger);
   }
 
-  Status StartTestServerWithGeneratedCode(Sockaddr *server_addr, bool enable_ssl = false) {
+  Status StartTestServerWithGeneratedCode(
+      Sockaddr* server_addr,
+      bool enable_ssl = false) {
     return DoStartTestServer<CalculatorService>(server_addr, enable_ssl);
   }
 
-  Status StartTestServerWithCustomMessenger(Sockaddr *server_addr,
-      const std::shared_ptr<Messenger>& messenger, bool enable_ssl = false) {
+  Status StartTestServerWithCustomMessenger(
+      Sockaddr* server_addr,
+      const std::shared_ptr<Messenger>& messenger,
+      bool enable_ssl = false) {
     return DoStartTestServer<GenericCalculatorService>(
         server_addr, enable_ssl, "", "", "", "", messenger);
   }
 
   // Start a simple socket listening on a local port, returning the address.
-  // This isn't an RPC server -- just a plain socket which can be helpful for testing.
-  Status StartFakeServer(Socket *listen_sock, Sockaddr *listen_addr) {
+  // This isn't an RPC server -- just a plain socket which can be helpful for
+  // testing.
+  Status StartFakeServer(Socket* listen_sock, Sockaddr* listen_addr) {
     Sockaddr bind_addr;
     bind_addr.set_port(0);
     RETURN_NOT_OK(listen_sock->Init(0));
@@ -600,27 +671,34 @@ class RpcTestBase : public KuduTest {
   }
 
  private:
-
-  static Slice GetSidecarPointer(const RpcController& controller, int idx,
-                                 int expected_size) {
+  static Slice GetSidecarPointer(
+      const RpcController& controller,
+      int idx,
+      int expected_size) {
     Slice sidecar;
     CHECK_OK(controller.GetInboundSidecar(idx, &sidecar));
     CHECK_EQ(expected_size, sidecar.size());
     return Slice(sidecar.data(), expected_size);
   }
 
-  template<class ServiceClass>
-  Status DoStartTestServer(Sockaddr *server_addr,
-                           bool enable_ssl = false,
-                           const std::string& rpc_certificate_file = "",
-                           const std::string& rpc_private_key_file = "",
-                           const std::string& rpc_ca_certificate_file = "",
-                           const std::string& rpc_private_key_password_cmd = "",
-                           const std::shared_ptr<Messenger>& messenger = nullptr) {
+  template <class ServiceClass>
+  Status DoStartTestServer(
+      Sockaddr* server_addr,
+      bool enable_ssl = false,
+      const std::string& rpc_certificate_file = "",
+      const std::string& rpc_private_key_file = "",
+      const std::string& rpc_ca_certificate_file = "",
+      const std::string& rpc_private_key_password_cmd = "",
+      const std::shared_ptr<Messenger>& messenger = nullptr) {
     if (!messenger) {
       RETURN_NOT_OK(CreateMessenger(
-          "TestServer", &server_messenger_, n_server_reactor_threads_, enable_ssl,
-          rpc_certificate_file, rpc_private_key_file, rpc_ca_certificate_file,
+          "TestServer",
+          &server_messenger_,
+          n_server_reactor_threads_,
+          enable_ssl,
+          rpc_certificate_file,
+          rpc_private_key_file,
+          rpc_ca_certificate_file,
           rpc_private_key_password_cmd));
     } else {
       server_messenger_ = messenger;
@@ -632,10 +710,13 @@ class RpcTestBase : public KuduTest {
     mem_tracker_ = MemTracker::CreateTracker(-1, "result_tracker");
     result_tracker_.reset(new ResultTracker(mem_tracker_));
 
-    gscoped_ptr<ServiceIf> service(new ServiceClass(metric_entity_, result_tracker_));
+    gscoped_ptr<ServiceIf> service(
+        new ServiceClass(metric_entity_, result_tracker_));
     service_name_ = service->service_name();
-    scoped_refptr<MetricEntity> metric_entity = server_messenger_->metric_entity();
-    service_pool_ = new ServicePool(std::move(service), metric_entity, service_queue_length_);
+    scoped_refptr<MetricEntity> metric_entity =
+        server_messenger_->metric_entity();
+    service_pool_ = new ServicePool(
+        std::move(service), metric_entity, service_queue_length_);
     server_messenger_->RegisterService(service_name_, service_pool_);
     RETURN_NOT_OK(service_pool_->Init(n_worker_threads_));
 

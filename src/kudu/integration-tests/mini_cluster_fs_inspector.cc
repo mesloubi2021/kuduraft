@@ -39,31 +39,33 @@ namespace kudu {
 namespace itest {
 
 using cluster::MiniCluster;
+using consensus::ConsensusMetadataPB;
+using env_util::ListFilesInDir;
 using std::set;
 using std::string;
 using std::vector;
-using consensus::ConsensusMetadataPB;
-using env_util::ListFilesInDir;
 using strings::Substitute;
 using tablet::TabletDataState;
 using tablet::TabletSuperBlockPB;
 
 MiniClusterFsInspector::MiniClusterFsInspector(MiniCluster* cluster)
-    : cluster_(cluster),
-      env_(cluster->env()) {}
+    : cluster_(cluster), env_(cluster->env()) {}
 
-int MiniClusterFsInspector::CountFilesInDir(const string& path,
-                                            StringPiece pattern) {
+int MiniClusterFsInspector::CountFilesInDir(
+    const string& path,
+    StringPiece pattern) {
   vector<string> entries;
   Status s = ListFilesInDir(env_, path, &entries);
-  if (!s.ok()) return 0;
+  if (!s.ok())
+    return 0;
   return std::count_if(entries.begin(), entries.end(), [&](const string& s) {
-      return pattern.empty() || MatchPattern(s, pattern);
-    });
+    return pattern.empty() || MatchPattern(s, pattern);
+  });
 }
 
 string MiniClusterFsInspector::WalDirForTS(int ts_idx) const {
-  return JoinPathSegments(cluster_->WalRootForTS(ts_idx), FsManager::kWalDirName);
+  return JoinPathSegments(
+      cluster_->WalRootForTS(ts_idx), FsManager::kWalDirName);
 }
 
 int MiniClusterFsInspector::CountWALFilesOnTS(int ts_idx) {
@@ -88,8 +90,8 @@ vector<string> MiniClusterFsInspector::ListTablets() {
 }
 
 vector<string> MiniClusterFsInspector::ListTabletsOnTS(int ts_idx) {
-  string meta_dir = JoinPathSegments(cluster_->WalRootForTS(ts_idx),
-                                     FsManager::kTabletMetadataDirName);
+  string meta_dir = JoinPathSegments(
+      cluster_->WalRootForTS(ts_idx), FsManager::kTabletMetadataDirName);
   vector<string> tablets;
   CHECK_OK(ListFilesInDir(env_, meta_dir, &tablets));
   return tablets;
@@ -112,79 +114,90 @@ int MiniClusterFsInspector::CountFilesInWALDirForTS(
   return CountFilesInDir(tablet_wal_dir, pattern);
 }
 
-bool MiniClusterFsInspector::DoesConsensusMetaExistForTabletOnTS(int ts_idx,
-                                                                 const string& tablet_id) {
+bool MiniClusterFsInspector::DoesConsensusMetaExistForTabletOnTS(
+    int ts_idx,
+    const string& tablet_id) {
   ConsensusMetadataPB cmeta_pb;
   Status s = ReadConsensusMetadataOnTS(ts_idx, tablet_id, &cmeta_pb);
   return s.ok();
 }
 
 int MiniClusterFsInspector::CountReplicasInMetadataDirs() {
-  // Rather than using FsManager's functionality for listing blocks, we just manually
-  // list the contents of the metadata directory. This is because we're using an
-  // external minicluster, and initializing a new FsManager to point at the running
-  // tablet servers isn't easy.
+  // Rather than using FsManager's functionality for listing blocks, we just
+  // manually list the contents of the metadata directory. This is because we're
+  // using an external minicluster, and initializing a new FsManager to point at
+  // the running tablet servers isn't easy.
   int count = 0;
   for (int i = 0; i < cluster_->num_tablet_servers(); i++) {
-    count += CountFilesInDir(JoinPathSegments(cluster_->WalRootForTS(i),
-                                              FsManager::kTabletMetadataDirName));
+    count += CountFilesInDir(JoinPathSegments(
+        cluster_->WalRootForTS(i), FsManager::kTabletMetadataDirName));
   }
   return count;
 }
 
 Status MiniClusterFsInspector::CheckNoDataOnTS(int ts_idx) {
   const string& wal_root = cluster_->WalRootForTS(ts_idx);
-  if (CountFilesInDir(JoinPathSegments(wal_root, FsManager::kTabletMetadataDirName)) > 0) {
+  if (CountFilesInDir(
+          JoinPathSegments(wal_root, FsManager::kTabletMetadataDirName)) > 0) {
     return Status::IllegalState("tablet metadata blocks still exist", wal_root);
   }
   if (CountWALFilesOnTS(ts_idx) > 0) {
     return Status::IllegalState("wals still exist", wal_root);
   }
-  if (CountFilesInDir(JoinPathSegments(wal_root, FsManager::kConsensusMetadataDirName)) > 0) {
+  if (CountFilesInDir(JoinPathSegments(
+          wal_root, FsManager::kConsensusMetadataDirName)) > 0) {
     return Status::IllegalState("consensus metadata still exists", wal_root);
   }
-  return Status::OK();;
+  return Status::OK();
+  ;
 }
 
 Status MiniClusterFsInspector::CheckNoData() {
   for (int i = 0; i < cluster_->num_tablet_servers(); i++) {
     RETURN_NOT_OK(CheckNoDataOnTS(i));
   }
-  return Status::OK();;
+  return Status::OK();
+  ;
 }
 
-string MiniClusterFsInspector::GetTabletSuperBlockPathOnTS(int ts_idx,
-                                                           const string& tablet_id) const {
-  string meta_dir = JoinPathSegments(cluster_->WalRootForTS(ts_idx),
-                                     FsManager::kTabletMetadataDirName);
+string MiniClusterFsInspector::GetTabletSuperBlockPathOnTS(
+    int ts_idx,
+    const string& tablet_id) const {
+  string meta_dir = JoinPathSegments(
+      cluster_->WalRootForTS(ts_idx), FsManager::kTabletMetadataDirName);
   return JoinPathSegments(meta_dir, tablet_id);
 }
 
-Status MiniClusterFsInspector::ReadTabletSuperBlockOnTS(int ts_idx,
-                                                        const string& tablet_id,
-                                                        TabletSuperBlockPB* sb) {
+Status MiniClusterFsInspector::ReadTabletSuperBlockOnTS(
+    int ts_idx,
+    const string& tablet_id,
+    TabletSuperBlockPB* sb) {
   const auto& sb_path = GetTabletSuperBlockPathOnTS(ts_idx, tablet_id);
   return pb_util::ReadPBContainerFromPath(env_, sb_path, sb);
 }
 
-int64_t MiniClusterFsInspector::GetTabletSuperBlockMTimeOrDie(int ts_idx,
-                                                              const string& tablet_id) {
+int64_t MiniClusterFsInspector::GetTabletSuperBlockMTimeOrDie(
+    int ts_idx,
+    const string& tablet_id) {
   int64_t timestamp;
   CHECK_OK(env_->GetFileModifiedTime(
       GetTabletSuperBlockPathOnTS(ts_idx, tablet_id), &timestamp));
   return timestamp;
 }
 
-string MiniClusterFsInspector::GetConsensusMetadataPathOnTS(int ts_idx,
-                                                            const string& tablet_id) const {
+string MiniClusterFsInspector::GetConsensusMetadataPathOnTS(
+    int ts_idx,
+    const string& tablet_id) const {
   string wal_root = cluster_->WalRootForTS(ts_idx);
-  string cmeta_dir = JoinPathSegments(wal_root, FsManager::kConsensusMetadataDirName);
+  string cmeta_dir =
+      JoinPathSegments(wal_root, FsManager::kConsensusMetadataDirName);
   return JoinPathSegments(cmeta_dir, tablet_id);
 }
 
-Status MiniClusterFsInspector::ReadConsensusMetadataOnTS(int ts_idx,
-                                                         const string& tablet_id,
-                                                         ConsensusMetadataPB* cmeta_pb) {
+Status MiniClusterFsInspector::ReadConsensusMetadataOnTS(
+    int ts_idx,
+    const string& tablet_id,
+    ConsensusMetadataPB* cmeta_pb) {
   auto cmeta_path = GetConsensusMetadataPathOnTS(ts_idx, tablet_id);
   if (!env_->FileExists(cmeta_path)) {
     return Status::NotFound("Consensus metadata file not found", cmeta_path);
@@ -197,10 +210,9 @@ Status MiniClusterFsInspector::WriteConsensusMetadataOnTS(
     const string& tablet_id,
     const ConsensusMetadataPB& cmeta_pb) {
   auto cmeta_path = GetConsensusMetadataPathOnTS(ts_idx, tablet_id);
-  return pb_util::WritePBContainerToPath(env_, cmeta_path, cmeta_pb,
-                                         pb_util::OVERWRITE, pb_util::NO_SYNC);
+  return pb_util::WritePBContainerToPath(
+      env_, cmeta_path, cmeta_pb, pb_util::OVERWRITE, pb_util::NO_SYNC);
 }
-
 
 Status MiniClusterFsInspector::CheckTabletDataStateOnTS(
     int ts_idx,
@@ -208,8 +220,10 @@ Status MiniClusterFsInspector::CheckTabletDataStateOnTS(
     const vector<TabletDataState>& allowed_states) {
   TabletSuperBlockPB sb;
   RETURN_NOT_OK(ReadTabletSuperBlockOnTS(ts_idx, tablet_id, &sb));
-  if (std::find(allowed_states.begin(), allowed_states.end(), sb.tablet_data_state()) !=
-      allowed_states.end()) {
+  if (std::find(
+          allowed_states.begin(),
+          allowed_states.end(),
+          sb.tablet_data_state()) != allowed_states.end()) {
     return Status::OK();
   }
 
@@ -222,9 +236,10 @@ Status MiniClusterFsInspector::CheckTabletDataStateOnTS(
     expected_str = "one of: " + expected_str;
   }
 
-  return Status::IllegalState(Substitute("State $0 unexpected, expected $1",
-                                         TabletDataState_Name(sb.tablet_data_state()),
-                                         expected_str));
+  return Status::IllegalState(Substitute(
+      "State $0 unexpected, expected $1",
+      TabletDataState_Name(sb.tablet_data_state()),
+      expected_str));
 }
 
 Status MiniClusterFsInspector::WaitForNoData(const MonoDelta& timeout) {
@@ -232,7 +247,8 @@ Status MiniClusterFsInspector::WaitForNoData(const MonoDelta& timeout) {
   Status s;
   while (true) {
     s = CheckNoData();
-    if (s.ok()) return Status::OK();
+    if (s.ok())
+      return Status::OK();
     if (deadline < MonoTime::Now()) {
       break;
     }
@@ -241,12 +257,15 @@ Status MiniClusterFsInspector::WaitForNoData(const MonoDelta& timeout) {
   return Status::TimedOut("Timed out waiting for no data", s.ToString());
 }
 
-Status MiniClusterFsInspector::WaitForNoDataOnTS(int ts_idx, const MonoDelta& timeout) {
+Status MiniClusterFsInspector::WaitForNoDataOnTS(
+    int ts_idx,
+    const MonoDelta& timeout) {
   MonoTime deadline = MonoTime::Now() + timeout;
   Status s;
   while (true) {
     s = CheckNoDataOnTS(ts_idx);
-    if (s.ok()) return Status::OK();
+    if (s.ok())
+      return Status::OK();
     if (deadline < MonoTime::Now()) {
       break;
     }
@@ -255,26 +274,34 @@ Status MiniClusterFsInspector::WaitForNoDataOnTS(int ts_idx, const MonoDelta& ti
   return Status::TimedOut("Timed out waiting for no data", s.ToString());
 }
 
-Status MiniClusterFsInspector::WaitForMinFilesInTabletWalDirOnTS(int ts_idx,
-                                                                 const string& tablet_id,
-                                                                 int count,
-                                                                 const MonoDelta& timeout) {
+Status MiniClusterFsInspector::WaitForMinFilesInTabletWalDirOnTS(
+    int ts_idx,
+    const string& tablet_id,
+    int count,
+    const MonoDelta& timeout) {
   int seen = 0;
   MonoTime deadline = MonoTime::Now() + timeout;
   while (true) {
     seen = CountFilesInWALDirForTS(ts_idx, tablet_id);
-    if (seen >= count) return Status::OK();
+    if (seen >= count)
+      return Status::OK();
     if (deadline < MonoTime::Now()) {
       break;
     }
     SleepFor(MonoDelta::FromMilliseconds(10));
   }
-  return Status::TimedOut(Substitute("Timed out waiting for number of WAL segments on tablet $0 "
-                                     "on TS $1 to be $2. Found $3",
-                                     tablet_id, ts_idx, count, seen));
+  return Status::TimedOut(Substitute(
+      "Timed out waiting for number of WAL segments on tablet $0 "
+      "on TS $1 to be $2. Found $3",
+      tablet_id,
+      ts_idx,
+      count,
+      seen));
 }
 
-Status MiniClusterFsInspector::WaitForReplicaCount(int expected, const MonoDelta& timeout) {
+Status MiniClusterFsInspector::WaitForReplicaCount(
+    int expected,
+    const MonoDelta& timeout) {
   const MonoTime deadline = MonoTime::Now() + timeout;
   int found;
   while (true) {
@@ -287,9 +314,11 @@ Status MiniClusterFsInspector::WaitForReplicaCount(int expected, const MonoDelta
     }
     SleepFor(MonoDelta::FromMilliseconds(10));
   }
-  return Status::TimedOut(
-      Substitute("Timed out waiting for a total replica count of $0. "
-                 "Found $1 replicas", expected, found));
+  return Status::TimedOut(Substitute(
+      "Timed out waiting for a total replica count of $0. "
+      "Found $1 replicas",
+      expected,
+      found));
 }
 
 Status MiniClusterFsInspector::WaitForTabletDataStateOnTS(
@@ -302,17 +331,21 @@ Status MiniClusterFsInspector::WaitForTabletDataStateOnTS(
   Status s;
   while (true) {
     s = CheckTabletDataStateOnTS(ts_idx, tablet_id, expected_states);
-    if (s.ok()) return Status::OK();
-    if (MonoTime::Now() > deadline) break;
+    if (s.ok())
+      return Status::OK();
+    if (MonoTime::Now() > deadline)
+      break;
     SleepFor(MonoDelta::FromMilliseconds(5));
   }
-  return Status::TimedOut(Substitute("Timed out after $0 waiting for correct tablet state: $1",
-                                     (MonoTime::Now() - start).ToString(),
-                                     s.ToString()));
+  return Status::TimedOut(Substitute(
+      "Timed out after $0 waiting for correct tablet state: $1",
+      (MonoTime::Now() - start).ToString(),
+      s.ToString()));
 }
 
 Status MiniClusterFsInspector::WaitForFilePatternInTabletWalDirOnTs(
-    int ts_idx, const string& tablet_id,
+    int ts_idx,
+    const string& tablet_id,
     const vector<string>& substrings_required,
     const vector<string>& substrings_disallowed,
     const MonoDelta& timeout) {
@@ -339,19 +372,23 @@ Status MiniClusterFsInspector::WaitForFilePatternInTabletWalDirOnTs(
       }
       if (!filter_matched) {
         any_missing_required = true;
-        error_msg += "missing from substrings_required: " + required_filter + "; ";
+        error_msg +=
+            "missing from substrings_required: " + required_filter + "; ";
         break;
       }
     }
 
     bool any_present_disallowed = false;
     for (const string& entry : entries) {
-      if (any_present_disallowed) break;
+      if (any_present_disallowed)
+        break;
       for (const string& disallowed_filter : substrings_disallowed) {
         if (entry.find(disallowed_filter) != string::npos) {
           any_present_disallowed = true;
-          error_msg += Substitute("present from substrings_disallowed: $0 ($1)",
-                                  entry, disallowed_filter);
+          error_msg += Substitute(
+              "present from substrings_disallowed: $0 ($1)",
+              entry,
+              disallowed_filter);
           break;
         }
       }
@@ -366,12 +403,15 @@ Status MiniClusterFsInspector::WaitForFilePatternInTabletWalDirOnTs(
     SleepFor(MonoDelta::FromMilliseconds(10));
   }
 
-  return Status::TimedOut(Substitute("Timed out waiting for file pattern on "
-                                     "tablet $0 on TS $1 in directory $2",
-                                     tablet_id, ts_idx, tablet_wal_dir),
-                          error_msg + "entries: " + JoinStrings(entries, ", "));
+  return Status::TimedOut(
+      Substitute(
+          "Timed out waiting for file pattern on "
+          "tablet $0 on TS $1 in directory $2",
+          tablet_id,
+          ts_idx,
+          tablet_wal_dir),
+      error_msg + "entries: " + JoinStrings(entries, ", "));
 }
 
 } // namespace itest
 } // namespace kudu
-

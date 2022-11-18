@@ -50,9 +50,15 @@ namespace tools {
 
 const char* RecordTypeToString(RecordType r) {
   switch (r) {
-    case RecordType::kStacks: return "stacks"; break;
-    case RecordType::kSymbols: return "symbols"; break;
-    case RecordType::kUnknown: return "<unknown>"; break;
+    case RecordType::kStacks:
+      return "stacks";
+      break;
+    case RecordType::kSymbols:
+      return "symbols";
+      break;
+    case RecordType::kUnknown:
+      return "<unknown>";
+      break;
   }
   return "<unreachable>";
 }
@@ -61,7 +67,9 @@ std::ostream& operator<<(std::ostream& o, RecordType r) {
   return o << RecordTypeToString(r);
 }
 
-void StackDumpingLogVisitor::VisitSymbol(const string& addr, const string& symbol) {
+void StackDumpingLogVisitor::VisitSymbol(
+    const string& addr,
+    const string& symbol) {
   InsertIfNotPresent(&symbols_, addr, symbol);
 }
 
@@ -73,8 +81,9 @@ void StackDumpingLogVisitor::VisitStacksRecord(const StacksRecord& sr) {
   cout << "Stacks at " << sr.date_time << " (" << sr.reason << "):" << endl;
   for (const auto& group : sr.groups) {
     cout << "  tids=["
-          << JoinMapped(group.tids, [](int t) { return std::to_string(t); }, ",")
-          << "]" << endl;
+         << JoinMapped(
+                group.tids, [](int t) { return std::to_string(t); }, ",")
+         << "]" << endl;
     for (const auto& addr : group.frame_addrs) {
       // NOTE: passing 'kUnknownSymbols' as the default instead of a "foo"
       // literal is important to avoid capturing a reference to a temporary.
@@ -97,8 +106,8 @@ Status ParsedLine::Parse(string line) {
     return Status::InvalidArgument("lines must start with 'I'");
   }
 
-  array<StringPiece, 5> fields = strings::Split(
-      line_, strings::delimiter::Limit(" ", 4));
+  array<StringPiece, 5> fields =
+      strings::Split(line_, strings::delimiter::Limit(" ", 4));
   fields[0].remove_prefix(1); // Remove the 'I'.
   // Sanity check the microsecond timestamp.
   // Eventually, it should be used when processing metrics records.
@@ -130,9 +139,7 @@ string ParsedLine::date_time() const {
   return Substitute("$0 $1", date_, time_);
 }
 
-LogParser::LogParser(LogVisitor* visitor)
-    : visitor_(CHECK_NOTNULL(visitor)) {
-}
+LogParser::LogParser(LogVisitor* visitor) : visitor_(CHECK_NOTNULL(visitor)) {}
 
 Status LogParser::ParseLine(string line) {
   ParsedLine pl;
@@ -156,9 +163,7 @@ Status LogParser::ParseSymbols(const ParsedLine& pl) {
   if (!pl.json()->IsObject()) {
     return Status::InvalidArgument("expected symbols data to be a JSON object");
   }
-  for (auto it = pl.json()->MemberBegin();
-       it != pl.json()->MemberEnd();
-       ++it) {
+  for (auto it = pl.json()->MemberBegin(); it != pl.json()->MemberEnd(); ++it) {
     if (PREDICT_FALSE(!it->value.IsString())) {
       return Status::InvalidArgument("expected symbol values to be strings");
     }
@@ -168,15 +173,17 @@ Status LogParser::ParseSymbols(const ParsedLine& pl) {
   return Status::OK();
 }
 
-Status LogParser::ParseStackGroup(const rapidjson::Value& group_json,
-                                  StacksRecord::Group* group) {
+Status LogParser::ParseStackGroup(
+    const rapidjson::Value& group_json,
+    StacksRecord::Group* group) {
   DCHECK(group);
   StacksRecord::Group ret;
   if (PREDICT_FALSE(!group_json.IsObject())) {
     return Status::InvalidArgument("expected stacks groups to be JSON objects");
   }
   if (!group_json.HasMember("tids") || !group_json.HasMember("stack")) {
-    return Status::InvalidArgument("expected stacks groups to have frames and tids");
+    return Status::InvalidArgument(
+        "expected stacks groups to have frames and tids");
   }
 
   // Parse the tids.
@@ -185,9 +192,7 @@ Status LogParser::ParseStackGroup(const rapidjson::Value& group_json,
     return Status::InvalidArgument("expected 'tids' to be an array");
   }
   ret.tids.reserve(tids.Size());
-  for (const auto* tid = tids.Begin();
-       tid != tids.End();
-       ++tid) {
+  for (const auto* tid = tids.Begin(); tid != tids.End(); ++tid) {
     if (PREDICT_FALSE(!tid->IsNumber())) {
       return Status::InvalidArgument("expected 'tids' elements to be numeric");
     }
@@ -199,9 +204,7 @@ Status LogParser::ParseStackGroup(const rapidjson::Value& group_json,
   if (PREDICT_FALSE(!stack.IsArray())) {
     return Status::InvalidArgument("expected 'stack' to be an array");
   }
-  for (const auto* frame = stack.Begin();
-       frame != stack.End();
-       ++frame) {
+  for (const auto* frame = stack.Begin(); frame != stack.End(); ++frame) {
     if (PREDICT_FALSE(!frame->IsString())) {
       return Status::InvalidArgument("expected 'stack' elements to be strings");
     }
@@ -237,8 +240,7 @@ Status LogParser::ParseStacks(const ParsedLine& pl) {
     return Status::InvalidArgument("'groups' field should be an array");
   }
 
-  for (const rapidjson::Value* group = groups.Begin();
-       group != groups.End();
+  for (const rapidjson::Value* group = groups.Begin(); group != groups.End();
        ++group) {
     StacksRecord::Group g;
     RETURN_NOT_OK(ParseStackGroup(*group, &g));
@@ -250,4 +252,3 @@ Status LogParser::ParseStacks(const ParsedLine& pl) {
 
 } // namespace tools
 } // namespace kudu
-

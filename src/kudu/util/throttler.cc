@@ -22,12 +22,18 @@
 
 namespace kudu {
 
-Throttler::Throttler(MonoTime now, uint64_t op_rate, uint64_t byte_rate, double burst_factor) :
-    next_refill_(now) {
-  op_refill_ = op_rate / (MonoTime::kMicrosecondsPerSecond / kRefillPeriodMicros);
+Throttler::Throttler(
+    MonoTime now,
+    uint64_t op_rate,
+    uint64_t byte_rate,
+    double burst_factor)
+    : next_refill_(now) {
+  op_refill_ =
+      op_rate / (MonoTime::kMicrosecondsPerSecond / kRefillPeriodMicros);
   op_token_ = 0;
   op_token_max_ = static_cast<uint64_t>(op_refill_ * burst_factor);
-  byte_refill_ = byte_rate / (MonoTime::kMicrosecondsPerSecond / kRefillPeriodMicros);
+  byte_refill_ =
+      byte_rate / (MonoTime::kMicrosecondsPerSecond / kRefillPeriodMicros);
   byte_token_ = 0;
   byte_token_max_ = static_cast<uint64_t>(byte_refill_ * burst_factor);
 }

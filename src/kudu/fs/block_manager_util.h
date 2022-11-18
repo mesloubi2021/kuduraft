@@ -38,8 +38,10 @@ namespace fs {
 class PathInstanceMetadataFile {
  public:
   // 'env' must remain valid for the lifetime of this class.
-  PathInstanceMetadataFile(Env* env, std::string block_manager_type,
-                           std::string filename);
+  PathInstanceMetadataFile(
+      Env* env,
+      std::string block_manager_type,
+      std::string filename);
 
   ~PathInstanceMetadataFile();
 
@@ -47,8 +49,9 @@ class PathInstanceMetadataFile {
   //
   // 'uuid' is this instance's UUID, and 'all_uuids' is all of the UUIDs in
   // this instance's path set.
-  Status Create(const std::string& uuid,
-                const std::vector<std::string>& all_uuids);
+  Status Create(
+      const std::string& uuid,
+      const std::vector<std::string>& all_uuids);
 
   // Opens, reads, verifies, and closes an existing instance metadata file.
   //
@@ -75,7 +78,8 @@ class PathInstanceMetadataFile {
   // Sets that the instance failed (e.g. due to a disk failure).
   //
   // If failed, there is no guarantee that the instance will have a 'metadata_'.
-  void SetInstanceFailed(const Status& s = Status::IOError("Path instance failed")) {
+  void SetInstanceFailed(
+      const Status& s = Status::IOError("Path instance failed")) {
     health_status_ = s;
   }
 
@@ -89,9 +93,15 @@ class PathInstanceMetadataFile {
     return health_status_;
   }
 
-  std::string dir() const { return DirName(filename_); }
-  const std::string& path() const { return filename_; }
-  PathInstanceMetadataPB* const metadata() const { return metadata_.get(); }
+  std::string dir() const {
+    return DirName(filename_);
+  }
+  const std::string& path() const {
+    return filename_;
+  }
+  PathInstanceMetadataPB* const metadata() const {
+    return metadata_.get();
+  }
 
   // Check the integrity of the provided instances' path sets, ignoring any
   // unhealthy instances.

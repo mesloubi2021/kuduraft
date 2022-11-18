@@ -28,6 +28,9 @@
 #include "kudu/common/partial_row.h"
 #include "kudu/util/monotime.h"
 
+using kudu::KuduPartialRow;
+using kudu::MonoDelta;
+using kudu::Status;
 using kudu::client::KuduClient;
 using kudu::client::KuduClientBuilder;
 using kudu::client::KuduColumnSchema;
@@ -45,16 +48,14 @@ using kudu::client::KuduTableAlterer;
 using kudu::client::KuduTableCreator;
 using kudu::client::KuduValue;
 using kudu::client::sp::shared_ptr;
-using kudu::KuduPartialRow;
-using kudu::MonoDelta;
-using kudu::Status;
 
 using std::ostringstream;
 using std::string;
 using std::vector;
 
-static Status CreateClient(const vector<string>& master_addrs,
-                           shared_ptr<KuduClient>* client) {
+static Status CreateClient(
+    const vector<string>& master_addrs,
+    shared_ptr<KuduClient>* client) {
   return KuduClientBuilder()
       .master_server_addrs(master_addrs)
       .default_admin_operation_timeout(MonoDelta::FromSeconds(20))
@@ -67,15 +68,18 @@ static KuduSchema CreateSchema() {
   b.AddColumn("key")->Type(KuduColumnSchema::INT32)->NotNull()->PrimaryKey();
   b.AddColumn("int_val")->Type(KuduColumnSchema::INT32)->NotNull();
   b.AddColumn("string_val")->Type(KuduColumnSchema::STRING)->NotNull();
-  b.AddColumn("non_null_with_default")->Type(KuduColumnSchema::INT32)->NotNull()
-    ->Default(KuduValue::FromInt(12345));
+  b.AddColumn("non_null_with_default")
+      ->Type(KuduColumnSchema::INT32)
+      ->NotNull()
+      ->Default(KuduValue::FromInt(12345));
   KUDU_CHECK_OK(b.Build(&schema));
   return schema;
 }
 
-static Status DoesTableExist(const shared_ptr<KuduClient>& client,
-                             const string& table_name,
-                             bool *exists) {
+static Status DoesTableExist(
+    const shared_ptr<KuduClient>& client,
+    const string& table_name,
+    bool* exists) {
   shared_ptr<KuduTable> table;
   Status s = client->OpenTable(table_name, &table);
   if (s.ok()) {
@@ -87,10 +91,11 @@ static Status DoesTableExist(const shared_ptr<KuduClient>& client,
   return s;
 }
 
-static Status CreateTable(const shared_ptr<KuduClient>& client,
-                          const string& table_name,
-                          const KuduSchema& schema,
-                          int num_tablets) {
+static Status CreateTable(
+    const shared_ptr<KuduClient>& client,
+    const string& table_name,
+    const KuduSchema& schema,
+    int num_tablets) {
   vector<string> column_names;
   column_names.push_back("key");
 
@@ -113,8 +118,9 @@ static Status CreateTable(const shared_ptr<KuduClient>& client,
   return s;
 }
 
-static Status AlterTable(const shared_ptr<KuduClient>& client,
-                         const string& table_name) {
+static Status AlterTable(
+    const shared_ptr<KuduClient>& client,
+    const string& table_name) {
   KuduTableAlterer* table_alterer = client->NewTableAlterer(table_name);
   table_alterer->AlterColumn("int_val")->RenameTo("integer_val");
   table_alterer->AddColumn("another_val")->Type(KuduColumnSchema::BOOL);
@@ -156,8 +162,8 @@ static Status InsertRows(const shared_ptr<KuduTable>& table, int num_rows) {
   bool overflow;
   session->GetPendingErrors(&errors, &overflow);
   if (!errors.empty()) {
-    s = overflow ? Status::IOError("Overflowed pending errors in session") :
-        errors.front()->status();
+    s = overflow ? Status::IOError("Overflowed pending errors in session")
+                 : errors.front()->status();
     while (!errors.empty()) {
       delete errors.back();
       errors.pop_back();
@@ -196,16 +202,15 @@ static Status ScanRows(const shared_ptr<KuduTable>& table) {
   int next_row = kLowerBound;
   while (scanner.HasMoreRows()) {
     KUDU_RETURN_NOT_OK(scanner.NextBatch(&batch));
-    for (KuduScanBatch::const_iterator it = batch.begin();
-         it != batch.end();
+    for (KuduScanBatch::const_iterator it = batch.begin(); it != batch.end();
          ++it, ++next_row) {
       KuduScanBatch::RowPtr row(*it);
       int32_t val;
       KUDU_RETURN_NOT_OK(row.GetInt32("key", &val));
       if (val != next_row) {
         ostringstream out;
-        out << "Scan returned the wrong results. Expected key "
-            << next_row << " but got " << val;
+        out << "Scan returned the wrong results. Expected key " << next_row
+            << " but got " << val;
         return Status::IOError(out.str());
       }
     }
@@ -235,13 +240,14 @@ class LogCallbackHelper {
     kudu::client::UninstallLoggingCallback();
   }
 
-  static void LogCb(void* unused,
-                    kudu::client::KuduLogSeverity severity,
-                    const char* filename,
-                    int line_number,
-                    const struct ::tm* time,
-                    const char* message,
-                    size_t message_len) {
+  static void LogCb(
+      void* unused,
+      kudu::client::KuduLogSeverity severity,
+      const char* filename,
+      int line_number,
+      const struct ::tm* time,
+      const char* message,
+      size_t message_len) {
     KUDU_LOG(INFO) << "Received log message from Kudu client library";
     KUDU_LOG(INFO) << " Severity: " << severity;
     KUDU_LOG(INFO) << " Filename: " << filename;
@@ -258,10 +264,9 @@ class LogCallbackHelper {
 };
 
 int main(int argc, char* argv[]) {
-  KUDU_LOG(INFO) << "Running with Kudu client version: " <<
-      kudu::client::GetShortVersionString();
-  KUDU_LOG(INFO) << "Long version info: " <<
-      kudu::client::GetAllVersionInfo();
+  KUDU_LOG(INFO) << "Running with Kudu client version: "
+                 << kudu::client::GetShortVersionString();
+  KUDU_LOG(INFO) << "Long version info: " << kudu::client::GetAllVersionInfo();
 
   // This is to install and automatically un-install custom logging callback.
   LogCallbackHelper log_cb_helper;

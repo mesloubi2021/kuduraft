@@ -30,8 +30,10 @@ const char* const kSaslAppName = "kudu";
 //
 // NOTE: the TLS_AUTHENTICATION_ONLY flag is dynamically added on both
 // sides based on the remote peer's address.
-set<RpcFeatureFlag> kSupportedServerRpcFeatureFlags = { APPLICATION_FEATURE_FLAGS };
-set<RpcFeatureFlag> kSupportedClientRpcFeatureFlags = { APPLICATION_FEATURE_FLAGS };
+set<RpcFeatureFlag> kSupportedServerRpcFeatureFlags = {
+    APPLICATION_FEATURE_FLAGS};
+set<RpcFeatureFlag> kSupportedClientRpcFeatureFlags = {
+    APPLICATION_FEATURE_FLAGS};
 
 } // namespace rpc
 } // namespace kudu

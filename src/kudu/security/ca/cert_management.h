@@ -67,13 +67,15 @@ class CertRequestGeneratorBase {
 
   // Generate X509 CSR using the specified key. To obtain the key,
   // call the GeneratePrivateKey() function.
-  Status GenerateRequest(const PrivateKey& key, CertSignRequest* ret) const WARN_UNUSED_RESULT;
+  Status GenerateRequest(const PrivateKey& key, CertSignRequest* ret) const
+      WARN_UNUSED_RESULT;
 
  protected:
   // Push the specified extension into the stack provided.
-  static Status PushExtension(stack_st_X509_EXTENSION* st,
-                              int32_t nid,
-                              StringPiece value) WARN_UNUSED_RESULT;
+  static Status PushExtension(
+      stack_st_X509_EXTENSION* st,
+      int32_t nid,
+      StringPiece value) WARN_UNUSED_RESULT;
 
   // Set the certificate-specific subject fields into the specified request.
   virtual Status SetSubject(X509_REQ* req) const = 0;
@@ -97,7 +99,8 @@ class CertRequestGenerator : public CertRequestGeneratorBase {
     std::string hostname;
     // userId (UID)
     boost::optional<std::string> user_id;
-    // Our custom extension which stores the full Kerberos principal for IPKI certs.
+    // Our custom extension which stores the full Kerberos principal for IPKI
+    // certs.
     boost::optional<std::string> kerberos_principal;
   };
 
@@ -169,16 +172,18 @@ class CertSigner {
  public:
   // Generate a self-signed certificate authority using the given key
   // and CSR configuration.
-  static Status SelfSignCA(const PrivateKey& key,
-                           CaCertRequestGenerator::Config config,
-                           int64_t cert_expiration_seconds,
-                           Cert* cert) WARN_UNUSED_RESULT;
+  static Status SelfSignCA(
+      const PrivateKey& key,
+      CaCertRequestGenerator::Config config,
+      int64_t cert_expiration_seconds,
+      Cert* cert) WARN_UNUSED_RESULT;
 
   // Generate a self-signed certificate using the given key and CSR
   // configuration.
-  static Status SelfSignCert(const PrivateKey& key,
-                             CertRequestGenerator::Config config,
-                             Cert* cert) WARN_UNUSED_RESULT;
+  static Status SelfSignCert(
+      const PrivateKey& key,
+      CertRequestGenerator::Config config,
+      Cert* cert) WARN_UNUSED_RESULT;
 
   // Create a CertSigner.
   //
@@ -200,13 +205,16 @@ class CertSigner {
   Status Sign(const CertSignRequest& req, Cert* ret) const WARN_UNUSED_RESULT;
 
  private:
-
   static Status CopyExtensions(X509_REQ* req, X509* x) WARN_UNUSED_RESULT;
-  static Status FillCertTemplateFromRequest(X509_REQ* req, X509* tmpl) WARN_UNUSED_RESULT;
-  static Status DigestSign(const EVP_MD* md, EVP_PKEY* pkey, X509* x) WARN_UNUSED_RESULT;
-  static Status GenerateSerial(c_unique_ptr<ASN1_INTEGER>* ret) WARN_UNUSED_RESULT;
+  static Status FillCertTemplateFromRequest(X509_REQ* req, X509* tmpl)
+      WARN_UNUSED_RESULT;
+  static Status DigestSign(const EVP_MD* md, EVP_PKEY* pkey, X509* x)
+      WARN_UNUSED_RESULT;
+  static Status GenerateSerial(c_unique_ptr<ASN1_INTEGER>* ret)
+      WARN_UNUSED_RESULT;
 
-  Status DoSign(const EVP_MD* digest, int32_t exp_seconds, X509 *ret) const WARN_UNUSED_RESULT;
+  Status DoSign(const EVP_MD* digest, int32_t exp_seconds, X509* ret) const
+      WARN_UNUSED_RESULT;
 
   // The expiration interval of certs signed by this signer.
   int32_t exp_interval_sec_ = 24 * 60 * 60;

@@ -42,17 +42,16 @@ namespace fs {
 //   unique_ptr<ReadableBlock> block;
 //   fs_manager->OpenBlock("some block id", &block);
 //   size_t bytes_read = 0;
-//   unique_ptr<ReadableBlock> tr_block(new CountingReadableBlock(std::move(block), &bytes_read));
-//   tr_block->Read(0, 100, ...);
-//   tr_block->Read(0, 200, ...);
-//   ASSERT_EQ(300, bytes_read);
+//   unique_ptr<ReadableBlock> tr_block(new
+//   CountingReadableBlock(std::move(block), &bytes_read)); tr_block->Read(0,
+//   100, ...); tr_block->Read(0, 200, ...); ASSERT_EQ(300, bytes_read);
 //
 class CountingReadableBlock : public ReadableBlock {
  public:
-  CountingReadableBlock(std::unique_ptr<ReadableBlock> block, size_t* bytes_read)
-    : block_(std::move(block)),
-      bytes_read_(bytes_read) {
-  }
+  CountingReadableBlock(
+      std::unique_ptr<ReadableBlock> block,
+      size_t* bytes_read)
+      : block_(std::move(block)), bytes_read_(bytes_read) {}
 
   virtual const BlockId& id() const override {
     return block_->id();
@@ -74,13 +73,15 @@ class CountingReadableBlock : public ReadableBlock {
     return ReadV(offset, ArrayView<Slice>(&result, 1));
   }
 
-  virtual Status ReadV(uint64_t offset, ArrayView<Slice> results) const override {
+  virtual Status ReadV(uint64_t offset, ArrayView<Slice> results)
+      const override {
     RETURN_NOT_OK(block_->ReadV(offset, results));
     // Calculate the read amount of data
-    size_t length = std::accumulate(results.begin(), results.end(), static_cast<size_t>(0),
-                               [&](int sum, const Slice& curr) {
-                                 return sum + curr.size();
-                               });
+    size_t length = std::accumulate(
+        results.begin(),
+        results.end(),
+        static_cast<size_t>(0),
+        [&](int sum, const Slice& curr) { return sum + curr.size(); });
     *bytes_read_ += length;
     return Status::OK();
   }
@@ -97,8 +98,12 @@ class CountingReadableBlock : public ReadableBlock {
 // Creates a copy of the specified block and corrupts a byte of its data at the
 // given 'corrupt_offset' by flipping a bit at offset 'flip_bit'. Returns the
 // block id of the corrupted block. Does not change the original block.
-inline Status CreateCorruptBlock(FsManager* fs_manager, const BlockId in_id,
-    const uint64_t corrupt_offset, uint8_t flip_bit, BlockId* out_id) {
+inline Status CreateCorruptBlock(
+    FsManager* fs_manager,
+    const BlockId in_id,
+    const uint64_t corrupt_offset,
+    uint8_t flip_bit,
+    BlockId* out_id) {
   DCHECK_LT(flip_bit, 8);
 
   // Read the input block

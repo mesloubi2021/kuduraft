@@ -87,9 +87,8 @@ TEST_F(KuduTest, TestWebUIDoesNotCrashCluster) {
   NO_FATALS(cluster.AssertNoCrashes());
   cluster.Shutdown();
   ASSERT_OK(cluster.Restart());
-  ASSERT_OK(cluster.WaitForTabletsRunning(cluster.tablet_server(0),
-                                          kNumTablets,
-                                          MonoDelta::FromSeconds(180)));
+  ASSERT_OK(cluster.WaitForTabletsRunning(
+      cluster.tablet_server(0), kNumTablets, MonoDelta::FromSeconds(180)));
   NO_FATALS(cluster.AssertNoCrashes());
 }
 

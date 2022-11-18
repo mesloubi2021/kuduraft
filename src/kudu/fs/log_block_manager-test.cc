@@ -66,8 +66,8 @@
 
 using kudu::pb_util::ReadablePBContainerFile;
 using std::set;
-using std::string;
 using std::shared_ptr;
+using std::string;
 using std::unique_ptr;
 using std::unordered_map;
 using std::unordered_set;
@@ -105,47 +105,50 @@ class LogBlockContainer;
 
 class LogBlockManagerTest : public KuduTest {
  public:
-  LogBlockManagerTest() :
-    test_tablet_name_("test_tablet"),
-    test_block_opts_({ test_tablet_name_ }),
-    test_error_manager_(new FsErrorManager()),
-    bm_(CreateBlockManager(scoped_refptr<MetricEntity>())) {
-  }
+  LogBlockManagerTest()
+      : test_tablet_name_("test_tablet"),
+        test_block_opts_({test_tablet_name_}),
+        test_error_manager_(new FsErrorManager()),
+        bm_(CreateBlockManager(scoped_refptr<MetricEntity>())) {}
 
   void SetUp() override {
     // Pass in a report to prevent the block manager from logging unnecessarily.
     FsReport report;
     ASSERT_OK(bm_->Open(&report));
     ASSERT_OK(dd_manager_->CreateDataDirGroup(test_tablet_name_));
-    ASSERT_OK(dd_manager_->GetDataDirGroupPB(test_tablet_name_, &test_group_pb_));
+    ASSERT_OK(
+        dd_manager_->GetDataDirGroupPB(test_tablet_name_, &test_group_pb_));
   }
 
  protected:
-  LogBlockManager* CreateBlockManager(const scoped_refptr<MetricEntity>& metric_entity) {
+  LogBlockManager* CreateBlockManager(
+      const scoped_refptr<MetricEntity>& metric_entity) {
     if (!dd_manager_) {
       // Ensure the directory manager is initialized.
-      CHECK_OK(DataDirManager::CreateNewForTests(env_, { test_dir_ },
-          DataDirManagerOptions(), &dd_manager_));
+      CHECK_OK(DataDirManager::CreateNewForTests(
+          env_, {test_dir_}, DataDirManagerOptions(), &dd_manager_));
     }
     BlockManagerOptions opts;
     opts.metric_entity = metric_entity;
-    return new LogBlockManager(env_, dd_manager_.get(), test_error_manager_.get(),
-                               std::move(opts));
+    return new LogBlockManager(
+        env_, dd_manager_.get(), test_error_manager_.get(), std::move(opts));
   }
 
-  Status ReopenBlockManager(const scoped_refptr<MetricEntity>& metric_entity = nullptr,
-                            FsReport* report = nullptr) {
+  Status ReopenBlockManager(
+      const scoped_refptr<MetricEntity>& metric_entity = nullptr,
+      FsReport* report = nullptr) {
     // The directory manager must outlive the block manager. Destroy the block
     // manager first to enforce this.
     bm_.reset();
 
     // Re-open the directory manager first to clear any in-memory maps.
-    RETURN_NOT_OK(DataDirManager::OpenExistingForTests(env_, { test_dir_ },
-        DataDirManagerOptions(), &dd_manager_));
+    RETURN_NOT_OK(DataDirManager::OpenExistingForTests(
+        env_, {test_dir_}, DataDirManagerOptions(), &dd_manager_));
 
     bm_.reset(CreateBlockManager(metric_entity));
     RETURN_NOT_OK(bm_->Open(report));
-    RETURN_NOT_OK(dd_manager_->LoadDataDirGroupFromPB(test_tablet_name_, test_group_pb_));
+    RETURN_NOT_OK(
+        dd_manager_->LoadDataDirGroupFromPB(test_tablet_name_, test_group_pb_));
     return Status::OK();
   }
 
@@ -221,7 +224,8 @@ class LogBlockManagerTest : public KuduTest {
       for (const string& child : children) {
         if (HasSuffixString(child, LogBlockManager::kContainerDataFileSuffix)) {
           data_files.push_back(JoinPathSegments(data_dir, child));
-        } else if (HasSuffixString(child, LogBlockManager::kContainerMetadataFileSuffix)) {
+        } else if (HasSuffixString(
+                       child, LogBlockManager::kContainerMetadataFileSuffix)) {
           metadata_files.push_back(JoinPathSegments(data_dir, child));
         }
       }
@@ -256,43 +260,50 @@ class LogBlockManagerTest : public KuduTest {
   }
 };
 
-static void CheckGaugeMetric(const scoped_refptr<MetricEntity>& entity,
-                             int expected_value, const MetricPrototype* prototype) {
-  AtomicGauge<uint64_t>* gauge = down_cast<AtomicGauge<uint64_t>*>(
-      entity->FindOrNull(*prototype).get());
+static void CheckGaugeMetric(
+    const scoped_refptr<MetricEntity>& entity,
+    int expected_value,
+    const MetricPrototype* prototype) {
+  AtomicGauge<uint64_t>* gauge =
+      down_cast<AtomicGauge<uint64_t>*>(entity->FindOrNull(*prototype).get());
   DCHECK(gauge);
   ASSERT_EQ(expected_value, gauge->value());
 }
 
-static void CheckCounterMetric(const scoped_refptr<MetricEntity>& entity,
-                               int expected_value, const MetricPrototype* prototype) {
+static void CheckCounterMetric(
+    const scoped_refptr<MetricEntity>& entity,
+    int expected_value,
+    const MetricPrototype* prototype) {
   Counter* counter = down_cast<Counter*>(entity->FindOrNull(*prototype).get());
   DCHECK(counter);
   ASSERT_EQ(expected_value, counter->value());
 }
 
-static void CheckLogMetrics(const scoped_refptr<MetricEntity>& entity,
-                            const vector<std::pair<int, const MetricPrototype*>> gauge_values,
-                            const vector<std::pair<int, const MetricPrototype*>> counter_values) {
+static void CheckLogMetrics(
+    const scoped_refptr<MetricEntity>& entity,
+    const vector<std::pair<int, const MetricPrototype*>> gauge_values,
+    const vector<std::pair<int, const MetricPrototype*>> counter_values) {
   for (const auto& gauge_value : gauge_values) {
     CheckGaugeMetric(entity, gauge_value.first, gauge_value.second);
   }
-  for (const auto& counter_value: counter_values) {
+  for (const auto& counter_value : counter_values) {
     CheckCounterMetric(entity, counter_value.first, counter_value.second);
   }
 }
 
 TEST_F(LogBlockManagerTest, MetricsTest) {
   MetricRegistry registry;
-  scoped_refptr<MetricEntity> entity = METRIC_ENTITY_server.Instantiate(&registry, "test");
+  scoped_refptr<MetricEntity> entity =
+      METRIC_ENTITY_server.Instantiate(&registry, "test");
   ASSERT_OK(ReopenBlockManager(entity));
-  NO_FATALS(CheckLogMetrics(entity,
-      { {0, &METRIC_log_block_manager_bytes_under_management},
-        {0, &METRIC_log_block_manager_blocks_under_management},
-        {0, &METRIC_log_block_manager_containers},
-        {0, &METRIC_log_block_manager_full_containers} },
-      { {0, &METRIC_log_block_manager_holes_punched},
-        {0, &METRIC_block_manager_total_blocks_deleted} }));
+  NO_FATALS(CheckLogMetrics(
+      entity,
+      {{0, &METRIC_log_block_manager_bytes_under_management},
+       {0, &METRIC_log_block_manager_blocks_under_management},
+       {0, &METRIC_log_block_manager_containers},
+       {0, &METRIC_log_block_manager_full_containers}},
+      {{0, &METRIC_log_block_manager_holes_punched},
+       {0, &METRIC_block_manager_total_blocks_deleted}}));
 
   // Lower the max container size so that we can more easily test full
   // container metrics.
@@ -301,30 +312,33 @@ TEST_F(LogBlockManagerTest, MetricsTest) {
   // One block --> one container.
   unique_ptr<WritableBlock> writer;
   ASSERT_OK(bm_->CreateBlock(test_block_opts_, &writer));
-  NO_FATALS(CheckLogMetrics(entity,
-      { {0, &METRIC_log_block_manager_bytes_under_management},
-        {0, &METRIC_log_block_manager_blocks_under_management},
-        {1, &METRIC_log_block_manager_containers},
-        {0, &METRIC_log_block_manager_full_containers} },
-      { {0, &METRIC_log_block_manager_holes_punched},
-        {0, &METRIC_block_manager_total_blocks_deleted} }));
+  NO_FATALS(CheckLogMetrics(
+      entity,
+      {{0, &METRIC_log_block_manager_bytes_under_management},
+       {0, &METRIC_log_block_manager_blocks_under_management},
+       {1, &METRIC_log_block_manager_containers},
+       {0, &METRIC_log_block_manager_full_containers}},
+      {{0, &METRIC_log_block_manager_holes_punched},
+       {0, &METRIC_block_manager_total_blocks_deleted}}));
 
   // And when the block is closed, it becomes "under management".
   ASSERT_OK(writer->Close());
-  NO_FATALS(CheckLogMetrics(entity,
-      { {0, &METRIC_log_block_manager_bytes_under_management},
-        {1, &METRIC_log_block_manager_blocks_under_management},
-        {1, &METRIC_log_block_manager_containers},
-        {0, &METRIC_log_block_manager_full_containers} },
-      { {0, &METRIC_log_block_manager_holes_punched},
-        {0, &METRIC_block_manager_total_blocks_deleted} }));
+  NO_FATALS(CheckLogMetrics(
+      entity,
+      {{0, &METRIC_log_block_manager_bytes_under_management},
+       {1, &METRIC_log_block_manager_blocks_under_management},
+       {1, &METRIC_log_block_manager_containers},
+       {0, &METRIC_log_block_manager_full_containers}},
+      {{0, &METRIC_log_block_manager_holes_punched},
+       {0, &METRIC_block_manager_total_blocks_deleted}}));
 
   // Create 10 blocks concurrently. We reuse the existing container and
   // create 9 new ones. All of them get filled.
   BlockId saved_id;
   {
     Random rand(SeedRandom());
-    unique_ptr<BlockCreationTransaction> transaction = bm_->NewCreationTransaction();
+    unique_ptr<BlockCreationTransaction> transaction =
+        bm_->NewCreationTransaction();
     for (int i = 0; i < 10; i++) {
       unique_ptr<WritableBlock> b;
       ASSERT_OK(bm_->CreateBlock(test_block_opts_, &b));
@@ -340,36 +354,40 @@ TEST_F(LogBlockManagerTest, MetricsTest) {
       transaction->AddCreatedBlock(std::move(b));
     }
     // Metrics for full containers are updated after Finalize().
-    NO_FATALS(CheckLogMetrics(entity,
-        { {0, &METRIC_log_block_manager_bytes_under_management},
-          {1, &METRIC_log_block_manager_blocks_under_management},
-          {10, &METRIC_log_block_manager_containers},
-          {10, &METRIC_log_block_manager_full_containers} },
-        { {0, &METRIC_log_block_manager_holes_punched},
-          {0, &METRIC_block_manager_total_blocks_deleted} }));
+    NO_FATALS(CheckLogMetrics(
+        entity,
+        {{0, &METRIC_log_block_manager_bytes_under_management},
+         {1, &METRIC_log_block_manager_blocks_under_management},
+         {10, &METRIC_log_block_manager_containers},
+         {10, &METRIC_log_block_manager_full_containers}},
+        {{0, &METRIC_log_block_manager_holes_punched},
+         {0, &METRIC_block_manager_total_blocks_deleted}}));
 
     ASSERT_OK(transaction->CommitCreatedBlocks());
-    NO_FATALS(CheckLogMetrics(entity,
-        { {10 * 1024, &METRIC_log_block_manager_bytes_under_management},
-          {11, &METRIC_log_block_manager_blocks_under_management},
-          {10, &METRIC_log_block_manager_containers},
-          {10, &METRIC_log_block_manager_full_containers} },
-        { {0, &METRIC_log_block_manager_holes_punched},
-          {0, &METRIC_block_manager_total_blocks_deleted} }));
+    NO_FATALS(CheckLogMetrics(
+        entity,
+        {{10 * 1024, &METRIC_log_block_manager_bytes_under_management},
+         {11, &METRIC_log_block_manager_blocks_under_management},
+         {10, &METRIC_log_block_manager_containers},
+         {10, &METRIC_log_block_manager_full_containers}},
+        {{0, &METRIC_log_block_manager_holes_punched},
+         {0, &METRIC_block_manager_total_blocks_deleted}}));
   }
 
   // Reopen the block manager and test the metrics. They're all based on
   // persistent information so they should be the same.
   MetricRegistry new_registry;
-  scoped_refptr<MetricEntity> new_entity = METRIC_ENTITY_server.Instantiate(&new_registry, "test");
+  scoped_refptr<MetricEntity> new_entity =
+      METRIC_ENTITY_server.Instantiate(&new_registry, "test");
   ASSERT_OK(ReopenBlockManager(new_entity));
-  NO_FATALS(CheckLogMetrics(new_entity,
-      { {10 * 1024, &METRIC_log_block_manager_bytes_under_management},
-        {11, &METRIC_log_block_manager_blocks_under_management},
-        {10, &METRIC_log_block_manager_containers},
-        {10, &METRIC_log_block_manager_full_containers} },
-      { {0, &METRIC_log_block_manager_holes_punched},
-        {0, &METRIC_block_manager_total_blocks_deleted} }));
+  NO_FATALS(CheckLogMetrics(
+      new_entity,
+      {{10 * 1024, &METRIC_log_block_manager_bytes_under_management},
+       {11, &METRIC_log_block_manager_blocks_under_management},
+       {10, &METRIC_log_block_manager_containers},
+       {10, &METRIC_log_block_manager_full_containers}},
+      {{0, &METRIC_log_block_manager_holes_punched},
+       {0, &METRIC_block_manager_total_blocks_deleted}}));
 
   // Delete a block. Its contents should no longer be under management.
   {
@@ -378,33 +396,37 @@ TEST_F(LogBlockManagerTest, MetricsTest) {
     deletion_transaction->AddDeletedBlock(saved_id);
     vector<BlockId> deleted;
     ASSERT_OK(deletion_transaction->CommitDeletedBlocks(&deleted));
-    NO_FATALS(CheckLogMetrics(new_entity,
-        { {9 * 1024, &METRIC_log_block_manager_bytes_under_management},
-          {10, &METRIC_log_block_manager_blocks_under_management},
-          {10, &METRIC_log_block_manager_containers},
-          {10, &METRIC_log_block_manager_full_containers} },
-        { {0, &METRIC_log_block_manager_holes_punched},
-          {1, &METRIC_block_manager_total_blocks_deleted} }));
+    NO_FATALS(CheckLogMetrics(
+        new_entity,
+        {{9 * 1024, &METRIC_log_block_manager_bytes_under_management},
+         {10, &METRIC_log_block_manager_blocks_under_management},
+         {10, &METRIC_log_block_manager_containers},
+         {10, &METRIC_log_block_manager_full_containers}},
+        {{0, &METRIC_log_block_manager_holes_punched},
+         {1, &METRIC_block_manager_total_blocks_deleted}}));
   }
   // Wait for the actual hole punching to take place.
   for (const auto& data_dir : dd_manager_->data_dirs()) {
     data_dir->WaitOnClosures();
   }
-  NO_FATALS(CheckLogMetrics(new_entity,
-      { {9 * 1024, &METRIC_log_block_manager_bytes_under_management},
-        {10, &METRIC_log_block_manager_blocks_under_management},
-        {10, &METRIC_log_block_manager_containers},
-        {10, &METRIC_log_block_manager_full_containers} },
-      { {1, &METRIC_log_block_manager_holes_punched},
-        {1, &METRIC_block_manager_total_blocks_deleted} }));
+  NO_FATALS(CheckLogMetrics(
+      new_entity,
+      {{9 * 1024, &METRIC_log_block_manager_bytes_under_management},
+       {10, &METRIC_log_block_manager_blocks_under_management},
+       {10, &METRIC_log_block_manager_containers},
+       {10, &METRIC_log_block_manager_full_containers}},
+      {{1, &METRIC_log_block_manager_holes_punched},
+       {1, &METRIC_block_manager_total_blocks_deleted}}));
 
-  // Set the max container size to default so that we can create a bunch of blocks
-  // in the same container. Delete those created blocks afterwards to verify only
-  // one hole punch operation is executed since the blocks are contiguous.
+  // Set the max container size to default so that we can create a bunch of
+  // blocks in the same container. Delete those created blocks afterwards to
+  // verify only one hole punch operation is executed since the blocks are
+  // contiguous.
   FLAGS_log_container_max_size = 10LU * 1024 * 1024 * 1024;
   {
     vector<BlockId> blocks;
-    unique_ptr<BlockCreationTransaction> transaction = bm_->NewCreationTransaction();
+    unique_ptr<BlockCreationTransaction> transaction =
+        bm_->NewCreationTransaction();
     for (int i = 0; i < 10; i++) {
       unique_ptr<WritableBlock> b;
       ASSERT_OK(bm_->CreateBlock(test_block_opts_, &b));
@@ -423,25 +445,27 @@ TEST_F(LogBlockManagerTest, MetricsTest) {
     vector<BlockId> deleted;
     ASSERT_OK(deletion_transaction->CommitDeletedBlocks(&deleted));
     ASSERT_EQ(blocks.size(), deleted.size());
-    NO_FATALS(CheckLogMetrics(new_entity,
-        { {9 * 1024, &METRIC_log_block_manager_bytes_under_management},
-          {10, &METRIC_log_block_manager_blocks_under_management},
-          {11, &METRIC_log_block_manager_containers},
-          {10, &METRIC_log_block_manager_full_containers} },
-        { {1, &METRIC_log_block_manager_holes_punched},
-          {11, &METRIC_block_manager_total_blocks_deleted} }));
+    NO_FATALS(CheckLogMetrics(
+        new_entity,
+        {{9 * 1024, &METRIC_log_block_manager_bytes_under_management},
+         {10, &METRIC_log_block_manager_blocks_under_management},
+         {11, &METRIC_log_block_manager_containers},
+         {10, &METRIC_log_block_manager_full_containers}},
+        {{1, &METRIC_log_block_manager_holes_punched},
+         {11, &METRIC_block_manager_total_blocks_deleted}}));
   }
   // Wait for the actual hole punching to take place.
   for (const auto& data_dir : dd_manager_->data_dirs()) {
     data_dir->WaitOnClosures();
   }
-  NO_FATALS(CheckLogMetrics(new_entity,
-      { {9 * 1024, &METRIC_log_block_manager_bytes_under_management},
-        {10, &METRIC_log_block_manager_blocks_under_management},
-        {11, &METRIC_log_block_manager_containers},
-        {10, &METRIC_log_block_manager_full_containers} },
-      { {2, &METRIC_log_block_manager_holes_punched},
-        {11, &METRIC_block_manager_total_blocks_deleted} }));
+  NO_FATALS(CheckLogMetrics(
+      new_entity,
+      {{9 * 1024, &METRIC_log_block_manager_bytes_under_management},
+       {10, &METRIC_log_block_manager_blocks_under_management},
+       {11, &METRIC_log_block_manager_containers},
+       {10, &METRIC_log_block_manager_full_containers}},
+      {{2, &METRIC_log_block_manager_holes_punched},
+       {11, &METRIC_block_manager_total_blocks_deleted}}));
 }
 
 TEST_F(LogBlockManagerTest, ContainerPreallocationTest) {
@@ -529,7 +553,8 @@ TEST_F(LogBlockManagerTest, TestReuseBlockIds) {
 
   // Create 4 containers, with the first four block IDs in the sequence.
   {
-    unique_ptr<BlockCreationTransaction> transaction = bm_->NewCreationTransaction();
+    unique_ptr<BlockCreationTransaction> transaction =
+        bm_->NewCreationTransaction();
     for (int i = 0; i < 4; i++) {
       unique_ptr<WritableBlock> writer;
       ASSERT_OK(bm_->CreateBlock(test_block_opts_, &writer));
@@ -559,9 +584,10 @@ TEST_F(LogBlockManagerTest, TestReuseBlockIds) {
     ASSERT_OK(deletion_transaction->CommitDeletedBlocks(&deleted));
   }
 
-  // Reset the block ID sequence and re-create new blocks which should reuse the same
-  // block IDs. This isn't allowed in current versions of Kudu, but older versions
-  // could produce this situation, and we still need to handle it on startup.
+  // Reset the block ID sequence and re-create new blocks which should reuse the
+  // same block IDs. This isn't allowed in current versions of Kudu, but older
+  // versions could produce this situation, and we still need to handle it on
+  // startup.
   bm_->next_block_id_.Store(1);
   for (int i = 0; i < 4; i++) {
     unique_ptr<WritableBlock> writer;
@@ -643,15 +669,16 @@ TEST_F(LogBlockManagerTest, TestMetadataTruncation) {
     ASSERT_OK(env_->GetFileSize(metadata_path, &cur_meta_size));
     ASSERT_EQ(good_meta_size + num_bytes, cur_meta_size);
 
-    // Reopen the metadata file. We will still see all of our blocks. The size of
-    // the metadata file will be restored back to its previous value.
+    // Reopen the metadata file. We will still see all of our blocks. The size
+    // of the metadata file will be restored back to its previous value.
     ASSERT_OK(ReopenBlockManager());
     ASSERT_OK(bm_->GetAllBlockIds(&block_ids));
     ASSERT_EQ(4, block_ids.size());
     ASSERT_OK(bm_->OpenBlock(last_block_id, &block));
     ASSERT_OK(block->Close());
 
-    // Check that the file was truncated back to its previous size by the system.
+    // Check that the file was truncated back to its previous size by the
+    // system.
     ASSERT_OK(env_->GetFileSize(metadata_path, &cur_meta_size));
     ASSERT_EQ(good_meta_size, cur_meta_size);
   }
@@ -806,7 +833,7 @@ TEST_F(LogBlockManagerTest, TestPreallocationAndTruncation) {
   ASSERT_OK(bm_->CreateBlock(test_block_opts_, &writer));
   unique_ptr<uint8_t[]> data(new uint8_t[FLAGS_log_container_max_size]);
   memset(data.get(), 0, FLAGS_log_container_max_size);
-  ASSERT_OK(writer->Append({ data.get(), FLAGS_log_container_max_size } ));
+  ASSERT_OK(writer->Append({data.get(), FLAGS_log_container_max_size}));
   string fname;
   NO_FATALS(GetOnlyContainerDataFile(&fname));
   uint64_t size_after_append;
@@ -825,8 +852,8 @@ TEST_F(LogBlockManagerTest, TestPreallocationAndTruncation) {
   // Try preallocating in two ways: once with a change to the file size and
   // once without. The second way serves as a proxy for XFS's speculative
   // preallocation behavior, described in KUDU-1856.
-  for (RWFile::PreAllocateMode mode : {RWFile::CHANGE_FILE_SIZE,
-                                       RWFile::DONT_CHANGE_FILE_SIZE}) {
+  for (RWFile::PreAllocateMode mode :
+       {RWFile::CHANGE_FILE_SIZE, RWFile::DONT_CHANGE_FILE_SIZE}) {
     LOG(INFO) << "Pass " << mode;
     unique_ptr<RWFile> data_file;
     RWFileOptions opts;
@@ -862,22 +889,20 @@ TEST_F(LogBlockManagerTest, TestContainerWithManyHoles) {
   // actually fail if the fix is missing; it just corrupts the filesystem.
 
   static unordered_map<int, int> block_size_to_last_interior_node_block_number =
-     {{1024, 168},
-      {2048, 338},
-      {4096, 680}};
+      {{1024, 168}, {2048, 338}, {4096, 680}};
 
   const int kNumBlocks = 16 * 1024;
 
   uint64_t fs_block_size;
   ASSERT_OK(env_->GetBlockSize(test_dir_, &fs_block_size));
-  if (!ContainsKey(block_size_to_last_interior_node_block_number,
-                   fs_block_size)) {
-    LOG(INFO) << Substitute("Filesystem block size is $0, skipping test",
-                            fs_block_size);
+  if (!ContainsKey(
+          block_size_to_last_interior_node_block_number, fs_block_size)) {
+    LOG(INFO) << Substitute(
+        "Filesystem block size is $0, skipping test", fs_block_size);
     return;
   }
-  int last_interior_node_block_number = FindOrDie(
-      block_size_to_last_interior_node_block_number, fs_block_size);
+  int last_interior_node_block_number =
+      FindOrDie(block_size_to_last_interior_node_block_number, fs_block_size);
 
   ASSERT_GE(kNumBlocks, last_interior_node_block_number);
 
@@ -907,8 +932,9 @@ TEST_F(LogBlockManagerTest, TestContainerWithManyHoles) {
 
   // Delete all of the blocks belonging to the interior node. If KUDU-1508
   // applies, this should corrupt the filesystem.
-  LOG(INFO) << Substitute("Deleting remaining blocks up to block number $0",
-                          last_interior_node_block_number);
+  LOG(INFO) << Substitute(
+      "Deleting remaining blocks up to block number $0",
+      last_interior_node_block_number);
   for (int i = 1; i < last_interior_node_block_number; i += 2) {
     deletion_transaction->AddDeletedBlock(ids[i]);
   }
@@ -975,13 +1001,15 @@ TEST_F(LogBlockManagerTest, StartupBenchmark) {
   // "stable page writes" feature, each block will thus end up waiting
   // on the writeback of the prior one.
   //
-  // See http://yoshinorimatsunobu.blogspot.com/2014/03/how-syncfilerange-really-works.html
+  // See
+  // http://yoshinorimatsunobu.blogspot.com/2014/03/how-syncfilerange-really-works.html
   // for details.
   FLAGS_block_manager_preflush_control = "never";
   const int kNumBlocks = AllowSlowTests() ? 1000000 : 1000;
   // Creates 'kNumBlocks' blocks with minimal data.
   {
-    unique_ptr<BlockCreationTransaction> transaction = bm_->NewCreationTransaction();
+    unique_ptr<BlockCreationTransaction> transaction =
+        bm_->NewCreationTransaction();
     for (int i = 0; i < kNumBlocks; i++) {
       unique_ptr<WritableBlock> block;
       ASSERT_OK_FAST(bm_->CreateBlock(test_block_opts_, &block));
@@ -1147,8 +1175,9 @@ TEST_F(LogBlockManagerTest, TestMisalignedBlocksFuzz) {
       // life, so we avoid it in testing too.
       int num_appends = (rand() % 8) + 1;
       uint64_t raw_block_id = block->id().id();
-      Slice s(reinterpret_cast<const uint8_t*>(&raw_block_id),
-              sizeof(raw_block_id));
+      Slice s(
+          reinterpret_cast<const uint8_t*>(&raw_block_id),
+          sizeof(raw_block_id));
       for (int j = 0; j < num_appends; j++) {
         // The corruptor writes the block ID repeatedly into each misaligned
         // block, so we'll make our regular blocks do the same thing.
@@ -1160,7 +1189,8 @@ TEST_F(LogBlockManagerTest, TestMisalignedBlocksFuzz) {
   FsReport report;
   ASSERT_OK(ReopenBlockManager(nullptr, &report));
   ASSERT_FALSE(report.HasFatalErrors()) << report.ToString();
-  ASSERT_EQ(num_misaligned_blocks, report.misaligned_block_check->entries.size());
+  ASSERT_EQ(
+      num_misaligned_blocks, report.misaligned_block_check->entries.size());
   for (const auto& mb : report.misaligned_block_check->entries) {
     ASSERT_EQ(container_name, mb.container);
   }
@@ -1187,7 +1217,8 @@ TEST_F(LogBlockManagerTest, TestMisalignedBlocksFuzz) {
   ASSERT_OK(ReopenBlockManager(nullptr, &report));
   ASSERT_FALSE(report.HasFatalErrors());
   ASSERT_GT(report.misaligned_block_check->entries.size(), 0);
-  ASSERT_LT(report.misaligned_block_check->entries.size(), num_misaligned_blocks);
+  ASSERT_LT(
+      report.misaligned_block_check->entries.size(), num_misaligned_blocks);
   for (const auto& mb : report.misaligned_block_check->entries) {
     ASSERT_EQ(container_name, mb.container);
   }
@@ -1225,7 +1256,8 @@ TEST_F(LogBlockManagerTest, TestRepairPreallocateExcessSpace) {
 
   // Create several full containers.
   {
-    unique_ptr<BlockCreationTransaction> transaction = bm_->NewCreationTransaction();
+    unique_ptr<BlockCreationTransaction> transaction =
+        bm_->NewCreationTransaction();
     for (int i = 0; i < kNumContainers; i++) {
       unique_ptr<WritableBlock> block;
       ASSERT_OK(bm_->CreateBlock(test_block_opts_, &block));
@@ -1249,8 +1281,8 @@ TEST_F(LogBlockManagerTest, TestRepairPreallocateExcessSpace) {
   ASSERT_EQ(1, report.full_container_space_check->entries.size());
   const LBMFullContainerSpaceCheck::Entry& fcs =
       report.full_container_space_check->entries[0];
-  unordered_set<string> container_name_set(container_names.begin(),
-                                           container_names.end());
+  unordered_set<string> container_name_set(
+      container_names.begin(), container_names.end());
   ASSERT_TRUE(ContainsKey(container_name_set, fcs.container));
   ASSERT_GT(fcs.excess_bytes, 0);
   ASSERT_TRUE(fcs.repaired);
@@ -1338,8 +1370,8 @@ TEST_F(LogBlockManagerTest, TestRepairIncompleteContainer) {
   ASSERT_OK(ReopenBlockManager(nullptr, &report));
   ASSERT_FALSE(report.HasFatalErrors());
   ASSERT_EQ(kNumContainers, report.incomplete_container_check->entries.size());
-  unordered_set<string> container_name_set(container_names.begin(),
-                                           container_names.end());
+  unordered_set<string> container_name_set(
+      container_names.begin(), container_names.end());
   for (const auto& ic : report.incomplete_container_check->entries) {
     ASSERT_TRUE(ContainsKey(container_name_set, ic.container));
     ASSERT_TRUE(ic.repaired);
@@ -1418,7 +1450,8 @@ TEST_F(LogBlockManagerTest, TestRepairPartialRecords) {
 
   // Create some containers.
   {
-    unique_ptr<BlockCreationTransaction> transaction = bm_->NewCreationTransaction();
+    unique_ptr<BlockCreationTransaction> transaction =
+        bm_->NewCreationTransaction();
     for (int i = 0; i < kNumContainers; i++) {
       unique_ptr<WritableBlock> block;
       ASSERT_OK(bm_->CreateBlock(test_block_opts_, &block));
@@ -1442,8 +1475,8 @@ TEST_F(LogBlockManagerTest, TestRepairPartialRecords) {
   ASSERT_OK(ReopenBlockManager(nullptr, &report));
   ASSERT_FALSE(report.HasFatalErrors());
   ASSERT_EQ(kNumRecords, report.partial_record_check->entries.size());
-  unordered_set<string> container_name_set(container_names.begin(),
-                                           container_names.end());
+  unordered_set<string> container_name_set(
+      container_names.begin(), container_names.end());
   for (const auto& pr : report.partial_record_check->entries) {
     ASSERT_TRUE(ContainsKey(container_name_set, pr.container));
     ASSERT_GT(pr.offset, 0);
@@ -1527,16 +1560,18 @@ TEST_F(LogBlockManagerTest, TestCompactFullContainerMetadataAtStartup) {
     ASSERT_OK(ReopenBlockManager(nullptr, &report));
     last_live_aligned_bytes = report.stats.live_block_bytes_aligned;
 
-    ASSERT_OK(env_->GetFileSize(metadata_file_name, &post_compaction_file_size));
+    ASSERT_OK(
+        env_->GetFileSize(metadata_file_name, &post_compaction_file_size));
     if (post_compaction_file_size < pre_compaction_file_size) {
       break;
     }
   }
 
   // We should be able to anticipate precisely when the compaction occurred.
-  ASSERT_EQ(FLAGS_log_container_max_blocks *
-              FLAGS_log_container_live_metadata_before_compact_ratio,
-            num_blocks_deleted);
+  ASSERT_EQ(
+      FLAGS_log_container_max_blocks *
+          FLAGS_log_container_live_metadata_before_compact_ratio,
+      num_blocks_deleted);
 
   // The "gap" in the compacted container's block records (corresponding to
   // dead blocks that were removed) shouldn't affect the number of live bytes
@@ -1591,14 +1626,14 @@ TEST_F(LogBlockManagerTest, TestDeleteFromContainerAfterMetadataCompaction) {
   ASSERT_OK(ReopenBlockManager(nullptr, &report));
 
   // Delete the remaining blocks in a random order. This will append to metadata
-  // files which have just been compacted. Since we have more metadata files than
-  // we have file_cache capacity, this will also generate a mix of cache hits,
-  // misses, and re-insertions.
+  // files which have just been compacted. Since we have more metadata files
+  // than we have file_cache capacity, this will also generate a mix of cache
+  // hits, misses, and re-insertions.
   std::random_shuffle(block_ids.begin(), block_ids.end());
   {
     shared_ptr<BlockDeletionTransaction> deletion_transaction =
         this->bm_->NewDeletionTransaction();
-    for (const BlockId &b : block_ids) {
+    for (const BlockId& b : block_ids) {
       deletion_transaction->AddDeletedBlock(b);
     }
     vector<BlockId> deleted;
@@ -1625,16 +1660,19 @@ TEST_F(LogBlockManagerTest, TestOpenWithFailedDirectories) {
     ASSERT_OK(env_->CreateDir(dir));
     test_dirs.emplace_back(std::move(dir));
   }
-  ASSERT_OK(DataDirManager::CreateNewForTests(env_, test_dirs,
-      DataDirManagerOptions(), &dd_manager_));
+  ASSERT_OK(DataDirManager::CreateNewForTests(
+      env_, test_dirs, DataDirManagerOptions(), &dd_manager_));
 
   // Open the directory manager successfully.
-  ASSERT_OK(DataDirManager::OpenExistingForTests(env_, test_dirs,
-      DataDirManagerOptions(), &dd_manager_));
+  ASSERT_OK(DataDirManager::OpenExistingForTests(
+      env_, test_dirs, DataDirManagerOptions(), &dd_manager_));
 
   // Wire in a callback to fail data directories.
-  test_error_manager_->SetErrorNotificationCb(ErrorHandlerType::DISK_ERROR,
-      Bind(&DataDirManager::MarkDataDirFailedByUuid, Unretained(dd_manager_.get())));
+  test_error_manager_->SetErrorNotificationCb(
+      ErrorHandlerType::DISK_ERROR,
+      Bind(
+          &DataDirManager::MarkDataDirFailedByUuid,
+          Unretained(dd_manager_.get())));
   bm_.reset(CreateBlockManager(nullptr));
 
   // Fail one of the directories, chosen randomly.
@@ -1712,8 +1750,9 @@ TEST_F(LogBlockManagerTest, TestLIFOContainerSelection) {
     ASSERT_OK(writer->Finalize());
     // After finalizing the written block, the used container will be
     // available again and can be reused for the following created block.
-    ASSERT_EQ(container,
-              bm_->available_containers_by_data_dir_.begin()->second.front());
+    ASSERT_EQ(
+        container,
+        bm_->available_containers_by_data_dir_.begin()->second.front());
     blocks.emplace_back(std::move(writer));
   }
   for (const auto& block : blocks) {

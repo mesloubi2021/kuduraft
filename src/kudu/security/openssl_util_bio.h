@@ -31,21 +31,24 @@
 namespace kudu {
 namespace security {
 
-template<> struct SslTypeTraits<BIO> {
+template <>
+struct SslTypeTraits<BIO> {
   static constexpr auto kFreeFunc = &BIO_free;
 };
 
-template<typename TYPE, typename Traits = SslTypeTraits<TYPE>>
+template <typename TYPE, typename Traits = SslTypeTraits<TYPE>>
 Status ToBIO(BIO* bio, DataFormat format, TYPE* obj) {
   CHECK(bio);
   CHECK(obj);
   switch (format) {
     case DataFormat::DER:
-      OPENSSL_RET_NOT_OK(Traits::kWriteDerFunc(bio, obj),
+      OPENSSL_RET_NOT_OK(
+          Traits::kWriteDerFunc(bio, obj),
           "error exporting data in DER format");
       break;
     case DataFormat::PEM:
-      OPENSSL_RET_NOT_OK(Traits::kWritePemFunc(bio, obj),
+      OPENSSL_RET_NOT_OK(
+          Traits::kWritePemFunc(bio, obj),
           "error exporting data in PEM format");
       break;
   }
@@ -55,7 +58,8 @@ Status ToBIO(BIO* bio, DataFormat format, TYPE* obj) {
 
 // The callback which is called by the OpenSSL library when trying to decrypt
 // a password protected private key.
-inline int TLSPasswordCB(char* buf, int size, int /* rwflag */, void* userdata) {
+inline int
+TLSPasswordCB(char* buf, int size, int /* rwflag */, void* userdata) {
   const auto* cb = reinterpret_cast<const PasswordCallback*>(userdata);
   std::string pw = (*cb)();
   if (pw.size() >= size) {
@@ -67,8 +71,11 @@ inline int TLSPasswordCB(char* buf, int size, int /* rwflag */, void* userdata) 
   return pw.size();
 }
 
-template<typename TYPE, typename Traits = SslTypeTraits<TYPE>>
-Status FromBIO(BIO* bio, DataFormat format, c_unique_ptr<TYPE>* ret,
+template <typename TYPE, typename Traits = SslTypeTraits<TYPE>>
+Status FromBIO(
+    BIO* bio,
+    DataFormat format,
+    c_unique_ptr<TYPE>* ret,
     const PasswordCallback& cb = PasswordCallback()) {
   CHECK(bio);
   switch (format) {
@@ -76,8 +83,8 @@ Status FromBIO(BIO* bio, DataFormat format, c_unique_ptr<TYPE>* ret,
       *ret = ssl_make_unique(Traits::kReadDerFunc(bio, nullptr));
       break;
     case DataFormat::PEM:
-      *ret = ssl_make_unique(Traits::kReadPemFunc(bio, nullptr, &TLSPasswordCB,
-          const_cast<PasswordCallback*>(&cb)));
+      *ret = ssl_make_unique(Traits::kReadPemFunc(
+          bio, nullptr, &TLSPasswordCB, const_cast<PasswordCallback*>(&cb)));
       break;
   }
   if (PREDICT_FALSE(!*ret)) {
@@ -86,9 +93,11 @@ Status FromBIO(BIO* bio, DataFormat format, c_unique_ptr<TYPE>* ret,
   return Status::OK();
 }
 
-template<typename Type, typename Traits = SslTypeTraits<Type>>
-Status FromString(const std::string& data, DataFormat format,
-                  c_unique_ptr<Type>* ret) {
+template <typename Type, typename Traits = SslTypeTraits<Type>>
+Status FromString(
+    const std::string& data,
+    DataFormat format,
+    c_unique_ptr<Type>* ret) {
   const void* mdata = reinterpret_cast<const void*>(data.data());
   auto bio = ssl_make_unique(BIO_new_mem_buf(
 #if OPENSSL_VERSION_NUMBER < 0x10002000L
@@ -97,30 +106,36 @@ Status FromString(const std::string& data, DataFormat format,
       mdata,
 #endif
       data.size()));
-  RETURN_NOT_OK_PREPEND((FromBIO<Type, Traits>(bio.get(), format, ret)),
-                        "unable to load data from memory");
+  RETURN_NOT_OK_PREPEND(
+      (FromBIO<Type, Traits>(bio.get(), format, ret)),
+      "unable to load data from memory");
   return Status::OK();
 }
 
-template<typename Type, typename Traits = SslTypeTraits<Type>>
+template <typename Type, typename Traits = SslTypeTraits<Type>>
 Status ToString(std::string* data, DataFormat format, Type* obj) {
   CHECK(data);
   auto bio = ssl_make_unique(BIO_new(BIO_s_mem()));
-  RETURN_NOT_OK_PREPEND((ToBIO<Type, Traits>(bio.get(), format, obj)),
-                        "error serializing data");
+  RETURN_NOT_OK_PREPEND(
+      (ToBIO<Type, Traits>(bio.get(), format, obj)), "error serializing data");
   BUF_MEM* membuf;
   OPENSSL_CHECK_OK(BIO_get_mem_ptr(bio.get(), &membuf));
   data->assign(membuf->data, membuf->length);
   return Status::OK();
 }
 
-template<typename Type, typename Traits = SslTypeTraits<Type>>
-Status FromFile(const std::string& fpath, DataFormat format,
-                c_unique_ptr<Type>* ret, const PasswordCallback& cb = PasswordCallback()) {
+template <typename Type, typename Traits = SslTypeTraits<Type>>
+Status FromFile(
+    const std::string& fpath,
+    DataFormat format,
+    c_unique_ptr<Type>* ret,
+    const PasswordCallback& cb = PasswordCallback()) {
   auto bio = ssl_make_unique(BIO_new(BIO_s_file()));
-  OPENSSL_RET_NOT_OK(BIO_read_filename(bio.get(), fpath.c_str()),
+  OPENSSL_RET_NOT_OK(
+      BIO_read_filename(bio.get(), fpath.c_str()),
       strings::Substitute("could not read data from file '$0'", fpath));
-  RETURN_NOT_OK_PREPEND((FromBIO<Type, Traits>(bio.get(), format, ret, cb)),
+  RETURN_NOT_OK_PREPEND(
+      (FromBIO<Type, Traits>(bio.get(), format, ret, cb)),
       strings::Substitute("unable to load data from file '$0'", fpath));
   return Status::OK();
 }

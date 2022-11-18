@@ -43,15 +43,17 @@ class EasyCurl {
   // Any existing data in the buffer is replaced.
   // The optional param 'headers' holds additional headers.
   // e.g. {"Accept-Encoding: gzip"}
-  Status FetchURL(const std::string& url,
-                  faststring* dst,
-                  const std::vector<std::string>& headers = {});
+  Status FetchURL(
+      const std::string& url,
+      faststring* dst,
+      const std::vector<std::string>& headers = {});
 
   // Issue an HTTP POST to the given URL with the given data.
   // Returns results in 'dst' as above.
-  Status PostToURL(const std::string& url,
-                   const std::string& post_data,
-                   faststring* dst);
+  Status PostToURL(
+      const std::string& url,
+      const std::string& post_data,
+      faststring* dst);
 
   // Set whether to verify the server's SSL certificate in the case of an HTTPS
   // connection.
@@ -70,10 +72,11 @@ class EasyCurl {
  private:
   // Do a request. If 'post_data' is non-NULL, does a POST.
   // Otherwise, does a GET.
-  Status DoRequest(const std::string& url,
-                   const std::string* post_data,
-                   faststring* dst,
-                   const std::vector<std::string>& headers = {});
+  Status DoRequest(
+      const std::string& url,
+      const std::string* post_data,
+      faststring* dst,
+      const std::vector<std::string>& headers = {});
   CURL* curl_;
 
   // Whether to verify the server certificate.

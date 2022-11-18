@@ -27,12 +27,15 @@
 #include <gtest/gtest.h>
 
 #include "kudu/gutil/stringprintf.h"
+#include "kudu/util/mem_tracker.h"
 #include "kudu/util/memory/arena.h"
 #include "kudu/util/memory/memory.h"
-#include "kudu/util/mem_tracker.h"
 
 DEFINE_int32(num_threads, 16, "Number of threads to test");
-DEFINE_int32(allocs_per_thread, 10000, "Number of allocations each thread should do");
+DEFINE_int32(
+    allocs_per_thread,
+    10000,
+    "Number of allocations each thread should do");
 DEFINE_int32(alloc_size, 4, "number of bytes in each allocation");
 
 namespace kudu {
@@ -42,22 +45,22 @@ using std::string;
 using std::thread;
 using std::vector;
 
-template<class ArenaType>
-static void AllocateThread(ArenaType *arena, uint8_t thread_index) {
-  std::vector<void *> ptrs;
+template <class ArenaType>
+static void AllocateThread(ArenaType* arena, uint8_t thread_index) {
+  std::vector<void*> ptrs;
   ptrs.reserve(FLAGS_allocs_per_thread);
 
   char buf[FLAGS_alloc_size];
   memset(buf, thread_index, FLAGS_alloc_size);
 
   for (int i = 0; i < FLAGS_allocs_per_thread; i++) {
-    void *alloced = arena->AllocateBytes(FLAGS_alloc_size);
+    void* alloced = arena->AllocateBytes(FLAGS_alloc_size);
     CHECK(alloced);
     memcpy(alloced, buf, FLAGS_alloc_size);
     ptrs.push_back(alloced);
   }
 
-  for (void *p : ptrs) {
+  for (void* p : ptrs) {
     if (memcmp(buf, p, FLAGS_alloc_size) != 0) {
       FAIL() << StringPrintf("overwritten pointer at %p", p);
     }
@@ -65,17 +68,16 @@ static void AllocateThread(ArenaType *arena, uint8_t thread_index) {
 }
 
 // Non-templated function to forward to above -- simplifies thread creation
-static void AllocateThreadTSArena(ThreadSafeArena *arena, uint8_t thread_index) {
+static void AllocateThreadTSArena(
+    ThreadSafeArena* arena,
+    uint8_t thread_index) {
   AllocateThread(arena, thread_index);
 }
-
 
 TEST(TestArena, TestSingleThreaded) {
   Arena arena(128);
   AllocateThread(&arena, 0);
 }
-
-
 
 TEST(TestArena, TestMultiThreaded) {
   CHECK(FLAGS_num_threads < 256);
@@ -97,10 +99,9 @@ TEST(TestArena, TestAlignment) {
   for (int i = 0; i < 1000; i++) {
     int alignment = 1 << (1 % 5);
 
-    void *ret = arena.AllocateBytesAligned(5, alignment);
-    ASSERT_EQ(0, (uintptr_t)(ret) % alignment) <<
-      "failed to align on " << alignment << "b boundary: " <<
-      ret;
+    void* ret = arena.AllocateBytesAligned(5, alignment);
+    ASSERT_EQ(0, (uintptr_t)(ret) % alignment)
+        << "failed to align on " << alignment << "b boundary: " << ret;
   }
 }
 
@@ -109,34 +110,36 @@ TEST(TestArena, TestObjectAlignment) {
     int64_t v;
   };
   Arena a(256);
-  // Allocate a junk byte to ensure that the next allocation isn't "accidentally" aligned.
+  // Allocate a junk byte to ensure that the next allocation isn't
+  // "accidentally" aligned.
   a.AllocateBytes(1);
   void* v = a.NewObject<MyStruct>();
   ASSERT_EQ(reinterpret_cast<uintptr_t>(v) % alignof(MyStruct), 0);
 }
 
-
-// MemTrackers update their ancestors when consuming and releasing memory to compute
-// usage totals. However, the lifetimes of parent and child trackers can be different.
-// Validate that child trackers can still correctly update their parent stats even when
-// the parents go out of scope.
+// MemTrackers update their ancestors when consuming and releasing memory to
+// compute usage totals. However, the lifetimes of parent and child trackers can
+// be different. Validate that child trackers can still correctly update their
+// parent stats even when the parents go out of scope.
 TEST(TestArena, TestMemoryTrackerParentReferences) {
   // Set up a parent and child MemTracker.
   const string parent_id = "parent-id";
   const string child_id = "child-id";
   shared_ptr<MemTracker> child_tracker;
   {
-    shared_ptr<MemTracker> parent_tracker = MemTracker::CreateTracker(1024, parent_id);
+    shared_ptr<MemTracker> parent_tracker =
+        MemTracker::CreateTracker(1024, parent_id);
     child_tracker = MemTracker::CreateTracker(-1, child_id, parent_tracker);
     // Parent falls out of scope here. Should still be owned by the child.
   }
   shared_ptr<MemoryTrackingBufferAllocator> allocator(
-      new MemoryTrackingBufferAllocator(HeapBufferAllocator::Get(), child_tracker));
+      new MemoryTrackingBufferAllocator(
+          HeapBufferAllocator::Get(), child_tracker));
   MemoryTrackingArena arena(256, allocator);
 
   // Try some child operations.
   ASSERT_EQ(256, child_tracker->consumption());
-  void *allocated = arena.AllocateBytes(256);
+  void* allocated = arena.AllocateBytes(256);
   ASSERT_TRUE(allocated);
   ASSERT_EQ(256, child_tracker->consumption());
   allocated = arena.AllocateBytes(256);
@@ -145,12 +148,14 @@ TEST(TestArena, TestMemoryTrackerParentReferences) {
 }
 
 TEST(TestArena, TestMemoryTrackingDontEnforce) {
-  shared_ptr<MemTracker> mem_tracker = MemTracker::CreateTracker(1024, "arena-test-tracker");
+  shared_ptr<MemTracker> mem_tracker =
+      MemTracker::CreateTracker(1024, "arena-test-tracker");
   shared_ptr<MemoryTrackingBufferAllocator> allocator(
-      new MemoryTrackingBufferAllocator(HeapBufferAllocator::Get(), mem_tracker));
+      new MemoryTrackingBufferAllocator(
+          HeapBufferAllocator::Get(), mem_tracker));
   MemoryTrackingArena arena(256, allocator);
   ASSERT_EQ(256, mem_tracker->consumption());
-  void *allocated = arena.AllocateBytes(256);
+  void* allocated = arena.AllocateBytes(256);
   ASSERT_TRUE(allocated);
   ASSERT_EQ(256, mem_tracker->consumption());
   allocated = arena.AllocateBytes(256);
@@ -174,14 +179,17 @@ TEST(TestArena, TestMemoryTrackingDontEnforce) {
 }
 
 TEST(TestArena, TestMemoryTrackingEnforced) {
-  shared_ptr<MemTracker> mem_tracker = MemTracker::CreateTracker(1024, "arena-test-tracker");
+  shared_ptr<MemTracker> mem_tracker =
+      MemTracker::CreateTracker(1024, "arena-test-tracker");
   shared_ptr<MemoryTrackingBufferAllocator> allocator(
-      new MemoryTrackingBufferAllocator(HeapBufferAllocator::Get(), mem_tracker,
-                                        // enforce limit
-                                        true));
+      new MemoryTrackingBufferAllocator(
+          HeapBufferAllocator::Get(),
+          mem_tracker,
+          // enforce limit
+          true));
   MemoryTrackingArena arena(256, allocator);
   ASSERT_EQ(256, mem_tracker->consumption());
-  void *allocated = arena.AllocateBytes(256);
+  void* allocated = arena.AllocateBytes(256);
   ASSERT_TRUE(allocated);
   ASSERT_EQ(256, mem_tracker->consumption());
   allocated = arena.AllocateBytes(1024);
@@ -191,7 +199,7 @@ TEST(TestArena, TestMemoryTrackingEnforced) {
 
 TEST(TestArena, TestSTLAllocator) {
   Arena a(256);
-  typedef vector<int, ArenaAllocator<int, false> > ArenaVector;
+  typedef vector<int, ArenaAllocator<int, false>> ArenaVector;
   ArenaAllocator<int, false> alloc(&a);
   ArenaVector v(alloc);
   for (int i = 0; i < 10000; i++) {

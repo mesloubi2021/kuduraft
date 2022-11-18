@@ -40,7 +40,8 @@ uint64_t GetSpinLockContentionMicros();
 
 // Register metrics in the given server entity which measure the amount of
 // spinlock contention.
-void RegisterSpinLockContentionMetrics(const scoped_refptr<MetricEntity>& entity);
+void RegisterSpinLockContentionMetrics(
+    const scoped_refptr<MetricEntity>& entity);
 
 // Enable process-wide synchronization profiling.
 //
@@ -59,10 +60,10 @@ void StartSynchronizationProfiling();
 // This may be called while synchronization profiling is enabled or after it has
 // been disabled.
 //
-// *dropped_samples will be incremented by the number of samples which were dropped
-// due to the contention buffer overflowing. If profiling is enabled during this
-// call, then the 'drop_count' may be slightly out-of-date with respect to the
-// returned samples.
+// *dropped_samples will be incremented by the number of samples which were
+// dropped due to the contention buffer overflowing. If profiling is enabled
+// during this call, then the 'drop_count' may be slightly out-of-date with
+// respect to the returned samples.
 void FlushSynchronizationProfile(std::ostringstream* out, int64_t* drop_count);
 
 // Stop collecting contention profiles.

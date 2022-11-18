@@ -39,25 +39,39 @@
 #include "kudu/util/status.h"
 #include "kudu/util/threadpool.h"
 
-DEFINE_int32(server_thread_pool_max_thread_count, -1,
-             "Maximum number of threads to allow in each server-wide thread "
-             "pool. If -1, Kudu will automatically calculate this value. It "
-             "is an error to use a value of 0.");
+DEFINE_int32(
+    server_thread_pool_max_thread_count,
+    -1,
+    "Maximum number of threads to allow in each server-wide thread "
+    "pool. If -1, Kudu will automatically calculate this value. It "
+    "is an error to use a value of 0.");
 TAG_FLAG(server_thread_pool_max_thread_count, advanced);
 TAG_FLAG(server_thread_pool_max_thread_count, evolving);
-DEFINE_int32(raft_thread_pool_idle_timeout_second, 3600,
-             "Max idle time for a raft worker thread before it dies");
-DEFINE_int32(raft_thread_pool_max_size, 0, "Max threads in the raft thread pool");
-DEFINE_int32(raft_thread_pool_min_size, 0, "Min threads in the raft thread pool");
+DEFINE_int32(
+    raft_thread_pool_idle_timeout_second,
+    3600,
+    "Max idle time for a raft worker thread before it dies");
+DEFINE_int32(
+    raft_thread_pool_max_size,
+    0,
+    "Max threads in the raft thread pool");
+DEFINE_int32(
+    raft_thread_pool_min_size,
+    0,
+    "Min threads in the raft thread pool");
 
-static bool ValidateThreadPoolThreadLimit(const char* /*flagname*/, int32_t value) {
+static bool ValidateThreadPoolThreadLimit(
+    const char* /*flagname*/,
+    int32_t value) {
   if (value == 0 || value < -1) {
     LOG(ERROR) << "Invalid thread pool thread limit: cannot be " << value;
     return false;
   }
   return true;
 }
-DEFINE_validator(server_thread_pool_max_thread_count, &ValidateThreadPoolThreadLimit);
+DEFINE_validator(
+    server_thread_pool_max_thread_count,
+    &ValidateThreadPoolThreadLimit);
 
 using std::string;
 using strings::Substitute;
@@ -70,26 +84,38 @@ namespace kserver {
 
 #ifdef FB_DO_NOT_REMOVE
 
-METRIC_DEFINE_histogram(server, op_apply_queue_length, "Operation Apply Queue Length",
-                        MetricUnit::kTasks,
-                        "Number of operations waiting to be applied to the tablet. "
-                        "High queue lengths indicate that the server is unable to process "
-                        "operations as fast as they are being written to the WAL.",
-                        10000, 2);
+METRIC_DEFINE_histogram(
+    server,
+    op_apply_queue_length,
+    "Operation Apply Queue Length",
+    MetricUnit::kTasks,
+    "Number of operations waiting to be applied to the tablet. "
+    "High queue lengths indicate that the server is unable to process "
+    "operations as fast as they are being written to the WAL.",
+    10000,
+    2);
 
-METRIC_DEFINE_histogram(server, op_apply_queue_time, "Operation Apply Queue Time",
-                        MetricUnit::kMicroseconds,
-                        "Time that operations spent waiting in the apply queue before being "
-                        "processed. High queue times indicate that the server is unable to "
-                        "process operations as fast as they are being written to the WAL.",
-                        10000000, 2);
+METRIC_DEFINE_histogram(
+    server,
+    op_apply_queue_time,
+    "Operation Apply Queue Time",
+    MetricUnit::kMicroseconds,
+    "Time that operations spent waiting in the apply queue before being "
+    "processed. High queue times indicate that the server is unable to "
+    "process operations as fast as they are being written to the WAL.",
+    10000000,
+    2);
 
-METRIC_DEFINE_histogram(server, op_apply_run_time, "Operation Apply Run Time",
-                        MetricUnit::kMicroseconds,
-                        "Time that operations spent being applied to the tablet. "
-                        "High values may indicate that the server is under-provisioned or "
-                        "that operations consist of very large batches.",
-                        10000000, 2);
+METRIC_DEFINE_histogram(
+    server,
+    op_apply_run_time,
+    "Operation Apply Run Time",
+    MetricUnit::kMicroseconds,
+    "Time that operations spent being applied to the tablet. "
+    "High values may indicate that the server is under-provisioned or "
+    "that operations consist of very large batches.",
+    10000000,
+    2);
 #endif
 
 namespace {
@@ -98,17 +124,19 @@ int GetThreadPoolThreadLimit(Env* env) {
   // Maximize this process' running thread limit first, if possible.
   static std::once_flag once;
   std::call_once(once, [&]() {
-    env->IncreaseResourceLimit(Env::ResourceLimitType::RUNNING_THREADS_PER_EUID);
+    env->IncreaseResourceLimit(
+        Env::ResourceLimitType::RUNNING_THREADS_PER_EUID);
   });
 
-  uint64_t rlimit = env->GetResourceLimit(Env::ResourceLimitType::RUNNING_THREADS_PER_EUID);
+  uint64_t rlimit =
+      env->GetResourceLimit(Env::ResourceLimitType::RUNNING_THREADS_PER_EUID);
   // See server_thread_pool_max_thread_count.
   if (FLAGS_server_thread_pool_max_thread_count == -1) {
     // Use both pid_max and threads-max as possible upper bounds.
     faststring buf;
     uint64_t buf_val;
-    for (const auto& proc_file : { "/proc/sys/kernel/pid_max",
-                                   "/proc/sys/kernel/threads-max" }) {
+    for (const auto& proc_file :
+         {"/proc/sys/kernel/pid_max", "/proc/sys/kernel/threads-max"}) {
       if (ReadFileToString(env, proc_file, &buf).ok() &&
           safe_strtou64(buf.ToString(), &buf_val)) {
         rlimit = std::min(rlimit, buf_val);
@@ -122,22 +150,23 @@ int GetThreadPoolThreadLimit(Env* env) {
     // Take only 10% of the calculated limit; we don't want to hog the system.
     return static_cast<int32_t>(rlimit) / 10;
   }
-  LOG_IF(FATAL, FLAGS_server_thread_pool_max_thread_count > rlimit) <<
-      Substitute(
-          "Configured server-wide thread pool running thread limit "
-          "(server_thread_pool_max_thread_count) $0 exceeds euid running "
-          "thread limit (ulimit) $1",
-          FLAGS_server_thread_pool_max_thread_count, rlimit);
+  LOG_IF(FATAL, FLAGS_server_thread_pool_max_thread_count > rlimit)
+      << Substitute(
+             "Configured server-wide thread pool running thread limit "
+             "(server_thread_pool_max_thread_count) $0 exceeds euid running "
+             "thread limit (ulimit) $1",
+             FLAGS_server_thread_pool_max_thread_count,
+             rlimit);
   return FLAGS_server_thread_pool_max_thread_count;
 }
 
 } // anonymous namespace
 
-KuduServer::KuduServer(string name,
-                       const ServerBaseOptions& options,
-                       const string& metric_namespace)
-    : ServerBase(std::move(name), options, metric_namespace) {
-}
+KuduServer::KuduServer(
+    string name,
+    const ServerBaseOptions& options,
+    const string& metric_namespace)
+    : ServerBase(std::move(name), options, metric_namespace) {}
 
 Status KuduServer::Init() {
   RETURN_NOT_OK(ServerBase::Init());
@@ -146,11 +175,10 @@ Status KuduServer::Init() {
   ThreadPoolMetrics metrics = {
       METRIC_op_apply_queue_length.Instantiate(metric_entity_),
       METRIC_op_apply_queue_time.Instantiate(metric_entity_),
-      METRIC_op_apply_run_time.Instantiate(metric_entity_)
-  };
+      METRIC_op_apply_run_time.Instantiate(metric_entity_)};
   RETURN_NOT_OK(ThreadPoolBuilder("apply")
-                .set_metrics(std::move(metrics))
-                .Build(&tablet_apply_pool_));
+                    .set_metrics(std::move(metrics))
+                    .Build(&tablet_apply_pool_));
 
 #endif
   // These pools are shared by all replicas hosted by this server, and thus
@@ -158,15 +186,19 @@ Status KuduServer::Init() {
   int server_wide_pool_limit = GetThreadPoolThreadLimit(fs_manager_->env());
 #ifdef FB_DO_NOT_REMOVE
   RETURN_NOT_OK(ThreadPoolBuilder("prepare")
-                .set_max_threads(server_wide_pool_limit)
-                .Build(&tablet_prepare_pool_));
+                    .set_max_threads(server_wide_pool_limit)
+                    .Build(&tablet_prepare_pool_));
 #endif
-  RETURN_NOT_OK(ThreadPoolBuilder("raft")
-                .set_trace_metric_prefix("raft")
-                .set_min_threads(FLAGS_raft_thread_pool_min_size)
-                .set_max_threads(FLAGS_raft_thread_pool_max_size ? FLAGS_raft_thread_pool_max_size : server_wide_pool_limit)
-                .set_idle_timeout(MonoDelta::FromSeconds(static_cast<double>(FLAGS_raft_thread_pool_idle_timeout_second)))
-                .Build(&raft_pool_));
+  RETURN_NOT_OK(
+      ThreadPoolBuilder("raft")
+          .set_trace_metric_prefix("raft")
+          .set_min_threads(FLAGS_raft_thread_pool_min_size)
+          .set_max_threads(
+              FLAGS_raft_thread_pool_max_size ? FLAGS_raft_thread_pool_max_size
+                                              : server_wide_pool_limit)
+          .set_idle_timeout(MonoDelta::FromSeconds(
+              static_cast<double>(FLAGS_raft_thread_pool_idle_timeout_second)))
+          .Build(&raft_pool_));
 
   return Status::OK();
 }

@@ -26,9 +26,9 @@
 #include <google/protobuf/descriptor.h>
 #include <google/protobuf/descriptor.pb.h>
 #include <google/protobuf/message.h>
-#include <rapidjson/writer.h>
 #include <rapidjson/prettywriter.h>
 #include <rapidjson/rapidjson.h>
+#include <rapidjson/writer.h>
 
 #include "kudu/gutil/port.h"
 #include "kudu/util/faststring.h"
@@ -46,7 +46,8 @@ using std::vector;
 namespace kudu {
 
 // Adapter to allow RapidJSON to write directly to a stringstream.
-// Since Squeasel exposes a stringstream as its interface, this is needed to avoid overcopying.
+// Since Squeasel exposes a stringstream as its interface, this is needed to
+// avoid overcopying.
 class UTF8StringStreamBuffer {
  public:
   using Ch = rapidjson::UTF8<>::Ch;
@@ -64,8 +65,8 @@ class UTF8StringStreamBuffer {
 
 // rapidjson doesn't provide any common interface between the PrettyWriter and
 // Writer classes. So, we create our own pure virtual interface here, and then
-// use JsonWriterImpl<T> below to make the two different rapidjson implementations
-// correspond to this subclass.
+// use JsonWriterImpl<T> below to make the two different rapidjson
+// implementations correspond to this subclass.
 class JsonWriterIf {
  public:
   virtual void Null() = 0;
@@ -89,7 +90,7 @@ class JsonWriterIf {
 
 // Adapts the different rapidjson Writer implementations to our virtual
 // interface above.
-template<class T>
+template <class T>
 class JsonWriterImpl : public JsonWriterIf {
  public:
   explicit JsonWriterImpl(ostringstream* out);
@@ -133,49 +134,84 @@ JsonWriter::JsonWriter(ostringstream* out, Mode m) {
       break;
   }
 }
-JsonWriter::~JsonWriter() {
-}
+JsonWriter::~JsonWriter() {}
 
-void JsonWriter::Null() { impl_->Null(); }
-void JsonWriter::Bool(bool b) { impl_->Bool(b); }
-void JsonWriter::Int(int i) { impl_->Int(i); }
-void JsonWriter::Uint(unsigned u) { impl_->Uint(u); }
-void JsonWriter::Int64(int64_t i64) { impl_->Int64(i64); }
-void JsonWriter::Uint64(uint64_t u64) { impl_->Uint64(u64); }
-void JsonWriter::Double(double d) { impl_->Double(d); }
-void JsonWriter::String(const char* str, size_t length) { impl_->String(str, length); }
-void JsonWriter::String(const char* str) { impl_->String(str); }
-void JsonWriter::String(const string& str) { impl_->String(str); }
-void JsonWriter::StartObject() { impl_->StartObject(); }
-void JsonWriter::EndObject() { impl_->EndObject(); }
-void JsonWriter::StartArray() { impl_->StartArray(); }
-void JsonWriter::EndArray() { impl_->EndArray(); }
+void JsonWriter::Null() {
+  impl_->Null();
+}
+void JsonWriter::Bool(bool b) {
+  impl_->Bool(b);
+}
+void JsonWriter::Int(int i) {
+  impl_->Int(i);
+}
+void JsonWriter::Uint(unsigned u) {
+  impl_->Uint(u);
+}
+void JsonWriter::Int64(int64_t i64) {
+  impl_->Int64(i64);
+}
+void JsonWriter::Uint64(uint64_t u64) {
+  impl_->Uint64(u64);
+}
+void JsonWriter::Double(double d) {
+  impl_->Double(d);
+}
+void JsonWriter::String(const char* str, size_t length) {
+  impl_->String(str, length);
+}
+void JsonWriter::String(const char* str) {
+  impl_->String(str);
+}
+void JsonWriter::String(const string& str) {
+  impl_->String(str);
+}
+void JsonWriter::StartObject() {
+  impl_->StartObject();
+}
+void JsonWriter::EndObject() {
+  impl_->EndObject();
+}
+void JsonWriter::StartArray() {
+  impl_->StartArray();
+}
+void JsonWriter::EndArray() {
+  impl_->EndArray();
+}
 
 // Specializations for common primitive metric types.
-template<> void JsonWriter::Value(const bool& val) {
+template <>
+void JsonWriter::Value(const bool& val) {
   Bool(val);
 }
-template<> void JsonWriter::Value(const int32_t& val) {
+template <>
+void JsonWriter::Value(const int32_t& val) {
   Int(val);
 }
-template<> void JsonWriter::Value(const uint32_t& val) {
+template <>
+void JsonWriter::Value(const uint32_t& val) {
   Uint(val);
 }
-template<> void JsonWriter::Value(const int64_t& val) {
+template <>
+void JsonWriter::Value(const int64_t& val) {
   Int64(val);
 }
-template<> void JsonWriter::Value(const uint64_t& val) {
+template <>
+void JsonWriter::Value(const uint64_t& val) {
   Uint64(val);
 }
-template<> void JsonWriter::Value(const double& val) {
+template <>
+void JsonWriter::Value(const double& val) {
   Double(val);
 }
-template<> void JsonWriter::Value(const string& val) {
+template <>
+void JsonWriter::Value(const string& val) {
   String(val);
 }
 
 #if defined(__APPLE__)
-template<> void JsonWriter::Value(const size_t& val) {
+template <>
+void JsonWriter::Value(const size_t& val) {
   Uint64(val);
 }
 #endif
@@ -202,8 +238,10 @@ void JsonWriter::Protobuf(const Message& pb) {
   EndObject();
 }
 
-void JsonWriter::ProtobufField(const Message& pb, const Reflection* reflection,
-                               const FieldDescriptor* field) {
+void JsonWriter::ProtobufField(
+    const Message& pb,
+    const Reflection* reflection,
+    const FieldDescriptor* field) {
   switch (field->cpp_type()) {
     case FieldDescriptor::CPPTYPE_INT32:
       Int(reflection->GetInt32(pb, field));
@@ -230,8 +268,9 @@ void JsonWriter::ProtobufField(const Message& pb, const Reflection* reflection,
       String(reflection->GetEnum(pb, field)->name());
       break;
     case FieldDescriptor::CPPTYPE_STRING:
-      String(KUDU_MAYBE_REDACT_IF(field->options().GetExtension(REDACT),
-                                  reflection->GetString(pb, field)));
+      String(KUDU_MAYBE_REDACT_IF(
+          field->options().GetExtension(REDACT),
+          reflection->GetString(pb, field)));
       break;
     case FieldDescriptor::CPPTYPE_MESSAGE:
       Protobuf(reflection->GetMessage(pb, field));
@@ -241,8 +280,11 @@ void JsonWriter::ProtobufField(const Message& pb, const Reflection* reflection,
   }
 }
 
-void JsonWriter::ProtobufRepeatedField(const Message& pb, const Reflection* reflection,
-                                       const FieldDescriptor* field, int index) {
+void JsonWriter::ProtobufRepeatedField(
+    const Message& pb,
+    const Reflection* reflection,
+    const FieldDescriptor* field,
+    int index) {
   switch (field->cpp_type()) {
     case FieldDescriptor::CPPTYPE_INT32:
       Int(reflection->GetRepeatedInt32(pb, field, index));
@@ -269,8 +311,9 @@ void JsonWriter::ProtobufRepeatedField(const Message& pb, const Reflection* refl
       String(reflection->GetRepeatedEnum(pb, field, index)->name());
       break;
     case FieldDescriptor::CPPTYPE_STRING:
-      String(KUDU_MAYBE_REDACT_IF(field->options().GetExtension(REDACT),
-                                  reflection->GetRepeatedString(pb, field, index)));
+      String(KUDU_MAYBE_REDACT_IF(
+          field->options().GetExtension(REDACT),
+          reflection->GetRepeatedString(pb, field, index)));
       break;
     case FieldDescriptor::CPPTYPE_MESSAGE:
       Protobuf(reflection->GetRepeatedMessage(pb, field, index));
@@ -292,8 +335,7 @@ string JsonWriter::ToJson(const Message& pb, Mode mode) {
 //
 
 UTF8StringStreamBuffer::UTF8StringStreamBuffer(std::ostringstream* out)
-  : out_(DCHECK_NOTNULL(out)) {
-}
+    : out_(DCHECK_NOTNULL(out)) {}
 UTF8StringStreamBuffer::~UTF8StringStreamBuffer() {
   DCHECK_EQ(buf_.size(), 0) << "Forgot to flush!";
 }
@@ -311,41 +353,63 @@ void UTF8StringStreamBuffer::Flush() {
 // JsonWriterImpl: simply forward to the underlying implementation.
 //
 
-template<class T>
+template <class T>
 JsonWriterImpl<T>::JsonWriterImpl(ostringstream* out)
-  : stream_(DCHECK_NOTNULL(out)),
-    writer_(stream_) {
+    : stream_(DCHECK_NOTNULL(out)), writer_(stream_) {}
+template <class T>
+void JsonWriterImpl<T>::Null() {
+  writer_.Null();
 }
-template<class T>
-void JsonWriterImpl<T>::Null() { writer_.Null(); }
-template<class T>
-void JsonWriterImpl<T>::Bool(bool b) { writer_.Bool(b); }
-template<class T>
-void JsonWriterImpl<T>::Int(int i) { writer_.Int(i); }
-template<class T>
-void JsonWriterImpl<T>::Uint(unsigned u) { writer_.Uint(u); }
-template<class T>
-void JsonWriterImpl<T>::Int64(int64_t i64) { writer_.Int64(i64); }
-template<class T>
-void JsonWriterImpl<T>::Uint64(uint64_t u64) { writer_.Uint64(u64); }
-template<class T>
-void JsonWriterImpl<T>::Double(double d) { writer_.Double(d); }
-template<class T>
-void JsonWriterImpl<T>::String(const char* str, size_t length) { writer_.String(str, length); }
-template<class T>
-void JsonWriterImpl<T>::String(const char* str) { writer_.String(str); }
-template<class T>
-void JsonWriterImpl<T>::String(const string& str) { writer_.String(str.c_str(), str.length()); }
-template<class T>
-void JsonWriterImpl<T>::StartObject() { writer_.StartObject(); }
-template<class T>
+template <class T>
+void JsonWriterImpl<T>::Bool(bool b) {
+  writer_.Bool(b);
+}
+template <class T>
+void JsonWriterImpl<T>::Int(int i) {
+  writer_.Int(i);
+}
+template <class T>
+void JsonWriterImpl<T>::Uint(unsigned u) {
+  writer_.Uint(u);
+}
+template <class T>
+void JsonWriterImpl<T>::Int64(int64_t i64) {
+  writer_.Int64(i64);
+}
+template <class T>
+void JsonWriterImpl<T>::Uint64(uint64_t u64) {
+  writer_.Uint64(u64);
+}
+template <class T>
+void JsonWriterImpl<T>::Double(double d) {
+  writer_.Double(d);
+}
+template <class T>
+void JsonWriterImpl<T>::String(const char* str, size_t length) {
+  writer_.String(str, length);
+}
+template <class T>
+void JsonWriterImpl<T>::String(const char* str) {
+  writer_.String(str);
+}
+template <class T>
+void JsonWriterImpl<T>::String(const string& str) {
+  writer_.String(str.c_str(), str.length());
+}
+template <class T>
+void JsonWriterImpl<T>::StartObject() {
+  writer_.StartObject();
+}
+template <class T>
 void JsonWriterImpl<T>::EndObject() {
   writer_.EndObject();
   stream_.Flush();
 }
-template<class T>
-void JsonWriterImpl<T>::StartArray() { writer_.StartArray(); }
-template<class T>
+template <class T>
+void JsonWriterImpl<T>::StartArray() {
+  writer_.StartArray();
+}
+template <class T>
 void JsonWriterImpl<T>::EndArray() {
   writer_.EndArray();
   stream_.Flush();

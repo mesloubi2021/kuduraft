@@ -36,10 +36,7 @@ using std::weak_ptr;
 namespace kudu {
 namespace rpc {
 
-PeriodicTimer::Options::Options()
-    : jitter_pct(0.25),
-      one_shot(false) {
-}
+PeriodicTimer::Options::Options() : jitter_pct(0.25), one_shot(false) {}
 
 shared_ptr<PeriodicTimer> PeriodicTimer::Create(
     shared_ptr<Messenger> messenger,
@@ -110,9 +107,8 @@ void PeriodicTimer::SnoozeUnlocked(boost::optional<MonoDelta> next_task_delta) {
     // between (1-J)*P and (1+J)*P.
     next_task_delta = MonoDelta::FromMilliseconds(
         GetMinimumPeriod().ToMilliseconds() +
-        rng_.NextDoubleFraction() *
-        options_.jitter_pct *
-        (2 * period_.ToMilliseconds()));
+        rng_.NextDoubleFraction() * options_.jitter_pct *
+            (2 * period_.ToMilliseconds()));
   }
   next_task_time_ = MonoTime::Now() + *next_task_delta;
 }
@@ -125,8 +121,8 @@ bool PeriodicTimer::started() const {
 MonoDelta PeriodicTimer::GetMinimumPeriod() {
   // Given jitter percentage J and period P, this returns (1-J)*P, which is
   // the lowest possible jittered value.
-  return MonoDelta::FromMilliseconds((1.0 - options_.jitter_pct) *
-                                     period_.ToMilliseconds());
+  return MonoDelta::FromMilliseconds(
+      (1.0 - options_.jitter_pct) * period_.ToMilliseconds());
 }
 
 int64_t PeriodicTimer::NumCallbacksForTests() const {
@@ -204,15 +200,17 @@ void PeriodicTimer::Callback(int64_t my_callback_generation) {
   // Capture a weak_ptr reference into the submitted functor so that we can
   // safely handle the functor outliving its timer.
   weak_ptr<PeriodicTimer> w = shared_from_this();
-  messenger_->ScheduleOnReactor([w, my_callback_generation](const Status& s) {
-    if (!s.ok()) {
-      // The reactor was shut down.
-      return;
-    }
-    if (auto timer = w.lock()) {
-      timer->Callback(my_callback_generation);
-    }
-  }, delay);
+  messenger_->ScheduleOnReactor(
+      [w, my_callback_generation](const Status& s) {
+        if (!s.ok()) {
+          // The reactor was shut down.
+          return;
+        }
+        if (auto timer = w.lock()) {
+          timer->Callback(my_callback_generation);
+        }
+      },
+      delay);
 }
 
 } // namespace rpc

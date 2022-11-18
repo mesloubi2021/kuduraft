@@ -53,9 +53,10 @@ struct RpcMethodInfo;
 // Also includes a queue that calls get pushed onto for handling by the pool.
 class ServicePool : public RpcService {
  public:
-  ServicePool(gscoped_ptr<ServiceIf> service,
-              const scoped_refptr<MetricEntity>& metric_entity,
-              size_t service_queue_length);
+  ServicePool(
+      gscoped_ptr<ServiceIf> service,
+      const scoped_refptr<MetricEntity>& metric_entity,
+      size_t service_queue_length);
   virtual ~ServicePool();
 
   // Set a hook function to be called when any RPC gets rejected because
@@ -103,7 +104,7 @@ class ServicePool : public RpcService {
   void RejectTooBusy(InboundCall* c);
 
   gscoped_ptr<ServiceIf> service_;
-  std::vector<scoped_refptr<kudu::Thread> > threads_;
+  std::vector<scoped_refptr<kudu::Thread>> threads_;
   LifoServiceQueue service_queue_;
   scoped_refptr<Histogram> incoming_queue_time_;
   scoped_refptr<Counter> rpcs_timed_out_in_queue_;

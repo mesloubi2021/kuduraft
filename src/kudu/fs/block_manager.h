@@ -124,8 +124,8 @@ class WritableBlock : public Block {
   // Signals that the block will no longer receive writes. Does not guarantee
   // durability; Close() must still be called for that.
   //
-  // When 'block_manager_preflush_control' is set to 'finalize', it also begins an
-  // asynchronous flush of dirty block data to disk. If there is other work
+  // When 'block_manager_preflush_control' is set to 'finalize', it also begins
+  // an asynchronous flush of dirty block data to disk. If there is other work
   // to be done between the final Append() and the future Close(),
   // Finalize() will reduce the amount of time spent waiting for outstanding
   // I/O to complete in Close(). This is analogous to readahead or prefetching.
@@ -160,9 +160,9 @@ class ReadableBlock : public Block {
   virtual Status Read(uint64_t offset, Slice result) const = 0;
 
   // Reads exactly the "results" aggregate bytes, based on each Slice's "size",
-  // beginning from 'offset' in the block, returning an error if fewer bytes exist.
-  // Sets each "result" to the data that was read.
-  // If an error was encountered, returns a non-OK status.
+  // beginning from 'offset' in the block, returning an error if fewer bytes
+  // exist. Sets each "result" to the data that was read. If an error was
+  // encountered, returns a non-OK status.
   virtual Status ReadV(uint64_t offset, ArrayView<Slice> results) const = 0;
 
   // Returns the memory usage of this object including the object itself.
@@ -202,9 +202,9 @@ class BlockManager {
   // Lists the available block manager types.
   static std::vector<std::string> block_manager_types() {
 #if defined(__linux__)
-    return { "file", "log" };
+    return {"file", "log"};
 #else
-    return { "file" };
+    return {"file"};
 #endif
   }
 
@@ -230,8 +230,9 @@ class BlockManager {
   // ensure that it reaches disk.
   //
   // Does not modify 'block' on error.
-  virtual Status CreateBlock(const CreateBlockOptions& opts,
-                             std::unique_ptr<WritableBlock>* block) = 0;
+  virtual Status CreateBlock(
+      const CreateBlockOptions& opts,
+      std::unique_ptr<WritableBlock>* block) = 0;
 
   // Opens an existing block for reading.
   //
@@ -242,17 +243,20 @@ class BlockManager {
   // may fail.
   //
   // Does not modify 'block' on error.
-  virtual Status OpenBlock(const BlockId& block_id,
-                           std::unique_ptr<ReadableBlock>* block) = 0;
+  virtual Status OpenBlock(
+      const BlockId& block_id,
+      std::unique_ptr<ReadableBlock>* block) = 0;
 
   // Constructs a block creation transaction to group a set of block creation
   // operations and closes the registered blocks together.
-  virtual std::unique_ptr<BlockCreationTransaction> NewCreationTransaction() = 0;
+  virtual std::unique_ptr<BlockCreationTransaction>
+  NewCreationTransaction() = 0;
 
   // Constructs a block deletion transaction to group a set of block deletion
   // operations. Similar to 'DeleteBlock', the actual deletion will take place
   // after the last open reader or writer is closed.
-  virtual std::shared_ptr<BlockDeletionTransaction> NewDeletionTransaction() = 0;
+  virtual std::shared_ptr<BlockDeletionTransaction>
+  NewDeletionTransaction() = 0;
 
   // Retrieves the IDs of all blocks under management by this block manager.
   // These include ReadableBlocks as well as WritableBlocks.
@@ -308,11 +312,11 @@ class BlockDeletionTransaction {
   // Add a block to the deletion transaction.
   virtual void AddDeletedBlock(BlockId block) = 0;
 
-  // Deletes a group of blocks given the block IDs, the actual deletion will take
-  // place after the last open reader or writer is closed for each block that needs
-  // be to deleted. The 'deleted' out parameter will be set with the list of block
-  // IDs that were successfully deleted, regardless of the value of returned 'status'
-  // is OK or error.
+  // Deletes a group of blocks given the block IDs, the actual deletion will
+  // take place after the last open reader or writer is closed for each block
+  // that needs be to deleted. The 'deleted' out parameter will be set with the
+  // list of block IDs that were successfully deleted, regardless of the value
+  // of returned 'status' is OK or error.
   //
   // Returns the first deletion failure that was seen, if any.
   virtual Status CommitDeletedBlocks(std::vector<BlockId>* deleted) = 0;

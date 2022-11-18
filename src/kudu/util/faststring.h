@@ -33,21 +33,13 @@ namespace kudu {
 // instead of memsetting to \0)
 class faststring {
  public:
-  enum {
-    kInitialCapacity = 32
-  };
+  enum { kInitialCapacity = 32 };
 
-  faststring() :
-    data_(initial_data_),
-    len_(0),
-    capacity_(kInitialCapacity) {
-  }
+  faststring() : data_(initial_data_), len_(0), capacity_(kInitialCapacity) {}
 
   // Construct a string with the given capacity, in bytes.
   explicit faststring(size_t capacity)
-    : data_(initial_data_),
-      len_(0),
-      capacity_(kInitialCapacity) {
+      : data_(initial_data_), len_(0), capacity_(kInitialCapacity) {
     if (capacity > capacity_) {
       data_ = new uint8_t[capacity];
       capacity_ = capacity;
@@ -64,17 +56,19 @@ class faststring {
 
   // Reset the valid length of the string to 0.
   //
-  // This does not free up any memory. The capacity of the string remains unchanged.
+  // This does not free up any memory. The capacity of the string remains
+  // unchanged.
   void clear() {
     resize(0);
     ASAN_POISON_MEMORY_REGION(data_, capacity_);
   }
 
   // Resize the string to the given length.
-  // If the new length is larger than the old length, the capacity is expanded as necessary.
+  // If the new length is larger than the old length, the capacity is expanded
+  // as necessary.
   //
-  // NOTE: in contrast to std::string's implementation, Any newly "exposed" bytes of data are
-  // not cleared.
+  // NOTE: in contrast to std::string's implementation, Any newly "exposed"
+  // bytes of data are not cleared.
   void resize(size_t newsize) {
     if (newsize > capacity_) {
       reserve(newsize);
@@ -87,8 +81,8 @@ class faststring {
   // Releases the underlying array; after this, the buffer is left empty.
   //
   // NOTE: the data pointer returned by release() is not necessarily the pointer
-  uint8_t *release() WARN_UNUSED_RESULT {
-    uint8_t *ret = data_;
+  uint8_t* release() WARN_UNUSED_RESULT {
+    uint8_t* ret = data_;
     if (ret == initial_data_) {
       ret = new uint8_t[len_];
       memcpy(ret, data_, len_);
@@ -100,19 +94,22 @@ class faststring {
     return ret;
   }
 
-  // Reserve space for the given total amount of data. If the current capacity is already
-  // larger than the newly requested capacity, this is a no-op (i.e. it does not ever free memory).
+  // Reserve space for the given total amount of data. If the current capacity
+  // is already larger than the newly requested capacity, this is a no-op (i.e.
+  // it does not ever free memory).
   //
-  // NOTE: even though the new capacity is reserved, it is illegal to begin writing into that memory
-  // directly using pointers. If ASAN is enabled, this is ensured using manual memory poisoning.
+  // NOTE: even though the new capacity is reserved, it is illegal to begin
+  // writing into that memory directly using pointers. If ASAN is enabled, this
+  // is ensured using manual memory poisoning.
   void reserve(size_t newcapacity) {
-    if (PREDICT_TRUE(newcapacity <= capacity_)) return;
+    if (PREDICT_TRUE(newcapacity <= capacity_))
+      return;
     GrowArray(newcapacity);
   }
 
   // Append the given data to the string, resizing capacity as necessary.
-  void append(const void *src_v, size_t count) {
-    const uint8_t *src = reinterpret_cast<const uint8_t *>(src_v);
+  void append(const void* src_v, size_t count) {
+    const uint8_t* src = reinterpret_cast<const uint8_t*>(src_v);
     EnsureRoomForAppend(count);
     ASAN_UNPOISON_MEMORY_REGION(data_ + len_, count);
 
@@ -122,7 +119,7 @@ class faststring {
     // was ~20% faster for reading a large prefix-coded string file
     // where each string was only a few chars different
     if (count <= 4) {
-      uint8_t *p = &data_[len_];
+      uint8_t* p = &data_[len_];
       for (int i = 0; i < count; i++) {
         *p++ = *src++;
       }
@@ -133,7 +130,7 @@ class faststring {
   }
 
   // Append the given string to this string.
-  void append(const std::string &str) {
+  void append(const std::string& str) {
     append(str.data(), str.size());
   }
 
@@ -162,36 +159,36 @@ class faststring {
 
   // Return a pointer to the data in this string. Note that this pointer
   // may be invalidated by any later non-const operation.
-  const uint8_t *data() const {
+  const uint8_t* data() const {
     return &data_[0];
   }
 
   // Return a pointer to the data in this string. Note that this pointer
   // may be invalidated by any later non-const operation.
-  uint8_t *data() {
+  uint8_t* data() {
     return &data_[0];
   }
 
   // Return the given element of this string. Note that this does not perform
   // any bounds checking.
-  const uint8_t &at(size_t i) const {
+  const uint8_t& at(size_t i) const {
     return data_[i];
   }
 
   // Return the given element of this string. Note that this does not perform
   // any bounds checking.
-  const uint8_t &operator[](size_t i) const {
+  const uint8_t& operator[](size_t i) const {
     return data_[i];
   }
 
   // Return the given element of this string. Note that this does not perform
   // any bounds checking.
-  uint8_t &operator[](size_t i) {
+  uint8_t& operator[](size_t i) {
     return data_[i];
   }
 
   // Reset the contents of this string by copying 'len' bytes from 'src'.
-  void assign_copy(const uint8_t *src, size_t len) {
+  void assign_copy(const uint8_t* src, size_t len) {
     // Reset length so that the first resize doesn't need to copy the current
     // contents of the array.
     len_ = 0;
@@ -200,27 +197,26 @@ class faststring {
   }
 
   // Reset the contents of this string by copying from the given std::string.
-  void assign_copy(const std::string &str) {
-    assign_copy(reinterpret_cast<const uint8_t *>(str.c_str()),
-                str.size());
+  void assign_copy(const std::string& str) {
+    assign_copy(reinterpret_cast<const uint8_t*>(str.c_str()), str.size());
   }
 
   // Reallocates the internal storage to fit only the current data.
   //
-  // This may revert to using internal storage if the current length is shorter than
-  // kInitialCapacity. Note that, in that case, after this call, capacity() will return
-  // a capacity larger than the data length.
+  // This may revert to using internal storage if the current length is shorter
+  // than kInitialCapacity. Note that, in that case, after this call, capacity()
+  // will return a capacity larger than the data length.
   //
   // Any pointers within this instance are invalidated.
   void shrink_to_fit() {
-    if (data_ == initial_data_ || capacity_ == len_) return;
+    if (data_ == initial_data_ || capacity_ == len_)
+      return;
     ShrinkToFitInternal();
   }
 
   // Return a copy of this string as a std::string.
   std::string ToString() const {
-    return std::string(reinterpret_cast<const char *>(data()),
-                       len_);
+    return std::string(reinterpret_cast<const char*>(data()), len_);
   }
 
  private:

@@ -46,33 +46,34 @@ namespace security {
 // Test for various crypto-related functionality in the security library.
 class CryptoTest : public KuduTest {
  public:
-  CryptoTest() :
-      pem_dir_(GetTestPath("pem")),
-      private_key_file_(JoinPathSegments(pem_dir_, "private_key.pem")),
-      public_key_file_(JoinPathSegments(pem_dir_, "public_key.pem")),
-      corrupted_private_key_file_(JoinPathSegments(pem_dir_,
-          "corrupted.private_key.pem")),
-      corrupted_public_key_file_(JoinPathSegments(pem_dir_,
-          "corrupted.public_key.pem")) {
-  }
+  CryptoTest()
+      : pem_dir_(GetTestPath("pem")),
+        private_key_file_(JoinPathSegments(pem_dir_, "private_key.pem")),
+        public_key_file_(JoinPathSegments(pem_dir_, "public_key.pem")),
+        corrupted_private_key_file_(
+            JoinPathSegments(pem_dir_, "corrupted.private_key.pem")),
+        corrupted_public_key_file_(
+            JoinPathSegments(pem_dir_, "corrupted.public_key.pem")) {}
 
   void SetUp() override {
     ASSERT_OK(env_->CreateDir(pem_dir_));
     ASSERT_OK(WriteStringToFile(env_, kCaPrivateKey, private_key_file_));
     ASSERT_OK(WriteStringToFile(env_, kCaPublicKey, public_key_file_));
-    ASSERT_OK(WriteStringToFile(env_,
+    ASSERT_OK(WriteStringToFile(
+        env_,
         string(kCaPrivateKey, strlen(kCaPrivateKey) / 2),
         corrupted_private_key_file_));
-    ASSERT_OK(WriteStringToFile(env_,
+    ASSERT_OK(WriteStringToFile(
+        env_,
         string(kCaPublicKey, strlen(kCaPublicKey) / 2),
         corrupted_public_key_file_));
   }
 
  protected:
-  template<typename Key>
+  template <typename Key>
   void CheckToAndFromString(const Key& key_ref, DataFormat format) {
-    SCOPED_TRACE(Substitute("ToAndFromString for $0 format",
-                            DataFormatToString(format)));
+    SCOPED_TRACE(Substitute(
+        "ToAndFromString for $0 format", DataFormatToString(format)));
     string key_ref_str;
     ASSERT_OK(key_ref.ToString(&key_ref_str, format));
     Key key;
@@ -109,8 +110,7 @@ TEST_F(CryptoTest, CorruptedRsaPrivateKeyInputPEM) {
       corrupted_private_key_file_,
       public_key_file_,
       corrupted_public_key_file_,
-      "/bin/sh"
-  };
+      "/bin/sh"};
   for (const auto& file : kFiles) {
     PrivateKey key;
     const Status s = key.FromFile(file, DataFormat::PEM);
@@ -137,8 +137,7 @@ TEST_F(CryptoTest, CorruptedRsaPublicKeyInputPEM) {
       corrupted_public_key_file_,
       private_key_file_,
       corrupted_private_key_file_,
-      "/bin/sh"
-  };
+      "/bin/sh"};
   for (const auto& file : kFiles) {
     PublicKey key;
     const Status s = key.FromFile(file, DataFormat::PEM);
@@ -163,10 +162,8 @@ TEST_F(CryptoTest, RsaExtractPublicPartFromPrivateKey) {
   EXPECT_EQ(ref_str_public_key, str_public_key);
 }
 
-class CryptoKeySerDesTest :
-    public CryptoTest,
-    public ::testing::WithParamInterface<DataFormat> {
-};
+class CryptoKeySerDesTest : public CryptoTest,
+                            public ::testing::WithParamInterface<DataFormat> {};
 
 // Check the transformation chains for RSA public/private keys:
 //   internal -> PEM -> internal -> PEM
@@ -186,15 +183,16 @@ TEST_P(CryptoKeySerDesTest, ToAndFromString) {
 }
 
 INSTANTIATE_TEST_CASE_P(
-    DataFormats, CryptoKeySerDesTest,
+    DataFormats,
+    CryptoKeySerDesTest,
     ::testing::Values(DataFormat::DER, DataFormat::PEM));
 
 // Check making crypto signatures against the reference data.
 TEST_F(CryptoTest, MakeVerifySignatureRef) {
   static const vector<pair<string, string>> kRefElements = {
-    { kDataTiny,    kSignatureTinySHA512 },
-    { kDataShort,   kSignatureShortSHA512 },
-    { kDataLong,    kSignatureLongSHA512 },
+      {kDataTiny, kSignatureTinySHA512},
+      {kDataShort, kSignatureShortSHA512},
+      {kDataLong, kSignatureLongSHA512},
   };
 
   // Load the reference RSA private key.
@@ -221,9 +219,9 @@ TEST_F(CryptoTest, MakeVerifySignatureRef) {
 
 TEST_F(CryptoTest, VerifySignatureWrongData) {
   static const vector<string> kRefSignatures = {
-    kSignatureTinySHA512,
-    kSignatureShortSHA512,
-    kSignatureLongSHA512,
+      kSignatureTinySHA512,
+      kSignatureShortSHA512,
+      kSignatureLongSHA512,
   };
 
   // Load the reference RSA public key.
@@ -233,8 +231,8 @@ TEST_F(CryptoTest, VerifySignatureWrongData) {
   for (const auto& e : kRefSignatures) {
     string signature;
     ASSERT_TRUE(Base64Decode(e, &signature));
-    Status s = key.VerifySignature(DigestType::SHA512,
-        "non-expected-data", signature);
+    Status s =
+        key.VerifySignature(DigestType::SHA512, "non-expected-data", signature);
     EXPECT_TRUE(s.IsCorruption()) << s.ToString();
   }
 }

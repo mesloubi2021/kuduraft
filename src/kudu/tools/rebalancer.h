@@ -51,13 +51,14 @@ class Rebalancer {
  public:
   // Configuration parameters for the rebalancer aggregated into a struct.
   struct Config {
-    Config(std::vector<std::string> master_addresses = {},
-           std::vector<std::string> table_filters = {},
-           size_t max_moves_per_server = 5,
-           size_t max_staleness_interval_sec = 300,
-           int64_t max_run_time_sec = 0,
-           bool move_rf1_replicas = false,
-           bool output_replica_distribution_details = false);
+    Config(
+        std::vector<std::string> master_addresses = {},
+        std::vector<std::string> table_filters = {},
+        size_t max_moves_per_server = 5,
+        size_t max_staleness_interval_sec = 300,
+        int64_t max_run_time_sec = 0,
+        bool move_rf1_replicas = false,
+        bool output_replica_distribution_details = false);
 
     // Kudu masters' RPC endpoints.
     std::vector<std::string> master_addresses;
@@ -91,7 +92,8 @@ class Rebalancer {
   };
 
   // Represents a concrete move of a replica from one tablet server to another.
-  // Formed logically from a TableReplicaMove by specifying a tablet for the move.
+  // Formed logically from a TableReplicaMove by specifying a tablet for the
+  // move.
   struct ReplicaMove {
     std::string tablet_uuid;
     std::string ts_uuid_from;
@@ -128,8 +130,9 @@ class Rebalancer {
     // per tablet server (both the source and the destination are counted in).
     // The 'deadline' specifies the deadline for the run, 'boost::none'
     // if no timeout is set.
-    Runner(size_t max_moves_per_server,
-           const boost::optional<MonoTime>& deadline);
+    Runner(
+        size_t max_moves_per_server,
+        const boost::optional<MonoTime>& deadline);
 
     // Initialize instance of Runner so it can run against Kudu cluster with
     // the 'master_addresses' RPC endpoints.
@@ -167,11 +170,12 @@ class Rebalancer {
     bool FindNextMove(size_t* op_idx);
 
     // Update the helper containers once a move operation has been scheduled.
-    void UpdateOnMoveScheduled(size_t idx,
-                               const std::string& tablet_uuid,
-                               const std::string& src_ts_uuid,
-                               const std::string& dst_ts_uuid,
-                               bool is_success);
+    void UpdateOnMoveScheduled(
+        size_t idx,
+        const std::string& tablet_uuid,
+        const std::string& src_ts_uuid,
+        const std::string& dst_ts_uuid,
+        bool is_success);
 
     // Auxiliary method used by UpdateOnMoveScheduled() implementation.
     void UpdateOnMoveScheduledImpl(
@@ -255,25 +259,28 @@ class Rebalancer {
   // The 'moves_in_progress' parameter contains information on pending moves.
   // The results are output into 'replica_moves', which will be empty
   // if no next steps are needed to make the cluster balanced.
-  Status GetNextMoves(const MovesInProgress& moves_in_progress,
-                      std::vector<ReplicaMove>* replica_moves);
+  Status GetNextMoves(
+      const MovesInProgress& moves_in_progress,
+      std::vector<ReplicaMove>* replica_moves);
 
   // Given information from the high-level rebalancing algorithm, find
   // appropriate tablet replicas to move on the specified tablet servers.
   // The set of result UUIDs is output into the 'tablet_ids' container (note:
   // the output container is first cleared). If no suitable replicas are found,
   // 'tablet_ids' will be empty with the result status of Status::OK().
-  Status FindReplicas(const TableReplicaMove& move,
-                      const KsckResults& ksck_info,
-                      std::vector<std::string>* tablet_ids) const;
+  Status FindReplicas(
+      const TableReplicaMove& move,
+      const KsckResults& ksck_info,
+      std::vector<std::string>* tablet_ids) const;
 
   // Reset ksck-related fields, preparing for a fresh ksck run.
   Status ResetKsck();
 
   // Filter out move operations at the tablets which already have operations
   // in progress. The 'replica_moves' cannot be null.
-  void FilterMoves(const MovesInProgress& scheduled_moves,
-                   std::vector<ReplicaMove>* replica_moves);
+  void FilterMoves(
+      const MovesInProgress& scheduled_moves,
+      std::vector<ReplicaMove>* replica_moves);
 
   // Configuration for the rebalancer.
   const Config config_;
@@ -288,7 +295,6 @@ class Rebalancer {
 
   // Auxiliary Ksck object to get information on the cluster.
   std::shared_ptr<Ksck> ksck_;
-
 };
 
 } // namespace tools

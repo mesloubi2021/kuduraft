@@ -58,7 +58,8 @@ namespace tools {
 namespace {
 
 const char* const kTServerAddressArg = "tserver_address";
-const char* const kTServerAddressDesc = "Address of a Kudu Tablet Server of "
+const char* const kTServerAddressDesc =
+    "Address of a Kudu Tablet Server of "
     "form 'hostname:port'. Port may be omitted if the Tablet Server is bound "
     "to the default port.";
 const char* const kFlagArg = "flag";
@@ -73,8 +74,8 @@ Status TServerSetFlag(const RunnerContext& context) {
   const string& address = FindOrDie(context.required_args, kTServerAddressArg);
   const string& flag = FindOrDie(context.required_args, kFlagArg);
   const string& value = FindOrDie(context.required_args, kValueArg);
-  return SetServerFlag(address, tserver::TabletServer::kDefaultPort,
-                       flag, value);
+  return SetServerFlag(
+      address, tserver::TabletServer::kDefaultPort, flag, value);
 }
 
 Status TServerStatus(const RunnerContext& context) {
@@ -108,7 +109,8 @@ Status ListTServers(const RunnerContext& context) {
     return strings::Substitute("$0:$1", hostport.host(), hostport.port());
   };
 
-  for (const auto& column : strings::Split(FLAGS_columns, ",", strings::SkipEmpty())) {
+  for (const auto& column :
+       strings::Split(FLAGS_columns, ",", strings::SkipEmpty())) {
     vector<string> values;
     if (boost::iequals(column, "uuid")) {
       for (const auto& server : servers) {
@@ -116,19 +118,22 @@ Status ListTServers(const RunnerContext& context) {
       }
     } else if (boost::iequals(column, "seqno")) {
       for (const auto& server : servers) {
-        values.emplace_back(std::to_string(server.instance_id().instance_seqno()));
+        values.emplace_back(
+            std::to_string(server.instance_id().instance_seqno()));
       }
-    } else if (boost::iequals(column, "rpc-addresses") ||
-               boost::iequals(column, "rpc_addresses")) {
+    } else if (
+        boost::iequals(column, "rpc-addresses") ||
+        boost::iequals(column, "rpc_addresses")) {
       for (const auto& server : servers) {
-        values.emplace_back(JoinMapped(server.registration().rpc_addresses(),
-                                       hostport_to_string, ","));
+        values.emplace_back(JoinMapped(
+            server.registration().rpc_addresses(), hostport_to_string, ","));
       }
-    } else if (boost::iequals(column, "http-addresses") ||
-               boost::iequals(column, "http_addresses")) {
+    } else if (
+        boost::iequals(column, "http-addresses") ||
+        boost::iequals(column, "http_addresses")) {
       for (const auto& server : servers) {
-        values.emplace_back(JoinMapped(server.registration().http_addresses(),
-                                       hostport_to_string, ","));
+        values.emplace_back(JoinMapped(
+            server.registration().http_addresses(), hostport_to_string, ","));
       }
     } else if (boost::iequals(column, "version")) {
       for (const auto& server : servers) {
@@ -136,7 +141,8 @@ Status ListTServers(const RunnerContext& context) {
       }
     } else if (boost::iequals(column, "heartbeat")) {
       for (const auto& server : servers) {
-        values.emplace_back(strings::Substitute("$0ms", server.millis_since_heartbeat()));
+        values.emplace_back(
+            strings::Substitute("$0ms", server.millis_since_heartbeat()));
       }
     } else if (boost::iequals(column, "location")) {
       for (const auto& server : servers) {
@@ -158,45 +164,47 @@ Status ListTServers(const RunnerContext& context) {
 unique_ptr<Mode> BuildTServerMode() {
   unique_ptr<Action> get_flags =
       ActionBuilder("get_flags", &TServerGetFlags)
-      .Description("Get the gflags for a Kudu Tablet Server")
-      .AddRequiredParameter({ kTServerAddressArg, kTServerAddressDesc })
-      .AddOptionalParameter("all_flags")
-      .AddOptionalParameter("flag_tags")
-      .Build();
+          .Description("Get the gflags for a Kudu Tablet Server")
+          .AddRequiredParameter({kTServerAddressArg, kTServerAddressDesc})
+          .AddOptionalParameter("all_flags")
+          .AddOptionalParameter("flag_tags")
+          .Build();
 
   unique_ptr<Action> set_flag =
       ActionBuilder("set_flag", &TServerSetFlag)
-      .Description("Change a gflag value on a Kudu Tablet Server")
-      .AddRequiredParameter({ kTServerAddressArg, kTServerAddressDesc })
-      .AddRequiredParameter({ kFlagArg, "Name of the gflag" })
-      .AddRequiredParameter({ kValueArg, "New value for the gflag" })
-      .AddOptionalParameter("force")
-      .Build();
+          .Description("Change a gflag value on a Kudu Tablet Server")
+          .AddRequiredParameter({kTServerAddressArg, kTServerAddressDesc})
+          .AddRequiredParameter({kFlagArg, "Name of the gflag"})
+          .AddRequiredParameter({kValueArg, "New value for the gflag"})
+          .AddOptionalParameter("force")
+          .Build();
 
   unique_ptr<Action> status =
       ActionBuilder("status", &TServerStatus)
-      .Description("Get the status of a Kudu Tablet Server")
-      .AddRequiredParameter({ kTServerAddressArg, kTServerAddressDesc })
-      .Build();
+          .Description("Get the status of a Kudu Tablet Server")
+          .AddRequiredParameter({kTServerAddressArg, kTServerAddressDesc})
+          .Build();
 
   unique_ptr<Action> timestamp =
       ActionBuilder("timestamp", &TServerTimestamp)
-      .Description("Get the current timestamp of a Kudu Tablet Server")
-      .AddRequiredParameter({ kTServerAddressArg, kTServerAddressDesc })
-      .Build();
+          .Description("Get the current timestamp of a Kudu Tablet Server")
+          .AddRequiredParameter({kTServerAddressArg, kTServerAddressDesc})
+          .Build();
 
   unique_ptr<Action> list_tservers =
       ActionBuilder("list", &ListTServers)
-      .Description("List tablet servers in a Kudu cluster")
-      .AddRequiredParameter({ kMasterAddressesArg, kMasterAddressesArgDesc })
-      .AddOptionalParameter("columns", string("uuid,rpc-addresses"),
-                            string("Comma-separated list of tserver info fields to "
-                                   "include in output.\nPossible values: uuid, "
-                                   "rpc-addresses, http-addresses, version, seqno, "
-                                   "and heartbeat"))
-      .AddOptionalParameter("format")
-      .AddOptionalParameter("timeout_ms")
-      .Build();
+          .Description("List tablet servers in a Kudu cluster")
+          .AddRequiredParameter({kMasterAddressesArg, kMasterAddressesArgDesc})
+          .AddOptionalParameter(
+              "columns",
+              string("uuid,rpc-addresses"),
+              string("Comma-separated list of tserver info fields to "
+                     "include in output.\nPossible values: uuid, "
+                     "rpc-addresses, http-addresses, version, seqno, "
+                     "and heartbeat"))
+          .AddOptionalParameter("format")
+          .AddOptionalParameter("timeout_ms")
+          .Build();
 
   return ModeBuilder("tserver")
       .Description("Operate on a Kudu Tablet Server")
@@ -210,4 +218,3 @@ unique_ptr<Mode> BuildTServerMode() {
 
 } // namespace tools
 } // namespace kudu
-

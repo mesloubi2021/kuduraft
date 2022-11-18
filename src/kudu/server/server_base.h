@@ -73,12 +73,18 @@ class ServerStatusPB;
 // and provides a common interface for server-type-agnostic functions.
 class ServerBase {
  public:
-  const RpcServer *rpc_server() const { return rpc_server_.get(); }
+  const RpcServer* rpc_server() const {
+    return rpc_server_.get();
+  }
 
 #ifdef FB_DO_NOT_REMOVE
-  const Webserver *web_server() const { return web_server_.get(); }
+  const Webserver* web_server() const {
+    return web_server_.get();
+  }
 #endif
-  const std::shared_ptr<rpc::Messenger>& messenger() const { return messenger_; }
+  const std::shared_ptr<rpc::Messenger>& messenger() const {
+    return messenger_;
+  }
 
   // Return the first RPC address that this server has bound to.
   // FATALs if the server is not started.
@@ -90,7 +96,9 @@ class ServerBase {
   Sockaddr first_http_address() const;
 #endif
 
-  FsManager* fs_manager() { return fs_manager_.get(); }
+  FsManager* fs_manager() {
+    return fs_manager_.get();
+  }
 
   const security::TlsContext& tls_context() const;
   security::TlsContext* mutable_tls_context();
@@ -102,25 +110,32 @@ class ServerBase {
   // This may not be called until after the server is Started.
   const NodeInstancePB& instance_pb() const;
 
-  const std::shared_ptr<MemTracker>& mem_tracker() const { return mem_tracker_; }
+  const std::shared_ptr<MemTracker>& mem_tracker() const {
+    return mem_tracker_;
+  }
 
-  const scoped_refptr<MetricEntity>& metric_entity() const { return metric_entity_; }
+  const scoped_refptr<MetricEntity>& metric_entity() const {
+    return metric_entity_;
+  }
 
-  MetricRegistry* metric_registry() { return metric_registry_.get(); }
+  MetricRegistry* metric_registry() {
+    return metric_registry_.get();
+  }
 
-  const scoped_refptr<rpc::ResultTracker>& result_tracker() const { return result_tracker_; }
+  const scoped_refptr<rpc::ResultTracker>& result_tracker() const {
+    return result_tracker_;
+  }
 
   // Returns this server's clock.
-  clock::Clock* clock() { return clock_.get(); }
+  clock::Clock* clock() {
+    return clock_.get();
+  }
 
-  // Return a PB describing the status of the server (version info, bound ports, etc)
+  // Return a PB describing the status of the server (version info, bound ports,
+  // etc)
   Status GetStatusPB(ServerStatusPB* status) const;
 
-  enum {
-    SUPER_USER = 1,
-    USER = 1 << 1,
-    SERVICE_USER = 1 << 2
-  };
+  enum { SUPER_USER = 1, USER = 1 << 1, SERVICE_USER = 1 << 2 };
 
   // Authorize an RPC. 'allowed_roles' is a bitset of which roles from the above
   // enum should be allowed to make hthe RPC.
@@ -129,8 +144,10 @@ class ServerBase {
   bool Authorize(rpc::RpcContext* rpc, uint32_t allowed_roles);
 
  protected:
-  ServerBase(std::string name, const ServerBaseOptions& options,
-             const std::string& metric_namespace);
+  ServerBase(
+      std::string name,
+      const ServerBaseOptions& options,
+      const std::string& metric_namespace);
   virtual ~ServerBase();
 
   virtual Status Init();
@@ -202,11 +219,12 @@ class ServerBase {
 
   // The ACL of users who may act as part of the Kudu service.
   security::SimpleAcl service_acl_;
+
  private:
   Status InitAcls();
   void GenerateInstanceID();
-  Status DumpServerInfo(const std::string& path,
-                        const std::string& format) const;
+  Status DumpServerInfo(const std::string& path, const std::string& format)
+      const;
   Status StartMetricsLogging();
   void MetricsLoggingThread();
 

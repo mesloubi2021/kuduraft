@@ -89,39 +89,43 @@ class WebCallbackRegistry {
     std::ostringstream* output;
   };
 
-  // A function that handles an HTTP request where the response body will be rendered
-  // with a mustache template from the JSON object held by 'resp'.
-  typedef boost::function<void (const WebRequest& args, WebResponse* resp)>
+  // A function that handles an HTTP request where the response body will be
+  // rendered with a mustache template from the JSON object held by 'resp'.
+  typedef boost::function<void(const WebRequest& args, WebResponse* resp)>
       PathHandlerCallback;
 
-  // A function that handles an HTTP request, where the response body is the contents
-  // of the 'output' member of 'resp'.
-  typedef boost::function<void (const WebRequest& args, PrerenderedWebResponse* resp)>
+  // A function that handles an HTTP request, where the response body is the
+  // contents of the 'output' member of 'resp'.
+  typedef boost::function<
+      void(const WebRequest& args, PrerenderedWebResponse* resp)>
       PrerenderedPathHandlerCallback;
 
   virtual ~WebCallbackRegistry() {}
 
   // Register a callback for a URL path. Path should not include the
   // http://hostname/ prefix. If is_styled is true, the page is meant to be for
-  // people to look at and is styled.  If false, it is meant to be for machines to
-  // scrape.  If is_on_nav_bar is true,  a link to this page is
-  // printed in the navigation bar at the top of each debug page. Otherwise the
-  // link does not appear, and the page is rendered without HTML headers and
-  // footers.
-  // The first registration's choice of is_styled overrides all
-  // subsequent registrations for that URL.
-  // For each call to RegisterPathHandler(), the file $KUDU_HOME/www<path>.mustache
-  // should exist.
-  virtual void RegisterPathHandler(const std::string& path, const std::string& alias,
-                                   const PathHandlerCallback& callback,
-                                   bool is_styled, bool is_on_nav_bar) = 0;
+  // people to look at and is styled.  If false, it is meant to be for machines
+  // to scrape.  If is_on_nav_bar is true,  a link to this page is printed in
+  // the navigation bar at the top of each debug page. Otherwise the link does
+  // not appear, and the page is rendered without HTML headers and footers. The
+  // first registration's choice of is_styled overrides all subsequent
+  // registrations for that URL. For each call to RegisterPathHandler(), the
+  // file $KUDU_HOME/www<path>.mustache should exist.
+  virtual void RegisterPathHandler(
+      const std::string& path,
+      const std::string& alias,
+      const PathHandlerCallback& callback,
+      bool is_styled,
+      bool is_on_nav_bar) = 0;
 
-  // Same as RegisterPathHandler(), except that callback produces prerendered HTML.
-  // Use RegisterPathHandler() with a mustache template instead.
-  virtual void RegisterPrerenderedPathHandler(const std::string& path, const std::string& alias,
-                                              const PrerenderedPathHandlerCallback& callback,
-                                              bool is_styled,
-                                              bool is_on_nav_bar) = 0;
+  // Same as RegisterPathHandler(), except that callback produces prerendered
+  // HTML. Use RegisterPathHandler() with a mustache template instead.
+  virtual void RegisterPrerenderedPathHandler(
+      const std::string& path,
+      const std::string& alias,
+      const PrerenderedPathHandlerCallback& callback,
+      bool is_styled,
+      bool is_on_nav_bar) = 0;
 };
 
 } // namespace kudu

@@ -29,7 +29,7 @@
 #include <glog/logging.h>
 
 #include "kudu/tablet/metadata.pb.h"
-#include "kudu/tablet/tablet.pb.h"  // IWYU pragma: keep
+#include "kudu/tablet/tablet.pb.h" // IWYU pragma: keep
 #include "kudu/util/status.h"
 
 namespace kudu {
@@ -56,7 +56,8 @@ enum class KsckCheckResult {
   // requires manual intervention to recover.
   UNAVAILABLE,
 
-  // There was a discrepancy among the tablets' consensus configs and the master's.
+  // There was a discrepancy among the tablets' consensus configs and the
+  // master's.
   CONSENSUS_MISMATCH,
 };
 
@@ -75,29 +76,30 @@ enum class KsckConsensusConfigType {
 // Representation of a consensus state.
 struct KsckConsensusState {
   KsckConsensusState() = default;
-  KsckConsensusState(KsckConsensusConfigType type,
-                     boost::optional<int64_t> term,
-                     boost::optional<int64_t> opid_index,
-                     boost::optional<std::string> leader_uuid,
-                     const std::vector<std::string>& voters,
-                     const std::vector<std::string>& non_voters)
-    : type(type),
-      term(std::move(term)),
-      opid_index(std::move(opid_index)),
-      leader_uuid(std::move(leader_uuid)),
-      voter_uuids(voters.cbegin(), voters.cend()),
-      non_voter_uuids(non_voters.cbegin(), non_voters.cend()) {
-   // A consensus state must have a term unless it's one sourced from the master.
-   CHECK(type == KsckConsensusConfigType::MASTER || term);
+  KsckConsensusState(
+      KsckConsensusConfigType type,
+      boost::optional<int64_t> term,
+      boost::optional<int64_t> opid_index,
+      boost::optional<std::string> leader_uuid,
+      const std::vector<std::string>& voters,
+      const std::vector<std::string>& non_voters)
+      : type(type),
+        term(std::move(term)),
+        opid_index(std::move(opid_index)),
+        leader_uuid(std::move(leader_uuid)),
+        voter_uuids(voters.cbegin(), voters.cend()),
+        non_voter_uuids(non_voters.cbegin(), non_voters.cend()) {
+    // A consensus state must have a term unless it's one sourced from the
+    // master.
+    CHECK(type == KsckConsensusConfigType::MASTER || term);
   }
 
   // Two KsckConsensusState structs match if they have the same
   // leader_uuid, the same set of peers, and one of the following holds:
   // - at least one of them is of type MASTER
   // - they are configs of the same type and they have the same term
-  bool Matches(const KsckConsensusState &other) const {
-    bool same_leader_and_peers =
-        leader_uuid == other.leader_uuid &&
+  bool Matches(const KsckConsensusState& other) const {
+    bool same_leader_and_peers = leader_uuid == other.leader_uuid &&
         voter_uuids == other.voter_uuids &&
         non_voter_uuids == other.non_voter_uuids;
     if (type == KsckConsensusConfigType::MASTER ||
@@ -314,46 +316,53 @@ struct KsckResults {
 
 // Print a formatted health summary to 'out', given a list `summaries`
 // describing the health of servers of type 'type'.
-Status PrintServerHealthSummaries(KsckServerType type,
-                                  const std::vector<KsckServerHealthSummary>& summaries,
-                                  std::ostream& out);
+Status PrintServerHealthSummaries(
+    KsckServerType type,
+    const std::vector<KsckServerHealthSummary>& summaries,
+    std::ostream& out);
 
 // Print a formatted summary of the flags in 'flag_to_servers_map', indicating
 // which servers have which (flag, value) pairs set.
 // Flag tag information is sourced from 'flag_tags_map'.
-Status PrintFlagTable(KsckServerType type,
-                      int num_servers,
-                      const KsckFlagToServersMap& flag_to_servers_map,
-                      const KsckFlagTagsMap& flag_tags_map,
-                      std::ostream& out);
+Status PrintFlagTable(
+    KsckServerType type,
+    int num_servers,
+    const KsckFlagToServersMap& flag_to_servers_map,
+    const KsckFlagTagsMap& flag_tags_map,
+    std::ostream& out);
 
 // Print a summary of the Kudu versions running across all servers from which
 // information could be fetched. Servers are grouped by version to make the
 // table compact.
-Status PrintVersionTable(const std::vector<KsckServerHealthSummary>& masters,
-                         const std::vector<KsckServerHealthSummary>& tservers,
-                         std::ostream& out);
+Status PrintVersionTable(
+    const std::vector<KsckServerHealthSummary>& masters,
+    const std::vector<KsckServerHealthSummary>& tservers,
+    std::ostream& out);
 
 // Print a formatted summary of the tables in 'table_summaries' to 'out'.
-Status PrintTableSummaries(const std::vector<KsckTableSummary>& table_summaries,
-                           std::ostream& out);
+Status PrintTableSummaries(
+    const std::vector<KsckTableSummary>& table_summaries,
+    std::ostream& out);
 
 // Print a formatted summary of the tablets in 'tablet_summaries' to 'out'.
-Status PrintTabletSummaries(const std::vector<KsckTabletSummary>& tablet_summaries,
-                            PrintMode mode,
-                            std::ostream& out);
+Status PrintTabletSummaries(
+    const std::vector<KsckTabletSummary>& tablet_summaries,
+    PrintMode mode,
+    std::ostream& out);
 
 // Print to 'out' a "consensus matrix" that compares the consensus states of the
 // replicas on servers with ids in 'server_uuids', given the set of consensus
 // states in 'consensus_states'. If given, 'ref_cstate' will be used as the
 // master's point of view of the consensus state of the tablet.
-Status PrintConsensusMatrix(const std::vector<std::string>& server_uuids,
-                            const boost::optional<KsckConsensusState> ref_cstate,
-                            const KsckConsensusStateMap& consensus_states,
-                            std::ostream& out);
+Status PrintConsensusMatrix(
+    const std::vector<std::string>& server_uuids,
+    const boost::optional<KsckConsensusState> ref_cstate,
+    const KsckConsensusStateMap& consensus_states,
+    std::ostream& out);
 
-Status PrintChecksumResults(const KsckChecksumResults& checksum_results,
-                            std::ostream& out);
+Status PrintChecksumResults(
+    const KsckChecksumResults& checksum_results,
+    std::ostream& out);
 
 Status PrintTotalCounts(const KsckResults& results, std::ostream& out);
 

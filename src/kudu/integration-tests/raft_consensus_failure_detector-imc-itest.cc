@@ -53,8 +53,7 @@ using std::vector;
 
 namespace kudu {
 
-class RaftConsensusFailureDetectorIMCTest : public MiniClusterITestBase {
-};
+class RaftConsensusFailureDetectorIMCTest : public MiniClusterITestBase {};
 
 // Ensure that the failure detector is enabled for non-leader voters, and
 // disabled for leaders and non-voters. Ensure this persists after a
@@ -75,7 +74,7 @@ TEST_F(RaftConsensusFailureDetectorIMCTest, TestFailureDetectorActivation) {
   FLAGS_catalog_manager_evict_excess_replicas = false;
 
   const int kNumReplicas = 3;
-  NO_FATALS(StartCluster(/*num_tablet_servers=*/ kNumReplicas + 1));
+  NO_FATALS(StartCluster(/*num_tablet_servers=*/kNumReplicas + 1));
   TestWorkload workload(cluster_.get());
   workload.Setup();
   workload.Start();
@@ -113,24 +112,29 @@ TEST_F(RaftConsensusFailureDetectorIMCTest, TestFailureDetectorActivation) {
   ASSERT_EQ(1, active_ts_map.erase(missing_replica_uuid));
 
   // Ensure all servers are up to date.
-  ASSERT_OK(WaitForServersToAgree(kTimeout, active_ts_map, tablet_id,
-                                  /*minimum_index=*/ 1));
+  ASSERT_OK(WaitForServersToAgree(
+      kTimeout,
+      active_ts_map,
+      tablet_id,
+      /*minimum_index=*/1));
 
   // Ensure that the failure detector activation state is consistent with the
   // rule that only non-leader VOTER replicas should have failure detection
   // enabled. Leaders and NON_VOTER replicas should not enable the FD.
-  auto validate_failure_detector_status = [&](const itest::TabletServerMap& ts_map) {
-    for (const auto& entry : ts_map) {
-      const auto& uuid = entry.first;
-      auto mini_ts = cluster_->mini_tablet_server_by_uuid(uuid);
-      vector<scoped_refptr<TabletReplica>> replicas;
-      mini_ts->server()->tablet_manager()->GetTabletReplicas(&replicas);
-      ASSERT_EQ(1, replicas.size());
-      const auto& replica = replicas[0];
-      ASSERT_EQ(replica->consensus()->role() == RaftPeerPB::FOLLOWER,
-                replica->consensus()->GetFailureDetectorForTests()->started());
-    }
-  };
+  auto validate_failure_detector_status =
+      [&](const itest::TabletServerMap& ts_map) {
+        for (const auto& entry : ts_map) {
+          const auto& uuid = entry.first;
+          auto mini_ts = cluster_->mini_tablet_server_by_uuid(uuid);
+          vector<scoped_refptr<TabletReplica>> replicas;
+          mini_ts->server()->tablet_manager()->GetTabletReplicas(&replicas);
+          ASSERT_EQ(1, replicas.size());
+          const auto& replica = replicas[0];
+          ASSERT_EQ(
+              replica->consensus()->role() == RaftPeerPB::FOLLOWER,
+              replica->consensus()->GetFailureDetectorForTests()->started());
+        }
+      };
 
   NO_FATALS(validate_failure_detector_status(active_ts_map));
 
@@ -138,12 +142,18 @@ TEST_F(RaftConsensusFailureDetectorIMCTest, TestFailureDetectorActivation) {
   ASSERT_EVENTUALLY([&] {
     itest::TServerDetails* leader;
     ASSERT_OK(FindTabletLeader(active_ts_map, tablet_id, kTimeout, &leader));
-    ASSERT_OK(AddServer(leader, tablet_id,
-                        ts_map_[missing_replica_uuid],
-                        RaftPeerPB::NON_VOTER, kTimeout));
+    ASSERT_OK(AddServer(
+        leader,
+        tablet_id,
+        ts_map_[missing_replica_uuid],
+        RaftPeerPB::NON_VOTER,
+        kTimeout));
   });
-  ASSERT_OK(WaitForServersToAgree(kTimeout, ts_map_, tablet_id,
-                                  /*minimum_index=*/ 2));
+  ASSERT_OK(WaitForServersToAgree(
+      kTimeout,
+      ts_map_,
+      tablet_id,
+      /*minimum_index=*/2));
 
   NO_FATALS(validate_failure_detector_status(ts_map_));
 }

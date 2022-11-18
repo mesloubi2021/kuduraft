@@ -41,23 +41,22 @@
 
 using kudu::itest::TabletServerMap;
 using kudu::itest::TServerDetails;
-using strings::Split;
-using strings::Substitute;
 using std::string;
 using std::vector;
+using strings::Split;
+using strings::Substitute;
 
 namespace kudu {
 namespace tools {
 
-class KuduTsCliTest : public ExternalMiniClusterITestBase {
-};
+class KuduTsCliTest : public ExternalMiniClusterITestBase {};
 
 // Test deleting a tablet using kudu-ts-cli tool.
 TEST_F(KuduTsCliTest, TestDeleteTablet) {
   MonoDelta timeout = MonoDelta::FromSeconds(30);
   NO_FATALS(StartCluster(
-        {"--enable_leader_failure_detection=false"},
-        {"--catalog_manager_wait_for_new_tablets_to_elect_leader=false"}));
+      {"--enable_leader_failure_detection=false"},
+      {"--catalog_manager_wait_for_new_tablets_to_elect_leader=false"}));
 
   TestWorkload workload(cluster_.get());
   workload.Setup(); // Easy way to create a new tablet.
@@ -70,22 +69,24 @@ TEST_F(KuduTsCliTest, TestDeleteTablet) {
   string tablet_id = tablets[0].tablet_status().tablet_id();
 
   for (int i = 0; i < cluster_->num_tablet_servers(); i++) {
-    ASSERT_OK(itest::WaitUntilTabletRunning(ts_map_[cluster_->tablet_server(i)->uuid()],
-                                            tablet_id, timeout));
+    ASSERT_OK(itest::WaitUntilTabletRunning(
+        ts_map_[cluster_->tablet_server(i)->uuid()], tablet_id, timeout));
   }
   string out;
-  ASSERT_OK(RunKuduTool({
-    "remote_replica",
-    "delete",
-    cluster_->tablet_server(0)->bound_rpc_addr().ToString(),
-    tablet_id,
-    "Deleting for kudu-ts-cli-test"
-  }, &out));
+  ASSERT_OK(RunKuduTool(
+      {"remote_replica",
+       "delete",
+       cluster_->tablet_server(0)->bound_rpc_addr().ToString(),
+       tablet_id,
+       "Deleting for kudu-ts-cli-test"},
+      &out));
   ASSERT_EQ("", out);
 
-  ASSERT_OK(inspect_->WaitForTabletDataStateOnTS(0, tablet_id, { tablet::TABLET_DATA_TOMBSTONED }));
+  ASSERT_OK(inspect_->WaitForTabletDataStateOnTS(
+      0, tablet_id, {tablet::TABLET_DATA_TOMBSTONED}));
   TServerDetails* ts = ts_map_[cluster_->tablet_server(0)->uuid()];
-  ASSERT_OK(itest::WaitUntilTabletInState(ts, tablet_id, tablet::STOPPED, timeout));
+  ASSERT_OK(
+      itest::WaitUntilTabletInState(ts, tablet_id, tablet::STOPPED, timeout));
 }
 
 // Test dumping a tablet using kudu-ts-cli tool.
@@ -106,8 +107,8 @@ TEST_F(KuduTsCliTest, TestDumpTablet) {
   string tablet_id = tablets[0].tablet_status().tablet_id();
 
   for (int i = 0; i < cluster_->num_tablet_servers(); i++) {
-    ASSERT_OK(itest::WaitUntilTabletRunning(ts_map_[cluster_->tablet_server(i)->uuid()],
-                                            tablet_id, timeout));
+    ASSERT_OK(itest::WaitUntilTabletRunning(
+        ts_map_[cluster_->tablet_server(i)->uuid()], tablet_id, timeout));
   }
 
   string out;
@@ -116,12 +117,12 @@ TEST_F(KuduTsCliTest, TestDumpTablet) {
   // clean time, i.e. one that hasn't had any writes or elections, we assert
   // that we are able to eventually scan.
   ASSERT_EVENTUALLY([&] {
-    ASSERT_OK(RunKuduTool({
-      "remote_replica",
-      "dump",
-      cluster_->tablet_server(0)->bound_rpc_addr().ToString(),
-      tablet_id
-    }, &out));
+    ASSERT_OK(RunKuduTool(
+        {"remote_replica",
+         "dump",
+         cluster_->tablet_server(0)->bound_rpc_addr().ToString(),
+         tablet_id},
+        &out));
     ASSERT_EQ("", out);
   });
 
@@ -131,13 +132,14 @@ TEST_F(KuduTsCliTest, TestDumpTablet) {
     SleepFor(MonoDelta::FromMilliseconds(10));
   }
   workload.StopAndJoin();
-  ASSERT_OK(WaitForServersToAgree(timeout, ts_map_, tablet_id, workload.batches_completed()));
-  ASSERT_OK(RunKuduTool({
-    "remote_replica",
-    "dump",
-    cluster_->tablet_server(0)->bound_rpc_addr().ToString(),
-    tablet_id
-  }, &out));
+  ASSERT_OK(WaitForServersToAgree(
+      timeout, ts_map_, tablet_id, workload.batches_completed()));
+  ASSERT_OK(RunKuduTool(
+      {"remote_replica",
+       "dump",
+       cluster_->tablet_server(0)->bound_rpc_addr().ToString(),
+       tablet_id},
+      &out));
 
   // Split the output into multiple rows and check format of each row,
   // and also check total number of rows are at least kNumRows.

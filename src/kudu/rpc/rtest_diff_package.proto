@@ -20,7 +20,5 @@
 syntax = "proto2";
 package kudu.rpc_test_diff_package;
 
-message ReqDiffPackagePB {
-}
-message RespDiffPackagePB {
-}
+message ReqDiffPackagePB {}
+message RespDiffPackagePB {}

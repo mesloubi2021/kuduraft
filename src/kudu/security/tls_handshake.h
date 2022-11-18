@@ -41,22 +41,27 @@ enum class TlsHandshakeType {
   SERVER,
 };
 
-// Mode for performing verification of the remote peer's identity during a handshake.
+// Mode for performing verification of the remote peer's identity during a
+// handshake.
 enum class TlsVerificationMode {
   // SERVER:
   //    No certificate will be requested from the client, and no verification
   //    will be done.
   // CLIENT:
-  //    The server's certificate will be obtained but no verification will be done.
+  //    The server's certificate will be obtained but no verification will be
+  //    done.
   //    (the server still requires a certificate, even if it is self-signed).
   VERIFY_NONE,
 
   // BOTH:
-  // The remote peer is required to have a signed certificate. The certificate will
+  // The remote peer is required to have a signed certificate. The certificate
+  // will
   // be verified in two ways:
   //  1) The certificate must be signed by a trusted CA (or chain of CAs).
-  //  2) Second, the hostname of the remote peer (as determined by reverse DNS of the
-  //    socket address) must match the common name or one of the Subject Alternative
+  //  2) Second, the hostname of the remote peer (as determined by reverse DNS
+  //  of the
+  //    socket address) must match the common name or one of the Subject
+  //    Alternative
   //    Names stored in the certificate.
   VERIFY_REMOTE_CERT_AND_HOST
 };
@@ -67,9 +72,8 @@ enum class TlsVerificationMode {
 // before use using TlsContext::InitiateHandshake.
 class TlsHandshake {
  public:
-
-   TlsHandshake() = default;
-   ~TlsHandshake() = default;
+  TlsHandshake() = default;
+  ~TlsHandshake() = default;
 
   // Set the verification mode for this handshake. The default verification mode
   // is VERIFY_REMOTE_CERT_AND_HOST.
@@ -81,7 +85,8 @@ class TlsHandshake {
   }
 
   // Perform a standard TLS handshake
-  Status SSLHandshake(std::unique_ptr<Socket>* socket, bool is_server) WARN_UNUSED_RESULT;
+  Status SSLHandshake(std::unique_ptr<Socket>* socket, bool is_server)
+      WARN_UNUSED_RESULT;
 
   // Get selected ALPN protocol
   std::string GetSelectedAlpn();
@@ -105,7 +110,8 @@ class TlsHandshake {
   // round of messages.
   //
   // Returns any other status code on error.
-  Status Continue(const std::string& recv, std::string* send) WARN_UNUSED_RESULT;
+  Status Continue(const std::string& recv, std::string* send)
+      WARN_UNUSED_RESULT;
 
   // Finishes the handshake, wrapping the provided socket in the negotiated TLS
   // channel. This 'TlsHandshake' instance should not be used again after
@@ -144,7 +150,8 @@ class TlsHandshake {
   friend class TlsContext;
 
   bool has_started_ = false;
-  TlsVerificationMode verification_mode_ = TlsVerificationMode::VERIFY_REMOTE_CERT_AND_HOST;
+  TlsVerificationMode verification_mode_ =
+      TlsVerificationMode::VERIFY_REMOTE_CERT_AND_HOST;
 
   // Set the verification mode on the underlying SSL object.
   void SetSSLVerify();

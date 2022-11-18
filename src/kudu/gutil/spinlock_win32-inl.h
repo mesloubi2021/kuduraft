@@ -32,14 +32,13 @@
  * This file is a Win32-specific part of spinlock_internal.cc
  */
 
-
 #include <windows.h>
 
 namespace base {
 namespace internal {
 namespace kudu {
 
-void SpinLockDelay(volatile Atomic32 *w, int32 value, int loop) {
+void SpinLockDelay(volatile Atomic32* w, int32 value, int loop) {
   if (loop == 0) {
   } else if (loop == 1) {
     Sleep(0);
@@ -48,8 +47,7 @@ void SpinLockDelay(volatile Atomic32 *w, int32 value, int loop) {
   }
 }
 
-void SpinLockWake(volatile Atomic32 *w, bool all) {
-}
+void SpinLockWake(volatile Atomic32* w, bool all) {}
 
 } // namespace kudu
 } // namespace internal

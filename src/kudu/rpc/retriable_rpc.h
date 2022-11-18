@@ -21,10 +21,10 @@
 
 #include "kudu/gutil/ref_counted.h"
 #include "kudu/gutil/strings/substitute.h"
+#include "kudu/rpc/messenger.h"
 #include "kudu/rpc/request_tracker.h"
 #include "kudu/rpc/rpc.h"
 #include "kudu/rpc/rpc_header.pb.h"
-#include "kudu/rpc/messenger.h"
 #include "kudu/util/monotime.h"
 
 namespace kudu {
@@ -36,23 +36,26 @@ typedef rpc::RequestTracker::SequenceNumber SequenceNumber;
 
 // A base class for retriable RPCs that handles replica picking and retry logic.
 //
-// The 'Server' template parameter refers to the type of the server that will be looked up
-// and passed to the derived classes on Try(). For instance in the case of WriteRpc it's
-// RemoteTabletServer.
+// The 'Server' template parameter refers to the type of the server that will be
+// looked up and passed to the derived classes on Try(). For instance in the
+// case of WriteRpc it's RemoteTabletServer.
 //
-// TODO(unknown): merge RpcRetrier into this class? Can't be done right now as the retrier is used
-// independently elsewhere, but likely possible when all replicated RPCs have a ReplicaPicker.
+// TODO(unknown): merge RpcRetrier into this class? Can't be done right now as
+// the retrier is used independently elsewhere, but likely possible when all
+// replicated RPCs have a ReplicaPicker.
 //
 // TODO(unknown): allow to target replicas other than the leader, if needed.
 //
-// TODO(unknown): once we have retry handling on all the RPCs merge this with rpc::Rpc.
+// TODO(unknown): once we have retry handling on all the RPCs merge this with
+// rpc::Rpc.
 template <class Server, class RequestPB, class ResponsePB>
 class RetriableRpc : public Rpc {
  public:
-  RetriableRpc(const scoped_refptr<ServerPicker<Server>>& server_picker,
-               const scoped_refptr<RequestTracker>& request_tracker,
-               const MonoTime& deadline,
-               std::shared_ptr<Messenger> messenger)
+  RetriableRpc(
+      const scoped_refptr<ServerPicker<Server>>& server_picker,
+      const scoped_refptr<RequestTracker>& request_tracker,
+      const MonoTime& deadline,
+      std::shared_ptr<Messenger> messenger)
       : Rpc(deadline, std::move(messenger)),
         server_picker_(server_picker),
         request_tracker_(request_tracker),
@@ -64,8 +67,8 @@ class RetriableRpc : public Rpc {
   }
 
   // Performs server lookup/initialization.
-  // If/when the server is looked up and initialized successfully RetriableRpc will call
-  // Try() to actually send the request.
+  // If/when the server is looked up and initialized successfully RetriableRpc
+  // will call Try() to actually send the request.
   void SendRpc() override;
 
   // The callback to call upon retrieving (of failing to retrieve) a new authn
@@ -78,9 +81,9 @@ class RetriableRpc : public Rpc {
   // The server been looked up and is ready to be used.
   virtual void Try(Server* replica, const ResponseCallback& callback) = 0;
 
-  // Subclasses implement this method to analyze 'status', the controller status or
-  // the response and return a RetriableRpcStatus which will then be used
-  // to decide how to proceed (retry or give up).
+  // Subclasses implement this method to analyze 'status', the controller status
+  // or the response and return a RetriableRpcStatus which will then be used to
+  // decide how to proceed (retry or give up).
   virtual RetriableRpcStatus AnalyzeResponse(const Status& status) = 0;
 
   // Subclasses implement this method to perform cleanup and/or final steps.
@@ -130,20 +133,20 @@ class RetriableRpc : public Rpc {
   int32_t num_attempts_;
 
   // Keeps track of the replica the RPCs were sent to.
-  // TODO Remove this and pass the used replica around. For now we need to keep this as
-  // the retrier calls the SendRpcCb directly and doesn't know the replica that was
-  // being written to.
+  // TODO Remove this and pass the used replica around. For now we need to keep
+  // this as the retrier calls the SendRpcCb directly and doesn't know the
+  // replica that was being written to.
   Server* current_;
 };
 
 template <class Server, class RequestPB, class ResponsePB>
-void RetriableRpc<Server, RequestPB, ResponsePB>::SendRpc()  {
+void RetriableRpc<Server, RequestPB, ResponsePB>::SendRpc() {
   if (sequence_number_ == RequestTracker::kNoSeqNo) {
     CHECK_OK(request_tracker_->NewSeqNo(&sequence_number_));
   }
-  server_picker_->PickLeader(Bind(&RetriableRpc::ReplicaFoundCb,
-                                  Unretained(this)),
-                             retrier().deadline());
+  server_picker_->PickLeader(
+      Bind(&RetriableRpc::ReplicaFoundCb, Unretained(this)),
+      retrier().deadline());
 }
 
 template <class Server, class RequestPB, class ResponsePB>
@@ -162,7 +165,8 @@ void RetriableRpc<Server, RequestPB, ResponsePB>::GetNewAuthnTokenAndRetryCb(
 
 template <class Server, class RequestPB, class ResponsePB>
 bool RetriableRpc<Server, RequestPB, ResponsePB>::RetryIfNeeded(
-    const RetriableRpcStatus& result, Server* server) {
+    const RetriableRpcStatus& result,
+    Server* server) {
   // Handle the cases where we retry.
   switch (result.result) {
     case RetriableRpcStatus::SERVICE_UNAVAILABLE:
@@ -171,14 +175,16 @@ bool RetriableRpc<Server, RequestPB, ResponsePB>::RetryIfNeeded(
       break;
 
     case RetriableRpcStatus::SERVER_NOT_ACCESSIBLE:
-      // TODO(KUDU-1745): not checking for null here results in a crash, since in the case
-      // of a failed master lookup we have no tablet server corresponding to the error.
+      // TODO(KUDU-1745): not checking for null here results in a crash, since
+      // in the case of a failed master lookup we have no tablet server
+      // corresponding to the error.
       //
       // But, with the null check, we end up with a relatively tight retry loop
       // in this scenario whereas we should be backing off. Need to improve
       // test coverage here to understand why the back-off is not taking effect.
       if (server != nullptr) {
-        VLOG(1) << "Failing " << ToString() << " to a new target: " << result.status.ToString();
+        VLOG(1) << "Failing " << ToString()
+                << " to a new target: " << result.status.ToString();
         // Mark the server as failed. As for details on the only existing
         // implementation of ServerPicker::MarkServerFailed(), see the note on
         // the MetaCacheServerPicker::MarkServerFailed() method.
@@ -218,7 +224,8 @@ bool RetriableRpc<Server, RequestPB, ResponsePB>::RetryIfNeeded(
         // mark the server as failed. As for details on the only existing
         // implementation of ServerPicker::MarkServerFailed(), see the note on
         // the MetaCacheServerPicker::MarkServerFailed() method.
-        VLOG(1) << "Failing " << ToString() << " to a new target: " << result.status.ToString();
+        VLOG(1) << "Failing " << ToString()
+                << " to a new target: " << result.status.ToString();
         server_picker_->MarkServerFailed(server, result.status);
       }
       // Do not retry in the case of non-retriable error.
@@ -244,11 +251,13 @@ void RetriableRpc<Server, RequestPB, ResponsePB>::FinishInternal() {
 }
 
 template <class Server, class RequestPB, class ResponsePB>
-void RetriableRpc<Server, RequestPB, ResponsePB>::ReplicaFoundCb(const Status& status,
-                                                                 Server* server) {
+void RetriableRpc<Server, RequestPB, ResponsePB>::ReplicaFoundCb(
+    const Status& status,
+    Server* server) {
   // NOTE: 'server' here may be nullptr in the case that status is not OK!
   RetriableRpcStatus result = AnalyzeResponse(status);
-  if (RetryIfNeeded(result, server)) return;
+  if (RetryIfNeeded(result, server))
+    return;
 
   if (result.result == RetriableRpcStatus::NON_RETRIABLE_ERROR) {
     FinishInternal();
@@ -256,14 +265,16 @@ void RetriableRpc<Server, RequestPB, ResponsePB>::ReplicaFoundCb(const Status& s
     return;
   }
 
-  // We successfully found a replica, so prepare the RequestIdPB before we send out the call.
+  // We successfully found a replica, so prepare the RequestIdPB before we send
+  // out the call.
   std::unique_ptr<RequestIdPB> request_id(new RequestIdPB());
   request_id->set_client_id(request_tracker_->client_id());
   request_id->set_seq_no(sequence_number_);
   request_id->set_first_incomplete_seq_no(request_tracker_->FirstIncomplete());
   request_id->set_attempt_no(num_attempts_++);
 
-  mutable_retrier()->mutable_controller()->SetRequestIdPB(std::move(request_id));
+  mutable_retrier()->mutable_controller()->SetRequestIdPB(
+      std::move(request_id));
 
   DCHECK_EQ(result.result, RetriableRpcStatus::OK);
   current_ = server;
@@ -271,9 +282,11 @@ void RetriableRpc<Server, RequestPB, ResponsePB>::ReplicaFoundCb(const Status& s
 }
 
 template <class Server, class RequestPB, class ResponsePB>
-void RetriableRpc<Server, RequestPB, ResponsePB>::SendRpcCb(const Status& status) {
+void RetriableRpc<Server, RequestPB, ResponsePB>::SendRpcCb(
+    const Status& status) {
   RetriableRpcStatus result = AnalyzeResponse(status);
-  if (RetryIfNeeded(result, current_)) return;
+  if (RetryIfNeeded(result, current_))
+    return;
 
   FinishInternal();
 
@@ -283,7 +296,8 @@ void RetriableRpc<Server, RequestPB, ResponsePB>::SendRpcCb(const Status& status
   if (!final_status.ok()) {
     std::string error_string;
     if (current_) {
-      error_string = strings::Substitute("Failed to write to server: $0", current_->ToString());
+      error_string = strings::Substitute(
+          "Failed to write to server: $0", current_->ToString());
     } else {
       error_string = "Failed to write to server: (no server available)";
     }

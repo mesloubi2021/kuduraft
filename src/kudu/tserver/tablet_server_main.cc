@@ -41,9 +41,11 @@ DECLARE_int32(rpc_num_service_threads);
 DECLARE_int32(webserver_port);
 DECLARE_string(rpc_bind_addresses);
 
-DEFINE_double(fault_before_start, 0.0,
-              "Fake fault flag that always causes a crash on startup. "
-              "Used to test the test infrastructure. Should never be set outside of tests.");
+DEFINE_double(
+    fault_before_start,
+    0.0,
+    "Fake fault flag that always causes a crash on startup. "
+    "Used to test the test infrastructure. Should never be set outside of tests.");
 TAG_FLAG(fault_before_start, hidden);
 TAG_FLAG(fault_before_start, unsafe);
 
@@ -54,8 +56,8 @@ static int TabletServerMain(int argc, char** argv) {
   InitKuduOrDie();
 
   // Reset some default values before parsing gflags.
-  FLAGS_rpc_bind_addresses = strings::Substitute("0.0.0.0:$0",
-                                                 TabletServer::kDefaultPort);
+  FLAGS_rpc_bind_addresses =
+      strings::Substitute("0.0.0.0:$0", TabletServer::kDefaultPort);
   FLAGS_rpc_num_service_threads = 20;
   // ANIRBAN
   // FLAGS_webserver_port = TabletServer::kDefaultWebPort;
@@ -63,7 +65,7 @@ static int TabletServerMain(int argc, char** argv) {
   // Setting the default value of the 'force_block_cache_capacity' flag to
   // 'false' makes the corresponding group validator enforce proper settings
   // for the memory limit and the cfile cache capacity.
-  //CHECK_NE("", SetCommandLineOptionWithMode("force_block_cache_capacity",
+  // CHECK_NE("", SetCommandLineOptionWithMode("force_block_cache_capacity",
   //       "false", gflags::SET_FLAGS_DEFAULT));
 
   GFlagsMap default_flags = GetFlagsMap();

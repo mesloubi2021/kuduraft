@@ -15,27 +15,23 @@ using std::unique_ptr;
 
 namespace kudu {
 
-Env::~Env() {
-}
+Env::~Env() {}
 
-SequentialFile::~SequentialFile() {
-}
+SequentialFile::~SequentialFile() {}
 
-RandomAccessFile::~RandomAccessFile() {
-}
+RandomAccessFile::~RandomAccessFile() {}
 
-WritableFile::~WritableFile() {
-}
+WritableFile::~WritableFile() {}
 
-RWFile::~RWFile() {
-}
+RWFile::~RWFile() {}
 
-FileLock::~FileLock() {
-}
+FileLock::~FileLock() {}
 
-static Status DoWriteStringToFile(Env* env, const Slice& data,
-                                  const std::string& fname,
-                                  bool should_sync) {
+static Status DoWriteStringToFile(
+    Env* env,
+    const Slice& data,
+    const std::string& fname,
+    bool should_sync) {
   unique_ptr<WritableFile> file;
   Status s = env->NewWritableFile(fname, &file);
   if (!s.ok()) {
@@ -48,22 +44,23 @@ static Status DoWriteStringToFile(Env* env, const Slice& data,
   if (s.ok()) {
     s = file->Close();
   }
-  file.reset();  // Will auto-close if we did not close above
+  file.reset(); // Will auto-close if we did not close above
   if (!s.ok()) {
-    WARN_NOT_OK(env->DeleteFile(fname),
-                "Failed to delete partially-written file " + fname);
+    WARN_NOT_OK(
+        env->DeleteFile(fname),
+        "Failed to delete partially-written file " + fname);
   }
   return s;
 }
 
 // TODO: move these utils into env_util
-Status WriteStringToFile(Env* env, const Slice& data,
-                         const std::string& fname) {
+Status
+WriteStringToFile(Env* env, const Slice& data, const std::string& fname) {
   return DoWriteStringToFile(env, data, fname, false);
 }
 
-Status WriteStringToFileSync(Env* env, const Slice& data,
-                             const std::string& fname) {
+Status
+WriteStringToFileSync(Env* env, const Slice& data, const std::string& fname) {
   return DoWriteStringToFile(env, data, fname, true);
 }
 
@@ -90,4 +87,4 @@ Status ReadFileToString(Env* env, const std::string& fname, faststring* data) {
   return s;
 }
 
-}  // namespace kudu
+} // namespace kudu

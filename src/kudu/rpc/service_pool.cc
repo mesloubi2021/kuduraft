@@ -50,38 +50,46 @@ using std::string;
 using std::vector;
 using strings::Substitute;
 
-METRIC_DEFINE_histogram(server, rpc_incoming_queue_time,
-                        "RPC Queue Time",
-                        kudu::MetricUnit::kMicroseconds,
-                        "Number of microseconds incoming RPC requests spend in the worker queue",
-                        60000000LU, 3);
+METRIC_DEFINE_histogram(
+    server,
+    rpc_incoming_queue_time,
+    "RPC Queue Time",
+    kudu::MetricUnit::kMicroseconds,
+    "Number of microseconds incoming RPC requests spend in the worker queue",
+    60000000LU,
+    3);
 
-METRIC_DEFINE_counter(server, rpcs_timed_out_in_queue,
-                      "RPC Queue Timeouts",
-                      kudu::MetricUnit::kRequests,
-                      "Number of RPCs whose timeout elapsed while waiting "
-                      "in the service queue, and thus were not processed.");
+METRIC_DEFINE_counter(
+    server,
+    rpcs_timed_out_in_queue,
+    "RPC Queue Timeouts",
+    kudu::MetricUnit::kRequests,
+    "Number of RPCs whose timeout elapsed while waiting "
+    "in the service queue, and thus were not processed.");
 
-METRIC_DEFINE_counter(server, rpcs_queue_overflow,
-                      "RPC Queue Overflows",
-                      kudu::MetricUnit::kRequests,
-                      "Number of RPCs dropped because the service queue "
-                      "was full.");
+METRIC_DEFINE_counter(
+    server,
+    rpcs_queue_overflow,
+    "RPC Queue Overflows",
+    kudu::MetricUnit::kRequests,
+    "Number of RPCs dropped because the service queue "
+    "was full.");
 
 namespace kudu {
 namespace rpc {
 
-ServicePool::ServicePool(gscoped_ptr<ServiceIf> service,
-                         const scoped_refptr<MetricEntity>& entity,
-                         size_t service_queue_length)
-  : service_(std::move(service)),
-    service_queue_(service_queue_length),
-    incoming_queue_time_(METRIC_rpc_incoming_queue_time.Instantiate(entity)),
-    rpcs_timed_out_in_queue_(METRIC_rpcs_timed_out_in_queue.Instantiate(entity)),
-    rpcs_queue_overflow_(METRIC_rpcs_queue_overflow.Instantiate(entity)),
-    closing_(false),
-    logged_busy_(false) {
-}
+ServicePool::ServicePool(
+    gscoped_ptr<ServiceIf> service,
+    const scoped_refptr<MetricEntity>& entity,
+    size_t service_queue_length)
+    : service_(std::move(service)),
+      service_queue_(service_queue_length),
+      incoming_queue_time_(METRIC_rpc_incoming_queue_time.Instantiate(entity)),
+      rpcs_timed_out_in_queue_(
+          METRIC_rpcs_timed_out_in_queue.Instantiate(entity)),
+      rpcs_queue_overflow_(METRIC_rpcs_queue_overflow.Instantiate(entity)),
+      closing_(false),
+      logged_busy_(false) {}
 
 ServicePool::~ServicePool() {
   Shutdown();
@@ -90,8 +98,12 @@ ServicePool::~ServicePool() {
 Status ServicePool::Init(int num_threads) {
   for (int i = 0; i < num_threads; i++) {
     scoped_refptr<kudu::Thread> new_thread;
-    CHECK_OK(kudu::Thread::Create("service pool", "rpc_worker",
-        &ServicePool::RunThread, this, &new_thread));
+    CHECK_OK(kudu::Thread::Create(
+        "service pool",
+        "rpc_worker",
+        &ServicePool::RunThread,
+        this,
+        &new_thread));
     threads_.push_back(new_thread);
   }
   return Status::OK();
@@ -101,7 +113,8 @@ void ServicePool::Shutdown() {
   service_queue_.Shutdown();
 
   MutexLock lock(shutdown_lock_);
-  if (closing_) return;
+  if (closing_)
+    return;
   closing_ = true;
   // TODO: Use a proper thread pool implementation.
   for (scoped_refptr<kudu::Thread>& thread : threads_) {
@@ -112,29 +125,32 @@ void ServicePool::Shutdown() {
   Status status = Status::ServiceUnavailable("Service is shutting down");
   std::unique_ptr<InboundCall> incoming;
   while (service_queue_.BlockingGet(&incoming)) {
-    incoming.release()->RespondFailure(ErrorStatusPB::FATAL_SERVER_SHUTTING_DOWN, status);
+    incoming.release()->RespondFailure(
+        ErrorStatusPB::FATAL_SERVER_SHUTTING_DOWN, status);
   }
 
   service_->Shutdown();
 }
 
 void ServicePool::RejectTooBusy(InboundCall* c) {
-  string err_msg =
-      Substitute("$0 request on $1 from $2 dropped due to backpressure. "
-                 "The service queue is full; it has $3 items.",
-                 c->remote_method().method_name(),
-                 service_->service_name(),
-                 c->remote_address().ToString(),
-                 service_queue_.max_size());
+  string err_msg = Substitute(
+      "$0 request on $1 from $2 dropped due to backpressure. "
+      "The service queue is full; it has $3 items.",
+      c->remote_method().method_name(),
+      service_->service_name(),
+      c->remote_address().ToString(),
+      service_queue_.max_size());
   rpcs_queue_overflow_->Increment();
   KLOG_EVERY_N_SECS(WARNING, 300) << err_msg;
-  c->RespondFailure(ErrorStatusPB::ERROR_SERVER_TOO_BUSY,
-                    Status::ServiceUnavailable(err_msg));
+  c->RespondFailure(
+      ErrorStatusPB::ERROR_SERVER_TOO_BUSY,
+      Status::ServiceUnavailable(err_msg));
 
   if (!logged_busy_.load(std::memory_order_acquire)) {
     // throttle, as don't want to flood log with lines if
     // pool is always at edge of queue.
-    KLOG_EVERY_N_SECS(WARNING, 600) << err_msg << " Contents of service queue:\n"
+    KLOG_EVERY_N_SECS(WARNING, 600)
+        << err_msg << " Contents of service queue:\n"
         << service_queue_.ToString();
     logged_busy_ = true;
   }
@@ -164,10 +180,12 @@ Status ServicePool::QueueInboundCall(gscoped_ptr<InboundCall> call) {
 
   if (!unsupported_features.empty()) {
     c->RespondUnsupportedFeature(unsupported_features);
-    return Status::NotSupported("call requires unsupported application feature flags",
-                                JoinMapped(unsupported_features,
-                                           [] (uint32_t flag) { return std::to_string(flag); },
-                                           ", "));
+    return Status::NotSupported(
+        "call requires unsupported application feature flags",
+        JoinMapped(
+            unsupported_features,
+            [](uint32_t flag) { return std::to_string(flag); },
+            ", "));
   }
 
   TRACE_TO(c->trace(), "Inserting onto call queue");
@@ -199,7 +217,8 @@ Status ServicePool::QueueInboundCall(gscoped_ptr<InboundCall> call) {
     status = Status::ServiceUnavailable("Service is shutting down");
     c->RespondFailure(ErrorStatusPB::FATAL_SERVER_SHUTTING_DOWN, status);
   } else {
-    status = Status::RuntimeError(Substitute("Unknown error from BlockingQueue: $0", queue_status));
+    status = Status::RuntimeError(
+        Substitute("Unknown error from BlockingQueue: $0", queue_status));
     c->RespondFailure(ErrorStatusPB::FATAL_UNKNOWN, status);
   }
   return status;
@@ -217,14 +236,15 @@ void ServicePool::RunThread() {
     ADOPT_TRACE(incoming->trace());
 
     if (PREDICT_FALSE(incoming->ClientTimedOut())) {
-      TRACE_TO(incoming->trace(), "Skipping call since client already timed out");
+      TRACE_TO(
+          incoming->trace(), "Skipping call since client already timed out");
       rpcs_timed_out_in_queue_->Increment();
 
       // Respond as a failure, even though the client will probably ignore
       // the response anyway.
       incoming->RespondFailure(
-        ErrorStatusPB::ERROR_SERVER_TOO_BUSY,
-        Status::TimedOut("Call waited in the queue past client deadline"));
+          ErrorStatusPB::ERROR_SERVER_TOO_BUSY,
+          Status::TimedOut("Call waited in the queue past client deadline"));
 
       // Must release since RespondFailure above ends up taking ownership
       // of the object.

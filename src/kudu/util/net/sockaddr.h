@@ -35,7 +35,7 @@ namespace kudu {
 class Sockaddr {
  public:
   Sockaddr();
-  explicit Sockaddr(const struct sockaddr_in6 &addr);
+  explicit Sockaddr(const struct sockaddr_in6& addr);
 
   // Parse a string IP address of the form "A.B.C.D:port", storing the result
   // in this Sockaddr object. If no ':port' is specified, uses 'default_port'.
@@ -44,17 +44,18 @@ class Sockaddr {
   // Returns a bad Status if the input is malformed.
   Status ParseString(const std::string& s, uint16_t default_port);
 
-  Sockaddr& operator=(const struct sockaddr_in6 &addr);
+  Sockaddr& operator=(const struct sockaddr_in6& addr);
 
   bool operator==(const Sockaddr& other) const;
 
   // Compare the endpoints of two sockaddrs.
   // The port number is ignored in this comparison.
-  bool operator<(const Sockaddr &rhs) const;
+  bool operator<(const Sockaddr& rhs) const;
 
   uint64 HashCode() const;
 
-  // Returns the dotted-decimal string '1.2.3.4' of the host component of this address.
+  // Returns the dotted-decimal string '1.2.3.4' of the host component of this
+  // address.
   std::string host() const;
 
   void set_port(int port);
@@ -82,7 +83,7 @@ class Sockaddr {
 
 // Specialize std::hash for Sockaddr
 namespace std {
-template<>
+template <>
 struct hash<kudu::Sockaddr> {
   int operator()(const kudu::Sockaddr& addr) const {
     return addr.HashCode();

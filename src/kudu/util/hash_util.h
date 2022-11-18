@@ -27,7 +27,6 @@ namespace kudu {
 /// Utility class to compute hash values.
 class HashUtil {
  public:
-
   static const uint64_t MURMUR_PRIME = 0xc6a4a7935bd1e995;
   static const int MURMUR_R = 47;
 
@@ -50,14 +49,21 @@ class HashUtil {
 
     const uint8_t* data2 = reinterpret_cast<const uint8_t*>(data);
     switch (len & 7) {
-      case 7: h ^= static_cast<uint64_t>(data2[6]) << 48;
-      case 6: h ^= static_cast<uint64_t>(data2[5]) << 40;
-      case 5: h ^= static_cast<uint64_t>(data2[4]) << 32;
-      case 4: h ^= static_cast<uint64_t>(data2[3]) << 24;
-      case 3: h ^= static_cast<uint64_t>(data2[2]) << 16;
-      case 2: h ^= static_cast<uint64_t>(data2[1]) << 8;
-      case 1: h ^= static_cast<uint64_t>(data2[0]);
-              h *= MURMUR_PRIME;
+      case 7:
+        h ^= static_cast<uint64_t>(data2[6]) << 48;
+      case 6:
+        h ^= static_cast<uint64_t>(data2[5]) << 40;
+      case 5:
+        h ^= static_cast<uint64_t>(data2[4]) << 32;
+      case 4:
+        h ^= static_cast<uint64_t>(data2[3]) << 24;
+      case 3:
+        h ^= static_cast<uint64_t>(data2[2]) << 16;
+      case 2:
+        h ^= static_cast<uint64_t>(data2[1]) << 8;
+      case 1:
+        h ^= static_cast<uint64_t>(data2[0]);
+        h *= MURMUR_PRIME;
     }
 
     h ^= h >> MURMUR_R;

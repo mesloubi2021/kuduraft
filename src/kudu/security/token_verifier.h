@@ -74,7 +74,8 @@ class TokenVerifier {
   // (which might be running on a remote node). If any public keys already
   // exist with matching key sequence numbers, they are replaced by
   // the new keys.
-  Status ImportKeys(const std::vector<TokenSigningPublicKeyPB>& keys) WARN_UNUSED_RESULT;
+  Status ImportKeys(const std::vector<TokenSigningPublicKeyPB>& keys)
+      WARN_UNUSED_RESULT;
 
   // Export token signing public keys. Specifying the 'after_sequence_number'
   // allows to get public keys with sequence numbers greater than
@@ -85,8 +86,9 @@ class TokenVerifier {
 
   // Verify the signature on the given signed token, and deserialize the
   // contents into 'token'.
-  VerificationResult VerifyTokenSignature(const SignedTokenPB& signed_token,
-                                          TokenPB* token) const;
+  VerificationResult VerifyTokenSignature(
+      const SignedTokenPB& signed_token,
+      TokenPB* token) const;
 
  private:
   typedef std::map<int64_t, std::unique_ptr<TokenSigningPublicKey>> KeysMap;

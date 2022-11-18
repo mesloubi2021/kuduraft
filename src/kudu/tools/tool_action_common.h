@@ -67,10 +67,11 @@ extern const char* const kTabletIdArgDesc;
 // 'proxy'.
 //
 // If 'address' does not contain a port, 'default_port' is used instead.
-template<class ProxyClass>
-Status BuildProxy(const std::string& address,
-                  uint16_t default_port,
-                  std::unique_ptr<ProxyClass>* proxy);
+template <class ProxyClass>
+Status BuildProxy(
+    const std::string& address,
+    uint16_t default_port,
+    std::unique_ptr<ProxyClass>* proxy);
 
 /*
 // Get the current status of the Kudu server running at 'address', storing it
@@ -111,7 +112,8 @@ Status GetServerFlags(const std::string& address,
                       uint16_t default_port,
                       bool all_flags,
                       const std::string& flag_tags,
-                      std::vector<server::GetFlagsResponsePB_Flag>* flags) WARN_UNUSED_RESULT;
+                      std::vector<server::GetFlagsResponsePB_Flag>* flags)
+WARN_UNUSED_RESULT;
 
 // Prints the values of the gflags set for the Kudu server running at 'address'.
 //
@@ -128,7 +130,9 @@ Status SetServerFlag(const std::string& address, uint16_t default_port,
 
 // Return true if 'str' matches any of the patterns in 'patterns', or if
 // 'patterns' is empty.
-bool MatchesAnyPattern(const std::vector<std::string>& patterns, const std::string& str);
+bool MatchesAnyPattern(
+    const std::vector<std::string>& patterns,
+    const std::string& str);
 
 // A table of data to present to the user.
 //
@@ -161,6 +165,7 @@ class DataTable {
 
   // Print the table to 'out'.
   Status PrintTo(std::ostream& out) const WARN_UNUSED_RESULT;
+
  private:
   std::vector<std::string> column_names_;
   std::vector<std::vector<std::string>> columns_;
@@ -192,10 +197,11 @@ class ControlShellProtocol {
   //
   // If 'close_mode' is CLOSE_ON_DESTROY, the instance has effectively taken
   // control of 'read_fd' and 'write_fd' and the caller shouldn't use them.
-  ControlShellProtocol(SerializationMode serialization_mode,
-                       CloseMode close_mode,
-                       int read_fd,
-                       int write_fd);
+  ControlShellProtocol(
+      SerializationMode serialization_mode,
+      CloseMode close_mode,
+      int read_fd,
+      int write_fd);
 
   ~ControlShellProtocol();
 

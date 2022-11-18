@@ -63,14 +63,15 @@ namespace {
 
 // Create a table with the specified name (no replication) and specified
 // number of hash partitions.
-Status CreateTable(KuduClient* client,
-                   const string& table_name,
-                   const KuduSchema& schema,
-                   int num_hash_partitions) {
+Status CreateTable(
+    KuduClient* client,
+    const string& table_name,
+    const KuduSchema& schema,
+    int num_hash_partitions) {
   unique_ptr<KuduTableCreator> table_creator(client->NewTableCreator());
   return table_creator->table_name(table_name)
       .schema(&schema)
-      .add_hash_partitions({ "key" }, num_hash_partitions)
+      .add_hash_partitions({"key"}, num_hash_partitions)
       .num_replicas(1)
       .Create();
 }
@@ -85,8 +86,11 @@ unique_ptr<KuduInsert> BuildTestRow(KuduTable* table, int index) {
 
 // Insert given number of tests rows into the default test table in the context
 // of a new session.
-Status InsertTestRows(KuduClient* client, KuduTable* table,
-                      int num_rows, int first_row = 0) {
+Status InsertTestRows(
+    KuduClient* client,
+    KuduTable* table,
+    int num_rows,
+    int first_row = 0) {
   shared_ptr<KuduSession> session = client->NewSession();
   RETURN_NOT_OK(session->SetFlushMode(KuduSession::AUTO_FLUSH_SYNC));
   session->SetTimeoutMillis(60000);
@@ -101,9 +105,10 @@ Status InsertTestRows(KuduClient* client, KuduTable* table,
 
 class AuthnTokenExpireITestBase : public KuduTest {
  public:
-  AuthnTokenExpireITestBase(int64_t token_validity_seconds,
-                            int num_masters,
-                            int num_tablet_servers)
+  AuthnTokenExpireITestBase(
+      int64_t token_validity_seconds,
+      int num_masters,
+      int num_tablet_servers)
       : token_validity_seconds_(token_validity_seconds),
         num_masters_(num_masters),
         num_tablet_servers_(num_tablet_servers),
@@ -134,32 +139,33 @@ class AuthnTokenExpireITestBase : public KuduTest {
   shared_ptr<ExternalMiniCluster> cluster_;
 };
 
-
 class AuthnTokenExpireITest : public AuthnTokenExpireITestBase {
  public:
   explicit AuthnTokenExpireITest(int64_t token_validity_seconds = 2)
-      : AuthnTokenExpireITestBase(token_validity_seconds,
-                                  /*num_masters=*/ 1,
-                                  /*num_tablet_servers=*/ 3) {
+      : AuthnTokenExpireITestBase(
+            token_validity_seconds,
+            /*num_masters=*/1,
+            /*num_tablet_servers=*/3) {
     // Masters and tservers inject FATAL_INVALID_AUTHENTICATION_TOKEN errors.
     // The client should retry the operation again and eventually it should
     // succeed even with the high ratio of injected errors.
     cluster_opts_.extra_master_flags = {
-      "--rpc_inject_invalid_authn_token_ratio=0.5",
+        "--rpc_inject_invalid_authn_token_ratio=0.5",
 
-      // In addition to very short authn token TTL, rotate token signing keys as
-      // often as possible: we want to cover TSK propagation-related scenarios
-      // as well (i.e. possible ERROR_UNAVAILABLE errors from tservers) upon
-      // a new authn token re-acquisitions and retried RPCs.
-      "--tsk_rotation_seconds=1",
-      Substitute("--authn_token_validity_seconds=$0", token_validity_seconds_),
+        // In addition to very short authn token TTL, rotate token signing keys
+        // as often as possible: we want to cover TSK propagation-related
+        // scenarios as well (i.e. possible ERROR_UNAVAILABLE errors from
+        // tservers) upon a new authn token re-acquisitions and retried RPCs.
+        "--tsk_rotation_seconds=1",
+        Substitute(
+            "--authn_token_validity_seconds=$0", token_validity_seconds_),
     };
 
     cluster_opts_.extra_tserver_flags = {
-      "--rpc_inject_invalid_authn_token_ratio=0.5",
+        "--rpc_inject_invalid_authn_token_ratio=0.5",
 
-      // Decreasing TS->master heartbeat interval speeds up the test.
-      "--heartbeat_interval_ms=10",
+        // Decreasing TS->master heartbeat interval speeds up the test.
+        "--heartbeat_interval_ms=10",
     };
   }
 
@@ -169,7 +175,6 @@ class AuthnTokenExpireITest : public AuthnTokenExpireITestBase {
   }
 };
 
-
 // Make sure authn token is re-acquired on certain scenarios upon restarting
 // tablet servers.
 TEST_F(AuthnTokenExpireITest, RestartTabletServers) {
@@ -178,11 +183,12 @@ TEST_F(AuthnTokenExpireITest, RestartTabletServers) {
   // Create and open one table, keeping it open over the component restarts.
   shared_ptr<KuduClient> client;
   ASSERT_OK(cluster_->CreateClient(nullptr, &client));
-  ASSERT_OK(CreateTable(client.get(), table_name, schema_, num_tablet_servers_));
+  ASSERT_OK(
+      CreateTable(client.get(), table_name, schema_, num_tablet_servers_));
   shared_ptr<KuduTable> table;
   ASSERT_OK(client->OpenTable(table_name, &table));
-  ASSERT_OK(InsertTestRows(client.get(), table.get(),
-                           num_tablet_servers_, num_tablet_servers_ * 0));
+  ASSERT_OK(InsertTestRows(
+      client.get(), table.get(), num_tablet_servers_, num_tablet_servers_ * 0));
 
   // Restart all tablet servers.
   for (int i = 0; i < cluster_->num_tablet_servers(); ++i) {
@@ -193,13 +199,13 @@ TEST_F(AuthnTokenExpireITest, RestartTabletServers) {
   }
   SleepFor(MonoDelta::FromSeconds(token_validity_seconds_ + 1));
 
-  ASSERT_OK(InsertTestRows(client.get(), table.get(),
-                           num_tablet_servers_, num_tablet_servers_ * 1));
+  ASSERT_OK(InsertTestRows(
+      client.get(), table.get(), num_tablet_servers_, num_tablet_servers_ * 1));
   SleepFor(MonoDelta::FromSeconds(token_validity_seconds_ + 1));
   // Make sure to insert a row into all tablets to make an RPC call to every
   // tablet server hosting the table.
-  ASSERT_OK(InsertTestRows(client.get(), table.get(),
-                           num_tablet_servers_, num_tablet_servers_ * 2));
+  ASSERT_OK(InsertTestRows(
+      client.get(), table.get(), num_tablet_servers_, num_tablet_servers_ * 2));
 }
 
 // Make sure authn token is re-acquired on certain scenarios upon restarting
@@ -209,30 +215,30 @@ TEST_F(AuthnTokenExpireITest, RestartCluster) {
 
   shared_ptr<KuduClient> client;
   ASSERT_OK(cluster_->CreateClient(nullptr, &client));
-  ASSERT_OK(CreateTable(client.get(), table_name, schema_, num_tablet_servers_));
+  ASSERT_OK(
+      CreateTable(client.get(), table_name, schema_, num_tablet_servers_));
   shared_ptr<KuduTable> table;
   ASSERT_OK(client->OpenTable(table_name, &table));
-  ASSERT_OK(InsertTestRows(client.get(), table.get(),
-                           num_tablet_servers_, num_tablet_servers_ * 0));
+  ASSERT_OK(InsertTestRows(
+      client.get(), table.get(), num_tablet_servers_, num_tablet_servers_ * 0));
 
   // Restart all Kudu server-side components: masters and tablet servers.
   cluster_->Shutdown();
   ASSERT_OK(cluster_->Restart());
   SleepFor(MonoDelta::FromSeconds(token_validity_seconds_ + 1));
 
-  ASSERT_OK(InsertTestRows(client.get(), table.get(),
-                           num_tablet_servers_, num_tablet_servers_ * 1));
+  ASSERT_OK(InsertTestRows(
+      client.get(), table.get(), num_tablet_servers_, num_tablet_servers_ * 1));
   SleepFor(MonoDelta::FromSeconds(token_validity_seconds_ + 1));
   // Make sure to insert a row into all tablets to make an RPC call to every
   // tablet server hosting the table.
-  ASSERT_OK(InsertTestRows(client.get(), table.get(),
-                           num_tablet_servers_, num_tablet_servers_ * 2));
+  ASSERT_OK(InsertTestRows(
+      client.get(), table.get(), num_tablet_servers_, num_tablet_servers_ * 2));
 }
 
 class AuthnTokenExpireDuringWorkloadITest : public AuthnTokenExpireITest {
  public:
-  AuthnTokenExpireDuringWorkloadITest()
-      : AuthnTokenExpireITest(5) {
+  AuthnTokenExpireDuringWorkloadITest() : AuthnTokenExpireITest(5) {
     // Close an already established idle connection to the server and open
     // a new one upon making another call to the same server. This is to force
     // authn token verification at every RPC.
@@ -290,7 +296,9 @@ TEST_F(AuthnTokenExpireDuringWorkloadITest, InvalidTokenDuringMixedWorkload) {
 // at the implementation as a black box: it's impossible to guarantee that the
 // read paths are not affected by the write paths since the mixed workload uses
 // the same shared client instance for both the read and the write paths.
-TEST_F(AuthnTokenExpireDuringWorkloadITest, InvalidTokenDuringSeparateWorkloads) {
+TEST_F(
+    AuthnTokenExpireDuringWorkloadITest,
+    InvalidTokenDuringSeparateWorkloads) {
   const string table_name = "authn-token-expire-separate-workloads";
   static const int32_t kTimeoutMs = 10 * 60 * 1000;
 
@@ -343,7 +351,8 @@ TEST_F(AuthnTokenExpireDuringWorkloadITest, InvalidTokenDuringSeparateWorkloads)
 
   ClusterVerifier v(cluster_.get());
   v.SetOperationsTimeout(MonoDelta::FromSeconds(5 * 60));
-  NO_FATALS(v.CheckRowCount(table_name, ClusterVerifier::EXACTLY, rows_inserted));
+  NO_FATALS(
+      v.CheckRowCount(table_name, ClusterVerifier::EXACTLY, rows_inserted));
   ASSERT_OK(r.Cleanup());
 
   NO_FATALS(cluster_->AssertNoCrashes());
@@ -356,16 +365,17 @@ class TokenBasedConnectionITest : public AuthnTokenExpireITestBase {
  public:
   TokenBasedConnectionITest()
       : AuthnTokenExpireITestBase(
-          /*token_validity_seconds=*/ 2,
-          /*num_masters=*/ 1,
-          /*num_tablet_servers=*/ 3) {
+            /*token_validity_seconds=*/2,
+            /*num_masters=*/1,
+            /*num_tablet_servers=*/3) {
     cluster_opts_.extra_master_flags = {
-      Substitute("--authn_token_validity_seconds=$0", token_validity_seconds_),
+        Substitute(
+            "--authn_token_validity_seconds=$0", token_validity_seconds_),
     };
 
     cluster_opts_.extra_tserver_flags = {
-      // Decreasing TS->master heartbeat interval speeds up the test.
-      "--heartbeat_interval_ms=10",
+        // Decreasing TS->master heartbeat interval speeds up the test.
+        "--heartbeat_interval_ms=10",
     };
   }
 
@@ -387,10 +397,11 @@ TEST_F(TokenBasedConnectionITest, ReacquireAuthnToken) {
   shared_ptr<KuduClient> client;
   ASSERT_OK(cluster_->CreateClient(
       &KuduClientBuilder()
-          .default_admin_operation_timeout(MonoDelta::FromSeconds(60))
-          .default_rpc_timeout(MonoDelta::FromSeconds(60)),
+           .default_admin_operation_timeout(MonoDelta::FromSeconds(60))
+           .default_rpc_timeout(MonoDelta::FromSeconds(60)),
       &client));
-  ASSERT_OK(CreateTable(client.get(), table_name, schema_, num_tablet_servers_));
+  ASSERT_OK(
+      CreateTable(client.get(), table_name, schema_, num_tablet_servers_));
 
   // Restart the master and the tablet servers to make sure all connectons
   // between the client and the servers are closed.
@@ -421,40 +432,43 @@ class MultiMasterIdleConnectionsITest : public AuthnTokenExpireITestBase {
  public:
   MultiMasterIdleConnectionsITest()
       : AuthnTokenExpireITestBase(
-          /*token_validity_seconds=*/ 3,
-          /*num_masters=*/ 3,
-          /*num_tablet_servers=*/ 3) {
-
+            /*token_validity_seconds=*/3,
+            /*num_masters=*/3,
+            /*num_tablet_servers=*/3) {
     cluster_opts_.extra_master_flags = {
-      // Custom validity interval for authn tokens. The scenario involves
-      // expiration of authn tokens, while the default authn expiration timeout
-      // is 7 days. So, let's make the token validity interval really short.
-      Substitute("--authn_token_validity_seconds=$0", token_validity_seconds_),
+        // Custom validity interval for authn tokens. The scenario involves
+        // expiration of authn tokens, while the default authn expiration
+        // timeout
+        // is 7 days. So, let's make the token validity interval really short.
+        Substitute(
+            "--authn_token_validity_seconds=$0", token_validity_seconds_),
 
-      // The default for leader_failure_max_missed_heartbeat_periods 3.0, but
-      // 2.0 is enough to have master leadership stable enough and makes it
-      // run a bit faster.
-      Substitute("--leader_failure_max_missed_heartbeat_periods=$0",
-          master_leader_failure_max_missed_heartbeat_periods_),
+        // The default for leader_failure_max_missed_heartbeat_periods 3.0, but
+        // 2.0 is enough to have master leadership stable enough and makes it
+        // run a bit faster.
+        Substitute(
+            "--leader_failure_max_missed_heartbeat_periods=$0",
+            master_leader_failure_max_missed_heartbeat_periods_),
 
-      // Custom Raft heartbeat interval between replicas of the systable.
-      // The default it 500ms, but custom setting keeps the test stable enough
-      // while making it a bit faster to complete.
-      Substitute("--raft_heartbeat_interval_ms=$0",
-          master_raft_hb_interval_ms_),
+        // Custom Raft heartbeat interval between replicas of the systable.
+        // The default it 500ms, but custom setting keeps the test stable enough
+        // while making it a bit faster to complete.
+        Substitute(
+            "--raft_heartbeat_interval_ms=$0", master_raft_hb_interval_ms_),
 
-      // The default is 65 seconds, but the test scenario need to run faster.
-      // A multiple of (leader_failure_max_missed_heartbeat_periods *
-      // raft_heartbeat_interval_ms) is good enough, but it's also necessary
-      // it to be greater than token validity interval due to the scenario's
-      // logic.
-      Substitute("--rpc_default_keepalive_time_ms=$0",
-          master_rpc_keepalive_time_ms_),
+        // The default is 65 seconds, but the test scenario need to run faster.
+        // A multiple of (leader_failure_max_missed_heartbeat_periods *
+        // raft_heartbeat_interval_ms) is good enough, but it's also necessary
+        // it to be greater than token validity interval due to the scenario's
+        // logic.
+        Substitute(
+            "--rpc_default_keepalive_time_ms=$0",
+            master_rpc_keepalive_time_ms_),
     };
 
     cluster_opts_.extra_tserver_flags = {
-      // Decreasing TS->master heartbeat interval speeds up the test.
-      "--heartbeat_interval_ms=100",
+        // Decreasing TS->master heartbeat interval speeds up the test.
+        "--heartbeat_interval_ms=100",
     };
   }
 
@@ -464,7 +478,8 @@ class MultiMasterIdleConnectionsITest : public AuthnTokenExpireITestBase {
   }
 
  protected:
-  const int master_rpc_keepalive_time_ms_ = 3 * token_validity_seconds_ * 1000 / 2;
+  const int master_rpc_keepalive_time_ms_ =
+      3 * token_validity_seconds_ * 1000 / 2;
   const int master_raft_hb_interval_ms_ = 250;
   const double master_leader_failure_max_missed_heartbeat_periods_ = 2.0;
 };
@@ -500,14 +515,15 @@ TEST_F(MultiMasterIdleConnectionsITest, ClientReacquiresAuthnToken) {
     builder.default_rpc_timeout(MonoDelta::FromSeconds(5));
     ASSERT_OK(cluster_->CreateClient(&builder, &client));
   }
-  ASSERT_OK(CreateTable(client.get(), kTableName, schema_, num_tablet_servers_));
+  ASSERT_OK(
+      CreateTable(client.get(), kTableName, schema_, num_tablet_servers_));
 
   // Wait for the following events:
   //   1) authn token expires
   //   2) connections to non-leader masters close
 
-  const auto time_right_before_token_expiration = time_start +
-      MonoDelta::FromSeconds(token_validity_seconds_);
+  const auto time_right_before_token_expiration =
+      time_start + MonoDelta::FromSeconds(token_validity_seconds_);
   while (MonoTime::Now() < time_right_before_token_expiration) {
     // Keep the connection to leader master open, time to time making requests
     // that go to the leader master, but not to other masters in the cluster.
@@ -536,7 +552,8 @@ TEST_F(MultiMasterIdleConnectionsITest, ClientReacquiresAuthnToken) {
     const int leader_idx = (former_leader_master_idx + 1) % num_masters_;
     ASSERT_EVENTUALLY([&] {
       consensus::ConsensusServiceProxy proxy(
-          cluster_->messenger(), cluster_->master(leader_idx)->bound_rpc_addr(),
+          cluster_->messenger(),
+          cluster_->master(leader_idx)->bound_rpc_addr(),
           cluster_->master(leader_idx)->bound_rpc_hostport().host());
       consensus::RunLeaderElectionRequestPB req;
       req.set_tablet_id(master::SysCatalogTable::kSysCatalogTabletId);

@@ -146,10 +146,11 @@ class PeriodicTimer : public std::enable_shared_from_this<PeriodicTimer>,
   bool started() const;
 
  protected:
-  PeriodicTimer(std::shared_ptr<Messenger> messenger,
-                RunTaskFunctor functor,
-                MonoDelta period,
-                Options options);
+  PeriodicTimer(
+      std::shared_ptr<Messenger> messenger,
+      RunTaskFunctor functor,
+      MonoDelta period,
+      Options options);
 
  private:
   FRIEND_TEST(PeriodicTimerTest, TestCallbackRestartsTimer);

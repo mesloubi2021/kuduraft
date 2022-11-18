@@ -53,4 +53,4 @@ const bool DEBUG_MODE = false;
 const bool DEBUG_MODE = true;
 #endif
 
-#endif  // _LOGGING_IN_H_
+#endif // _LOGGING_IN_H_

@@ -48,16 +48,22 @@
 
 DECLARE_int32(flush_threshold_mb);
 
-DEFINE_int32(rounds, 100,
-             "How many rounds of updates will be performed. More rounds make the "
-             "test take longer, but add more data and stress.");
-DEFINE_int32(rows, 500,
-             "How many base rows in the update set. More rounds results in more rowsets "
-             "with updates.");
+DEFINE_int32(
+    rounds,
+    100,
+    "How many rounds of updates will be performed. More rounds make the "
+    "test take longer, but add more data and stress.");
+DEFINE_int32(
+    rows,
+    500,
+    "How many base rows in the update set. More rounds results in more rowsets "
+    "with updates.");
 DEFINE_int32(num_columns, 5, "The number of value columns to test.");
-DEFINE_int32(scan_timeout_ms, 120 * 1000,
-             "Sets the scanner timeout. It may be necessary to increase the "
-             "timeout if the number of rounds or rows is increased.");
+DEFINE_int32(
+    scan_timeout_ms,
+    120 * 1000,
+    "Sets the scanner timeout. It may be necessary to increase the "
+    "timeout if the number of rounds or rows is increased.");
 
 using std::string;
 using std::unique_ptr;
@@ -86,12 +92,9 @@ using cluster::InternalMiniClusterOptions;
 
 class HeavyUpdateCompactionITest : public KuduTest {
  protected:
-
   const char* const kTableName = "heavy-update-compaction-test";
 
-  HeavyUpdateCompactionITest()
-      : rand_(SeedRandom()) {
-
+  HeavyUpdateCompactionITest() : rand_(SeedRandom()) {
 #ifdef THREAD_SANITIZER
     // The test is very slow with TSAN enabled due to the amount of data
     // written and compacted, so turn down the volume a bit.
@@ -122,10 +125,10 @@ class HeavyUpdateCompactionITest : public KuduTest {
     NO_FATALS(InitCluster());
     unique_ptr<KuduTableCreator> table_creator(client_->NewTableCreator());
     ASSERT_OK(table_creator->table_name(kTableName)
-             .schema(&schema_)
-             .set_range_partition_columns({})
-             .num_replicas(1)
-             .Create());
+                  .schema(&schema_)
+                  .set_range_partition_columns({})
+                  .num_replicas(1)
+                  .Create());
     ASSERT_OK(client_->OpenTable(kTableName, &table_));
   }
 
@@ -160,7 +163,8 @@ class HeavyUpdateCompactionITest : public KuduTest {
     cluster_.reset(new InternalMiniCluster(env_, InternalMiniClusterOptions()));
     ASSERT_OK(cluster_->Start());
     KuduClientBuilder client_builder;
-    client_builder.add_master_server_addr(cluster_->mini_master()->bound_rpc_addr_str());
+    client_builder.add_master_server_addr(
+        cluster_->mini_master()->bound_rpc_addr_str());
     ASSERT_OK(client_builder.Build(&client_));
   }
 
@@ -224,9 +228,8 @@ TEST_F(HeavyUpdateCompactionITest, TestHeavyUpdateCompaction) {
   // Scan the updated rows and ensure the final values are present.
   KuduScanner scanner(table_.get());
   ASSERT_OK(scanner.SetFaultTolerant());
-  ASSERT_OK(scanner.AddConjunctPredicate(
-      table_->NewComparisonPredicate(
-        "key", KuduPredicate::LESS, KuduValue::FromInt(FLAGS_rows))));
+  ASSERT_OK(scanner.AddConjunctPredicate(table_->NewComparisonPredicate(
+      "key", KuduPredicate::LESS, KuduValue::FromInt(FLAGS_rows))));
 
   // Walking the updates can take a long time.
   scanner.SetTimeoutMillis(FLAGS_scan_timeout_ms);

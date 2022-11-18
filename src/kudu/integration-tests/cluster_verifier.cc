@@ -24,8 +24,8 @@
 #include <gtest/gtest.h>
 
 #include "kudu/client/client.h"
-#include "kudu/client/shared_ptr.h"
 #include "kudu/client/row_result.h"
+#include "kudu/client/shared_ptr.h"
 #include "kudu/gutil/strings/substitute.h"
 #include "kudu/integration-tests/cluster_verifier.h"
 #include "kudu/integration-tests/log_verifier.h"
@@ -51,8 +51,7 @@ using tools::KsckCluster;
 using tools::RemoteKsckCluster;
 
 ClusterVerifier::ClusterVerifier(MiniCluster* cluster)
-    : cluster_(cluster),
-      operations_timeout_(MonoDelta::FromSeconds(60)) {
+    : cluster_(cluster), operations_timeout_(MonoDelta::FromSeconds(60)) {
   checksum_options_.use_snapshot = false;
 }
 
@@ -79,9 +78,12 @@ void ClusterVerifier::CheckCluster() {
       break;
     }
 
-    LOG(INFO) << "Check not successful yet, sleeping and retrying: " + s.ToString();
+    LOG(INFO) << "Check not successful yet, sleeping and retrying: " +
+            s.ToString();
     sleep_time *= 1.5;
-    if (sleep_time > 1) { sleep_time = 1; }
+    if (sleep_time > 1) {
+      sleep_time = 1;
+    }
     SleepFor(MonoDelta::FromSeconds(sleep_time));
   }
   ASSERT_OK(s);
@@ -91,9 +93,7 @@ void ClusterVerifier::CheckCluster() {
   // to use "AssertEventually" here because many tests verify clusters while
   // they are still running, and the verification can fail spuriously in the
   // case that
-  AssertEventually([&]() {
-    ASSERT_OK(lv.VerifyCommittedOpIdsMatch());
-  });
+  AssertEventually([&]() { ASSERT_OK(lv.VerifyCommittedOpIdsMatch()); });
 }
 
 Status ClusterVerifier::RunKsck() {
@@ -112,25 +112,28 @@ Status ClusterVerifier::RunKsck() {
   return ksck->RunAndPrintResults();
 }
 
-void ClusterVerifier::CheckRowCount(const std::string& table_name,
-                                    ComparisonMode mode,
-                                    int expected_row_count) {
+void ClusterVerifier::CheckRowCount(
+    const std::string& table_name,
+    ComparisonMode mode,
+    int expected_row_count) {
   ASSERT_OK(DoCheckRowCount(table_name, mode, expected_row_count));
 }
 
-Status ClusterVerifier::DoCheckRowCount(const std::string& table_name,
-                                        ComparisonMode mode,
-                                        int expected_row_count) {
+Status ClusterVerifier::DoCheckRowCount(
+    const std::string& table_name,
+    ComparisonMode mode,
+    int expected_row_count) {
   client::sp::shared_ptr<client::KuduClient> client;
-  RETURN_NOT_OK_PREPEND(cluster_->CreateClient(
-      &client::KuduClientBuilder()
-          .default_admin_operation_timeout(operations_timeout_)
-          .default_rpc_timeout(operations_timeout_),
-      &client),
+  RETURN_NOT_OK_PREPEND(
+      cluster_->CreateClient(
+          &client::KuduClientBuilder()
+               .default_admin_operation_timeout(operations_timeout_)
+               .default_rpc_timeout(operations_timeout_),
+          &client),
       "Unable to connect to cluster");
   client::sp::shared_ptr<client::KuduTable> table;
-  RETURN_NOT_OK_PREPEND(client->OpenTable(table_name, &table),
-                        "Unable to open table");
+  RETURN_NOT_OK_PREPEND(
+      client->OpenTable(table_name, &table), "Unable to open table");
   client::KuduScanner scanner(table.get());
   CHECK_OK(scanner.SetReadMode(client::KuduScanner::READ_AT_SNAPSHOT));
   CHECK_OK(scanner.SetFaultTolerant());
@@ -141,29 +144,36 @@ Status ClusterVerifier::DoCheckRowCount(const std::string& table_name,
   int count = 0;
   vector<client::KuduRowResult> rows;
   while (scanner.HasMoreRows()) {
-    RETURN_NOT_OK_PREPEND(scanner.NextBatch(&rows), "Unable to read from scanner");
+    RETURN_NOT_OK_PREPEND(
+        scanner.NextBatch(&rows), "Unable to read from scanner");
     count += rows.size();
   }
 
   if (mode == AT_LEAST && count < expected_row_count) {
-    return Status::Corruption(Substitute("row count $0 is not at least expected value $1",
-                                         count, expected_row_count));
+    return Status::Corruption(Substitute(
+        "row count $0 is not at least expected value $1",
+        count,
+        expected_row_count));
   } else if (mode == EXACTLY && count != expected_row_count) {
-    return Status::Corruption(Substitute("row count $0 is not exactly expected value $1",
-                                         count, expected_row_count));
+    return Status::Corruption(Substitute(
+        "row count $0 is not exactly expected value $1",
+        count,
+        expected_row_count));
   }
   return Status::OK();
 }
 
-void ClusterVerifier::CheckRowCountWithRetries(const std::string& table_name,
-                                               ComparisonMode mode,
-                                               int expected_row_count,
-                                               const MonoDelta& timeout) {
+void ClusterVerifier::CheckRowCountWithRetries(
+    const std::string& table_name,
+    ComparisonMode mode,
+    int expected_row_count,
+    const MonoDelta& timeout) {
   MonoTime deadline = MonoTime::Now() + timeout;
   Status s;
   while (true) {
     s = DoCheckRowCount(table_name, mode, expected_row_count);
-    if (s.ok() || deadline < MonoTime::Now()) break;
+    if (s.ok() || deadline < MonoTime::Now())
+      break;
     LOG(WARNING) << "CheckRowCount() has not succeeded yet: " << s.ToString()
                  << "... will retry";
     SleepFor(MonoDelta::FromMilliseconds(100));

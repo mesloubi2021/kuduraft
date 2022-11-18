@@ -2,7 +2,7 @@
 
 #include "kudu/gutil/strings/join.h"
 
-#include <cstring>  // IWYU pragma: keep
+#include <cstring> // IWYU pragma: keep
 #include <ostream>
 
 #include <glog/logging.h>
@@ -27,20 +27,20 @@ using std::vector;
 //    If result_length_p is not NULL, it will contain the length of the
 //    result string (not including the trailing '\0').
 // ----------------------------------------------------------------------
-char* JoinUsing(const vector<const char*>& components,
-                const char* delim,
-                int*  result_length_p) {
+char* JoinUsing(
+    const vector<const char*>& components,
+    const char* delim,
+    int* result_length_p) {
   const int num_components = components.size();
   const int delim_length = strlen(delim);
-  int num_chars = (num_components > 1)
-                ? delim_length * (num_components - 1)
-                : 0;
+  int num_chars =
+      (num_components > 1) ? delim_length * (num_components - 1) : 0;
   for (int i = 0; i < num_components; ++i)
     num_chars += strlen(components[i]);
 
   auto res_buffer = new char[num_chars + 1];
-  return JoinUsingToBuffer(components, delim, num_chars+1,
-                           res_buffer, result_length_p);
+  return JoinUsingToBuffer(
+      components, delim, num_chars + 1, res_buffer, result_length_p);
 }
 
 // ----------------------------------------------------------------------
@@ -53,11 +53,12 @@ char* JoinUsing(const vector<const char*>& components,
 //    If result_length_p is not NULL, it will contain the length of the
 //    result string (not including the trailing '\0').
 // ----------------------------------------------------------------------
-char* JoinUsingToBuffer(const vector<const char*>& components,
-                         const char* delim,
-                         int result_buffer_size,
-                         char* result_buffer,
-                         int*  result_length_p) {
+char* JoinUsingToBuffer(
+    const vector<const char*>& components,
+    const char* delim,
+    int result_buffer_size,
+    char* result_buffer,
+    int* result_length_p) {
   CHECK(result_buffer != nullptr);
   const int num_components = components.size();
   const int max_str_len = result_buffer_size - 1;
@@ -71,7 +72,7 @@ char* JoinUsingToBuffer(const vector<const char*>& components,
       ++curr_dest;
       ++curr_src;
     }
-    if (i != (num_components-1)) {  // not the last component ==> add separator
+    if (i != (num_components - 1)) { // not the last component ==> add separator
       curr_src = delim;
       while ((*curr_src != '\0') && (num_chars < max_str_len)) {
         *curr_dest = *curr_src;
@@ -83,8 +84,8 @@ char* JoinUsingToBuffer(const vector<const char*>& components,
   }
 
   if (result_buffer_size > 0)
-    *curr_dest = '\0';  // add null termination
-  if (result_length_p != nullptr)  // set string length value
+    *curr_dest = '\0'; // add null termination
+  if (result_length_p != nullptr) // set string length value
     *result_length_p = num_chars;
 
   return result_buffer;
@@ -99,28 +100,27 @@ char* JoinUsingToBuffer(const vector<const char*>& components,
 //
 // ----------------------------------------------------------------------
 
-void JoinStringsInArray(string const* const* components,
-                        int num_components,
-                        const char* delim,
-                        string * result) {
+void JoinStringsInArray(
+    string const* const* components,
+    int num_components,
+    const char* delim,
+    string* result) {
   CHECK(result != nullptr);
   result->clear();
   for (int i = 0; i < num_components; i++) {
-    if (i>0) {
+    if (i > 0) {
       (*result) += delim;
     }
     (*result) += *(components[i]);
   }
 }
 
-void JoinStringsInArray(string const *components,
-                        int num_components,
-                        const char *delim,
-                        string *result) {
-  JoinStringsIterator(components,
-                      components + num_components,
-                      delim,
-                      result);
+void JoinStringsInArray(
+    string const* components,
+    int num_components,
+    const char* delim,
+    string* result) {
+  JoinStringsIterator(components, components + num_components, delim, result);
 }
 
 // ----------------------------------------------------------------------
@@ -133,22 +133,22 @@ void JoinStringsInArray(string const *components,
 //    as the last argument).
 // ----------------------------------------------------------------------
 
-void JoinMapKeysAndValues(const map<string, string>& components,
-                          const StringPiece& intra_delim,
-                          const StringPiece& inter_delim,
-                          string* result) {
-  JoinKeysAndValuesIterator(components.begin(), components.end(),
-                            intra_delim, inter_delim,
-                            result);
+void JoinMapKeysAndValues(
+    const map<string, string>& components,
+    const StringPiece& intra_delim,
+    const StringPiece& inter_delim,
+    string* result) {
+  JoinKeysAndValuesIterator(
+      components.begin(), components.end(), intra_delim, inter_delim, result);
 }
 
-void JoinVectorKeysAndValues(const vector< pair<string, string> >& components,
-                             const StringPiece& intra_delim,
-                             const StringPiece& inter_delim,
-                             string* result) {
-  JoinKeysAndValuesIterator(components.begin(), components.end(),
-                            intra_delim, inter_delim,
-                            result);
+void JoinVectorKeysAndValues(
+    const vector<pair<string, string>>& components,
+    const StringPiece& intra_delim,
+    const StringPiece& inter_delim,
+    string* result) {
+  JoinKeysAndValuesIterator(
+      components.begin(), components.end(), intra_delim, inter_delim, result);
 }
 
 // ----------------------------------------------------------------------
@@ -167,8 +167,10 @@ void JoinVectorKeysAndValues(const vector< pair<string, string> >& components,
 //     [Google], [x], [Buchheit, Paul], [string with " quoite in it], [ space ]
 //     --->  [Google,x,"Buchheit, Paul","string with "" quote in it"," space "]
 // ----------------------------------------------------------------------
-void JoinCSVLineWithDelimiter(const vector<string>& cols, char delimiter,
-                              string* output) {
+void JoinCSVLineWithDelimiter(
+    const vector<string>& cols,
+    char delimiter,
+    string* output) {
   CHECK(output);
   CHECK(output->empty());
   vector<string> quoted_cols;
@@ -182,21 +184,21 @@ void JoinCSVLineWithDelimiter(const vector<string>& cols, char delimiter,
   // character of the string.
   for (const auto& col : cols) {
     if ((col.find_first_of(escape_chars) != string::npos) ||
-        (!col.empty() && (ascii_isspace(*col.begin()) ||
-                              ascii_isspace(*col.rbegin())))) {
+        (!col.empty() &&
+         (ascii_isspace(*col.begin()) || ascii_isspace(*col.rbegin())))) {
       // Double the original size, for escaping, plus two bytes for
       // the bracketing double-quotes, and one byte for the closing \0.
       int size = 2 * col.size() + 3;
       gscoped_array<char> buf(new char[size]);
 
       // Leave space at beginning and end for bracketing double-quotes.
-      int escaped_size = strings::EscapeStrForCSV(col.c_str(),
-                                                  buf.get() + 1, size - 2);
+      int escaped_size =
+          strings::EscapeStrForCSV(col.c_str(), buf.get() + 1, size - 2);
       CHECK_GE(escaped_size, 0) << "Buffer somehow wasn't large enough.";
       CHECK_GE(size, escaped_size + 3)
-        << "Buffer should have one space at the beginning for a "
-        << "double-quote, one at the end for a double-quote, and "
-        << "one at the end for a closing '\\0'";
+          << "Buffer should have one space at the beginning for a "
+          << "double-quote, one at the end for a double-quote, and "
+          << "one at the end for a closing '\\0'";
       *buf.get() = '"';
       *((buf.get() + 1) + escaped_size) = '"';
       *((buf.get() + 1) + escaped_size + 1) = '\0';

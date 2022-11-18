@@ -30,8 +30,7 @@ const std::string kTestAuthString = "test:test";
 
 // Creates .htpasswd for HTTP basic authentication in the format
 // of 'user:realm:digest', returning the path in '*passwd_file'.
-Status CreateTestHTPasswd(const std::string &dir,
-                          std::string *passwd_file);
+Status CreateTestHTPasswd(const std::string& dir, std::string* passwd_file);
 
 } // namespace security
 } // namespace kudu

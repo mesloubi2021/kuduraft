@@ -28,27 +28,33 @@
 #ifdef FB_DO_NOT_REMOVE
 #include "kudu/master/master.h" // @manual
 #endif
+#include <boost/algorithm/string.hpp>
 #include "kudu/server/rpc_server.h"
 #include "kudu/tserver/tablet_server.h"
 #include "kudu/util/flag_tags.h"
 #include "kudu/util/status.h"
-#include <boost/algorithm/string.hpp>
 
 // TODO - iRitwik ( please refine these mechanisms to a standard way of
 // passing all the properties of an instance )
-DEFINE_string(tserver_addresses, "",
-              "Comma-separated list of the RPC addresses belonging to all "
-              "instances in this cluster. "
-              "NOTE: if not specified, configures a non-replicated Master.");
+DEFINE_string(
+    tserver_addresses,
+    "",
+    "Comma-separated list of the RPC addresses belonging to all "
+    "instances in this cluster. "
+    "NOTE: if not specified, configures a non-replicated Master.");
 TAG_FLAG(tserver_addresses, stable);
 
-DEFINE_string(tserver_regions, "",
-              "Comma-separated list of regions which is parallel to tserver_addresses.");
+DEFINE_string(
+    tserver_regions,
+    "",
+    "Comma-separated list of regions which is parallel to tserver_addresses.");
 TAG_FLAG(tserver_regions, stable);
 
-DEFINE_string(tserver_bbd, "",
-              "Comma-separated list of bool strings to specify Backed by "
-              "Database(non-witness). Runs parallel to tserver_addresses.");
+DEFINE_string(
+    tserver_bbd,
+    "",
+    "Comma-separated list of bool strings to specify Backed by "
+    "Database(non-witness). Runs parallel to tserver_addresses.");
 TAG_FLAG(tserver_bbd, stable);
 
 namespace kudu {
@@ -58,27 +64,33 @@ TabletServerOptions::TabletServerOptions() {
   rpc_opts.default_port = TabletServer::kDefaultPort;
 
   if (!FLAGS_tserver_addresses.empty()) {
-    Status s = HostPort::ParseStrings(FLAGS_tserver_addresses, TabletServer::kDefaultPort,
-                                      &tserver_addresses);
+    Status s = HostPort::ParseStrings(
+        FLAGS_tserver_addresses,
+        TabletServer::kDefaultPort,
+        &tserver_addresses);
     if (!s.ok()) {
-      LOG(FATAL) << "Couldn't parse the tserver_addresses flag('" << FLAGS_tserver_addresses << "'): "
-                 << s.ToString();
+      LOG(FATAL) << "Couldn't parse the tserver_addresses flag('"
+                 << FLAGS_tserver_addresses << "'): " << s.ToString();
     }
 
 #ifdef FB_DO_NOT_REMOVE
-// to simplify in FB, we allow rings with single instances.
+    // to simplify in FB, we allow rings with single instances.
     if (tserver_addresses.size() < 2) {
-      LOG(FATAL) << "At least 2 tservers are required for a distributed config, but "
-          "tserver_addresses flag ('" << FLAGS_tserver_addresses << "') only specifies "
-                 << tserver_addresses.size() << " tservers.";
+      LOG(FATAL)
+          << "At least 2 tservers are required for a distributed config, but "
+             "tserver_addresses flag ('"
+          << FLAGS_tserver_addresses << "') only specifies "
+          << tserver_addresses.size() << " tservers.";
     }
 #endif
 
     // TODO(wdberkeley): Un-actionable warning. Link to docs, once they exist.
     if (tserver_addresses.size() <= 2) {
-      LOG(WARNING) << "Only 2 tservers are specified by tserver_addresses_flag ('" <<
-          FLAGS_tserver_addresses << "'), but minimum of 3 are required to tolerate failures"
-          " of any one tserver. It is recommended to use at least 3 tservers.";
+      LOG(WARNING)
+          << "Only 2 tservers are specified by tserver_addresses_flag ('"
+          << FLAGS_tserver_addresses
+          << "'), but minimum of 3 are required to tolerate failures"
+             " of any one tserver. It is recommended to use at least 3 tservers.";
     }
   }
 
@@ -86,24 +98,25 @@ TabletServerOptions::TabletServerOptions() {
     boost::split(tserver_regions, FLAGS_tserver_regions, boost::is_any_of(","));
     if (tserver_regions.size() != tserver_addresses.size()) {
       LOG(FATAL) << "The number of tserver regions has to be same as tservers: "
-          << FLAGS_tserver_regions << " " << FLAGS_tserver_addresses;
+                 << FLAGS_tserver_regions << " " << FLAGS_tserver_addresses;
     }
   }
   if (!FLAGS_tserver_bbd.empty()) {
     std::vector<std::string> bbds;
     boost::split(bbds, FLAGS_tserver_bbd, boost::is_any_of(","));
     if (bbds.size() != tserver_addresses.size()) {
-      LOG(FATAL) << "The number of tserver bbd tags has to be same as tservers: "
+      LOG(FATAL)
+          << "The number of tserver bbd tags has to be same as tservers: "
           << FLAGS_tserver_bbd << " " << FLAGS_tserver_addresses;
     }
-    for (auto tsbbd: bbds) {
+    for (auto tsbbd : bbds) {
       if (tsbbd == "true") {
         tserver_bbd.push_back(true);
       } else if (tsbbd == "false") {
         tserver_bbd.push_back(false);
       } else {
         LOG(FATAL) << "tserver bbd tags has to be bool true|false : "
-            << FLAGS_tserver_bbd;
+                   << FLAGS_tserver_bbd;
       }
     }
   }

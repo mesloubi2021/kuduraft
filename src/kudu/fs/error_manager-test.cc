@@ -15,11 +15,11 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include <stdlib.h>
 #include <map>
 #include <memory>
 #include <set>
 #include <sstream>
-#include <stdlib.h>
 #include <string>
 #include <thread>
 #include <vector>
@@ -107,7 +107,9 @@ class FsErrorManagerTest : public KuduTest {
     return positions;
   }
 
-  FsErrorManager* em() const { return em_.get(); }
+  FsErrorManager* em() const {
+    return em_.get();
+  }
 
  protected:
   // The single vector that the error notification callbacks will all write to.
@@ -129,9 +131,12 @@ TEST_F(FsErrorManagerTest, TestBasicRegistration) {
 
   // Register a callback to update the first '-1' entry in test_vec_ to '0'
   // after waiting a random amount of time.
-  em()->SetErrorNotificationCb(ErrorHandlerType::DISK_ERROR,
-      Bind(&FsErrorManagerTest::SleepAndWriteFirstEmptyCb,
-           Unretained(this), ErrorHandlerType::DISK_ERROR));
+  em()->SetErrorNotificationCb(
+      ErrorHandlerType::DISK_ERROR,
+      Bind(
+          &FsErrorManagerTest::SleepAndWriteFirstEmptyCb,
+          Unretained(this),
+          ErrorHandlerType::DISK_ERROR));
   em()->RunErrorNotificationCb(ErrorHandlerType::DISK_ERROR, "");
   ASSERT_EQ(0, FindFirst(ErrorHandlerType::DISK_ERROR));
 
@@ -141,9 +146,12 @@ TEST_F(FsErrorManagerTest, TestBasicRegistration) {
   ASSERT_EQ(-1, FindFirst(ErrorHandlerType::NO_AVAILABLE_DISKS));
 
   // Now register another callback.
-  em()->SetErrorNotificationCb(ErrorHandlerType::NO_AVAILABLE_DISKS,
-      Bind(&FsErrorManagerTest::SleepAndWriteFirstEmptyCb,
-           Unretained(this), ErrorHandlerType::NO_AVAILABLE_DISKS));
+  em()->SetErrorNotificationCb(
+      ErrorHandlerType::NO_AVAILABLE_DISKS,
+      Bind(
+          &FsErrorManagerTest::SleepAndWriteFirstEmptyCb,
+          Unretained(this),
+          ErrorHandlerType::NO_AVAILABLE_DISKS));
   em()->RunErrorNotificationCb(ErrorHandlerType::NO_AVAILABLE_DISKS, "");
   ASSERT_EQ(1, FindFirst(ErrorHandlerType::NO_AVAILABLE_DISKS));
 
@@ -154,24 +162,33 @@ TEST_F(FsErrorManagerTest, TestBasicRegistration) {
 
   LOG(INFO) << "Final state of the vector: " << test_vec_string();
   map<int, set<int>> positions = GetPositions();
-  set<int> disk_set = { 0 };        // The first entry should be DISK...
-  set<int> tablet_set = { 1, 2 };   // ...followed by NO_AVAILABLE_DISKS, NO_AVAILABLE_DISKS.
+  set<int> disk_set = {0}; // The first entry should be DISK...
+  set<int> tablet_set = {
+      1, 2}; // ...followed by NO_AVAILABLE_DISKS, NO_AVAILABLE_DISKS.
   ASSERT_EQ(disk_set, FindOrDie(positions, ErrorHandlerType::DISK_ERROR));
-  ASSERT_EQ(tablet_set, FindOrDie(positions, ErrorHandlerType::NO_AVAILABLE_DISKS));
+  ASSERT_EQ(
+      tablet_set, FindOrDie(positions, ErrorHandlerType::NO_AVAILABLE_DISKS));
 }
 
 // Test that the callbacks get run serially.
 TEST_F(FsErrorManagerTest, TestSerialization) {
-  em()->SetErrorNotificationCb(ErrorHandlerType::DISK_ERROR,
-      Bind(&FsErrorManagerTest::SleepAndWriteFirstEmptyCb,
-           Unretained(this), ErrorHandlerType::DISK_ERROR));
-  em()->SetErrorNotificationCb(ErrorHandlerType::NO_AVAILABLE_DISKS,
-      Bind(&FsErrorManagerTest::SleepAndWriteFirstEmptyCb,
-           Unretained(this), ErrorHandlerType::NO_AVAILABLE_DISKS));
+  em()->SetErrorNotificationCb(
+      ErrorHandlerType::DISK_ERROR,
+      Bind(
+          &FsErrorManagerTest::SleepAndWriteFirstEmptyCb,
+          Unretained(this),
+          ErrorHandlerType::DISK_ERROR));
+  em()->SetErrorNotificationCb(
+      ErrorHandlerType::NO_AVAILABLE_DISKS,
+      Bind(
+          &FsErrorManagerTest::SleepAndWriteFirstEmptyCb,
+          Unretained(this),
+          ErrorHandlerType::NO_AVAILABLE_DISKS));
 
   // Swap back and forth between error-handler type.
-  const auto IntToEnum = [&] (int i) {
-    return i % 2 == 0 ? ErrorHandlerType::DISK_ERROR : ErrorHandlerType::NO_AVAILABLE_DISKS;
+  const auto IntToEnum = [&](int i) {
+    return i % 2 == 0 ? ErrorHandlerType::DISK_ERROR
+                      : ErrorHandlerType::NO_AVAILABLE_DISKS;
   };
 
   vector<thread> cb_threads;
@@ -179,9 +196,8 @@ TEST_F(FsErrorManagerTest, TestSerialization) {
     // Each call will update the first available entry in test_vec_ after
     // waiting a random amount of time. Without proper serialization, these
     // could end up writing to the same entry.
-    cb_threads.emplace_back([&,i] {
-      em()->RunErrorNotificationCb(IntToEnum(i), "");
-    });
+    cb_threads.emplace_back(
+        [&, i] { em()->RunErrorNotificationCb(IntToEnum(i), ""); });
   }
   for (auto& t : cb_threads) {
     t.join();
@@ -195,5 +211,5 @@ TEST_F(FsErrorManagerTest, TestSerialization) {
   CHECK_EQ(-1, FindFirst(-1));
 }
 
-}  // namespace fs
-}  // namespace kudu
+} // namespace fs
+} // namespace kudu

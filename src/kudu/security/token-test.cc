@@ -40,8 +40,8 @@
 
 DECLARE_int32(tsk_num_rsa_bits);
 
-using std::string;
 using std::make_shared;
+using std::string;
 using std::unique_ptr;
 using std::vector;
 
@@ -80,9 +80,10 @@ Status GeneratePublicKeyStrDer(string* ret) {
 }
 
 // Generate token signing key with the specified parameters.
-Status GenerateTokenSigningKey(int64_t seq_num,
-                               int64_t expire_time_seconds,
-                               unique_ptr<TokenSigningPrivateKey>* tsk) {
+Status GenerateTokenSigningKey(
+    int64_t seq_num,
+    int64_t expire_time_seconds,
+    unique_ptr<TokenSigningPrivateKey>* tsk) {
   {
     unique_ptr<PrivateKey> private_key(new PrivateKey);
     RETURN_NOT_OK(GeneratePrivateKey(512, private_key.get()));
@@ -92,9 +93,10 @@ Status GenerateTokenSigningKey(int64_t seq_num,
   return Status::OK();
 }
 
-void CheckAndAddNextKey(int iter_num,
-                        TokenSigner* signer,
-                        int64_t* key_seq_num) {
+void CheckAndAddNextKey(
+    int iter_num,
+    TokenSigner* signer,
+    int64_t* key_seq_num) {
   ASSERT_NE(nullptr, signer);
   ASSERT_NE(nullptr, key_seq_num);
   int64_t seq_num;
@@ -120,8 +122,7 @@ void CheckAndAddNextKey(int iter_num,
 
 } // anonymous namespace
 
-class TokenTest : public KuduTest {
-};
+class TokenTest : public KuduTest {};
 
 TEST_F(TokenTest, TestInit) {
   TokenSigner signer(10, 10);
@@ -304,8 +305,8 @@ TEST_F(TokenTest, TestAddKeyConstraints) {
     key->key_seq_num_ = key_seq_num - 1;
     Status s = signer.AddKey(std::move(key));
     ASSERT_TRUE(s.IsInvalidArgument()) << s.ToString();
-    ASSERT_STR_CONTAINS(s.ToString(),
-                        ": invalid key sequence number, should be at least ");
+    ASSERT_STR_CONTAINS(
+        s.ToString(), ": invalid key sequence number, should be at least ");
   }
   {
     TokenSigner signer(1, 1);
@@ -329,8 +330,8 @@ TEST_F(TokenTest, TestAddKeyConstraints) {
     key->key_seq_num_ = kKeySeqNum;
     Status s = signer.AddKey(std::move(key));
     ASSERT_TRUE(s.IsInvalidArgument()) << s.ToString();
-    ASSERT_STR_CONTAINS(s.ToString(),
-                        ": invalid key sequence number, should be at least ");
+    ASSERT_STR_CONTAINS(
+        s.ToString(), ": invalid key sequence number, should be at least ");
   }
 }
 
@@ -498,8 +499,8 @@ TEST_F(TokenTest, TestExportKeys) {
   // and have an appropriate expiration.
   const int64_t key_exp_seconds = 30;
   const int64_t key_rotation_seconds = 10;
-  TokenSigner signer(key_exp_seconds - 2 * key_rotation_seconds,
-                     key_rotation_seconds);
+  TokenSigner signer(
+      key_exp_seconds - 2 * key_rotation_seconds, key_rotation_seconds);
   int64_t key_seq_num;
   {
     std::unique_ptr<TokenSigningPrivateKey> key;
@@ -539,7 +540,9 @@ TEST_F(TokenTest, TestEndToEnd_Valid) {
   TokenVerifier verifier;
   ASSERT_OK(verifier.ImportKeys(signer.verifier().ExportKeys()));
   TokenPB token;
-  ASSERT_EQ(VerificationResult::VALID, verifier.VerifyTokenSignature(signed_token, &token));
+  ASSERT_EQ(
+      VerificationResult::VALID,
+      verifier.VerifyTokenSignature(signed_token, &token));
 }
 
 // Test all of the possible cases covered by token verification.
@@ -563,8 +566,9 @@ TEST_F(TokenTest, TestEndToEnd_InvalidCases) {
     ASSERT_OK(signer.SignToken(&signed_token));
     signed_token.set_token_data("xyz");
     TokenPB token;
-    ASSERT_EQ(VerificationResult::INVALID_TOKEN,
-              verifier.VerifyTokenSignature(signed_token, &token));
+    ASSERT_EQ(
+        VerificationResult::INVALID_TOKEN,
+        verifier.VerifyTokenSignature(signed_token, &token));
   }
 
   // Make and sign a token, but corrupt the signature.
@@ -573,8 +577,9 @@ TEST_F(TokenTest, TestEndToEnd_InvalidCases) {
     ASSERT_OK(signer.SignToken(&signed_token));
     signed_token.set_signature("xyz");
     TokenPB token;
-    ASSERT_EQ(VerificationResult::INVALID_SIGNATURE,
-              verifier.VerifyTokenSignature(signed_token, &token));
+    ASSERT_EQ(
+        VerificationResult::INVALID_SIGNATURE,
+        verifier.VerifyTokenSignature(signed_token, &token));
   }
 
   // Make and sign a token, but set it to be already expired.
@@ -582,8 +587,9 @@ TEST_F(TokenTest, TestEndToEnd_InvalidCases) {
     SignedTokenPB signed_token = MakeUnsignedToken(WallTime_Now() - 10);
     ASSERT_OK(signer.SignToken(&signed_token));
     TokenPB token;
-    ASSERT_EQ(VerificationResult::EXPIRED_TOKEN,
-              verifier.VerifyTokenSignature(signed_token, &token));
+    ASSERT_EQ(
+        VerificationResult::EXPIRED_TOKEN,
+        verifier.VerifyTokenSignature(signed_token, &token));
   }
 
   // Make and sign a token which uses an incompatible feature flag.
@@ -591,8 +597,9 @@ TEST_F(TokenTest, TestEndToEnd_InvalidCases) {
     SignedTokenPB signed_token = MakeIncompatibleToken();
     ASSERT_OK(signer.SignToken(&signed_token));
     TokenPB token;
-    ASSERT_EQ(VerificationResult::INCOMPATIBLE_FEATURE,
-              verifier.VerifyTokenSignature(signed_token, &token));
+    ASSERT_EQ(
+        VerificationResult::INCOMPATIBLE_FEATURE,
+        verifier.VerifyTokenSignature(signed_token, &token));
   }
 
   // Set a new signing key, but don't inform the verifier of it yet. When we
@@ -610,8 +617,9 @@ TEST_F(TokenTest, TestEndToEnd_InvalidCases) {
     SignedTokenPB signed_token = MakeUnsignedToken(WallTime_Now() + 600);
     ASSERT_OK(signer.SignToken(&signed_token));
     TokenPB token;
-    ASSERT_EQ(VerificationResult::UNKNOWN_SIGNING_KEY,
-              verifier.VerifyTokenSignature(signed_token, &token));
+    ASSERT_EQ(
+        VerificationResult::UNKNOWN_SIGNING_KEY,
+        verifier.VerifyTokenSignature(signed_token, &token));
   }
 
   // Set a new signing key which is already expired, and inform the verifier
@@ -633,8 +641,9 @@ TEST_F(TokenTest, TestEndToEnd_InvalidCases) {
     // Current implementation allows to use an expired key to sign tokens.
     ASSERT_OK(signer.SignToken(&signed_token));
     TokenPB token;
-    ASSERT_EQ(VerificationResult::EXPIRED_SIGNING_KEY,
-              verifier.VerifyTokenSignature(signed_token, &token));
+    ASSERT_EQ(
+        VerificationResult::EXPIRED_SIGNING_KEY,
+        verifier.VerifyTokenSignature(signed_token, &token));
   }
 }
 
@@ -654,22 +663,24 @@ TEST_F(TokenTest, TestTokenVerifierImportKeys) {
   ASSERT_OK(GeneratePublicKeyStrDer(&public_key_str_der));
   tsk_public_pb.set_rsa_key_der(public_key_str_der);
 
-  ASSERT_OK(verifier.ImportKeys({ tsk_public_pb }));
+  ASSERT_OK(verifier.ImportKeys({tsk_public_pb}));
   {
     const auto& exported_tsks_public_pb = verifier.ExportKeys();
     ASSERT_EQ(1, exported_tsks_public_pb.size());
-    EXPECT_EQ(tsk_public_pb.SerializeAsString(),
-              exported_tsks_public_pb[0].SerializeAsString());
+    EXPECT_EQ(
+        tsk_public_pb.SerializeAsString(),
+        exported_tsks_public_pb[0].SerializeAsString());
   }
 
   // Re-importing the same key again is fine, and the total number
   // of exported keys should not increase.
-  ASSERT_OK(verifier.ImportKeys({ tsk_public_pb }));
+  ASSERT_OK(verifier.ImportKeys({tsk_public_pb}));
   {
     const auto& exported_tsks_public_pb = verifier.ExportKeys();
     ASSERT_EQ(1, exported_tsks_public_pb.size());
-    EXPECT_EQ(tsk_public_pb.SerializeAsString(),
-              exported_tsks_public_pb[0].SerializeAsString());
+    EXPECT_EQ(
+        tsk_public_pb.SerializeAsString(),
+        exported_tsks_public_pb[0].SerializeAsString());
   }
 }
 

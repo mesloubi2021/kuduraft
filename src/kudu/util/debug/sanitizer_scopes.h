@@ -37,6 +37,7 @@ class ScopedTSANIgnoreReadsAndWrites {
   ~ScopedTSANIgnoreReadsAndWrites() {
     ANNOTATE_IGNORE_READS_AND_WRITES_END();
   }
+
  private:
   DISALLOW_COPY_AND_ASSIGN(ScopedTSANIgnoreReadsAndWrites);
 };
@@ -44,4 +45,4 @@ class ScopedTSANIgnoreReadsAndWrites {
 } // namespace debug
 } // namespace kudu
 
-#endif  // KUDU_UTIL_DEBUG_SANITIZER_SCOPES_H_
+#endif // KUDU_UTIL_DEBUG_SANITIZER_SCOPES_H_

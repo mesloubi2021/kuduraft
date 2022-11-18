@@ -34,10 +34,11 @@ std::string GetKuduToolAbsolutePath();
 //
 // If 'out' or 'err' is set, the tool's stdout or stderr output will be
 // written to each respectively.
-Status RunKuduTool(const std::vector<std::string>& args,
-                   std::string* out = nullptr,
-                   std::string* err = nullptr,
-                   const std::string& in = "");
+Status RunKuduTool(
+    const std::vector<std::string>& args,
+    std::string* out = nullptr,
+    std::string* err = nullptr,
+    const std::string& in = "");
 
 } // namespace tools
 } // namespace kudu

@@ -27,7 +27,7 @@ namespace internal {
 // SequentialFileFileInputStream
 ////////////////////////////////////////////
 
-bool SequentialFileFileInputStream::Next(const void **data, int *size) {
+bool SequentialFileFileInputStream::Next(const void** data, int* size) {
   if (PREDICT_FALSE(!status_.ok())) {
     LOG(WARNING) << "Already failed on a previous read: " << status_.ToString();
     return false;
@@ -45,7 +45,8 @@ bool SequentialFileFileInputStream::Next(const void **data, int *size) {
   Slice result(buffer_.get(), buffer_size_);
   status_ = rfile_->Read(&result);
   if (!status_.ok()) {
-    LOG(WARNING) << "Read at " << buffer_offset_ << " failed: " << status_.ToString();
+    LOG(WARNING) << "Read at " << buffer_offset_
+                 << " failed: " << status_.ToString();
     return false;
   }
 
@@ -76,9 +77,10 @@ bool SequentialFileFileInputStream::Skip(int count) {
 // WritableFileOutputStream
 ////////////////////////////////////////////
 
-bool WritableFileOutputStream::Next(void **data, int *size) {
+bool WritableFileOutputStream::Next(void** data, int* size) {
   if (PREDICT_FALSE(!status_.ok())) {
-    LOG(WARNING) << "Already failed on a previous write: " << status_.ToString();
+    LOG(WARNING) << "Already failed on a previous write: "
+                 << status_.ToString();
     return false;
   }
 

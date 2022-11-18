@@ -38,13 +38,14 @@ namespace kudu {
 class JsonWriterIf;
 
 // Acts as a pimpl for rapidjson so that not all metrics users must bring in the
-// rapidjson library, which is template-based and therefore hard to forward-declare.
+// rapidjson library, which is template-based and therefore hard to
+// forward-declare.
 //
 // This class implements all the methods of rapidjson::JsonWriter, plus an
 // additional convenience method for String(std::string).
 //
-// We take an instance of std::stringstream in the constructor because Mongoose / Squeasel
-// uses std::stringstream for output buffering.
+// We take an instance of std::stringstream in the constructor because Mongoose
+// / Squeasel uses std::stringstream for output buffering.
 class JsonWriter {
  public:
   enum Mode {
@@ -72,7 +73,7 @@ class JsonWriter {
   // The output respects redaction for 'string' and 'bytes' fields.
   void Protobuf(const google::protobuf::Message& message);
 
-  template<typename T>
+  template <typename T>
   void Value(const T& val);
 
   void StartObject();
@@ -81,17 +82,18 @@ class JsonWriter {
   void EndArray();
 
   // Convert the given protobuf to JSON format.
-  static std::string ToJson(const google::protobuf::Message& pb,
-                            Mode mode);
+  static std::string ToJson(const google::protobuf::Message& pb, Mode mode);
 
  private:
-  void ProtobufField(const google::protobuf::Message& pb,
-                     const google::protobuf::Reflection* reflection,
-                     const google::protobuf::FieldDescriptor* field);
-  void ProtobufRepeatedField(const google::protobuf::Message& pb,
-                             const google::protobuf::Reflection* reflection,
-                             const google::protobuf::FieldDescriptor* field,
-                             int index);
+  void ProtobufField(
+      const google::protobuf::Message& pb,
+      const google::protobuf::Reflection* reflection,
+      const google::protobuf::FieldDescriptor* field);
+  void ProtobufRepeatedField(
+      const google::protobuf::Message& pb,
+      const google::protobuf::Reflection* reflection,
+      const google::protobuf::FieldDescriptor* field,
+      int index);
 
   std::unique_ptr<JsonWriterIf> impl_;
   DISALLOW_COPY_AND_ASSIGN(JsonWriter);

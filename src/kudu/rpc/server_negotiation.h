@@ -48,12 +48,12 @@ class faststring;
 namespace security {
 class TlsContext;
 class TokenVerifier;
-}
+} // namespace security
 
 namespace rpc {
 
-// Class for doing KRPC negotiation with a remote client over a bidirectional socket.
-// Operations on this class are NOT thread-safe.
+// Class for doing KRPC negotiation with a remote client over a bidirectional
+// socket. Operations on this class are NOT thread-safe.
 class ServerNegotiation {
  public:
   // Creates a new server negotiation instance, taking ownership of the
@@ -62,11 +62,12 @@ class ServerNegotiation {
   // release_socket().
   //
   // The provided TlsContext must outlive this negotiation instance.
-  ServerNegotiation(std::unique_ptr<Socket> socket,
-                    const security::TlsContext* tls_context,
-                    const security::TokenVerifier* token_verifier,
-                    RpcEncryption encryption,
-                    std::string sasl_proto_name);
+  ServerNegotiation(
+      std::unique_ptr<Socket> socket,
+      const security::TlsContext* tls_context,
+      const security::TokenVerifier* token_verifier,
+      RpcEncryption encryption,
+      std::string sasl_proto_name);
 
   // Enable PLAIN authentication.
   // Despite PLAIN authentication taking a username and password, we disregard
@@ -109,7 +110,8 @@ class ServerNegotiation {
 
   // Returns the set of RPC system features supported by the remote client.
   // Must be called after Negotiate().
-  // Subsequent calls to this method or client_features() will return an empty set.
+  // Subsequent calls to this method or client_features() will return an empty
+  // set.
   std::set<RpcFeatureFlag> take_client_features() {
     return std::move(client_features_);
   }
@@ -129,12 +131,16 @@ class ServerNegotiation {
   // Set deadline for connection negotiation.
   void set_deadline(const MonoTime& deadline);
 
-  Socket* socket() const { return socket_.get(); }
+  Socket* socket() const {
+    return socket_.get();
+  }
 
   // Returns the socket owned by this server negotiation. The caller will own
   // the socket after this call, and the negotiation instance should no longer
   // be used. Must be called after Negotiate().
-  std::unique_ptr<Socket> release_socket() { return std::move(socket_); }
+  std::unique_ptr<Socket> release_socket() {
+    return std::move(socket_);
+  }
 
   // Negotiate with the remote client. Should only be called once per
   // ServerNegotiation and socket instance, after all options have been set.
@@ -147,17 +153,26 @@ class ServerNegotiation {
   Status HandleTLS() WARN_UNUSED_RESULT;
 
   // SASL callback for plugin options, supported mechanisms, etc.
-  // Returns SASL_FAIL if the option is not handled, which does not fail the handshake.
-  int GetOptionCb(const char* plugin_name, const char* option,
-                  const char** result, unsigned* len);
+  // Returns SASL_FAIL if the option is not handled, which does not fail the
+  // handshake.
+  int GetOptionCb(
+      const char* plugin_name,
+      const char* option,
+      const char** result,
+      unsigned* len);
 
   // SASL callback for PLAIN authentication via SASL_CB_SERVER_USERDB_CHECKPASS.
-  int PlainAuthCb(sasl_conn_t* conn, const char* user, const char* pass,
-                  unsigned passlen, struct propctx* propctx);
+  int PlainAuthCb(
+      sasl_conn_t* conn,
+      const char* user,
+      const char* pass,
+      unsigned passlen,
+      struct propctx* propctx);
 
   // Perform a "pre-flight check" that everything required to act as a Kerberos
   // server is properly set up.
-  static Status PreflightCheckGSSAPI(const std::string& sasl_proto_name) WARN_UNUSED_RESULT;
+  static Status PreflightCheckGSSAPI(const std::string& sasl_proto_name)
+      WARN_UNUSED_RESULT;
 
   enum class CertValidationCheck {
     CERT_VALIDATION_USERID,
@@ -165,17 +180,18 @@ class ServerNegotiation {
   };
 
  private:
-
   // Parse a negotiate request from the client, deserializing it into 'msg'.
   // If the request is malformed, sends an error message to the client.
-  Status RecvNegotiatePB(NegotiatePB* msg, faststring* recv_buf) WARN_UNUSED_RESULT;
+  Status RecvNegotiatePB(NegotiatePB* msg, faststring* recv_buf)
+      WARN_UNUSED_RESULT;
 
   // Encode and send the specified negotiate response message to the server.
   Status SendNegotiatePB(const NegotiatePB& msg) WARN_UNUSED_RESULT;
 
   // Encode and send the specified RPC error message to the client.
   // Calls Status.ToString() for the embedded error message.
-  Status SendError(ErrorStatusPB::RpcErrorCodePB code, const Status& err) WARN_UNUSED_RESULT;
+  Status SendError(ErrorStatusPB::RpcErrorCodePB code, const Status& err)
+      WARN_UNUSED_RESULT;
 
   // Peek into the first data packet from the client to determine
   // whether it is a TLS client hello packet.
@@ -196,7 +212,8 @@ class ServerNegotiation {
   // Handle a TLS_HANDSHAKE request message from the server.
   Status HandleTlsHandshake(const NegotiatePB& request) WARN_UNUSED_RESULT;
 
-  // Send a TLS_HANDSHAKE response message to the server with the provided token.
+  // Send a TLS_HANDSHAKE response message to the server with the provided
+  // token.
   Status SendTlsHandshake(std::string tls_token) WARN_UNUSED_RESULT;
 
   // Authenticate the client using SASL. Populates the 'authenticated_user_'
@@ -222,7 +239,8 @@ class ServerNegotiation {
   Status HandleSaslResponse(const NegotiatePB& request) WARN_UNUSED_RESULT;
 
   // Send a SASL_CHALLENGE response to the client with a challenge token.
-  Status SendSaslChallenge(const char* challenge, unsigned clen) WARN_UNUSED_RESULT;
+  Status SendSaslChallenge(const char* challenge, unsigned clen)
+      WARN_UNUSED_RESULT;
 
   // Send a SASL_SUCCESS response to the client.
   Status SendSaslSuccess() WARN_UNUSED_RESULT;
@@ -252,7 +270,8 @@ class ServerNegotiation {
   // TSK state.
   const security::TokenVerifier* token_verifier_;
 
-  // The set of features supported by the client and server. Filled in during negotiation.
+  // The set of features supported by the client and server. Filled in during
+  // negotiation.
   std::set<RpcFeatureFlag> client_features_;
   std::set<RpcFeatureFlag> server_features_;
 

@@ -112,7 +112,6 @@
 #ifndef STRINGS_STRINGPIECE_H_
 #define STRINGS_STRINGPIECE_H_
 
-
 #include <cassert>
 #include <cstddef>
 #include <cstring>
@@ -129,8 +128,8 @@
 
 class StringPiece {
  private:
-  const char*   ptr_;
-  int           length_;
+  const char* ptr_;
+  int length_;
 
  public:
   // We provide non-explicit singleton constructors so users can pass
@@ -140,7 +139,7 @@ class StringPiece {
   // Style guide exception granted:
   // http://goto/style-guide-exception-20978288
   StringPiece() : ptr_(NULL), length_(0) {}
-  StringPiece(const char* str)  // NOLINT(runtime/explicit)
+  StringPiece(const char* str) // NOLINT(runtime/explicit)
       : ptr_(str), length_(0) {
     if (str != NULL) {
       size_t length = strlen(str);
@@ -148,7 +147,7 @@ class StringPiece {
       length_ = static_cast<int>(length);
     }
   }
-  StringPiece(const std::string& str)  // NOLINT(runtime/explicit)
+  StringPiece(const std::string& str) // NOLINT(runtime/explicit)
       : ptr_(str.data()), length_(0) {
     size_t length = str.size();
     assert(length <= static_cast<size_t>(std::numeric_limits<int>::max()));
@@ -170,10 +169,18 @@ class StringPiece {
   // returned buffer may or may not be null terminated.  Therefore it is
   // typically a mistake to pass data() to a routine that expects a NUL
   // terminated string.
-  const char* data() const { return ptr_; }
-  int size() const { return length_; }
-  int length() const { return length_; }
-  bool empty() const { return length_ == 0; }
+  const char* data() const {
+    return ptr_;
+  }
+  int size() const {
+    return length_;
+  }
+  int length() const {
+    return length_;
+  }
+  bool empty() const {
+    return length_ == 0;
+  }
 
   void clear() {
     ptr_ = NULL;
@@ -219,10 +226,14 @@ class StringPiece {
   int compare(StringPiece x) const {
     const int min_size = length_ < x.length_ ? length_ : x.length_;
     int r = memcmp(ptr_, x.ptr_, min_size);
-    if (r < 0) return -1;
-    if (r > 0) return 1;
-    if (length_ < x.length_) return -1;
-    if (length_ > x.length_) return 1;
+    if (r < 0)
+      return -1;
+    if (r > 0)
+      return 1;
+    if (length_ < x.length_)
+      return -1;
+    if (length_ > x.length_)
+      return 1;
     return 0;
   }
 
@@ -235,7 +246,8 @@ class StringPiece {
   // for a StringPiece be called "as_string()".  We also leave the
   // "as_string()" method defined here for existing code.
   std::string ToString() const {
-    if (ptr_ == NULL) return std::string();
+    if (ptr_ == NULL)
+      return std::string();
     return std::string(data(), size());
   }
 
@@ -247,8 +259,9 @@ class StringPiece {
   }
 
   bool ends_with(StringPiece x) const {
-    return ((length_ >= x.length_) &&
-            (memcmp(ptr_ + (length_-x.length_), x.ptr_, x.length_) == 0));
+    return (
+        (length_ >= x.length_) &&
+        (memcmp(ptr_ + (length_ - x.length_), x.ptr_, x.length_) == 0));
   }
 
   // standard STL container boilerplate
@@ -263,8 +276,12 @@ class StringPiece {
   typedef const char* iterator;
   typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
   typedef std::reverse_iterator<iterator> reverse_iterator;
-  iterator begin() const { return ptr_; }
-  iterator end() const { return ptr_ + length_; }
+  iterator begin() const {
+    return ptr_;
+  }
+  iterator end() const {
+    return ptr_ + length_;
+  }
   const_reverse_iterator rbegin() const {
     return const_reverse_iterator(ptr_ + length_);
   }
@@ -272,11 +289,15 @@ class StringPiece {
     return const_reverse_iterator(ptr_);
   }
   // STLS says return size_type, but Google says return int
-  int max_size() const { return length_; }
-  int capacity() const { return length_; }
+  int max_size() const {
+    return length_;
+  }
+  int capacity() const {
+    return length_;
+  }
 
   // cpplint.py emits a false positive [build/include_what_you_use]
-  int copy(char* buf, size_type n, size_type pos = 0) const;  // NOLINT
+  int copy(char* buf, size_type n, size_type pos = 0) const; // NOLINT
 
   bool contains(StringPiece s) const;
 
@@ -286,11 +307,15 @@ class StringPiece {
   int rfind(char c, size_type pos = npos) const;
 
   int find_first_of(StringPiece s, size_type pos = 0) const;
-  int find_first_of(char c, size_type pos = 0) const { return find(c, pos); }
+  int find_first_of(char c, size_type pos = 0) const {
+    return find(c, pos);
+  }
   int find_first_not_of(StringPiece s, size_type pos = 0) const;
   int find_first_not_of(char c, size_type pos = 0) const;
   int find_last_of(StringPiece s, size_type pos = npos) const;
-  int find_last_of(char c, size_type pos = npos) const { return rfind(c, pos); }
+  int find_last_of(char c, size_type pos = npos) const {
+    return rfind(c, pos);
+  }
   int find_last_not_of(StringPiece s, size_type pos = npos) const;
   int find_last_not_of(char c, size_type pos = npos) const;
 
@@ -298,7 +323,7 @@ class StringPiece {
 };
 
 #ifndef SWIG
-DECLARE_POD(StringPiece);  // So vector<StringPiece> becomes really fast
+DECLARE_POD(StringPiece); // So vector<StringPiece> becomes really fast
 #endif
 
 // This large function is defined inline so that in a fairly common case where
@@ -335,7 +360,8 @@ inline bool operator<=(StringPiece x, StringPiece y) {
 inline bool operator>=(StringPiece x, StringPiece y) {
   return !(x < y);
 }
-template <class X> struct GoodFastHash;
+template <class X>
+struct GoodFastHash;
 
 // ------------------------------------------------------------------
 // Functions used to create STL containers that use StringPiece
@@ -348,15 +374,16 @@ template <class X> struct GoodFastHash;
 #ifndef SWIG
 
 namespace std {
-template<> struct hash<StringPiece> {
+template <>
+struct hash<StringPiece> {
   size_t operator()(StringPiece s) const;
 };
-}  // namespace std
-
+} // namespace std
 
 // An implementation of GoodFastHash for StringPiece.  See
 // GoodFastHash values.
-template<> struct GoodFastHash<StringPiece> {
+template <>
+struct GoodFastHash<StringPiece> {
   size_t operator()(StringPiece s) const {
     return HashStringThoroughly(s.data(), s.size());
   }
@@ -364,13 +391,12 @@ template<> struct GoodFastHash<StringPiece> {
   bool operator()(const StringPiece& s1, const StringPiece& s2) const {
     return s1 < s2;
   }
-  static const size_t bucket_size = 4;  // These are required by MSVC
-  static const size_t min_buckets = 8;  // 4 and 8 are defaults.
+  static const size_t bucket_size = 4; // These are required by MSVC
+  static const size_t min_buckets = 8; // 4 and 8 are defaults.
 };
 #endif
 
 // allow StringPiece to be logged
 extern std::ostream& operator<<(std::ostream& o, StringPiece piece);
 
-
-#endif  // STRINGS_STRINGPIECE_H__
+#endif // STRINGS_STRINGPIECE_H__

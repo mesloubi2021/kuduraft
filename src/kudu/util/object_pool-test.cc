@@ -52,14 +52,14 @@ TEST(TestObjectPool, TestPooling) {
   {
     ObjectPool<MyClass> pool;
     ASSERT_EQ(0, MyClass::instance_count());
-    MyClass *a = pool.Construct();
+    MyClass* a = pool.Construct();
     ASSERT_EQ(1, MyClass::instance_count());
-    MyClass *b = pool.Construct();
+    MyClass* b = pool.Construct();
     ASSERT_EQ(2, MyClass::instance_count());
     ASSERT_TRUE(a != b);
     pool.Destroy(b);
     ASSERT_EQ(1, MyClass::instance_count());
-    MyClass *c = pool.Construct();
+    MyClass* c = pool.Construct();
     ASSERT_EQ(2, MyClass::instance_count());
     ASSERT_TRUE(c == b) << "should reuse instance";
     pool.Destroy(c);
@@ -68,7 +68,7 @@ TEST(TestObjectPool, TestPooling) {
   }
 
   ASSERT_EQ(0, MyClass::instance_count())
-    << "destructing pool should have cleared instances";
+      << "destructing pool should have cleared instances";
 }
 
 TEST(TestObjectPool, TestScopedPtr) {
@@ -77,7 +77,7 @@ TEST(TestObjectPool, TestScopedPtr) {
   ObjectPool<MyClass> pool;
   {
     ObjectPool<MyClass>::scoped_ptr sptr(
-      pool.make_scoped_ptr(pool.Construct()));
+        pool.make_scoped_ptr(pool.Construct()));
     ASSERT_EQ(1, MyClass::instance_count());
   }
   ASSERT_EQ(0, MyClass::instance_count());

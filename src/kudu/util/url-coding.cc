@@ -29,8 +29,8 @@
 #include <boost/archive/iterators/base64_from_binary.hpp>
 #include <boost/archive/iterators/binary_from_base64.hpp>
 #include <boost/archive/iterators/transform_width.hpp>
-#include <boost/iterator/iterator_facade.hpp>
 #include <boost/function.hpp>
+#include <boost/iterator/iterator_facade.hpp>
 #include <glog/logging.h>
 
 using std::string;
@@ -43,13 +43,16 @@ namespace kudu {
 // characters it will encode.
 // See common/src/java/org/apache/hadoop/hive/common/FileUtils.java
 // in the Hive source code for the source of this list.
-static boost::function<bool (char)> HiveShouldEscape = boost::is_any_of("\"#%\\*/:=?\u00FF"); // NOLINT(*)
+static boost::function<bool(char)> HiveShouldEscape =
+    boost::is_any_of("\"#%\\*/:=?\u00FF"); // NOLINT(*)
 
 // It is more convenient to maintain the complement of the set of
 // characters to escape when not in Hive-compat mode.
-static boost::function<bool (char)> ShouldNotEscape = boost::is_any_of("-_.~"); // NOLINT(*)
+static boost::function<bool(char)> ShouldNotEscape =
+    boost::is_any_of("-_.~"); // NOLINT(*)
 
-static inline void UrlEncode(const char* in, int in_len, string* out, bool hive_compat) {
+static inline void
+UrlEncode(const char* in, int in_len, string* out, bool hive_compat) {
   (*out).reserve(in_len);
   std::ostringstream ss;
   for (int i = 0; i < in_len; ++i) {
@@ -73,7 +76,8 @@ void UrlEncode(const vector<uint8_t>& in, string* out, bool hive_compat) {
   if (in.empty()) {
     *out = "";
   } else {
-    UrlEncode(reinterpret_cast<const char*>(&in[0]), in.size(), out, hive_compat);
+    UrlEncode(
+        reinterpret_cast<const char*>(&in[0]), in.size(), out, hive_compat);
   }
 }
 
@@ -108,7 +112,8 @@ bool UrlDecode(const string& in, string* out, bool hive_compat) {
       } else {
         return false;
       }
-    } else if (!hive_compat && in[i] == '+') { // Hive does not encode ' ' as '+'
+    } else if (!hive_compat && in[i] == '+') { // Hive does not encode ' ' as
+                                               // '+'
       (*out) += ' ';
     } else {
       (*out) += in[i];
@@ -117,11 +122,15 @@ bool UrlDecode(const string& in, string* out, bool hive_compat) {
   return true;
 }
 
-static inline void Base64Encode(const char* in, int in_len, std::ostringstream* out) {
-  typedef base64_from_binary<transform_width<const char*, 6, 8> > base64_encode;
+static inline void
+Base64Encode(const char* in, int in_len, std::ostringstream* out) {
+  typedef base64_from_binary<transform_width<const char*, 6, 8>> base64_encode;
   // Base64 encodes 8 byte chars as 6 bit values.
   std::ostringstream::pos_type len_before = out->tellp();
-  copy(base64_encode(in), base64_encode(in + in_len), std::ostream_iterator<char>(*out));
+  copy(
+      base64_encode(in),
+      base64_encode(in + in_len),
+      std::ostream_iterator<char>(*out));
   int bytes_written = out->tellp() - len_before;
   // Pad with = to make it valid base64 encoded string
   int num_pad = bytes_written % 4;
@@ -163,13 +172,14 @@ void Base64Encode(const string& in, std::ostringstream* out) {
 }
 
 bool Base64Decode(const string& in, string* out) {
-  typedef transform_width<binary_from_base64<string::const_iterator>, 8, 6> base64_decode;
+  typedef transform_width<binary_from_base64<string::const_iterator>, 8, 6>
+      base64_decode;
   string tmp = in;
   // Replace padding with base64 encoded NULL
   replace(tmp.begin(), tmp.end(), '=', 'A');
   try {
     *out = string(base64_decode(tmp.begin()), base64_decode(tmp.end()));
-  } catch(std::exception& e) {
+  } catch (std::exception& e) {
     return false;
   }
 
@@ -177,7 +187,8 @@ bool Base64Decode(const string& in, string* out) {
   // the boost functions get confused so do this manually.
   int num_padded_chars = 0;
   for (int i = out->size() - 1; i >= 0; --i) {
-    if ((*out)[i] != '\0') break;
+    if ((*out)[i] != '\0')
+      break;
     ++num_padded_chars;
   }
   out->resize(out->size() - num_padded_chars);
@@ -188,13 +199,17 @@ void EscapeForHtml(const string& in, std::ostringstream* out) {
   DCHECK(out != nullptr);
   for (const char& c : in) {
     switch (c) {
-      case '<': (*out) << "&lt;";
-                break;
-      case '>': (*out) << "&gt;";
-                break;
-      case '&': (*out) << "&amp;";
-                break;
-      default: (*out) << c;
+      case '<':
+        (*out) << "&lt;";
+        break;
+      case '>':
+        (*out) << "&gt;";
+        break;
+      case '&':
+        (*out) << "&amp;";
+        break;
+      default:
+        (*out) << c;
     }
   }
 }

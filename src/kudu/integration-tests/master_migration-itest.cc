@@ -63,11 +63,11 @@ using strings::Substitute;
 
 namespace kudu {
 
-class MasterMigrationTest : public KuduTest {
-};
+class MasterMigrationTest : public KuduTest {};
 
-static Status CreateTable(ExternalMiniCluster* cluster,
-                          const std::string& table_name) {
+static Status CreateTable(
+    ExternalMiniCluster* cluster,
+    const std::string& table_name) {
   shared_ptr<KuduClient> client;
   RETURN_NOT_OK(cluster->CreateClient(nullptr, &client));
   KuduSchema schema;
@@ -77,7 +77,7 @@ static Status CreateTable(ExternalMiniCluster* cluster,
   unique_ptr<KuduTableCreator> table_creator(client->NewTableCreator());
   return table_creator->table_name(table_name)
       .schema(&schema)
-      .set_range_partition_columns({ "key" })
+      .set_range_partition_columns({"key"})
       .num_replicas(1)
       .Create();
 }
@@ -93,9 +93,11 @@ TEST_F(MasterMigrationTest, TestEndToEndMigration) {
   vector<HostPort> master_rpc_addresses;
   for (int i = 0; i < kNumMasters; i++) {
     unique_ptr<Socket> reserved_socket;
-    ASSERT_OK(MiniCluster::ReserveDaemonSocket(MiniCluster::MASTER, i,
-                                               MiniCluster::kDefaultBindMode,
-                                               &reserved_socket));
+    ASSERT_OK(MiniCluster::ReserveDaemonSocket(
+        MiniCluster::MASTER,
+        i,
+        MiniCluster::kDefaultBindMode,
+        &reserved_socket));
     Sockaddr addr;
     ASSERT_OK(reserved_socket->GetSocketAddress(&addr));
     master_rpc_addresses.emplace_back(addr.host(), addr.port());
@@ -104,7 +106,7 @@ TEST_F(MasterMigrationTest, TestEndToEndMigration) {
 
   ExternalMiniClusterOptions opts;
   opts.num_masters = 1;
-  opts.master_rpc_addresses = { master_rpc_addresses[0] };
+  opts.master_rpc_addresses = {master_rpc_addresses[0]};
   opts.bind_mode = cluster::MiniCluster::LOOPBACK;
 
   unique_ptr<ExternalMiniCluster> cluster(new ExternalMiniCluster(opts));
@@ -118,7 +120,7 @@ TEST_F(MasterMigrationTest, TestEndToEndMigration) {
   cluster->Shutdown();
 
   // List of every master UUIDs.
-  vector<string> uuids = { cluster->master()->uuid() };
+  vector<string> uuids = {cluster->master()->uuid()};
 
   // Format a filesystem tree for each of the new masters and get the uuids.
   for (int i = 1; i < kNumMasters; i++) {
@@ -132,8 +134,7 @@ TEST_F(MasterMigrationTest, TestEndToEndMigration) {
           "fs",
           "format",
           "--fs_wal_dir=" + wal_dir,
-          "--fs_data_dirs=" + data_root
-      };
+          "--fs_data_dirs=" + data_root};
       ASSERT_OK(Subprocess::Call(args));
     }
     {
@@ -143,8 +144,7 @@ TEST_F(MasterMigrationTest, TestEndToEndMigration) {
           "dump",
           "uuid",
           "--fs_wal_dir=" + wal_dir,
-          "--fs_data_dirs=" + data_root
-      };
+          "--fs_data_dirs=" + data_root};
       string uuid;
       ASSERT_OK(Subprocess::Call(args, "", &uuid));
       StripWhiteSpace(&uuid);
@@ -162,10 +162,10 @@ TEST_F(MasterMigrationTest, TestEndToEndMigration) {
         "rewrite_raft_config",
         "--fs_wal_dir=" + cluster->GetWalPath("master-0"),
         "--fs_data_dirs=" + data_root,
-        SysCatalogTable::kSysCatalogTabletId
-    };
+        SysCatalogTable::kSysCatalogTabletId};
     for (int i = 0; i < kNumMasters; i++) {
-      args.emplace_back(Substitute("$0:$1", uuids[i], master_rpc_addresses[i].ToString()));
+      args.emplace_back(
+          Substitute("$0:$1", uuids[i], master_rpc_addresses[i].ToString()));
     }
     ASSERT_OK(Subprocess::Call(args));
   }
@@ -191,8 +191,7 @@ TEST_F(MasterMigrationTest, TestEndToEndMigration) {
         "--fs_wal_dir=" + wal_dir,
         "--fs_data_dirs=" + data_root,
         SysCatalogTable::kSysCatalogTabletId,
-        cluster->master()->bound_rpc_hostport().ToString()
-    };
+        cluster->master()->bound_rpc_hostport().ToString()};
     ASSERT_OK(Subprocess::Call(args));
   }
 

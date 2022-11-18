@@ -36,8 +36,8 @@ namespace log {
 struct LogAnchor;
 
 // This class allows callers to register their interest in (anchor) a particular
-// log index. The primary use case for this is to prevent the deletion of segments of
-// the WAL that reference as-yet unflushed in-memory operations.
+// log index. The primary use case for this is to prevent the deletion of
+// segments of the WAL that reference as-yet unflushed in-memory operations.
 //
 // This class is thread-safe.
 class LogAnchorRegistry : public RefCountedThreadSafe<LogAnchorRegistry> {
@@ -48,16 +48,18 @@ class LogAnchorRegistry : public RefCountedThreadSafe<LogAnchorRegistry> {
   // log_index: The log index the caller wishes to anchor.
   // owner: String to describe who is registering the anchor. Used in assert
   //        messages for debugging purposes.
-  // anchor: Pointer to LogAnchor structure that will be populated on registration.
+  // anchor: Pointer to LogAnchor structure that will be populated on
+  // registration.
   void Register(int64_t log_index, const std::string& owner, LogAnchor* anchor);
 
   // Atomically update the registration of an anchor to a new log index.
   // Before: anchor must be registered with some log index.
   // After: anchor is now registered using index 'log_index'.
   // See Register().
-  Status UpdateRegistration(int64_t log_index,
-                            const std::string& owner,
-                            LogAnchor* anchor);
+  Status UpdateRegistration(
+      int64_t log_index,
+      const std::string& owner,
+      LogAnchor* anchor);
 
   // Release the anchor on a log index.
   // Note: anchor must be the original pointer passed to Register().
@@ -85,7 +87,10 @@ class LogAnchorRegistry : public RefCountedThreadSafe<LogAnchorRegistry> {
   typedef std::multimap<int64_t, LogAnchor*> AnchorMultiMap;
 
   // Register a new anchor after taking the lock. See Register().
-  void RegisterUnlocked(int64_t log_index, const std::string& owner, LogAnchor* anchor);
+  void RegisterUnlocked(
+      int64_t log_index,
+      const std::string& owner,
+      LogAnchor* anchor);
 
   // Unregister an anchor after taking the lock. See Unregister().
   Status UnregisterUnlocked(LogAnchor* anchor);
@@ -151,7 +156,8 @@ class MinLogIndexAnchorer {
   const std::string owner_;
   LogAnchor anchor_;
 
-  // The index currently anchored, or kInvalidOpIdIndex if no anchor has yet been registered.
+  // The index currently anchored, or kInvalidOpIdIndex if no anchor has yet
+  // been registered.
   int64_t minimum_log_index_;
   mutable simple_spinlock lock_;
 

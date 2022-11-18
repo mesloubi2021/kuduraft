@@ -74,14 +74,16 @@ bool Semaphore::TimedAcquire(const MonoDelta& timeout) {
   microtime += timeout.ToMicroseconds();
 
   struct timespec abs_timeout;
-  MonoDelta::NanosToTimeSpec(microtime * MonoTime::kNanosecondsPerMicrosecond,
-                             &abs_timeout);
+  MonoDelta::NanosToTimeSpec(
+      microtime * MonoTime::kNanosecondsPerMicrosecond, &abs_timeout);
 
   while (true) {
     int ret;
     RETRY_ON_EINTR(ret, sem_timedwait(&sem_, &abs_timeout));
-    if (ret == 0) return true;
-    if (errno == ETIMEDOUT) return false;
+    if (ret == 0)
+      return true;
+    if (errno == ETIMEDOUT)
+      return false;
     Fatal("timedwait");
   }
 }

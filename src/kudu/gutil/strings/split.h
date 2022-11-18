@@ -20,7 +20,6 @@
 #ifndef STRINGS_SPLIT_H_
 #define STRINGS_SPLIT_H_
 
-
 #include <cstddef>
 #include <map>
 #include <set>
@@ -278,8 +277,8 @@ inline internal::Splitter<Delimiter> Split(StringPiece text, Delimiter d) {
 }
 
 template <typename Delimiter, typename Predicate>
-inline internal::Splitter<Delimiter, Predicate> Split(
-    StringPiece text, Delimiter d, Predicate p) {
+inline internal::Splitter<Delimiter, Predicate>
+Split(StringPiece text, Delimiter d, Predicate p) {
   return internal::Splitter<Delimiter, Predicate>(text, d, p);
 }
 
@@ -382,7 +381,7 @@ class LimitImpl {
       : delimiter_(std::move(delimiter)), limit_(limit), count_(0) {}
   StringPiece Find(StringPiece text) {
     if (count_++ == limit_) {
-      return StringPiece(text.end(), 0);  // No more matches.
+      return StringPiece(text.end(), 0); // No more matches.
     }
     return delimiter_.Find(text);
   }
@@ -413,7 +412,7 @@ inline LimitImpl<Literal> Limit(StringPiece s, int limit) {
   return LimitImpl<Literal>(Literal(s), limit);
 }
 
-}  // namespace delimiter
+} // namespace delimiter
 
 //
 // Predicates are functors that return bool indicating whether the given
@@ -472,46 +471,49 @@ struct SkipWhitespace {
 //   - StringPiece
 
 inline internal::Splitter<delimiter::Literal> Split(
-    StringPiece text, const char* delimiter) {
+    StringPiece text,
+    const char* delimiter) {
   return internal::Splitter<delimiter::Literal>(
       text, delimiter::Literal(delimiter));
 }
 
 inline internal::Splitter<delimiter::Literal> Split(
-    StringPiece text, const std::string& delimiter) {
+    StringPiece text,
+    const std::string& delimiter) {
   return internal::Splitter<delimiter::Literal>(
       text, delimiter::Literal(delimiter));
 }
 
 inline internal::Splitter<delimiter::Literal> Split(
-    StringPiece text, StringPiece delimiter) {
+    StringPiece text,
+    StringPiece delimiter) {
   return internal::Splitter<delimiter::Literal>(
       text, delimiter::Literal(delimiter));
 }
 
 // Same overloads as above, but also including a Predicate argument.
 template <typename Predicate>
-inline internal::Splitter<delimiter::Literal, Predicate> Split(
-    StringPiece text, const char* delimiter, Predicate p) {
+inline internal::Splitter<delimiter::Literal, Predicate>
+Split(StringPiece text, const char* delimiter, Predicate p) {
   return internal::Splitter<delimiter::Literal, Predicate>(
       text, delimiter::Literal(delimiter), p);
 }
 
 template <typename Predicate>
-inline internal::Splitter<delimiter::Literal, Predicate> Split(
-    StringPiece text, const std::string& delimiter, Predicate p) {
+inline internal::Splitter<delimiter::Literal, Predicate>
+Split(StringPiece text, const std::string& delimiter, Predicate p) {
   return internal::Splitter<delimiter::Literal, Predicate>(
       text, delimiter::Literal(delimiter), p);
 }
 
 template <typename Predicate>
-inline internal::Splitter<delimiter::Literal, Predicate> Split(
-    StringPiece text, StringPiece delimiter, Predicate p) {
+inline internal::Splitter<delimiter::Literal, Predicate>
+Split(StringPiece text, StringPiece delimiter, Predicate p) {
   return internal::Splitter<delimiter::Literal, Predicate>(
       text, delimiter::Literal(delimiter), p);
 }
 
-}  // namespace strings
+} // namespace strings
 
 //
 // ==================== LEGACY SPLIT FUNCTIONS ====================
@@ -562,10 +564,11 @@ void ClipString(std::string* full_str, int max_len);
 // appends a "..." to the end of the last line if the string is too
 // long to fit completely into 'num_lines' lines.
 // ----------------------------------------------------------------------
-void SplitStringToLines(const char* full,
-                        int max_len,
-                        int num_lines,
-                        std::vector<std::string>* result);
+void SplitStringToLines(
+    const char* full,
+    int max_len,
+    int num_lines,
+    std::vector<std::string>* result);
 
 // ----------------------------------------------------------------------
 // SplitOneStringToken()
@@ -605,12 +608,16 @@ std::vector<char*>* SplitUsing(char* full, const char* delimiters);
 //    strings to 'vec'.  Modifies "full".  If omit empty strings is
 //    true, empty strings are omitted from the resulting vector.
 // ----------------------------------------------------------------------
-void SplitToVector(char* full, const char* delimiters,
-                   std::vector<char*>* vec,
-                   bool omit_empty_strings);
-void SplitToVector(char* full, const char* delimiters,
-                   std::vector<const char*>* vec,
-                   bool omit_empty_strings);
+void SplitToVector(
+    char* full,
+    const char* delimiters,
+    std::vector<char*>* vec,
+    bool omit_empty_strings);
+void SplitToVector(
+    char* full,
+    const char* delimiters,
+    std::vector<const char*>* vec,
+    bool omit_empty_strings);
 
 // ----------------------------------------------------------------------
 // SplitStringPieceToVector
@@ -621,10 +628,11 @@ void SplitToVector(char* full, const char* delimiters,
 //    Expects the original string (from which 'full' is derived) to exist
 //    for the full lifespan of 'vec'.
 // ----------------------------------------------------------------------
-void SplitStringPieceToVector(const StringPiece& full,
-                              const char* delim,
-                              std::vector<StringPiece>* vec,
-                              bool omit_empty_strings);
+void SplitStringPieceToVector(
+    const StringPiece& full,
+    const char* delim,
+    std::vector<StringPiece>* vec,
+    bool omit_empty_strings);
 
 // ----------------------------------------------------------------------
 // SplitStringUsing()
@@ -654,21 +662,31 @@ void SplitStringPieceToVector(const StringPiece& full,
 // For even better performance, store the result in a vector<StringPiece>
 // to avoid string copies.
 // ----------------------------------------------------------------------
-void SplitStringUsing(const std::string& full, const char* delimiters,
-                      std::vector<std::string>* result);
-void SplitStringToHashsetUsing(const std::string& full, const char* delimiters,
-                               std::unordered_set<std::string>* result);
-void SplitStringToSetUsing(const std::string& full, const char* delimiters,
-                           std::set<std::string>* result);
+void SplitStringUsing(
+    const std::string& full,
+    const char* delimiters,
+    std::vector<std::string>* result);
+void SplitStringToHashsetUsing(
+    const std::string& full,
+    const char* delimiters,
+    std::unordered_set<std::string>* result);
+void SplitStringToSetUsing(
+    const std::string& full,
+    const char* delimiters,
+    std::set<std::string>* result);
 // The even-positioned (0-based) components become the keys for the
 // odd-positioned components that follow them. When there is an odd
 // number of components, the value for the last key will be unchanged
 // if the key was already present in the hash table, or will be the
 // empty string if the key is a newly inserted key.
-void SplitStringToMapUsing(const std::string& full, const char* delim,
-                           std::map<std::string, std::string>* result);
-void SplitStringToHashmapUsing(const std::string& full, const char* delim,
-                               std::unordered_map<std::string, std::string>* result);
+void SplitStringToMapUsing(
+    const std::string& full,
+    const char* delim,
+    std::map<std::string, std::string>* result);
+void SplitStringToHashmapUsing(
+    const std::string& full,
+    const char* delim,
+    std::unordered_map<std::string, std::string>* result);
 
 // ----------------------------------------------------------------------
 // SplitStringAllowEmpty()
@@ -690,8 +708,10 @@ void SplitStringToHashmapUsing(const std::string& full, const char* delim,
 // For even better performance, store the result in a vector<StringPiece> to
 // avoid string copies.
 // ----------------------------------------------------------------------
-void SplitStringAllowEmpty(const std::string& full, const char* delim,
-                           std::vector<std::string>* result);
+void SplitStringAllowEmpty(
+    const std::string& full,
+    const char* delim,
+    std::vector<std::string>* result);
 
 // ----------------------------------------------------------------------
 // SplitStringWithEscaping()
@@ -711,18 +731,22 @@ void SplitStringAllowEmpty(const std::string& full, const char* delim,
 //
 //   All versions other than "AllowEmpty" discard any empty substrings.
 // ----------------------------------------------------------------------
-void SplitStringWithEscaping(const std::string& full,
-                             const strings::CharSet& delimiters,
-                             std::vector<std::string>* result);
-void SplitStringWithEscapingAllowEmpty(const std::string& full,
-                                       const strings::CharSet& delimiters,
-                                       std::vector<std::string>* result);
-void SplitStringWithEscapingToSet(const std::string& full,
-                                  const strings::CharSet& delimiters,
-                                  std::set<std::string>* result);
-void SplitStringWithEscapingToHashset(const std::string& full,
-                                      const strings::CharSet& delimiters,
-                                      std::unordered_set<std::string>* result);
+void SplitStringWithEscaping(
+    const std::string& full,
+    const strings::CharSet& delimiters,
+    std::vector<std::string>* result);
+void SplitStringWithEscapingAllowEmpty(
+    const std::string& full,
+    const strings::CharSet& delimiters,
+    std::vector<std::string>* result);
+void SplitStringWithEscapingToSet(
+    const std::string& full,
+    const strings::CharSet& delimiters,
+    std::set<std::string>* result);
+void SplitStringWithEscapingToHashset(
+    const std::string& full,
+    const strings::CharSet& delimiters,
+    std::unordered_set<std::string>* result);
 
 // ----------------------------------------------------------------------
 // SplitStringIntoNPiecesAllowEmpty()
@@ -737,10 +761,11 @@ void SplitStringWithEscapingToHashset(const std::string& full,
 //
 //    If "full" is the empty string, yields an empty string as the only value.
 // ----------------------------------------------------------------------
-void SplitStringIntoNPiecesAllowEmpty(const std::string& full,
-                                      const char* delimiters,
-                                      int pieces,
-                                      std::vector<std::string>* result);
+void SplitStringIntoNPiecesAllowEmpty(
+    const std::string& full,
+    const char* delimiters,
+    int pieces,
+    std::vector<std::string>* result);
 
 // ----------------------------------------------------------------------
 // SplitStringAndParse()
@@ -783,18 +808,23 @@ void SplitStringIntoNPiecesAllowEmpty(const std::string& full,
 //  CHECK_EQ(4, values.size());
 // ----------------------------------------------------------------------
 template <class T>
-bool SplitStringAndParse(StringPiece source, StringPiece delim,
-                         bool (*parse)(const std::string& str, T* value),
-                         std::vector<T>* result);
+bool SplitStringAndParse(
+    StringPiece source,
+    StringPiece delim,
+    bool (*parse)(const std::string& str, T* value),
+    std::vector<T>* result);
 template <class Container>
 bool SplitStringAndParseToContainer(
-    StringPiece source, StringPiece delim,
-    bool (*parse)(const std::string& str, typename Container::value_type* value),
+    StringPiece source,
+    StringPiece delim,
+    bool (
+        *parse)(const std::string& str, typename Container::value_type* value),
     Container* result);
 
 template <class List>
 bool SplitStringAndParseToList(
-    StringPiece source, StringPiece delim,
+    StringPiece source,
+    StringPiece delim,
     bool (*parse)(const std::string& str, typename List::value_type* value),
     List* result);
 // ----------------------------------------------------------------------
@@ -845,11 +875,15 @@ bool SplitRange(const char* rangestr, int* from, int* to);
 //
 // ----------------------------------------------------------------------
 void SplitCSVLine(char* line, std::vector<char*>* cols);
-void SplitCSVLineWithDelimiter(char* line, char delimiter,
-                               std::vector<char*>* cols);
+void SplitCSVLineWithDelimiter(
+    char* line,
+    char delimiter,
+    std::vector<char*>* cols);
 // SplitCSVLine string wrapper that internally makes a copy of string line.
-void SplitCSVLineWithDelimiterForStrings(const std::string& line, char delimiter,
-                                         std::vector<std::string>* cols);
+void SplitCSVLineWithDelimiterForStrings(
+    const std::string& line,
+    char delimiter,
+    std::vector<std::string>* cols);
 
 // ----------------------------------------------------------------------
 // SplitStructuredLine()
@@ -873,17 +907,19 @@ void SplitCSVLineWithDelimiterForStrings(const std::string& line, char delimiter
 //              function will return the position of the problem : ]
 //
 // ----------------------------------------------------------------------
-char* SplitStructuredLine(char* line,
-                          char delimiter,
-                          const char* symbol_pairs,
-                          std::vector<char*>* cols);
+char* SplitStructuredLine(
+    char* line,
+    char delimiter,
+    const char* symbol_pairs,
+    std::vector<char*>* cols);
 
 // Similar to the function with the same name above, but splits a StringPiece
 // into StringPiece parts. Returns true if successful.
-bool SplitStructuredLine(StringPiece line,
-                         char delimiter,
-                         const char* symbol_pairs,
-                         std::vector<StringPiece>* cols);
+bool SplitStructuredLine(
+    StringPiece line,
+    char delimiter,
+    const char* symbol_pairs,
+    std::vector<StringPiece>* cols);
 
 // ----------------------------------------------------------------------
 // SplitStructuredLineWithEscapes()
@@ -904,17 +940,19 @@ bool SplitStructuredLine(StringPiece line,
 //                    "item4\,item5", "[5,{6,7}]" }
 //
 // ----------------------------------------------------------------------
-char* SplitStructuredLineWithEscapes(char* line,
-                                     char delimiter,
-                                     const char* symbol_pairs,
-                                     std::vector<char*>* cols);
+char* SplitStructuredLineWithEscapes(
+    char* line,
+    char delimiter,
+    const char* symbol_pairs,
+    std::vector<char*>* cols);
 
 // Similar to the function with the same name above, but splits a StringPiece
 // into StringPiece parts. Returns true if successful.
-bool SplitStructuredLineWithEscapes(StringPiece line,
-                                    char delimiter,
-                                    const char* symbol_pairs,
-                                    std::vector<StringPiece>* cols);
+bool SplitStructuredLineWithEscapes(
+    StringPiece line,
+    char delimiter,
+    const char* symbol_pairs,
+    std::vector<StringPiece>* cols);
 
 // ----------------------------------------------------------------------
 // DEPRECATED(jgm): See the "NEW API" comment about this function below for
@@ -965,10 +1003,12 @@ bool SplitStructuredLineWithEscapes(StringPiece line,
 //   vector<string> values = Split(key_values.second, AnyOf(vv_delim));
 //
 // ----------------------------------------------------------------------
-bool SplitStringIntoKeyValues(const std::string& line,
-                              const std::string& key_value_delimiters,
-                              const std::string& value_value_delimiters,
-                              std::string* key, std::vector<std::string>* values);
+bool SplitStringIntoKeyValues(
+    const std::string& line,
+    const std::string& key_value_delimiters,
+    const std::string& value_value_delimiters,
+    std::string* key,
+    std::vector<std::string>* values);
 
 // ----------------------------------------------------------------------
 // SplitStringIntoKeyValuePairs()
@@ -1015,8 +1055,7 @@ bool SplitStringIntoKeyValuePairs(
     const std::string& line,
     const std::string& key_value_delimiters,
     const std::string& key_value_pair_delimiters,
-    std::vector<std::pair<std::string, std::string> >* kv_pairs);
-
+    std::vector<std::pair<std::string, std::string>>* kv_pairs);
 
 // ----------------------------------------------------------------------
 // SplitLeadingDec32Values()
@@ -1027,8 +1066,12 @@ bool SplitStringIntoKeyValuePairs(
 //    whitespace (does not consume trailing whitespace), and returns
 //    a pointer beyond the last character parsed.
 // --------------------------------------------------------------------
-const char* SplitLeadingDec32Values(const char* next, std::vector<int32>* result);
-const char* SplitLeadingDec64Values(const char* next, std::vector<int64>* result);
+const char* SplitLeadingDec32Values(
+    const char* next,
+    std::vector<int32>* result);
+const char* SplitLeadingDec64Values(
+    const char* next,
+    std::vector<int64>* result);
 
 // ----------------------------------------------------------------------
 // SplitOneIntToken()
@@ -1050,32 +1093,25 @@ const char* SplitLeadingDec64Values(const char* next, std::vector<int64>* result
 //   They cannot handle decimal numbers with leading 0s, since they will be
 //   treated as octal.
 // ----------------------------------------------------------------------
-bool SplitOneIntToken(const char** source, const char* delim,
-                      int* value);
-bool SplitOneInt32Token(const char** source, const char* delim,
-                        int32* value);
-bool SplitOneUint32Token(const char** source, const char* delim,
-                         uint32* value);
-bool SplitOneInt64Token(const char** source, const char* delim,
-                        int64* value);
-bool SplitOneUint64Token(const char** source, const char* delim,
-                         uint64* value);
-bool SplitOneDoubleToken(const char** source, const char* delim,
-                         double* value);
-bool SplitOneFloatToken(const char** source, const char* delim,
-                        float* value);
+bool SplitOneIntToken(const char** source, const char* delim, int* value);
+bool SplitOneInt32Token(const char** source, const char* delim, int32* value);
+bool SplitOneUint32Token(const char** source, const char* delim, uint32* value);
+bool SplitOneInt64Token(const char** source, const char* delim, int64* value);
+bool SplitOneUint64Token(const char** source, const char* delim, uint64* value);
+bool SplitOneDoubleToken(const char** source, const char* delim, double* value);
+bool SplitOneFloatToken(const char** source, const char* delim, float* value);
 
 // Some aliases, so that the function names are standardized against the names
 // of the reflection setters/getters in proto2. This makes it easier to use
 // certain macros with reflection when creating custom text formats for protos.
 
-inline bool SplitOneUInt32Token(const char** source, const char* delim,
-                         uint32* value) {
+inline bool
+SplitOneUInt32Token(const char** source, const char* delim, uint32* value) {
   return SplitOneUint32Token(source, delim, value);
 }
 
-inline bool SplitOneUInt64Token(const char** source, const char* delim,
-                         uint64* value) {
+inline bool
+SplitOneUInt64Token(const char** source, const char* delim, uint64* value) {
   return SplitOneUint64Token(source, delim, value);
 }
 
@@ -1088,34 +1124,49 @@ inline bool SplitOneUInt64Token(const char** source, const char* delim,
 // Parse a single "delim"-delimited number from "*source" into "*value".
 // Unlike SplitOneIntToken, etc., this function always interprets
 // the numbers as decimal.
-bool SplitOneDecimalIntToken(const char** source, const char* delim,
-                             int* value);
-bool SplitOneDecimalInt32Token(const char** source, const char* delim,
-                               int32* value);
-bool SplitOneDecimalUint32Token(const char** source, const char* delim,
-                                uint32* value);
-bool SplitOneDecimalInt64Token(const char** source, const char* delim,
-                               int64* value);
-bool SplitOneDecimalUint64Token(const char** source, const char* delim,
-                                uint64* value);
+bool SplitOneDecimalIntToken(
+    const char** source,
+    const char* delim,
+    int* value);
+bool SplitOneDecimalInt32Token(
+    const char** source,
+    const char* delim,
+    int32* value);
+bool SplitOneDecimalUint32Token(
+    const char** source,
+    const char* delim,
+    uint32* value);
+bool SplitOneDecimalInt64Token(
+    const char** source,
+    const char* delim,
+    int64* value);
+bool SplitOneDecimalUint64Token(
+    const char** source,
+    const char* delim,
+    uint64* value);
 
 // ----------------------------------------------------------------------
 // SplitOneHexUint32Token()
 // SplitOneHexUint64Token()
 // Once more, for hexadecimal numbers (unsigned only).
-bool SplitOneHexUint32Token(const char** source, const char* delim,
-                            uint32* value);
-bool SplitOneHexUint64Token(const char** source, const char* delim,
-                            uint64* value);
-
+bool SplitOneHexUint32Token(
+    const char** source,
+    const char* delim,
+    uint32* value);
+bool SplitOneHexUint64Token(
+    const char** source,
+    const char* delim,
+    uint64* value);
 
 // ###################### TEMPLATE INSTANTIATIONS BELOW #######################
 
 // SplitStringAndParse() -- see description above
 template <class T>
-bool SplitStringAndParse(StringPiece source, StringPiece delim,
-                         bool (*parse)(const std::string& str, T* value),
-                         std::vector<T>* result) {
+bool SplitStringAndParse(
+    StringPiece source,
+    StringPiece delim,
+    bool (*parse)(const std::string& str, T* value),
+    std::vector<T>* result) {
   return SplitStringAndParseToList(source, delim, parse, result);
 }
 
@@ -1124,9 +1175,12 @@ namespace internal {
 
 template <class Container, class InsertPolicy>
 bool SplitStringAndParseToInserter(
-    StringPiece source, StringPiece delim,
-    bool (*parse)(const std::string& str, typename Container::value_type* value),
-    Container* result, InsertPolicy insert_policy) {
+    StringPiece source,
+    StringPiece delim,
+    bool (
+        *parse)(const std::string& str, typename Container::value_type* value),
+    Container* result,
+    InsertPolicy insert_policy) {
   CHECK(NULL != parse);
   CHECK(NULL != result);
   CHECK(NULL != delim.data());
@@ -1150,22 +1204,28 @@ bool SplitStringAndParseToInserter(
 // only an insert() or push_back() method.
 struct BasicInsertPolicy {
   template <class C, class V>
-  void operator()(C* c, const V& v) const { c->insert(v); }
+  void operator()(C* c, const V& v) const {
+    c->insert(v);
+  }
 };
 
 struct BackInsertPolicy {
   template <class C, class V>
-  void operator()(C* c, const V& v) const { c->push_back(v); }
+  void operator()(C* c, const V& v) const {
+    c->push_back(v);
+  }
 };
 
-}  // namespace internal
-}  // namespace strings
+} // namespace internal
+} // namespace strings
 
 // SplitStringAndParseToContainer() -- see description above
 template <class Container>
 bool SplitStringAndParseToContainer(
-    StringPiece source, StringPiece delim,
-    bool (*parse)(const std::string& str, typename Container::value_type* value),
+    StringPiece source,
+    StringPiece delim,
+    bool (
+        *parse)(const std::string& str, typename Container::value_type* value),
     Container* result) {
   return strings::internal::SplitStringAndParseToInserter(
       source, delim, parse, result, strings::internal::BasicInsertPolicy());
@@ -1174,7 +1234,8 @@ bool SplitStringAndParseToContainer(
 // SplitStringAndParseToList() -- see description above
 template <class List>
 bool SplitStringAndParseToList(
-    StringPiece source, StringPiece delim,
+    StringPiece source,
+    StringPiece delim,
     bool (*parse)(const std::string& str, typename List::value_type* value),
     List* result) {
   return strings::internal::SplitStringAndParseToInserter(
@@ -1184,4 +1245,4 @@ bool SplitStringAndParseToList(
 // END DOXYGEN SplitFunctions grouping
 /* @} */
 
-#endif  // STRINGS_SPLIT_H_
+#endif // STRINGS_SPLIT_H_

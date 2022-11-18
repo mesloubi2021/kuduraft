@@ -117,13 +117,14 @@ class CreateTableStressTest : public KuduTest {
     ASSERT_OK(cluster_->Start());
 
     ASSERT_OK(KuduClientBuilder()
-                     .add_master_server_addr(cluster_->mini_master()->bound_rpc_addr_str())
-                     .Build(&client_));
+                  .add_master_server_addr(
+                      cluster_->mini_master()->bound_rpc_addr_str())
+                  .Build(&client_));
 
     ASSERT_OK(MessengerBuilder("stress-test-msgr")
-              .set_num_reactors(1)
-              .set_max_negotiation_threads(1)
-              .Build(&messenger_));
+                  .set_num_reactors(1)
+                  .set_max_negotiation_threads(1)
+                  .Build(&messenger_));
     const auto& addr = cluster_->mini_master()->bound_rpc_addr();
     master_proxy_.reset(new MasterServiceProxy(messenger_, addr, addr.host()));
     ASSERT_OK(CreateTabletServerMap(master_proxy_, messenger_, &ts_map_));
@@ -145,7 +146,9 @@ class CreateTableStressTest : public KuduTest {
   TabletServerMap ts_map_;
 };
 
-void CreateTableStressTest::CreateBigTable(const string& table_name, int num_tablets) {
+void CreateTableStressTest::CreateBigTable(
+    const string& table_name,
+    int num_tablets) {
   vector<const KuduPartialRow*> split_rows;
   int num_splits = num_tablets - 1; // 4 tablets == 3 splits.
   // Let the "\x8\0\0\0" keys end up in the first split; start splitting at 1.
@@ -157,12 +160,12 @@ void CreateTableStressTest::CreateBigTable(const string& table_name, int num_tab
 
   unique_ptr<KuduTableCreator> table_creator(client_->NewTableCreator());
   ASSERT_OK(table_creator->table_name(table_name)
-            .schema(&schema_)
-            .set_range_partition_columns({ "key" })
-            .split_rows(split_rows)
-            .num_replicas(3)
-            .wait(false)
-            .Create());
+                .schema(&schema_)
+                .set_range_partition_columns({"key"})
+                .split_rows(split_rows)
+                .num_replicas(3)
+                .wait(false)
+                .Create());
 }
 
 TEST_F(CreateTableStressTest, CreateAndDeleteBigTable) {
@@ -173,8 +176,8 @@ TEST_F(CreateTableStressTest, CreateAndDeleteBigTable) {
   string table_name = "test_table";
   ASSERT_NO_FATAL_FAILURE(CreateBigTable(table_name, FLAGS_num_test_tablets));
   master::GetTableLocationsResponsePB resp;
-  ASSERT_OK(WaitForRunningTabletCount(cluster_->mini_master(), table_name,
-                                      FLAGS_num_test_tablets, &resp));
+  ASSERT_OK(WaitForRunningTabletCount(
+      cluster_->mini_master(), table_name, FLAGS_num_test_tablets, &resp));
   LOG(INFO) << "Created table successfully!";
   // Use std::cout instead of log, since these responses are large and log
   // messages have a max size.
@@ -190,10 +193,10 @@ TEST_F(CreateTableStressTest, CreateAndDeleteBigTable) {
   LOG(INFO) << "Waiting for tablets to be removed";
   vector<string> tablet_ids;
   for (int i = 0; i < 1000; i++) {
-    ASSERT_OK(itest::ListRunningTabletIds(ts_map_.begin()->second,
-                                          MonoDelta::FromSeconds(10),
-                                          &tablet_ids));
-    if (tablet_ids.empty()) break;
+    ASSERT_OK(itest::ListRunningTabletIds(
+        ts_map_.begin()->second, MonoDelta::FromSeconds(10), &tablet_ids));
+    if (tablet_ids.empty())
+      break;
     SleepFor(MonoDelta::FromMilliseconds(100));
   }
   ASSERT_TRUE(tablet_ids.empty()) << "Tablets remained: " << tablet_ids;
@@ -213,14 +216,16 @@ TEST_F(CreateTableStressTest, RestartMasterDuringCreation) {
     LOG(INFO) << "Restarting master...";
     cluster_->mini_master()->Shutdown();
     ASSERT_OK(cluster_->mini_master()->Restart());
-    ASSERT_OK(cluster_->mini_master()->master()->
-        WaitUntilCatalogManagerIsLeaderAndReadyForTests(MonoDelta::FromSeconds(5)));
+    ASSERT_OK(cluster_->mini_master()
+                  ->master()
+                  ->WaitUntilCatalogManagerIsLeaderAndReadyForTests(
+                      MonoDelta::FromSeconds(5)));
     LOG(INFO) << "Master restarted.";
   }
 
   master::GetTableLocationsResponsePB resp;
-  Status s = WaitForRunningTabletCount(cluster_->mini_master(), table_name,
-                                       FLAGS_num_test_tablets, &resp);
+  Status s = WaitForRunningTabletCount(
+      cluster_->mini_master(), table_name, FLAGS_num_test_tablets, &resp);
   if (!s.ok()) {
     cluster_->mini_master()->master()->catalog_manager()->DumpState(&std::cerr);
     CHECK_OK(s);
@@ -234,7 +239,8 @@ TEST_F(CreateTableStressTest, TestGetTableLocationsOptions) {
   }
 
   string table_name = "test_table";
-  LOG(INFO) << CURRENT_TEST_NAME() << ": Step 1. Creating big table " << table_name << " ...";
+  LOG(INFO) << CURRENT_TEST_NAME() << ": Step 1. Creating big table "
+            << table_name << " ...";
   LOG_TIMING(INFO, "creating big table") {
     ASSERT_NO_FATAL_FAILURE(CreateBigTable(table_name, FLAGS_num_test_tablets));
   }
@@ -243,11 +249,12 @@ TEST_F(CreateTableStressTest, TestGetTableLocationsOptions) {
   master::GetTableLocationsResponsePB resp;
 
   // Make sure the table is completely created before we start poking.
-  LOG(INFO) << CURRENT_TEST_NAME() << ": Step 2. Waiting for creation of big table "
-            << table_name << " to complete...";
+  LOG(INFO) << CURRENT_TEST_NAME()
+            << ": Step 2. Waiting for creation of big table " << table_name
+            << " to complete...";
   LOG_TIMING(INFO, "waiting for creation of big table") {
-    ASSERT_OK(WaitForRunningTabletCount(cluster_->mini_master(), table_name,
-                                       FLAGS_num_test_tablets, &resp));
+    ASSERT_OK(WaitForRunningTabletCount(
+        cluster_->mini_master(), table_name, FLAGS_num_test_tablets, &resp));
   }
 
   master::CatalogManager* catalog =
@@ -277,12 +284,15 @@ TEST_F(CreateTableStressTest, TestGetTableLocationsOptions) {
     ASSERT_EQ(resp.tablet_locations_size(), 1);
     // empty since it's the first
     ASSERT_EQ(resp.tablet_locations(0).partition().partition_key_start(), "");
-    ASSERT_EQ(resp.tablet_locations(0).partition().partition_key_end(), string("\x80\0\0\1", 4));
+    ASSERT_EQ(
+        resp.tablet_locations(0).partition().partition_key_end(),
+        string("\x80\0\0\1", 4));
   }
 
   int half_tablets = FLAGS_num_test_tablets / 2;
   // Ask for half of them, get that number back
-  LOG(INFO) << CURRENT_TEST_NAME() << ": Step 5. Asking for half the tablets...";
+  LOG(INFO) << CURRENT_TEST_NAME()
+            << ": Step 5. Asking for half the tablets...";
   LOG_TIMING(INFO, "asking for half the tablets") {
     req.Clear();
     resp.Clear();
@@ -306,23 +316,26 @@ TEST_F(CreateTableStressTest, TestGetTableLocationsOptions) {
   LOG(INFO) << "========================================================";
   LOG(INFO) << "Tables and tablets:";
   LOG(INFO) << "========================================================";
-  std::vector<scoped_refptr<master::TableInfo> > tables;
+  std::vector<scoped_refptr<master::TableInfo>> tables;
   catalog->GetAllTables(&tables);
   for (const scoped_refptr<master::TableInfo>& table_info : tables) {
     LOG(INFO) << "Table: " << table_info->ToString();
-    std::vector<scoped_refptr<master::TabletInfo> > tablets;
+    std::vector<scoped_refptr<master::TabletInfo>> tablets;
     table_info->GetAllTablets(&tablets);
     for (const scoped_refptr<master::TabletInfo>& tablet_info : tablets) {
       master::TabletMetadataLock l_tablet(tablet_info.get(), LockMode::READ);
-      const master::SysTabletsEntryPB& metadata = tablet_info->metadata().state().pb;
-      LOG(INFO) << "  Tablet: " << tablet_info->ToString()
-                << " { start_key: "
+      const master::SysTabletsEntryPB& metadata =
+          tablet_info->metadata().state().pb;
+      LOG(INFO) << "  Tablet: " << tablet_info->ToString() << " { start_key: "
                 << ((metadata.partition().has_partition_key_start())
-                    ? metadata.partition().partition_key_start() : "<< none >>")
+                        ? metadata.partition().partition_key_start()
+                        : "<< none >>")
                 << ", end_key: "
                 << ((metadata.partition().has_partition_key_end())
-                    ? metadata.partition().partition_key_end() : "<< none >>")
-                << ", running = " << tablet_info->metadata().state().is_running() << " }";
+                        ? metadata.partition().partition_key_end()
+                        : "<< none >>")
+                << ", running = "
+                << tablet_info->metadata().state().is_running() << " }";
     }
     ASSERT_EQ(FLAGS_num_test_tablets, tablets.size());
   }
@@ -336,7 +349,8 @@ TEST_F(CreateTableStressTest, TestGetTableLocationsOptions) {
   ASSERT_OK(row->EncodeRowKey(&start_key_middle));
 
   LOG(INFO) << "Start key middle: " << start_key_middle;
-  LOG(INFO) << CURRENT_TEST_NAME() << ": Step 7. Asking for single middle tablet...";
+  LOG(INFO) << CURRENT_TEST_NAME()
+            << ": Step 7. Asking for single middle tablet...";
   LOG_TIMING(INFO, "asking for single middle tablet") {
     req.Clear();
     resp.Clear();
@@ -346,7 +360,9 @@ TEST_F(CreateTableStressTest, TestGetTableLocationsOptions) {
     ASSERT_OK(catalog->GetTableLocations(&req, &resp));
     ASSERT_EQ(1, resp.tablet_locations_size())
         << "Response: [" << pb_util::SecureDebugString(resp) << "]";
-    ASSERT_EQ(start_key_middle, resp.tablet_locations(0).partition().partition_key_start());
+    ASSERT_EQ(
+        start_key_middle,
+        resp.tablet_locations(0).partition().partition_key_start());
   }
 }
 
@@ -357,8 +373,10 @@ TEST_F(CreateTableStressTest, TestConcurrentCreateTableAndReloadMetadata) {
 
   thread reload_metadata_thread([&]() {
     while (!stop.Load()) {
-      CHECK_OK(cluster_->mini_master()->master()->catalog_manager()->
-          VisitTablesAndTablets());
+      CHECK_OK(cluster_->mini_master()
+                   ->master()
+                   ->catalog_manager()
+                   ->VisitTablesAndTablets());
 
       // Give table creation a chance to run. TSAN is especially brutal; so
       // let's sleep for longer in such environments.
@@ -380,11 +398,11 @@ TEST_F(CreateTableStressTest, TestConcurrentCreateTableAndReloadMetadata) {
     LOG(INFO) << "Creating table " << table_name;
     unique_ptr<KuduTableCreator> table_creator(client_->NewTableCreator());
     Status s = table_creator->table_name(table_name)
-                  .schema(&schema_)
-                  .set_range_partition_columns({ "key" })
-                  .num_replicas(3)
-                  .wait(false)
-                  .Create();
+                   .schema(&schema_)
+                   .set_range_partition_columns({"key"})
+                   .num_replicas(3)
+                   .wait(false)
+                   .Create();
     if (s.IsTimedOut()) {
       // The master was busy reloading its metadata, replying with
       // ServiceUnavailable on CreateTable() requests. The client transparently

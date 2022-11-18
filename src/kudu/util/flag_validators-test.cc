@@ -28,8 +28,8 @@
 
 #include "kudu/gutil/macros.h"
 #include "kudu/util/debug/leakcheck_disabler.h"
-#include "kudu/util/flags.h"
 #include "kudu/util/flag_validators.h"
+#include "kudu/util/flags.h"
 #include "kudu/util/test_macros.h"
 #include "kudu/util/test_util.h"
 
@@ -108,49 +108,51 @@ class FlagsValidatorsDeathTest : public KuduTest {
   }
 
   void RunFailure(const char** argv, int argc) {
-    EXPECT_EXIT(Run(argv, argc), ::testing::ExitedWithCode(1),
+    EXPECT_EXIT(
+        Run(argv, argc),
+        ::testing::ExitedWithCode(1),
         ".* Detected inconsistency in command-line flags; exiting");
   }
 };
 
 TEST_F(FlagsValidatorsDeathTest, GroupedSuccessNoFlags) {
-  const char* argv[] = { "argv_set_0" };
+  const char* argv[] = {"argv_set_0"};
   NO_FATALS(RunSuccess(argv, KUDU_ARRAYSIZE(argv)));
 }
 
 TEST_F(FlagsValidatorsDeathTest, GroupedSuccessSimple) {
   static const size_t kArgvSize = 1 + 2;
   const char* argv_sets[][kArgvSize] = {
-    {
-      "argv_set_0",
-      "--grouped_0=first",
-      "--grouped_1=second",
-    },
-    {
-      "argv_set_1",
-      "--grouped_0=second",
-      "--grouped_1=first",
-    },
-    {
-      "argv_set_2",
-      "--grouped_0=",
-      "--grouped_1=",
-    },
-    {
-      "argv_set_3",
-      "--grouped_1=",
-      "--grouped_0=",
-    },
-    {
-      "argv_set_4",
-      "--grouped_2=2",
-      "--grouped_3=3",
-    },
-    {
-      "argv_set_5",
-      "--grouped_3=",
-      "--grouped_2=",
-    },
+      {
+          "argv_set_0",
+          "--grouped_0=first",
+          "--grouped_1=second",
+      },
+      {
+          "argv_set_1",
+          "--grouped_0=second",
+          "--grouped_1=first",
+      },
+      {
+          "argv_set_2",
+          "--grouped_0=",
+          "--grouped_1=",
+      },
+      {
+          "argv_set_3",
+          "--grouped_1=",
+          "--grouped_0=",
+      },
+      {
+          "argv_set_4",
+          "--grouped_2=2",
+          "--grouped_3=3",
+      },
+      {
+          "argv_set_5",
+          "--grouped_3=",
+          "--grouped_2=",
+      },
   };
   for (auto argv : argv_sets) {
     RunSuccess(argv, kArgvSize);
@@ -160,22 +162,22 @@ TEST_F(FlagsValidatorsDeathTest, GroupedSuccessSimple) {
 TEST_F(FlagsValidatorsDeathTest, GroupedFailureSimple) {
   static const size_t kArgvSize = 1 + 1;
   const char* argv_sets[][kArgvSize] = {
-    {
-      "argv_set_0",
-      "--grouped_0=a",
-    },
-    {
-      "argv_set_1",
-      "--grouped_1=b",
-    },
-    {
-      "argv_set_2",
-      "--grouped_2=2",
-    },
-    {
-      "argv_set_3",
-      "--grouped_3=3",
-    },
+      {
+          "argv_set_0",
+          "--grouped_0=a",
+      },
+      {
+          "argv_set_1",
+          "--grouped_1=b",
+      },
+      {
+          "argv_set_2",
+          "--grouped_2=2",
+      },
+      {
+          "argv_set_3",
+          "--grouped_3=3",
+      },
   };
   for (auto argv : argv_sets) {
     RunFailure(argv, kArgvSize);
@@ -186,34 +188,34 @@ TEST_F(FlagsValidatorsDeathTest, GroupedFailureSimple) {
 TEST_F(FlagsValidatorsDeathTest, GroupedFailureOneOfTwoValidators) {
   static const size_t kArgvSize = 4 + 1;
   const char* argv_sets[][kArgvSize] = {
-    {
-      "argv_set_0",
-      "--grouped_0=0",
-      "--grouped_1=1",
-      "--grouped_2=",
-      "--grouped_3=3",
-    },
-    {
-      "argv_set_1",
-      "--grouped_2=",
-      "--grouped_3=3",
-      "--grouped_0=0",
-      "--grouped_1=1",
-    },
-    {
-      "argv_set_2",
-      "--grouped_0=0",
-      "--grouped_1=",
-      "--grouped_2=2",
-      "--grouped_3=3",
-    },
-    {
-      "argv_set_3",
-      "--grouped_3=3",
-      "--grouped_2=2",
-      "--grouped_1=1",
-      "--grouped_0=",
-    },
+      {
+          "argv_set_0",
+          "--grouped_0=0",
+          "--grouped_1=1",
+          "--grouped_2=",
+          "--grouped_3=3",
+      },
+      {
+          "argv_set_1",
+          "--grouped_2=",
+          "--grouped_3=3",
+          "--grouped_0=0",
+          "--grouped_1=1",
+      },
+      {
+          "argv_set_2",
+          "--grouped_0=0",
+          "--grouped_1=",
+          "--grouped_2=2",
+          "--grouped_3=3",
+      },
+      {
+          "argv_set_3",
+          "--grouped_3=3",
+          "--grouped_2=2",
+          "--grouped_1=1",
+          "--grouped_0=",
+      },
   };
   for (auto argv : argv_sets) {
     RunFailure(argv, kArgvSize);
@@ -223,26 +225,26 @@ TEST_F(FlagsValidatorsDeathTest, GroupedFailureOneOfTwoValidators) {
 TEST_F(FlagsValidatorsDeathTest, GroupedFailureWithEmptyValues) {
   static const size_t kArgvSize = 1 + 2;
   const char* argv_sets[][kArgvSize] = {
-    {
-      "argv_set_0",
-      "--grouped_0=a",
-      "--grouped_1=",
-    },
-    {
-      "argv_set_1",
-      "--grouped_1=",
-      "--grouped_0=a",
-    },
-    {
-      "argv_set_2",
-      "--grouped_0=",
-      "--grouped_1=b",
-    },
-    {
-      "argv_set_3",
-      "--grouped_1=b",
-      "--grouped_0=",
-    },
+      {
+          "argv_set_0",
+          "--grouped_0=a",
+          "--grouped_1=",
+      },
+      {
+          "argv_set_1",
+          "--grouped_1=",
+          "--grouped_0=a",
+      },
+      {
+          "argv_set_2",
+          "--grouped_0=",
+          "--grouped_1=b",
+      },
+      {
+          "argv_set_3",
+          "--grouped_1=b",
+          "--grouped_0=",
+      },
   };
   for (auto argv : argv_sets) {
     RunFailure(argv, kArgvSize);

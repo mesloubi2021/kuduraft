@@ -15,12 +15,12 @@
 
 #include <glog/logging.h>
 
+#include "kudu/gutil/endian.h"
 #include "kudu/gutil/int128.h"
 #include "kudu/gutil/integral_types.h"
-#include "kudu/gutil/type_traits.h"
-#include "kudu/gutil/strings/stringpiece.h"
-#include "kudu/gutil/endian.h"
 #include "kudu/gutil/stl_util.h"
+#include "kudu/gutil/strings/stringpiece.h"
+#include "kudu/gutil/type_traits.h"
 
 // Converts a 4-byte uint32 to a string such that the string keys sort in
 // the same order as the original uint32 value.
@@ -39,9 +39,7 @@ inline void KeyFromUint64(uint64 fp, std::string* key) {
 // Converts a 16-byte uint128 to a string such that the string keys sort in
 // the same order as the original uint128 value.
 inline void KeyFromUint128(uint128 fp, std::string* key) {
-  uint64 norder[] = { htonll(Uint128High64(fp)),
-                      htonll(Uint128Low64(fp))
-  };
+  uint64 norder[] = {htonll(Uint128High64(fp)), htonll(Uint128Low64(fp))};
   key->assign(reinterpret_cast<const char*>(norder), 2 * sizeof(norder[0]));
 }
 
@@ -169,7 +167,8 @@ int64 ReverseOrderedStringToInt64(const StringPiece& key);
 //   string s = EncodePOD(i);
 // in place of:
 //   string s = EncodeUint32(static_cast<uint32>(i));
-template <typename T> inline std::string EncodePOD(const T& value) {
+template <typename T>
+inline std::string EncodePOD(const T& value) {
   ENFORCE_POD(T);
   std::string s;
   STLStringResizeUninitialized(&s, sizeof(T));
@@ -194,7 +193,8 @@ template <typename T> inline std::string EncodePOD(const T& value) {
 // in place of:
 //   string s = EncodeUint32(static_cast<uint32>(i));
 //   CHECK(DecodesUint32(s, static_cast<uint32*>(&j)));
-template <typename T> inline bool DecodePOD(const StringPiece& str, T* result) {
+template <typename T>
+inline bool DecodePOD(const StringPiece& str, T* result) {
   ENFORCE_POD(T);
   CHECK(result != NULL);
   if (sizeof(*result) != str.size()) {
@@ -207,14 +207,14 @@ template <typename T> inline bool DecodePOD(const StringPiece& str, T* result) {
 // Stores the value bytes of a vector of plain old data type in a C++ string.
 // Verifies the given data type is a POD and copies the bytes of each value
 // in the vector into a newly created string.
-template <typename T> inline std::string EncodeVectorPOD(const std::vector<T>& vec) {
+template <typename T>
+inline std::string EncodeVectorPOD(const std::vector<T>& vec) {
   ENFORCE_POD(T);
   std::string s;
   STLStringResizeUninitialized(&s, vec.size() * sizeof(T));
   typename std::vector<T>::const_iterator iter;
   char* ptr;
-  for (iter = vec.begin(), ptr = string_as_array(&s);
-       iter != vec.end();
+  for (iter = vec.begin(), ptr = string_as_array(&s); iter != vec.end();
        ++iter, ptr += sizeof(T)) {
     memcpy(ptr, &(*iter), sizeof(T));
   }
@@ -227,8 +227,8 @@ template <typename T> inline std::string EncodeVectorPOD(const std::vector<T>& v
 // Returns true if the operation succeeded.
 // Note that other than the data length, no check is (or can be)
 // done on the type of data stored in the string.
-template <typename T> inline bool DecodeVectorPOD(const std::string& str,
-                                                  std::vector<T>* result) {
+template <typename T>
+inline bool DecodeVectorPOD(const std::string& str, std::vector<T>* result) {
   ENFORCE_POD(T);
   CHECK(result != NULL);
   if (str.size() % sizeof(T) != 0)
@@ -304,8 +304,9 @@ inline bool DecodeUint64(const StringPiece& s, uint64* i) {
 //   <key, value> pairs. Returns true if there if no error in parsing, false
 //    otherwise.
 // -------------------------------------------------------------------------
-bool DictionaryParse(const std::string& encoded_str,
-                      std::vector<std::pair<std::string, std::string> >* items);
+bool DictionaryParse(
+    const std::string& encoded_str,
+    std::vector<std::pair<std::string, std::string>>* items);
 
 // --------------------------------------------------------------------------
 // DictionaryInt32Encode
@@ -321,16 +322,21 @@ bool DictionaryParse(const std::string& encoded_str,
 //   Note: these routines are not meant for use with very large dictionaries.
 //   They are written for convenience and not efficiency.
 // --------------------------------------------------------------------------
-std::string DictionaryInt32Encode(const std::unordered_map<std::string, int32>* dictionary);
-std::string DictionaryInt64Encode(const std::unordered_map<std::string, int64>* dictionary);
-std::string DictionaryDoubleEncode(const std::unordered_map<std::string, double>* dictionary);
+std::string DictionaryInt32Encode(
+    const std::unordered_map<std::string, int32>* dictionary);
+std::string DictionaryInt64Encode(
+    const std::unordered_map<std::string, int64>* dictionary);
+std::string DictionaryDoubleEncode(
+    const std::unordered_map<std::string, double>* dictionary);
 
-bool DictionaryInt32Decode(std::unordered_map<std::string, int32>* dictionary,
-                           const std::string& encoded_str);
-bool DictionaryInt64Decode(std::unordered_map<std::string, int64>* dictionary,
-                           const std::string& encoded_str);
-bool DictionaryDoubleDecode(std::unordered_map<std::string, double>* dictionary,
-                            const std::string& encoded_str);
+bool DictionaryInt32Decode(
+    std::unordered_map<std::string, int32>* dictionary,
+    const std::string& encoded_str);
+bool DictionaryInt64Decode(
+    std::unordered_map<std::string, int64>* dictionary,
+    const std::string& encoded_str);
+bool DictionaryDoubleDecode(
+    std::unordered_map<std::string, double>* dictionary,
+    const std::string& encoded_str);
 
-
-#endif  // STRINGS_SERIALIZE_H_
+#endif // STRINGS_SERIALIZE_H_

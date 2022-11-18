@@ -21,7 +21,7 @@
 #if defined(__APPLE__)
 #include <dispatch/dispatch.h> // @manual
 #include "kudu/util/atomic.h"
-#endif  // define(__APPLE__)
+#endif // define(__APPLE__)
 
 #include "kudu/gutil/macros.h"
 #include "kudu/gutil/port.h"
@@ -53,23 +53,29 @@ class Semaphore {
   int GetValue();
 
   // Boost-compatible wrappers.
-  void lock() { Acquire(); }
-  void unlock() { Release(); }
-  bool try_lock() { return TryAcquire(); }
+  void lock() {
+    Acquire();
+  }
+  void unlock() {
+    Release();
+  }
+  bool try_lock() {
+    return TryAcquire();
+  }
 
  private:
 #if !defined(__APPLE__)
   // Log a fatal error message. Separated out to keep the main functions
   // as small as possible in terms of code size.
   void Fatal(const char* action) ATTRIBUTE_NORETURN;
-#endif  // !define(__APPLE__)
+#endif // !define(__APPLE__)
 
 #if defined(__APPLE__)
   dispatch_semaphore_t sem_;
   AtomicInt<int32_t> count_;
 #else
   sem_t sem_;
-#endif  // define(__APPLE__)
+#endif // define(__APPLE__)
   DISALLOW_COPY_AND_ASSIGN(Semaphore);
 };
 

@@ -45,35 +45,46 @@ Status GenerateSelfSignedCAForTests(PrivateKey* ca_key, Cert* ca_cert) {
   // to have at least 1024 bits. For simplicity, we'll just use 1024 bits here,
   // even though shorter keys would decrease test running time.
   //
-  // See https://www.openssl.org/docs/man1.1.0/ssl/SSL_CTX_get_security_level.html
+  // See
+  // https://www.openssl.org/docs/man1.1.0/ssl/SSL_CTX_get_security_level.html
   // for more details.
   RETURN_NOT_OK(GeneratePrivateKey(1024, ca_key));
 
-  CaCertRequestGenerator::Config config = { "test-ca-cn" };
-  RETURN_NOT_OK(CertSigner::SelfSignCA(*ca_key,
-                                       config,
-                                       kRootCaCertExpirationSeconds,
-                                       ca_cert));
+  CaCertRequestGenerator::Config config = {"test-ca-cn"};
+  RETURN_NOT_OK(CertSigner::SelfSignCA(
+      *ca_key, config, kRootCaCertExpirationSeconds, ca_cert));
   return Status::OK();
 }
 
 std::ostream& operator<<(std::ostream& o, PkiConfig c) {
-    switch (c) {
-      case PkiConfig::NONE: o << "NONE"; break;
-      case PkiConfig::SELF_SIGNED: o << "SELF_SIGNED"; break;
-      case PkiConfig::TRUSTED: o << "TRUSTED"; break;
-      case PkiConfig::SIGNED: o << "SIGNED"; break;
-      case PkiConfig::EXTERNALLY_SIGNED: o << "EXTERNALLY_SIGNED"; break;
-    }
-    return o;
+  switch (c) {
+    case PkiConfig::NONE:
+      o << "NONE";
+      break;
+    case PkiConfig::SELF_SIGNED:
+      o << "SELF_SIGNED";
+      break;
+    case PkiConfig::TRUSTED:
+      o << "TRUSTED";
+      break;
+    case PkiConfig::SIGNED:
+      o << "SIGNED";
+      break;
+    case PkiConfig::EXTERNALLY_SIGNED:
+      o << "EXTERNALLY_SIGNED";
+      break;
+  }
+  return o;
 }
 
-Status ConfigureTlsContext(PkiConfig config,
-                           const Cert& ca_cert,
-                           const PrivateKey& ca_key,
-                           TlsContext* tls_context) {
+Status ConfigureTlsContext(
+    PkiConfig config,
+    const Cert& ca_cert,
+    const PrivateKey& ca_key,
+    TlsContext* tls_context) {
   switch (config) {
-    case PkiConfig::NONE: break;
+    case PkiConfig::NONE:
+      break;
     case PkiConfig::SELF_SIGNED:
       RETURN_NOT_OK(tls_context->GenerateSelfSignedCertAndKey());
       break;
@@ -84,14 +95,16 @@ Status ConfigureTlsContext(PkiConfig config,
       RETURN_NOT_OK(tls_context->AddTrustedCertificate(ca_cert));
       RETURN_NOT_OK(tls_context->GenerateSelfSignedCertAndKey());
       Cert cert;
-      RETURN_NOT_OK(CertSigner(&ca_cert, &ca_key).Sign(*tls_context->GetCsrIfNecessary(), &cert));
+      RETURN_NOT_OK(CertSigner(&ca_cert, &ca_key)
+                        .Sign(*tls_context->GetCsrIfNecessary(), &cert));
       RETURN_NOT_OK(tls_context->AdoptSignedCert(cert));
       break;
     };
     case PkiConfig::EXTERNALLY_SIGNED: {
       std::string cert_path, key_path;
       // Write certificate and private key to file.
-      RETURN_NOT_OK(CreateTestSSLCertWithPlainKey(GetTestDataDirectory(), &cert_path, &key_path));
+      RETURN_NOT_OK(CreateTestSSLCertWithPlainKey(
+          GetTestDataDirectory(), &cert_path, &key_path));
       RETURN_NOT_OK(tls_context->LoadCertificateAndKey(cert_path, key_path));
       RETURN_NOT_OK(tls_context->LoadCertificateAuthority(cert_path));
     };

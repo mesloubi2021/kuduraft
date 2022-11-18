@@ -48,18 +48,21 @@ using cluster::ExternalMiniClusterOptions;
 using cluster::ExternalTabletServer;
 
 namespace {
-Status GetTsCounterValue(ExternalTabletServer* ets, MetricPrototype* metric, int64_t* value) {
-  return itest::GetInt64Metric(ets->bound_http_hostport(),
-                               &METRIC_ENTITY_server,
-                               "kudu.tabletserver",
-                               metric,
-                               "value",
-                               value);
+Status GetTsCounterValue(
+    ExternalTabletServer* ets,
+    MetricPrototype* metric,
+    int64_t* value) {
+  return itest::GetInt64Metric(
+      ets->bound_http_hostport(),
+      &METRIC_ENTITY_server,
+      "kudu.tabletserver",
+      metric,
+      "value",
+      value);
 }
 } // namespace
 
-class DiskReservationITest : public ExternalMiniClusterITestBase {
-};
+class DiskReservationITest : public ExternalMiniClusterITestBase {};
 
 // Test that when we fill up a disk beyond its configured reservation limit, we
 // use other disks for data blocks until all disks are full, at which time we
@@ -81,12 +84,14 @@ TEST_F(DiskReservationITest, TestFillMultipleDisks) {
   opts.num_data_dirs = 2;
   NO_FATALS(StartClusterWithOpts(opts));
 
-  ASSERT_OK(cluster_->SetFlag(cluster_->tablet_server(0),
+  ASSERT_OK(cluster_->SetFlag(
+      cluster_->tablet_server(0),
       "disk_reserved_override_prefix_1_path_for_testing",
-                                cluster_->GetDataPath("ts-0", 0)));
-  ASSERT_OK(cluster_->SetFlag(cluster_->tablet_server(0),
+      cluster_->GetDataPath("ts-0", 0)));
+  ASSERT_OK(cluster_->SetFlag(
+      cluster_->tablet_server(0),
       "disk_reserved_override_prefix_2_path_for_testing",
-                                cluster_->GetDataPath("ts-0", 1)));
+      cluster_->GetDataPath("ts-0", 1)));
 
   TestWorkload workload(cluster_.get());
   workload.set_num_replicas(1);
@@ -99,34 +104,42 @@ TEST_F(DiskReservationITest, TestFillMultipleDisks) {
   workload.Start();
 
   // Simulate that /data-0 has 0 bytes free.
-  ASSERT_OK(cluster_->SetFlag(cluster_->tablet_server(0),
-                              "disk_reserved_override_prefix_1_bytes_free_for_testing", "0"));
+  ASSERT_OK(cluster_->SetFlag(
+      cluster_->tablet_server(0),
+      "disk_reserved_override_prefix_1_bytes_free_for_testing",
+      "0"));
   // Simulate that /data-1 has 1GB free.
-  ASSERT_OK(cluster_->SetFlag(cluster_->tablet_server(0),
-                              "disk_reserved_override_prefix_2_bytes_free_for_testing",
-                              Substitute("$0", 1L * 1024 * 1024 * 1024)));
+  ASSERT_OK(cluster_->SetFlag(
+      cluster_->tablet_server(0),
+      "disk_reserved_override_prefix_2_bytes_free_for_testing",
+      Substitute("$0", 1L * 1024 * 1024 * 1024)));
 
   // Wait until we have one full data dir.
   while (true) {
     int64_t num_full_data_dirs;
-    ASSERT_OK(GetTsCounterValue(cluster_->tablet_server(0),
-                                &METRIC_data_dirs_full,
-                                &num_full_data_dirs));
-    if (num_full_data_dirs >= 1) break;
+    ASSERT_OK(GetTsCounterValue(
+        cluster_->tablet_server(0),
+        &METRIC_data_dirs_full,
+        &num_full_data_dirs));
+    if (num_full_data_dirs >= 1)
+      break;
     SleepFor(MonoDelta::FromMilliseconds(10));
   }
 
   LOG(INFO) << "Have 1 full data dir";
 
   // Now simulate that all disks are full.
-  ASSERT_OK(cluster_->SetFlag(cluster_->tablet_server(0),
-                              "disk_reserved_override_prefix_2_bytes_free_for_testing", "0"));
+  ASSERT_OK(cluster_->SetFlag(
+      cluster_->tablet_server(0),
+      "disk_reserved_override_prefix_2_bytes_free_for_testing",
+      "0"));
 
   // Wait for crash due to inability to flush or compact.
   Status s;
   for (int i = 0; i < 10; i++) {
     s = cluster_->tablet_server(0)->WaitForFatal(MonoDelta::FromSeconds(1));
-    if (s.ok()) break;
+    if (s.ok())
+      break;
     LOG(INFO) << "Rows inserted: " << workload.rows_inserted();
   }
   ASSERT_OK(s);
@@ -137,19 +150,19 @@ TEST_F(DiskReservationITest, TestFillMultipleDisks) {
 // to the WAL should cause a fatal error.
 TEST_F(DiskReservationITest, TestWalWriteToFullDiskAborts) {
   vector<string> ts_flags = {
-    // Encourage log rolling to speed up the test.
-    "--log_segment_size_mb=1",
-    // We crash on purpose, so no need to dump core.
-    "--disable_core_dumps",
-    // Disable compression so that our data being written doesn't end up
-    // compressed away.
-    "--log_compression_codec=none"
-  };
+      // Encourage log rolling to speed up the test.
+      "--log_segment_size_mb=1",
+      // We crash on purpose, so no need to dump core.
+      "--disable_core_dumps",
+      // Disable compression so that our data being written doesn't end up
+      // compressed away.
+      "--log_compression_codec=none"};
   NO_FATALS(StartCluster(ts_flags, {}, 1));
 
   TestWorkload workload(cluster_.get());
   workload.set_num_replicas(1);
-  workload.set_timeout_allowed(true); // Allow timeouts because we expect the server to crash.
+  workload.set_timeout_allowed(
+      true); // Allow timeouts because we expect the server to crash.
   workload.set_write_timeout_millis(500); // Keep test time low after crash.
   // Write lots of data to quickly fill up our 1mb log segment size.
   workload.set_num_write_threads(4);
@@ -166,12 +179,15 @@ TEST_F(DiskReservationITest, TestWalWriteToFullDiskAborts) {
 
   // Set the disk to "nearly full" which should eventually cause a crash at WAL
   // preallocation time.
-  ASSERT_OK(cluster_->SetFlag(cluster_->tablet_server(0),
-                              "fs_wal_dir_reserved_bytes", "10000000"));
-  ASSERT_OK(cluster_->SetFlag(cluster_->tablet_server(0),
-                              "disk_reserved_bytes_free_for_testing", "10000001"));
+  ASSERT_OK(cluster_->SetFlag(
+      cluster_->tablet_server(0), "fs_wal_dir_reserved_bytes", "10000000"));
+  ASSERT_OK(cluster_->SetFlag(
+      cluster_->tablet_server(0),
+      "disk_reserved_bytes_free_for_testing",
+      "10000001"));
 
-  ASSERT_OK(cluster_->tablet_server(0)->WaitForFatal(MonoDelta::FromSeconds(10)));
+  ASSERT_OK(
+      cluster_->tablet_server(0)->WaitForFatal(MonoDelta::FromSeconds(10)));
   workload.StopAndJoin();
 }
 

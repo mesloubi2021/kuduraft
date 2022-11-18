@@ -45,29 +45,38 @@
 #include "kudu/util/locks.h"
 #include "kudu/util/threadpool.h"
 
-#define PUSH_PREPEND_NOT_OK(s, statuses, msg) do { \
-  ::kudu::Status _s = (s); \
-  if (PREDICT_FALSE(!_s.ok())) { \
-    statuses.push_back(_s.CloneAndPrepend(msg)); \
-  } \
-} while (0);
+#define PUSH_PREPEND_NOT_OK(s, statuses, msg)      \
+  do {                                             \
+    ::kudu::Status _s = (s);                       \
+    if (PREDICT_FALSE(!_s.ok())) {                 \
+      statuses.push_back(_s.CloneAndPrepend(msg)); \
+    }                                              \
+  } while (0);
 
-DEFINE_bool(checksum_scan, false,
-            "Perform a checksum scan on data in the cluster.");
-DEFINE_int32(fetch_replica_info_concurrency, 20,
-             "Number of concurrent tablet servers to fetch replica info from.");
+DEFINE_bool(
+    checksum_scan,
+    false,
+    "Perform a checksum scan on data in the cluster.");
+DEFINE_int32(
+    fetch_replica_info_concurrency,
+    20,
+    "Number of concurrent tablet servers to fetch replica info from.");
 
-DEFINE_string(ksck_format, "plain_concise",
-              "Output format for ksck. Available options are 'plain_concise', "
-              "'plain_full', 'json_pretty', and 'json_compact'.\n"
-              "'plain_concise' format is plain text, omitting most information "
-              "about healthy tablets.\n"
-              "'plain_full' is plain text with all results included.\n"
-              "'json_pretty' produces pretty-printed json.\n"
-              "'json_compact' produces json suitable for parsing by other programs.\n"
-              "'json_pretty' and 'json_compact' differ in format, not content.");
-DEFINE_bool(consensus, true,
-            "Whether to check the consensus state from each tablet against the master.");
+DEFINE_string(
+    ksck_format,
+    "plain_concise",
+    "Output format for ksck. Available options are 'plain_concise', "
+    "'plain_full', 'json_pretty', and 'json_compact'.\n"
+    "'plain_concise' format is plain text, omitting most information "
+    "about healthy tablets.\n"
+    "'plain_full' is plain text with all results included.\n"
+    "'json_pretty' produces pretty-printed json.\n"
+    "'json_compact' produces json suitable for parsing by other programs.\n"
+    "'json_pretty' and 'json_compact' differ in format, not content.");
+DEFINE_bool(
+    consensus,
+    true,
+    "Whether to check the consensus state from each tablet against the master.");
 
 using std::cout;
 using std::endl;
@@ -84,16 +93,16 @@ namespace kudu {
 namespace tools {
 
 namespace {
-void BuildKsckConsensusStateForConfigMember(const consensus::ConsensusStatePB& cstate,
-                                            KsckConsensusState* ksck_cstate) {
+void BuildKsckConsensusStateForConfigMember(
+    const consensus::ConsensusStatePB& cstate,
+    KsckConsensusState* ksck_cstate) {
   CHECK(ksck_cstate);
   ksck_cstate->term = cstate.current_term();
-  ksck_cstate->type = cstate.has_pending_config() ?
-                      KsckConsensusConfigType::PENDING :
-                      KsckConsensusConfigType::COMMITTED;
-  const auto& config = cstate.has_pending_config() ?
-                       cstate.pending_config() :
-                       cstate.committed_config();
+  ksck_cstate->type = cstate.has_pending_config()
+      ? KsckConsensusConfigType::PENDING
+      : KsckConsensusConfigType::COMMITTED;
+  const auto& config = cstate.has_pending_config() ? cstate.pending_config()
+                                                   : cstate.committed_config();
   if (config.has_opid_index()) {
     ksck_cstate->opid_index = config.opid_index();
   }
@@ -114,18 +123,20 @@ void BuildKsckConsensusStateForConfigMember(const consensus::ConsensusStatePB& c
 
 bool IsNotAuthorizedMethodAccess(const Status& s) {
   return s.IsRemoteError() &&
-         s.ToString().find("Not authorized: unauthorized access to method") != string::npos;
+      s.ToString().find("Not authorized: unauthorized access to method") !=
+      string::npos;
 }
 
 // Return whether the format of the ksck results is non-JSON.
 bool IsNonJSONFormat() {
   return boost::iequals(FLAGS_ksck_format, "plain_full") ||
-         boost::iequals(FLAGS_ksck_format, "plain_concise");
+      boost::iequals(FLAGS_ksck_format, "plain_concise");
 }
 
 } // anonymous namespace
 
-tablet::TabletStatePB KsckTabletServer::ReplicaState(const std::string& tablet_id) const {
+tablet::TabletStatePB KsckTabletServer::ReplicaState(
+    const std::string& tablet_id) const {
   CHECK_EQ(state_, KsckFetchState::FETCHED);
   if (!ContainsKey(tablet_status_map_, tablet_id)) {
     return tablet::UNKNOWN;
@@ -151,9 +162,7 @@ std::ostream& operator<<(std::ostream& lhs, KsckFetchState state) {
 }
 
 Ksck::Ksck(shared_ptr<KsckCluster> cluster, ostream* out)
-    : cluster_(std::move(cluster)),
-      out_(out == nullptr ? &std::cout : out) {
-}
+    : cluster_(std::move(cluster)), out_(out == nullptr ? &std::cout : out) {}
 
 Status Ksck::CheckMasterHealth() {
   int bad_masters = 0;
@@ -163,9 +172,8 @@ Status Ksck::CheckMasterHealth() {
   // info in sequence instead of spreading it across a threadpool.
   for (const auto& master : cluster_->masters()) {
     KsckServerHealthSummary sh;
-    Status s = master->FetchInfo().AndThen([&]() {
-          return master->FetchConsensusState();
-        });
+    Status s = master->FetchInfo().AndThen(
+        [&]() { return master->FetchConsensusState(); });
     sh.uuid = master->uuid();
     sh.address = master->address();
     sh.version = master->version();
@@ -198,15 +206,17 @@ Status Ksck::CheckMasterHealth() {
   // Return a NotAuthorized status if any master has auth errors, since this
   // indicates ksck may not be able to gather full and accurate info.
   if (unauthorized_masters > 0) {
-    return Status::NotAuthorized(
-        Substitute("failed to gather info from $0 of $1 "
-                   "masters due to lack of admin privileges",
-                   unauthorized_masters, num_masters));
+    return Status::NotAuthorized(Substitute(
+        "failed to gather info from $0 of $1 "
+        "masters due to lack of admin privileges",
+        unauthorized_masters,
+        num_masters));
   }
   if (bad_masters > 0) {
-    return Status::NetworkError(
-        Substitute("failed to gather info from all masters: $0 of $1 had errors",
-                   bad_masters, num_masters));
+    return Status::NetworkError(Substitute(
+        "failed to gather info from all masters: $0 of $1 had errors",
+        bad_masters,
+        num_masters));
   }
   return Status::OK();
 }
@@ -216,7 +226,8 @@ Status Ksck::CheckMasterConsensus() {
     return Status::OK();
   }
   KsckConsensusStateMap master_cstates;
-  for (const KsckCluster::MasterList::value_type& master : cluster_->masters()) {
+  for (const KsckCluster::MasterList::value_type& master :
+       cluster_->masters()) {
     if (master->cstate()) {
       KsckConsensusState ksck_cstate;
       BuildKsckConsensusStateForConfigMember(*master->cstate(), &ksck_cstate);
@@ -239,9 +250,11 @@ Status Ksck::CheckMasterConsensus() {
   }
   results_.master_consensus_state_map.swap(master_cstates);
   vector<string> uuids;
-  std::transform(cluster_->masters().begin(), cluster_->masters().end(),
-                 std::back_inserter(uuids),
-                 [](const shared_ptr<KsckMaster>& master) { return master->uuid(); });
+  std::transform(
+      cluster_->masters().begin(),
+      cluster_->masters().end(),
+      std::back_inserter(uuids),
+      [](const shared_ptr<KsckMaster>& master) { return master->uuid(); });
   results_.master_uuids.swap(uuids);
 
   if (results_.master_consensus_conflict) {
@@ -250,15 +263,16 @@ Status Ksck::CheckMasterConsensus() {
   return Status::OK();
 }
 
-void Ksck::AddFlagsToFlagMaps(const server::GetFlagsResponsePB& flags,
-                              const string& server_address,
-                              KsckFlagToServersMap* flags_to_servers_map,
-                              KsckFlagTagsMap* flag_tags_map) {
+void Ksck::AddFlagsToFlagMaps(
+    const server::GetFlagsResponsePB& flags,
+    const string& server_address,
+    KsckFlagToServersMap* flags_to_servers_map,
+    KsckFlagTagsMap* flag_tags_map) {
   CHECK(flags_to_servers_map);
   CHECK(flag_tags_map);
   for (const auto& f : flags.flags()) {
     const std::pair<string, string> key(f.name(), f.value());
-    if (!InsertIfNotPresent(flags_to_servers_map, key, { server_address })) {
+    if (!InsertIfNotPresent(flags_to_servers_map, key, {server_address})) {
       FindOrDieNoPrint(*flags_to_servers_map, key).push_back(server_address);
     }
     InsertIfNotPresent(flag_tags_map, f.name(), JoinStrings(f.tags(), ","));
@@ -273,10 +287,11 @@ Status Ksck::CheckMasterUnusualFlags() {
       bad_masters++;
       continue;
     }
-    AddFlagsToFlagMaps(*master->flags(),
-                       master->address(),
-                       &results_.master_flag_to_servers_map,
-                       &results_.master_flag_tags_map);
+    AddFlagsToFlagMaps(
+        *master->flags(),
+        master->address(),
+        &results_.master_flag_to_servers_map,
+        &results_.master_flag_tags_map);
   }
 
   if (!results_.master_flag_to_servers_map.empty()) {
@@ -285,9 +300,10 @@ Status Ksck::CheckMasterUnusualFlags() {
   }
 
   if (bad_masters > 0) {
-    return Status::Incomplete(
-        Substitute("$0 of $1 masters' flags were not available",
-                   bad_masters, cluster_->masters().size()));
+    return Status::Incomplete(Substitute(
+        "$0 of $1 masters' flags were not available",
+        bad_masters,
+        cluster_->masters().size()));
   }
   return Status::OK();
 }
@@ -312,8 +328,8 @@ Status Ksck::FetchInfoFromTabletServers() {
 
   gscoped_ptr<ThreadPool> pool;
   RETURN_NOT_OK(ThreadPoolBuilder("ksck-fetch")
-                .set_max_threads(FLAGS_fetch_replica_info_concurrency)
-                .Build(&pool));
+                    .set_max_threads(FLAGS_fetch_replica_info_concurrency)
+                    .Build(&pool));
 
   AtomicInt<int32_t> bad_servers(0);
   AtomicInt<int32_t> unauthorized_servers(0);
@@ -325,43 +341,43 @@ Status Ksck::FetchInfoFromTabletServers() {
   for (const auto& entry : cluster_->tablet_servers()) {
     const auto& ts = entry.second;
     CHECK_OK(pool->SubmitFunc([&]() {
-          VLOG(1) << "Going to connect to tablet server: " << ts->uuid();
-          KsckServerHealth health;
-          Status s = ts->FetchInfo(&health).AndThen([&ts, &health]() {
-                if (FLAGS_consensus) {
-                  return ts->FetchConsensusState(&health);
-                }
-                return Status::OK();
-              });
-          KsckServerHealthSummary summary;
-          summary.uuid = ts->uuid();
-          summary.address = ts->address();
-          summary.version = ts->version();
-          summary.status = s;
-          if (!s.ok()) {
-            if (IsNotAuthorizedMethodAccess(s)) {
-              health = KsckServerHealth::UNAUTHORIZED;
-              unauthorized_servers.Increment();
-            }
-            bad_servers.Increment();
-          }
-          summary.health = health;
+      VLOG(1) << "Going to connect to tablet server: " << ts->uuid();
+      KsckServerHealth health;
+      Status s = ts->FetchInfo(&health).AndThen([&ts, &health]() {
+        if (FLAGS_consensus) {
+          return ts->FetchConsensusState(&health);
+        }
+        return Status::OK();
+      });
+      KsckServerHealthSummary summary;
+      summary.uuid = ts->uuid();
+      summary.address = ts->address();
+      summary.version = ts->version();
+      summary.status = s;
+      if (!s.ok()) {
+        if (IsNotAuthorizedMethodAccess(s)) {
+          health = KsckServerHealth::UNAUTHORIZED;
+          unauthorized_servers.Increment();
+        }
+        bad_servers.Increment();
+      }
+      summary.health = health;
 
-          {
-            std::lock_guard<simple_spinlock> lock(tablet_server_summaries_lock);
-            tablet_server_summaries.push_back(std::move(summary));
-          }
+      {
+        std::lock_guard<simple_spinlock> lock(tablet_server_summaries_lock);
+        tablet_server_summaries.push_back(std::move(summary));
+      }
 
-          // Fetch the flags information.
-          // Failing to gather flags is only a warning.
-          s = ts->FetchUnusualFlags();
-          if (!s.ok()) {
-            results_.warning_messages.push_back(s.CloneAndPrepend(Substitute(
-                    "unable to get flag information for tablet server $0 ($1)",
-                    ts->uuid(),
-                    ts->address())));
-          }
-        }));
+      // Fetch the flags information.
+      // Failing to gather flags is only a warning.
+      s = ts->FetchUnusualFlags();
+      if (!s.ok()) {
+        results_.warning_messages.push_back(s.CloneAndPrepend(Substitute(
+            "unable to get flag information for tablet server $0 ($1)",
+            ts->uuid(),
+            ts->address())));
+      }
+    }));
   }
   pool->Wait();
 
@@ -373,14 +389,16 @@ Status Ksck::FetchInfoFromTabletServers() {
   // Return a NotAuthorized status if any tablet server has auth errors, since
   // this indicates ksck may not be able to gather full and accurate info.
   if (unauthorized_servers.Load() > 0) {
-    return Status::NotAuthorized(
-        Substitute("failed to gather info from $0 of $1 tablet servers due "
-                   "to lack of admin privileges",
-                   unauthorized_servers.Load(), servers_count));
+    return Status::NotAuthorized(Substitute(
+        "failed to gather info from $0 of $1 tablet servers due "
+        "to lack of admin privileges",
+        unauthorized_servers.Load(),
+        servers_count));
   }
-  return Status::NetworkError(
-      Substitute("failed to gather info for all tablet servers: $0 of $1 had errors",
-                 bad_servers.Load(), servers_count));
+  return Status::NetworkError(Substitute(
+      "failed to gather info for all tablet servers: $0 of $1 had errors",
+      bad_servers.Load(),
+      servers_count));
 }
 
 const KsckResults& Ksck::results() const {
@@ -388,12 +406,18 @@ const KsckResults& Ksck::results() const {
 }
 
 Status Ksck::Run() {
-  PUSH_PREPEND_NOT_OK(CheckMasterHealth(), results_.error_messages,
-                      "error fetching info from masters");
-  PUSH_PREPEND_NOT_OK(CheckMasterConsensus(), results_.error_messages,
-                      "master consensus error");
-  PUSH_PREPEND_NOT_OK(CheckMasterUnusualFlags(), results_.warning_messages,
-                      "master flag check error");
+  PUSH_PREPEND_NOT_OK(
+      CheckMasterHealth(),
+      results_.error_messages,
+      "error fetching info from masters");
+  PUSH_PREPEND_NOT_OK(
+      CheckMasterConsensus(),
+      results_.error_messages,
+      "master consensus error");
+  PUSH_PREPEND_NOT_OK(
+      CheckMasterUnusualFlags(),
+      results_.warning_messages,
+      "master flag check error");
 
   // CheckClusterRunning and FetchTableAndTabletInfo must succeed for
   // subsequent checks to be runnable.
@@ -401,38 +425,48 @@ Status Ksck::Run() {
   Status s = CheckClusterRunning();
   PUSH_PREPEND_NOT_OK(s, results_.error_messages, liveness_prefix);
   RETURN_NOT_OK_PREPEND(s, liveness_prefix);
-  const char* const fetch_prefix = "error fetching the cluster metadata "
-                                   "from the leader master";
+  const char* const fetch_prefix =
+      "error fetching the cluster metadata "
+      "from the leader master";
   s = FetchTableAndTabletInfo();
   PUSH_PREPEND_NOT_OK(s, results_.error_messages, fetch_prefix);
   RETURN_NOT_OK_PREPEND(s, fetch_prefix);
 
-  PUSH_PREPEND_NOT_OK(FetchInfoFromTabletServers(), results_.error_messages,
-                      "error fetching info from tablet servers");
-  PUSH_PREPEND_NOT_OK(CheckTabletServerUnusualFlags(), results_.warning_messages,
-                      "tserver flag check error");
-  PUSH_PREPEND_NOT_OK(CheckServerVersions(), results_.warning_messages,
-                      "version check error");
+  PUSH_PREPEND_NOT_OK(
+      FetchInfoFromTabletServers(),
+      results_.error_messages,
+      "error fetching info from tablet servers");
+  PUSH_PREPEND_NOT_OK(
+      CheckTabletServerUnusualFlags(),
+      results_.warning_messages,
+      "tserver flag check error");
+  PUSH_PREPEND_NOT_OK(
+      CheckServerVersions(), results_.warning_messages, "version check error");
 
-  PUSH_PREPEND_NOT_OK(CheckTablesConsistency(), results_.error_messages,
-                      "table consistency check error");
+  PUSH_PREPEND_NOT_OK(
+      CheckTablesConsistency(),
+      results_.error_messages,
+      "table consistency check error");
 
   if (FLAGS_checksum_scan) {
     // Copy the filters because they are passed by-value.
     auto table_filters_for_checksum_opts = table_filters_;
     auto tablet_id_filters_for_checksum_opts = tablet_id_filters_;
     PUSH_PREPEND_NOT_OK(
-        ChecksumData(KsckChecksumOptions(std::move(table_filters_for_checksum_opts),
-                                         std::move(tablet_id_filters_for_checksum_opts))),
-        results_.error_messages, "checksum scan error");
+        ChecksumData(KsckChecksumOptions(
+            std::move(table_filters_for_checksum_opts),
+            std::move(tablet_id_filters_for_checksum_opts))),
+        results_.error_messages,
+        "checksum scan error");
   }
 
   // Use a special-case error if there are auth errors. This makes it harder
   // for admins to miss that ksck isn't working right because they forgot to
   // (e.g.) sudo -u kudu when running ksck!
-  if (std::any_of(std::begin(results_.error_messages),
-                  std::end(results_.error_messages),
-                  [](const Status& s) { return s.IsNotAuthorized(); })) {
+  if (std::any_of(
+          std::begin(results_.error_messages),
+          std::end(results_.error_messages),
+          [](const Status& s) { return s.IsNotAuthorized(); })) {
     return Status::NotAuthorized("re-run ksck with administrator privileges");
   }
   if (!results_.error_messages.empty()) {
@@ -449,10 +483,11 @@ Status Ksck::CheckTabletServerUnusualFlags() {
       bad_tservers++;
       continue;
     }
-    AddFlagsToFlagMaps(*tserver->flags(),
-                       tserver->address(),
-                       &results_.tserver_flag_to_servers_map,
-                       &results_.tserver_flag_tags_map);
+    AddFlagsToFlagMaps(
+        *tserver->flags(),
+        tserver->address(),
+        &results_.tserver_flag_to_servers_map,
+        &results_.tserver_flag_tags_map);
   }
 
   if (!results_.tserver_flag_to_servers_map.empty()) {
@@ -461,9 +496,10 @@ Status Ksck::CheckTabletServerUnusualFlags() {
   }
 
   if (bad_tservers > 0) {
-    return Status::Incomplete(
-        Substitute("$0 of $1 tservers' flags were not available",
-                   bad_tservers, cluster_->tablet_servers().size()));
+    return Status::Incomplete(Substitute(
+        "$0 of $1 tservers' flags were not available",
+        bad_tservers,
+        cluster_->tablet_servers().size()));
   }
   return Status::OK();
 }
@@ -471,20 +507,22 @@ Status Ksck::CheckTabletServerUnusualFlags() {
 Status Ksck::CheckServerVersions() {
   set<string> versions;
   for (const auto& s : results_.master_summaries) {
-    if (!s.version) continue;
+    if (!s.version)
+      continue;
     InsertIfNotPresent(&versions, *s.version);
   }
   for (const auto& s : results_.tserver_summaries) {
-    if (!s.version) continue;
+    if (!s.version)
+      continue;
     InsertIfNotPresent(&versions, *s.version);
   }
   if (versions.size() > 1) {
     // This status seemed to fit best even though a version mismatch isn't an
     // error. In any case, ksck only prints the message for warnings.
-    return Status::ConfigurationError(
-        Substitute("not all servers are running the same version: "
-                   "$0 different versions were seen",
-                   versions.size()));
+    return Status::ConfigurationError(Substitute(
+        "not all servers are running the same version: "
+        "$0 different versions were seen",
+        versions.size()));
   }
   return Status::OK();
 }
@@ -500,8 +538,8 @@ Status Ksck::PrintResults() {
   } else if (FLAGS_ksck_format == "json_compact") {
     mode = PrintMode::JSON_COMPACT;
   } else {
-    return Status::InvalidArgument("unknown ksck format (--ksck_format)",
-                                   FLAGS_ksck_format);
+    return Status::InvalidArgument(
+        "unknown ksck format (--ksck_format)", FLAGS_ksck_format);
   }
   return results_.PrintTo(mode, *out_);
 }
@@ -514,7 +552,7 @@ Status Ksck::RunAndPrintResults() {
 
 Status Ksck::CheckTablesConsistency() {
   int bad_tables_count = 0;
-  for (const shared_ptr<KsckTable> &table : cluster_->tables()) {
+  for (const shared_ptr<KsckTable>& table : cluster_->tables()) {
     if (!MatchesAnyPattern(table_filters_, table->name())) {
       VLOG(1) << "Skipping table " << table->name();
       continue;
@@ -525,9 +563,10 @@ Status Ksck::CheckTablesConsistency() {
   }
 
   if (bad_tables_count > 0) {
-      return Status::Corruption(
-          Substitute("$0 out of $1 table(s) are not healthy",
-                     bad_tables_count, results_.table_summaries.size()));
+    return Status::Corruption(Substitute(
+        "$0 out of $1 table(s) are not healthy",
+        bad_tables_count,
+        results_.table_summaries.size()));
   }
   return Status::OK();
 }
@@ -537,22 +576,24 @@ Status Ksck::ChecksumData(const KsckChecksumOptions& opts) {
   auto* checksum_results = &results_.checksum_results;
   // Don't ruin JSON output with ad hoc progress updates.
   auto* out_for_progress_updates = IsNonJSONFormat() ? out_ : nullptr;
-  return checksummer.ChecksumData(opts,
-                                  checksum_results,
-                                  out_for_progress_updates);
+  return checksummer.ChecksumData(
+      opts, checksum_results, out_for_progress_updates);
 }
 
 bool Ksck::VerifyTable(const shared_ptr<KsckTable>& table) {
   const auto all_tablets = table->tablets();
   vector<shared_ptr<KsckTablet>> tablets;
-  std::copy_if(all_tablets.begin(), all_tablets.end(), std::back_inserter(tablets),
-                 [&](const shared_ptr<KsckTablet>& t) {
-                   return MatchesAnyPattern(tablet_id_filters_, t->id());
-                 });
+  std::copy_if(
+      all_tablets.begin(),
+      all_tablets.end(),
+      std::back_inserter(tablets),
+      [&](const shared_ptr<KsckTablet>& t) {
+        return MatchesAnyPattern(tablet_id_filters_, t->id());
+      });
 
   if (tablets.empty()) {
-    VLOG(1) << Substitute("Skipping table $0 as it has no matching tablets",
-                          table->name());
+    VLOG(1) << Substitute(
+        "Skipping table $0 as it has no matching tablets", table->name());
     return true;
   }
 
@@ -560,8 +601,11 @@ bool Ksck::VerifyTable(const shared_ptr<KsckTable>& table) {
   ts.id = table->id();
   ts.name = table->name();
   ts.replication_factor = table->num_replicas();
-  VLOG(1) << Substitute("Verifying $0 tablet(s) for table $1 configured with num_replicas = $2",
-                        tablets.size(), table->name(), table->num_replicas());
+  VLOG(1) << Substitute(
+      "Verifying $0 tablet(s) for table $1 configured with num_replicas = $2",
+      tablets.size(),
+      table->name(),
+      table->num_replicas());
   for (const auto& tablet : tablets) {
     auto tablet_result = VerifyTablet(tablet, table->num_replicas());
     switch (tablet_result) {
@@ -589,13 +633,18 @@ bool Ksck::VerifyTable(const shared_ptr<KsckTable>& table) {
   return all_healthy;
 }
 
-KsckCheckResult Ksck::VerifyTablet(const shared_ptr<KsckTablet>& tablet,
-                                   int table_num_replicas) {
-  const string tablet_str = Substitute("Tablet $0 of table '$1'",
-                                 tablet->id(), tablet->table()->name());
+KsckCheckResult Ksck::VerifyTablet(
+    const shared_ptr<KsckTablet>& tablet,
+    int table_num_replicas) {
+  const string tablet_str = Substitute(
+      "Tablet $0 of table '$1'", tablet->id(), tablet->table()->name());
 
-  auto leader_it = std::find_if(tablet->replicas().cbegin(), tablet->replicas().cend(),
-      [](const shared_ptr<KsckTabletReplica>& r) -> bool { return r->is_leader(); });
+  auto leader_it = std::find_if(
+      tablet->replicas().cbegin(),
+      tablet->replicas().cend(),
+      [](const shared_ptr<KsckTabletReplica>& r) -> bool {
+        return r->is_leader();
+      });
   boost::optional<string> leader_uuid;
   if (leader_it != tablet->replicas().cend()) {
     leader_uuid = (*leader_it)->ts_uuid();
@@ -609,12 +658,13 @@ KsckCheckResult Ksck::VerifyTablet(const shared_ptr<KsckTablet>& tablet,
       non_voter_uuids_from_master.push_back(replica->ts_uuid());
     }
   }
-  KsckConsensusState master_config(KsckConsensusConfigType::MASTER,
-                                   boost::none,
-                                   boost::none,
-                                   leader_uuid,
-                                   voter_uuids_from_master,
-                                   non_voter_uuids_from_master);
+  KsckConsensusState master_config(
+      KsckConsensusConfigType::MASTER,
+      boost::none,
+      boost::none,
+      leader_uuid,
+      voter_uuids_from_master,
+      non_voter_uuids_from_master);
 
   int leaders_count = 0;
   int running_voters_count = 0;
@@ -626,8 +676,10 @@ KsckCheckResult Ksck::VerifyTablet(const shared_ptr<KsckTablet>& tablet,
     replicas.emplace_back();
     auto* repl_info = &replicas.back();
     repl_info->ts_uuid = replica->ts_uuid();
-    VLOG(1) << Substitute("A replica of tablet $0 is on live tablet server $1",
-                          tablet->id(), replica->ts_uuid());
+    VLOG(1) << Substitute(
+        "A replica of tablet $0 is on live tablet server $1",
+        tablet->id(),
+        replica->ts_uuid());
 
     // Check for agreement on tablet assignment and state between the master
     // and the tablet server.
@@ -643,9 +695,11 @@ KsckCheckResult Ksck::VerifyTablet(const shared_ptr<KsckTablet>& tablet,
       }
 
       // Organize consensus info for each replica.
-      std::pair<string, string> tablet_key = std::make_pair(ts->uuid(), tablet->id());
+      std::pair<string, string> tablet_key =
+          std::make_pair(ts->uuid(), tablet->id());
       if (ContainsKey(ts->tablet_consensus_state_map(), tablet_key)) {
-        const auto& cstate = FindOrDieNoPrint(ts->tablet_consensus_state_map(), tablet_key);
+        const auto& cstate =
+            FindOrDieNoPrint(ts->tablet_consensus_state_map(), tablet_key);
         KsckConsensusState ksck_cstate;
         BuildKsckConsensusStateForConfigMember(cstate, &ksck_cstate);
         repl_info->consensus_state = std::move(ksck_cstate);
@@ -660,8 +714,10 @@ KsckCheckResult Ksck::VerifyTablet(const shared_ptr<KsckTablet>& tablet,
     }
     if (repl_info->state == tablet::RUNNING && replica->is_voter()) {
       running_voters_count++;
-    } else if (repl_info->status_pb &&
-               repl_info->status_pb->tablet_data_state() == tablet::TABLET_DATA_COPYING) {
+    } else if (
+        repl_info->status_pb &&
+        repl_info->status_pb->tablet_data_state() ==
+            tablet::TABLET_DATA_COPYING) {
       copying_replicas_count++;
     }
     // Compare the master's and peers' consensus configs.
@@ -678,43 +734,49 @@ KsckCheckResult Ksck::VerifyTablet(const shared_ptr<KsckTablet>& tablet,
   int majority_size = consensus::MajoritySize(num_voters);
   if (copying_replicas_count > 0) {
     result = KsckCheckResult::RECOVERING;
-    status = Substitute("$0 is $1: $2 on-going tablet copies",
-                        tablet_str,
-                        Color(AnsiCode::YELLOW, "recovering"),
-                        copying_replicas_count);
+    status = Substitute(
+        "$0 is $1: $2 on-going tablet copies",
+        tablet_str,
+        Color(AnsiCode::YELLOW, "recovering"),
+        copying_replicas_count);
   } else if (running_voters_count < majority_size) {
     result = KsckCheckResult::UNAVAILABLE;
-    status = Substitute("$0 is $1: $2 replica(s) not RUNNING",
-                        tablet_str,
-                        Color(AnsiCode::RED, "unavailable"),
-                        num_voters - running_voters_count);
+    status = Substitute(
+        "$0 is $1: $2 replica(s) not RUNNING",
+        tablet_str,
+        Color(AnsiCode::RED, "unavailable"),
+        num_voters - running_voters_count);
   } else if (running_voters_count < num_voters) {
     result = KsckCheckResult::UNDER_REPLICATED;
-    status = Substitute("$0 is $1: $2 replica(s) not RUNNING",
-                        tablet_str,
-                        Color(AnsiCode::YELLOW, "under-replicated"),
-                        num_voters - running_voters_count);
+    status = Substitute(
+        "$0 is $1: $2 replica(s) not RUNNING",
+        tablet_str,
+        Color(AnsiCode::YELLOW, "under-replicated"),
+        num_voters - running_voters_count);
   } else if (check_replica_count_ && num_voters < table_num_replicas) {
     result = KsckCheckResult::UNDER_REPLICATED;
-    status = Substitute("$0 is $1: configuration has $2 replicas vs desired $3",
-                        tablet_str,
-                        Color(AnsiCode::YELLOW, "under-replicated"),
-                        num_voters,
-                        table_num_replicas);
+    status = Substitute(
+        "$0 is $1: configuration has $2 replicas vs desired $3",
+        tablet_str,
+        Color(AnsiCode::YELLOW, "under-replicated"),
+        num_voters,
+        table_num_replicas);
   } else if (leaders_count != 1) {
     result = KsckCheckResult::UNAVAILABLE;
-    status = Substitute("$0 is $1: expected one LEADER replica",
-                        tablet_str, Color(AnsiCode::RED, "unavailable"));
+    status = Substitute(
+        "$0 is $1: expected one LEADER replica",
+        tablet_str,
+        Color(AnsiCode::RED, "unavailable"));
   } else if (conflicting_states > 0) {
     result = KsckCheckResult::CONSENSUS_MISMATCH;
-    status = Substitute("$0 is $1: $0 replicas' active configs disagree with the master's",
-                        tablet_str,
-                        Color(AnsiCode::YELLOW, "conflicted"),
-                        conflicting_states);
+    status = Substitute(
+        "$0 is $1: $0 replicas' active configs disagree with the master's",
+        tablet_str,
+        Color(AnsiCode::YELLOW, "conflicted"),
+        conflicting_states);
   } else {
-    status = Substitute("$0 is $1.",
-                        tablet_str,
-                        Color(AnsiCode::GREEN, "healthy"));
+    status =
+        Substitute("$0 is $1.", tablet_str, Color(AnsiCode::GREEN, "healthy"));
   }
 
   KsckTabletSummary tablet_summary;

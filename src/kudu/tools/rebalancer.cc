@@ -55,13 +55,13 @@ using kudu::client::KuduClientBuilder;
 using std::accumulate;
 using std::endl;
 using std::inserter;
-using std::ostream;
 using std::map;
 using std::multimap;
 using std::numeric_limits;
+using std::ostream;
 using std::pair;
-using std::set_difference;
 using std::set;
+using std::set_difference;
 using std::shared_ptr;
 using std::sort;
 using std::string;
@@ -82,21 +82,18 @@ Rebalancer::Config::Config(
     int64_t max_run_time_sec,
     bool move_rf1_replicas,
     bool output_replica_distribution_details)
-        : master_addresses(std::move(master_addresses)),
-          table_filters(std::move(table_filters)),
-          max_moves_per_server(max_moves_per_server),
-          max_staleness_interval_sec(max_staleness_interval_sec),
-          max_run_time_sec(max_run_time_sec),
-          move_rf1_replicas(move_rf1_replicas),
-          output_replica_distribution_details(output_replica_distribution_details) {
+    : master_addresses(std::move(master_addresses)),
+      table_filters(std::move(table_filters)),
+      max_moves_per_server(max_moves_per_server),
+      max_staleness_interval_sec(max_staleness_interval_sec),
+      max_run_time_sec(max_run_time_sec),
+      move_rf1_replicas(move_rf1_replicas),
+      output_replica_distribution_details(output_replica_distribution_details) {
   DCHECK_GE(max_moves_per_server, 0);
 }
 
 Rebalancer::Rebalancer(const Config& config)
-    : config_(config),
-      random_device_(),
-      random_generator_(random_device_()) {
-}
+    : config_(config), random_device_(), random_generator_(random_device_()) {}
 
 Status Rebalancer::PrintStats(std::ostream& out) {
   // First, report on the current balance state of the cluster.
@@ -105,7 +102,8 @@ Status Rebalancer::PrintStats(std::ostream& out) {
   const KsckResults& results = ksck_->results();
 
   ClusterBalanceInfo cbi;
-  RETURN_NOT_OK(KsckResultsToClusterBalanceInfo(results, MovesInProgress(), &cbi));
+  RETURN_NOT_OK(
+      KsckResultsToClusterBalanceInfo(results, MovesInProgress(), &cbi));
 
   // Per-server replica distribution stats.
   {
@@ -114,10 +112,12 @@ Status Rebalancer::PrintStats(std::ostream& out) {
 
     const auto& servers_load_info = cbi.servers_by_total_replica_count;
     if (servers_load_info.empty()) {
-      summary.AddRow({ "N/A", "N/A" });
+      summary.AddRow({"N/A", "N/A"});
     } else {
       const int64_t total_replica_count = accumulate(
-          servers_load_info.begin(), servers_load_info.end(), 0L,
+          servers_load_info.begin(),
+          servers_load_info.end(),
+          0L,
           [](int64_t sum, const pair<int32_t, string>& elem) {
             return sum + elem.first;
           });
@@ -127,9 +127,9 @@ Status Rebalancer::PrintStats(std::ostream& out) {
       const double avg_replica_count =
           1.0 * total_replica_count / servers_load_info.size();
 
-      summary.AddRow({ "Minimum Replica Count", to_string(min_replica_count) });
-      summary.AddRow({ "Maximum Replica Count", to_string(max_replica_count) });
-      summary.AddRow({ "Average Replica Count", to_string(avg_replica_count) });
+      summary.AddRow({"Minimum Replica Count", to_string(min_replica_count)});
+      summary.AddRow({"Maximum Replica Count", to_string(max_replica_count)});
+      summary.AddRow({"Average Replica Count", to_string(avg_replica_count)});
     }
     RETURN_NOT_OK(summary.PrintTo(out));
     out << endl;
@@ -142,10 +142,10 @@ Status Rebalancer::PrintStats(std::ostream& out) {
       }
 
       out << "Per-server replica distribution details:" << endl;
-      DataTable servers_info({ "UUID", "Address", "Replica Count" });
+      DataTable servers_info({"UUID", "Address", "Replica Count"});
       for (const auto& elem : servers_load_info) {
         const auto& id = elem.second;
-        servers_info.AddRow({ id, tserver_endpoints[id], to_string(elem.first) });
+        servers_info.AddRow({id, tserver_endpoints[id], to_string(elem.first)});
       }
       RETURN_NOT_OK(servers_info.PrintTo(out));
       out << endl;
@@ -155,23 +155,25 @@ Status Rebalancer::PrintStats(std::ostream& out) {
   // Per-table replica distribution stats.
   {
     out << "Per-table replica distribution summary:" << endl;
-    DataTable summary({ "Replica Skew", "Value" });
+    DataTable summary({"Replica Skew", "Value"});
     const auto& table_skew_info = cbi.table_info_by_skew;
     if (table_skew_info.empty()) {
-      summary.AddRow({ "N/A", "N/A" });
+      summary.AddRow({"N/A", "N/A"});
     } else {
       const auto min_table_skew = table_skew_info.begin()->first;
       const auto max_table_skew = table_skew_info.rbegin()->first;
       const int64_t sum_table_skew = accumulate(
-          table_skew_info.begin(), table_skew_info.end(), 0L,
+          table_skew_info.begin(),
+          table_skew_info.end(),
+          0L,
           [](int64_t sum, const pair<int32_t, TableBalanceInfo>& elem) {
             return sum + elem.first;
           });
       double avg_table_skew = 1.0 * sum_table_skew / table_skew_info.size();
 
-      summary.AddRow({ "Minimum", to_string(min_table_skew) });
-      summary.AddRow({ "Maximum", to_string(max_table_skew) });
-      summary.AddRow({ "Average", to_string(avg_table_skew) });
+      summary.AddRow({"Minimum", to_string(min_table_skew)});
+      summary.AddRow({"Maximum", to_string(max_table_skew)});
+      summary.AddRow({"Average", to_string(avg_table_skew)});
     }
     RETURN_NOT_OK(summary.PrintTo(out));
     out << endl;
@@ -184,7 +186,7 @@ Status Rebalancer::PrintStats(std::ostream& out) {
       }
       out << "Per-table replica distribution details:" << endl;
       DataTable skew(
-          { "Table Id", "Replica Count", "Replica Skew", "Table Name" });
+          {"Table Id", "Replica Count", "Replica Skew", "Table Name"});
       for (const auto& elem : table_skew_info) {
         const auto& table_id = elem.second.table_id;
         const auto it = table_info.find(table_id);
@@ -194,10 +196,11 @@ Status Rebalancer::PrintStats(std::ostream& out) {
         const auto total_replica_count = table_summary
             ? table_summary->replication_factor * table_summary->TotalTablets()
             : 0;
-        skew.AddRow({ table_id,
-                      to_string(total_replica_count),
-                      to_string(elem.first),
-                      table_name });
+        skew.AddRow(
+            {table_id,
+             to_string(total_replica_count),
+             to_string(elem.first),
+             table_name});
       }
       RETURN_NOT_OK(skew.PrintTo(out));
       out << endl;
@@ -213,7 +216,8 @@ Status Rebalancer::Run(RunStatus* result_status, size_t* moves_count) {
 
   boost::optional<MonoTime> deadline;
   if (config_.max_run_time_sec != 0) {
-    deadline = MonoTime::Now() + MonoDelta::FromSeconds(config_.max_run_time_sec);
+    deadline =
+        MonoTime::Now() + MonoDelta::FromSeconds(config_.max_run_time_sec);
   }
 
   Runner runner(config_.max_moves_per_server, deadline);
@@ -229,7 +233,8 @@ Status Rebalancer::Run(RunStatus* result_status, size_t* moves_count) {
       resync_state = false;
       MonoDelta staleness_delta = MonoTime::Now() - staleness_start;
       if (staleness_delta > max_staleness_delta) {
-        LOG(INFO) << Substitute("detected a staleness period of $0", staleness_delta.ToString());
+        LOG(INFO) << Substitute(
+            "detected a staleness period of $0", staleness_delta.ToString());
         return Status::Incomplete(Substitute(
             "stalled with no progress for more than $0 seconds, aborting",
             max_staleness_delta.ToString()));
@@ -274,8 +279,8 @@ Status Rebalancer::Run(RunStatus* result_status, size_t* moves_count) {
       // Poll for the status of pending operations. If some of the in-flight
       // operations are complete, it might be possible to schedule new ones
       // by calling Runner::ScheduleNextMove().
-      auto has_updates = runner.UpdateMovesInProgressStatus(&has_errors,
-                                                            &is_timed_out);
+      auto has_updates =
+          runner.UpdateMovesInProgressStatus(&has_errors, &is_timed_out);
       if (has_updates) {
         // Reset the start of the staleness interval: there was some updates
         // on the status of scheduled move operations.
@@ -295,8 +300,8 @@ Status Rebalancer::Run(RunStatus* result_status, size_t* moves_count) {
     }
   }
 
-  *result_status = is_timed_out ? RunStatus::TIMED_OUT
-                                : RunStatus::CLUSTER_IS_BALANCED;
+  *result_status =
+      is_timed_out ? RunStatus::TIMED_OUT : RunStatus::CLUSTER_IS_BALANCED;
   if (moves_count) {
     *moves_count = runner.moves_count();
   }
@@ -339,10 +344,12 @@ Status Rebalancer::KsckResultsToClusterBalanceInfo(
 
   for (const auto& s : ksck_info.tserver_summaries) {
     if (s.health != KsckServerHealth::HEALTHY) {
-      LOG(INFO) << Substitute("skipping tablet server $0 ($1) because of its "
-                              "non-HEALTHY status ($2)",
-                              s.uuid, s.address,
-                              ServerHealthToString(s.health));
+      LOG(INFO) << Substitute(
+          "skipping tablet server $0 ($1) because of its "
+          "non-HEALTHY status ($2)",
+          s.uuid,
+          s.address,
+          ServerHealthToString(s.health));
       continue;
     }
     tserver_replicas_count.emplace(s.uuid, 0);
@@ -351,8 +358,11 @@ Status Rebalancer::KsckResultsToClusterBalanceInfo(
   for (const auto& tablet : ksck_info.tablet_summaries) {
     if (!config_.move_rf1_replicas) {
       if (rf1_tables.find(tablet.table_id) != rf1_tables.end()) {
-        LOG(INFO) << Substitute("tablet $0 of table '$0' ($1) has single replica, skipping",
-                                tablet.id, tablet.table_name, tablet.table_id);
+        LOG(INFO) << Substitute(
+            "tablet $0 of table '$0' ($1) has single replica, skipping",
+            tablet.id,
+            tablet.table_name,
+            tablet.table_id);
         continue;
       }
     }
@@ -399,8 +409,8 @@ Status Rebalancer::KsckResultsToClusterBalanceInfo(
         it->second++;
       }
 
-      auto table_ins = table_replicas_info.emplace(
-          tablet.table_id, TableReplicasAtServer());
+      auto table_ins =
+          table_replicas_info.emplace(tablet.table_id, TableReplicasAtServer());
       TableReplicasAtServer& replicas_at_server = table_ins.first->second;
 
       auto replicas_ins = replicas_at_server.emplace(ri.ts_uuid, 0);
@@ -453,8 +463,9 @@ Status Rebalancer::KsckResultsToClusterBalanceInfo(
 // Run one step of the rebalancer. Due to the inherent restrictions of the
 // rebalancing engine, no more than one replica per tablet is moved during
 // one step of the rebalancing.
-Status Rebalancer::GetNextMoves(const MovesInProgress& pending_moves,
-                                vector<ReplicaMove>* replica_moves) {
+Status Rebalancer::GetNextMoves(
+    const MovesInProgress& pending_moves,
+    vector<ReplicaMove>* replica_moves) {
   RETURN_NOT_OK(ResetKsck());
   ignore_result(ksck_->Run());
   const auto& ksck_info = ksck_->results();
@@ -464,23 +475,26 @@ Status Rebalancer::GetNextMoves(const MovesInProgress& pending_moves,
   // automatic re-replication or get unexpected errors while moving replicas.
   for (const auto& s : ksck_info.tserver_summaries) {
     if (s.health != KsckServerHealth::HEALTHY) {
-      return Status::IllegalState(
-          Substitute("tablet server $0 ($1): unacceptable health status $2",
-                     s.uuid, s.address, ServerHealthToString(s.health)));
+      return Status::IllegalState(Substitute(
+          "tablet server $0 ($1): unacceptable health status $2",
+          s.uuid,
+          s.address,
+          ServerHealthToString(s.health)));
     }
   }
 
   // The number of operations to output by the algorithm. Those will be
   // translated into concrete tablet replica movement operations, the output of
   // this method.
-  const size_t max_moves = config_.max_moves_per_server *
-      ksck_info.tserver_summaries.size() * 5;
+  const size_t max_moves =
+      config_.max_moves_per_server * ksck_info.tserver_summaries.size() * 5;
 
   replica_moves->clear();
   vector<TableReplicaMove> moves;
   {
     ClusterBalanceInfo cbi;
-    RETURN_NOT_OK(KsckResultsToClusterBalanceInfo(ksck_info, pending_moves, &cbi));
+    RETURN_NOT_OK(
+        KsckResultsToClusterBalanceInfo(ksck_info, pending_moves, &cbi));
     RETURN_NOT_OK(algo_.GetNextMoves(std::move(cbi), max_moves, &moves));
   }
   if (moves.empty()) {
@@ -489,11 +503,11 @@ Status Rebalancer::GetNextMoves(const MovesInProgress& pending_moves,
     return Status::OK();
   }
   unordered_set<string> tablets_in_move;
-  std::transform(pending_moves.begin(), pending_moves.end(),
-                 inserter(tablets_in_move, tablets_in_move.begin()),
-                 [](const MovesInProgress::value_type& elem) {
-                   return elem.first;
-                 });
+  std::transform(
+      pending_moves.begin(),
+      pending_moves.end(),
+      inserter(tablets_in_move, tablets_in_move.begin()),
+      [](const MovesInProgress::value_type& elem) { return elem.first; });
   for (const auto& move : moves) {
     vector<string> tablet_ids;
     RETURN_NOT_OK(FindReplicas(move, ksck_info, &tablet_ids));
@@ -513,7 +527,10 @@ Status Rebalancer::GetNextMoves(const MovesInProgress& pending_moves,
     if (move_tablet_id.empty()) {
       LOG(WARNING) << Substitute(
           "table $0: could not find any suitable replica to move "
-          "from server $1 to server $2", move.table_id, move.from, move.to);
+          "from server $1 to server $2",
+          move.table_id,
+          move.from,
+          move.to);
       continue;
     }
     ReplicaMove info;
@@ -540,9 +557,10 @@ Status Rebalancer::GetNextMoves(const MovesInProgress& pending_moves,
 // replicas of affected tablets would make the client to re-resolve new leaders
 // and retry the operations. Moving leader replicas is used as last resort
 // when no other candidates are left.
-Status Rebalancer::FindReplicas(const TableReplicaMove& move,
-                                const KsckResults& ksck_info,
-                                vector<string>* tablet_ids) const {
+Status Rebalancer::FindReplicas(
+    const TableReplicaMove& move,
+    const KsckResults& ksck_info,
+    vector<string>* tablet_ids) const {
   const auto& table_id = move.table_id;
 
   // Tablet ids of replicas on the source tserver that are non-leaders.
@@ -557,11 +575,13 @@ Status Rebalancer::FindReplicas(const TableReplicaMove& move,
       continue;
     }
     if (tablet_summary.result != KsckCheckResult::HEALTHY) {
-      VLOG(1) << Substitute("table $0: not considering replicas of tablet $1 "
-                            "as candidates for movement since the tablet's "
-                            "status is '$2'",
-                            table_id, tablet_summary.id,
-                            KsckCheckResultToString(tablet_summary.result));
+      VLOG(1) << Substitute(
+          "table $0: not considering replicas of tablet $1 "
+          "as candidates for movement since the tablet's "
+          "status is '$2'",
+          table_id,
+          tablet_summary.id,
+          KsckCheckResultToString(tablet_summary.result));
       continue;
     }
     for (const auto& replica_summary : tablet_summary.replicas) {
@@ -570,10 +590,13 @@ Status Rebalancer::FindReplicas(const TableReplicaMove& move,
         continue;
       }
       if (!replica_summary.ts_healthy) {
-        VLOG(1) << Substitute("table $0: not considering replica movement "
-                              "from $1 to $2 since server $3 is not healthy",
-                              table_id,
-                              move.from, move.to, replica_summary.ts_uuid);
+        VLOG(1) << Substitute(
+            "table $0: not considering replica movement "
+            "from $1 to $2 since server $3 is not healthy",
+            table_id,
+            move.from,
+            move.to,
+            replica_summary.ts_uuid);
         continue;
       }
       if (replica_summary.ts_uuid == move.from) {
@@ -593,8 +616,10 @@ Status Rebalancer::FindReplicas(const TableReplicaMove& move,
 
   vector<string> tablet_uuids;
   set_difference(
-      tablet_uuids_src.begin(), tablet_uuids_src.end(),
-      tablet_uuids_dst.begin(), tablet_uuids_dst.end(),
+      tablet_uuids_src.begin(),
+      tablet_uuids_src.end(),
+      tablet_uuids_dst.begin(),
+      tablet_uuids_dst.end(),
       inserter(tablet_uuids, tablet_uuids.begin()));
 
   if (!tablet_uuids.empty()) {
@@ -609,8 +634,10 @@ Status Rebalancer::FindReplicas(const TableReplicaMove& move,
   DCHECK(tablet_uuids.empty());
   sort(tablet_uuids_src_leaders.begin(), tablet_uuids_src_leaders.end());
   set_difference(
-      tablet_uuids_src_leaders.begin(), tablet_uuids_src_leaders.end(),
-      tablet_uuids_dst.begin(), tablet_uuids_dst.end(),
+      tablet_uuids_src_leaders.begin(),
+      tablet_uuids_src_leaders.end(),
+      tablet_uuids_dst.begin(),
+      tablet_uuids_dst.end(),
       inserter(tablet_uuids, tablet_uuids.begin()));
 
   tablet_ids->swap(tablet_uuids);
@@ -628,8 +655,9 @@ Status Rebalancer::ResetKsck() {
   return Status::OK();
 }
 
-void Rebalancer::FilterMoves(const MovesInProgress& scheduled_moves,
-                             vector<ReplicaMove>* replica_moves) {
+void Rebalancer::FilterMoves(
+    const MovesInProgress& scheduled_moves,
+    vector<ReplicaMove>* replica_moves) {
   unordered_set<string> tablet_uuids;
   vector<ReplicaMove> filtered_replica_moves;
   for (auto&& move_op : *replica_moves) {
@@ -649,18 +677,19 @@ void Rebalancer::FilterMoves(const MovesInProgress& scheduled_moves,
       // move operation per tablet in every batch. The code below is to
       // enforce the contract between Run() and RunStep() methods.
       LOG(DFATAL) << "detected multiple replica move operations for the same "
-                     "tablet " << tablet_uuid;
+                     "tablet "
+                  << tablet_uuid;
     }
   }
   replica_moves->swap(filtered_replica_moves);
 }
 
-Rebalancer::Runner::Runner(size_t max_moves_per_server,
-                           const boost::optional<MonoTime>& deadline)
+Rebalancer::Runner::Runner(
+    size_t max_moves_per_server,
+    const boost::optional<MonoTime>& deadline)
     : max_moves_per_server_(max_moves_per_server),
       deadline_(deadline),
-      moves_count_(0) {
-}
+      moves_count_(0) {}
 
 Status Rebalancer::Runner::Init(vector<string> master_addresses) {
   DCHECK_EQ(0, moves_count_);
@@ -699,7 +728,8 @@ void Rebalancer::Runner::LoadMoves(vector<ReplicaMove> replica_moves) {
   auto& op_count_per_ts = op_count_per_ts_;
   auto& ts_per_op_count = ts_per_op_count_;
   const auto set_op_count = [&ts_pending_op_count,
-      &op_count_per_ts, &ts_per_op_count](const string& ts_uuid) {
+                             &op_count_per_ts,
+                             &ts_per_op_count](const string& ts_uuid) {
     auto it = ts_pending_op_count.find(ts_uuid);
     if (it == ts_pending_op_count.end()) {
       // No operations for tablet server ts_uuid yet.
@@ -724,12 +754,12 @@ void Rebalancer::Runner::LoadMoves(vector<ReplicaMove> replica_moves) {
   // Process move operations from the batch of newly loaded ones.
   for (size_t i = 0; i < replica_moves_.size(); ++i) {
     const auto& elem = replica_moves_[i];
-    src_op_indices_.emplace(elem.ts_uuid_from, set<size_t>()).first->
-        second.emplace(i);
+    src_op_indices_.emplace(elem.ts_uuid_from, set<size_t>())
+        .first->second.emplace(i);
     set_op_count(elem.ts_uuid_from);
 
-    dst_op_indices_.emplace(elem.ts_uuid_to, set<size_t>()).first->
-        second.emplace(i);
+    dst_op_indices_.emplace(elem.ts_uuid_to, set<size_t>())
+        .first->second.emplace(i);
     set_op_count(elem.ts_uuid_to);
   }
 
@@ -771,13 +801,16 @@ bool Rebalancer::Runner::ScheduleNextMove(bool* has_errors, bool* timed_out) {
   const auto& src_ts_uuid = info.ts_uuid_from;
   const auto& dst_ts_uuid = info.ts_uuid_to;
 
-  Status s = ScheduleReplicaMove(master_addresses_, client_,
-                                 tablet_id, src_ts_uuid, dst_ts_uuid);
+  Status s = ScheduleReplicaMove(
+      master_addresses_, client_, tablet_id, src_ts_uuid, dst_ts_uuid);
   if (s.ok()) {
-    UpdateOnMoveScheduled(op_idx, info.tablet_uuid,
-                          info.ts_uuid_from, info.ts_uuid_to, true);
-    LOG(INFO) << Substitute("tablet $0: $1 -> $2 move scheduled",
-                            tablet_id, src_ts_uuid, dst_ts_uuid);
+    UpdateOnMoveScheduled(
+        op_idx, info.tablet_uuid, info.ts_uuid_from, info.ts_uuid_to, true);
+    LOG(INFO) << Substitute(
+        "tablet $0: $1 -> $2 move scheduled",
+        tablet_id,
+        src_ts_uuid,
+        dst_ts_uuid);
     // Successfully scheduled move operation.
     return true;
   }
@@ -787,17 +820,22 @@ bool Rebalancer::Runner::ScheduleNextMove(bool* has_errors, bool* timed_out) {
   // or the tablet does not exit anymore. The replica might already
   // moved because of some other concurrent activity, e.g.
   // re-replication, another rebalancing session in progress, etc.
-  LOG(INFO) << Substitute("tablet $0: $1 -> $2 move ignored: $3",
-                          tablet_id, src_ts_uuid, dst_ts_uuid, s.ToString());
-  UpdateOnMoveScheduled(op_idx, info.tablet_uuid,
-                        info.ts_uuid_from, info.ts_uuid_to, false);
+  LOG(INFO) << Substitute(
+      "tablet $0: $1 -> $2 move ignored: $3",
+      tablet_id,
+      src_ts_uuid,
+      dst_ts_uuid,
+      s.ToString());
+  UpdateOnMoveScheduled(
+      op_idx, info.tablet_uuid, info.ts_uuid_from, info.ts_uuid_to, false);
   // Failed to schedule move operation due to an error.
   *has_errors = true;
   return false;
 }
 
 bool Rebalancer::Runner::UpdateMovesInProgressStatus(
-    bool* has_errors, bool* timed_out) {
+    bool* has_errors,
+    bool* timed_out) {
   DCHECK(has_errors);
   DCHECK(timed_out);
   *has_errors = false;
@@ -806,7 +844,7 @@ bool Rebalancer::Runner::UpdateMovesInProgressStatus(
   // Update the statuses of the in-progress move operations.
   auto has_updates = false;
   auto error_count = 0;
-  for (auto it = scheduled_moves_.begin(); it != scheduled_moves_.end(); ) {
+  for (auto it = scheduled_moves_.begin(); it != scheduled_moves_.end();) {
     if (deadline_ && MonoTime::Now() >= *deadline_) {
       *timed_out = true;
       break;
@@ -817,9 +855,14 @@ bool Rebalancer::Runner::UpdateMovesInProgressStatus(
     const auto& dst_ts_uuid = it->second.ts_uuid_to;
     auto is_complete = false;
     Status move_status;
-    const Status s = CheckCompleteMove(master_addresses_, client_,
-                                       tablet_id, src_ts_uuid, dst_ts_uuid,
-                                       &is_complete, &move_status);
+    const Status s = CheckCompleteMove(
+        master_addresses_,
+        client_,
+        tablet_id,
+        src_ts_uuid,
+        dst_ts_uuid,
+        &is_complete,
+        &move_status);
     has_updates |= s.ok();
     if (!s.ok()) {
       // There was an error while fetching the status of this move operation.
@@ -828,8 +871,12 @@ bool Rebalancer::Runner::UpdateMovesInProgressStatus(
       // this situation after returning from this method, re-synchronizing
       // the state of the cluster.
       ++error_count;
-      LOG(INFO) << Substitute("tablet $0: $1 -> $2 move is abandoned: $3",
-                              tablet_id, src_ts_uuid, dst_ts_uuid, s.ToString());
+      LOG(INFO) << Substitute(
+          "tablet $0: $1 -> $2 move is abandoned: $3",
+          tablet_id,
+          src_ts_uuid,
+          dst_ts_uuid,
+          s.ToString());
       // Erase the element and advance the iterator.
       it = scheduled_moves_.erase(it);
       continue;
@@ -839,9 +886,12 @@ bool Rebalancer::Runner::UpdateMovesInProgressStatus(
       ++moves_count_;
       UpdateOnMoveCompleted(it->second.ts_uuid_from);
       UpdateOnMoveCompleted(it->second.ts_uuid_to);
-      LOG(INFO) << Substitute("tablet $0: $1 -> $2 move completed: $3",
-                              tablet_id, src_ts_uuid, dst_ts_uuid,
-                              s.ok() ? move_status.ToString() : s.ToString());
+      LOG(INFO) << Substitute(
+          "tablet $0: $1 -> $2 move completed: $3",
+          tablet_id,
+          src_ts_uuid,
+          dst_ts_uuid,
+          s.ok() ? move_status.ToString() : s.ToString());
       // Erase the element and advance the iterator.
       it = scheduled_moves_.erase(it);
       continue;
@@ -857,13 +907,15 @@ bool Rebalancer::Runner::UpdateMovesInProgressStatus(
 bool Rebalancer::Runner::FindNextMove(size_t* op_idx) {
   vector<size_t> op_indices;
   for (auto it = ts_per_op_count_.begin(); op_indices.empty() &&
-       it != ts_per_op_count_.end() && it->first < max_moves_per_server_; ++it) {
+       it != ts_per_op_count_.end() && it->first < max_moves_per_server_;
+       ++it) {
     const auto& uuid_0 = it->second;
 
     auto it_1 = it;
     ++it_1;
     for (; op_indices.empty() && it_1 != ts_per_op_count_.end() &&
-         it_1->first < max_moves_per_server_; ++it_1) {
+         it_1->first < max_moves_per_server_;
+         ++it_1) {
       const auto& uuid_1 = it_1->second;
 
       // Check for available operations where uuid_0, uuid_1 would be
@@ -873,9 +925,12 @@ bool Rebalancer::Runner::FindNextMove(size_t* op_idx) {
         const auto it_dst = dst_op_indices_.find(uuid_1);
         if (it_src != src_op_indices_.end() &&
             it_dst != dst_op_indices_.end()) {
-          set_intersection(it_src->second.begin(), it_src->second.end(),
-                           it_dst->second.begin(), it_dst->second.end(),
-                           back_inserter(op_indices));
+          set_intersection(
+              it_src->second.begin(),
+              it_src->second.end(),
+              it_dst->second.begin(),
+              it_dst->second.end(),
+              back_inserter(op_indices));
         }
       }
       // It's enough to find just one move.
@@ -887,9 +942,12 @@ bool Rebalancer::Runner::FindNextMove(size_t* op_idx) {
         const auto it_dst = dst_op_indices_.find(uuid_0);
         if (it_src != src_op_indices_.end() &&
             it_dst != dst_op_indices_.end()) {
-          set_intersection(it_src->second.begin(), it_src->second.end(),
-                           it_dst->second.begin(), it_dst->second.end(),
-                           back_inserter(op_indices));
+          set_intersection(
+              it_src->second.begin(),
+              it_src->second.end(),
+              it_dst->second.begin(),
+              it_dst->second.end(),
+              back_inserter(op_indices));
         }
       }
     }
@@ -907,7 +965,7 @@ void Rebalancer::Runner::UpdateOnMoveScheduled(
     const string& dst_ts_uuid,
     bool is_success) {
   if (is_success) {
-    Rebalancer::ReplicaMove move_info = { tablet_uuid, src_ts_uuid, dst_ts_uuid };
+    Rebalancer::ReplicaMove move_info = {tablet_uuid, src_ts_uuid, dst_ts_uuid};
     auto ins = scheduled_moves_.emplace(tablet_uuid, std::move(move_info));
     // Only one replica of a tablet can be moved at a time.
     DCHECK(ins.second);

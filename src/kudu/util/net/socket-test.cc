@@ -19,11 +19,11 @@
 
 #include <thread>
 
-#include <cstdint>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include <memory>
 #include <stddef.h>
+#include <cstdint>
+#include <memory>
 #include <string>
 
 #include "kudu/util/monotime.h"
@@ -33,14 +33,13 @@
 #include "kudu/util/test_macros.h"
 #include "kudu/util/test_util.h"
 
-
 namespace kudu {
 
 constexpr size_t kEchoChunkSize = 32 * 1024 * 1024;
 
 class SocketTest : public KuduTest {
  protected:
-  void DoTest(bool accept, const std::string &message) {
+  void DoTest(bool accept, const std::string& message) {
     Sockaddr address;
     address.ParseString("0.0.0.0", 0);
     Socket listener_;
@@ -50,7 +49,7 @@ class SocketTest : public KuduTest {
     Sockaddr listen_address;
     CHECK_OK(listener_.GetSocketAddress(&listen_address));
 
-    std::thread t([&]{
+    std::thread t([&] {
       if (accept) {
         Sockaddr new_addr;
         Socket sock;
@@ -80,7 +79,9 @@ class SocketTest : public KuduTest {
 };
 
 TEST_F(SocketTest, TestRecvReset) {
-  DoTest(false, "recv error from 127.0.0.1:[0-9]+: Resource temporarily unavailable");
+  DoTest(
+      false,
+      "recv error from 127.0.0.1:[0-9]+: Resource temporarily unavailable");
 }
 
 TEST_F(SocketTest, TestRecvEOF) {

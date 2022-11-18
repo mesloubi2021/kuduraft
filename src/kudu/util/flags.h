@@ -24,7 +24,7 @@
 #include "kudu/util/status.h"
 
 namespace gflags {
-  struct CommandLineFlagInfo;
+struct CommandLineFlagInfo;
 }
 
 namespace kudu {
@@ -54,10 +54,7 @@ int ParseCommandLineFlags(int* argc, char*** argv, bool remove_flags);
 // gflags::ParseCommandLineNonHelpFlags().
 void HandleCommonFlags();
 
-enum class EscapeMode {
-  HTML,
-  NONE
-};
+enum class EscapeMode { HTML, NONE };
 
 // Stick the flags into a string. If redaction is enabled, the values of
 // flags tagged as sensitive will be redacted. Otherwise, the values
@@ -80,10 +77,14 @@ enum class TriStateFlag {
   REQUIRED,
 };
 
-Status ParseTriState(const char* flag_name, const std::string& flag_value,
+Status ParseTriState(
+    const char* flag_name,
+    const std::string& flag_value,
     TriStateFlag* tri_state);
 
-std::string CheckFlagAndRedact(const gflags::CommandLineFlagInfo& flag, EscapeMode mode);
+std::string CheckFlagAndRedact(
+    const gflags::CommandLineFlagInfo& flag,
+    EscapeMode mode);
 
 } // namespace kudu
 #endif /* KUDU_UTIL_FLAGS_H */

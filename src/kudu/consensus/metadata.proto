@@ -118,7 +118,6 @@ message CommitRulePB {
 // Borrowed from `dba/prod_config.thrift` with some amendments. Analogue of
 // ReplicationTopology on the plugin.
 message ReplicationTopologyPB {
-
   // master region
   // This is where MySQL Infra automation will prefer to have the master
   // located for this replica set. If a working replica exists in this region
@@ -184,23 +183,23 @@ message RaftPeerPB {
   enum Role {
     UNKNOWN_ROLE = 999;
 
-    // Indicates this node is a follower in the configuration, i.e. that it participates
-    // in majorities and accepts Consensus::Update() calls.
+    // Indicates this node is a follower in the configuration, i.e. that it
+    // participates in majorities and accepts Consensus::Update() calls.
     FOLLOWER = 0;
 
-    // Indicates this node is the current leader of the configuration, i.e. that it
-    // participates in majorities and accepts Consensus::Append() calls.
+    // Indicates this node is the current leader of the configuration, i.e. that
+    // it participates in majorities and accepts Consensus::Append() calls.
     LEADER = 1;
 
-    // Indicates that this node participates in the configuration in a passive role,
-    // i.e. that it accepts Consensus::Update() calls but does not participate
-    // in elections or majorities.
+    // Indicates that this node participates in the configuration in a passive
+    // role, i.e. that it accepts Consensus::Update() calls but does not
+    // participate in elections or majorities.
     LEARNER = 2;
 
-    // Indicates that this node is not a participant of the configuration, i.e. does
-    // not accept Consensus::Update() or Consensus::Update() and cannot
-    // participate in elections or majorities. This is usually the role of a node
-    // that leaves the configuration.
+    // Indicates that this node is not a participant of the configuration, i.e.
+    // does not accept Consensus::Update() or Consensus::Update() and cannot
+    // participate in elections or majorities. This is usually the role of a
+    // node that leaves the configuration.
     NON_PARTICIPANT = 3;
   };
 
@@ -260,8 +259,8 @@ message RaftConfigPB {
 
 // A single directed edge on the request proxying graph.
 message ProxyEdgePB {
-  optional string peer_uuid = 1;        // Peer getting its requests proxied.
-  optional string proxy_from_uuid = 2;  // Peer to proxy from.
+  optional string peer_uuid = 1; // Peer getting its requests proxied.
+  optional string proxy_from_uuid = 2; // Peer to proxy from.
 }
 
 // A directed graph representation of the proxy topology.
@@ -287,7 +286,8 @@ message ConsensusStatePB {
   // vote for a peer is not sufficient to assume that the peer has won the
   // election, so we do not update this field based on our vote.
   //
-  // The leader may be a part of the committed or the pending configuration (or both).
+  // The leader may be a part of the committed or the pending configuration (or
+  // both).
   optional string leader_uuid = 2;
 
   // The committed peers. Initial peership is set on tablet start, so this
@@ -311,9 +311,9 @@ message ConsensusMetadataPB {
   // Whenever a new election is started, the candidate increments this by one
   // and requests votes from peers.
   //
-  // If any RPC request or response is received from another node containing a term higher
-  // than this one, the server should step down to FOLLOWER and set its current_term to
-  // match the caller's term.
+  // If any RPC request or response is received from another node containing a
+  // term higher than this one, the server should step down to FOLLOWER and set
+  // its current_term to match the caller's term.
   //
   // If a follower receives an UpdateConsensus RPC with a term lower than this
   // term, then that implies that the RPC is coming from a former LEADER who has

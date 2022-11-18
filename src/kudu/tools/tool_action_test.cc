@@ -46,14 +46,16 @@
 #include "kudu/util/pb_util.h"
 #include "kudu/util/status.h"
 
-DEFINE_string(serialization, "json", "Serialization method to be used by the "
-              "control shell. Valid values are 'json' (protobuf serialized "
-              "into JSON and terminated with a newline character) or 'pb' "
-              "(four byte protobuf message length in big endian followed by "
-              "the protobuf message itself).");
+DEFINE_string(
+    serialization,
+    "json",
+    "Serialization method to be used by the "
+    "control shell. Valid values are 'json' (protobuf serialized "
+    "into JSON and terminated with a newline character) or 'pb' "
+    "(four byte protobuf message length in big endian followed by "
+    "the protobuf message itself).");
 DEFINE_validator(serialization, [](const char* /*n*/, const std::string& v) {
-  return boost::iequals(v, "pb") ||
-         boost::iequals(v, "json");
+  return boost::iequals(v, "pb") || boost::iequals(v, "json");
 });
 
 namespace kudu {
@@ -70,11 +72,12 @@ using strings::Substitute;
 namespace {
 
 Status MakeClusterRoot(string* cluster_root) {
-  // The ExternalMiniCluster can't generate the cluster root on our behalf because
-  // we're not running inside a gtest. So we'll use this approach instead,
-  // which is what the Java external mini cluster used for a long time.
+  // The ExternalMiniCluster can't generate the cluster root on our behalf
+  // because we're not running inside a gtest. So we'll use this approach
+  // instead, which is what the Java external mini cluster used for a long time.
   const char* tmpdir = getenv("TEST_TMPDIR");
-  string tmpdir_str = tmpdir ? tmpdir : Substitute("/tmp/kudutest-$0", getuid());
+  string tmpdir_str =
+      tmpdir ? tmpdir : Substitute("/tmp/kudutest-$0", getuid());
   string root = JoinPathSegments(tmpdir_str, "minicluster-data");
   RETURN_NOT_OK(env_util::CreateDirsRecursively(Env::Default(), root));
 
@@ -89,10 +92,11 @@ Status CheckClusterExists(const unique_ptr<ExternalMiniCluster>& cluster) {
   return Status::OK();
 }
 
-Status FindDaemon(const unique_ptr<ExternalMiniCluster>& cluster,
-                  const DaemonIdentifierPB& id,
-                  ExternalDaemon** daemon,
-                  MiniKdc** kdc) {
+Status FindDaemon(
+    const unique_ptr<ExternalMiniCluster>& cluster,
+    const DaemonIdentifierPB& id,
+    ExternalDaemon** daemon,
+    MiniKdc** kdc) {
   RETURN_NOT_OK(CheckClusterExists(cluster));
 
   if (!id.has_type()) {
@@ -105,8 +109,8 @@ Status FindDaemon(const unique_ptr<ExternalMiniCluster>& cluster,
         return Status::InvalidArgument("request is missing daemon index");
       }
       if (id.index() >= cluster->num_masters()) {
-        return Status::NotFound(Substitute("no master with index $0",
-                                           id.index()));
+        return Status::NotFound(
+            Substitute("no master with index $0", id.index()));
       }
       *daemon = cluster->master(id.index());
       *kdc = nullptr;
@@ -116,8 +120,8 @@ Status FindDaemon(const unique_ptr<ExternalMiniCluster>& cluster,
         return Status::InvalidArgument("request is missing daemon index");
       }
       if (id.index() >= cluster->num_tablet_servers()) {
-        return Status::NotFound(Substitute("no tserver with index $0",
-                                           id.index()));
+        return Status::NotFound(
+            Substitute("no tserver with index $0", id.index()));
       }
       *daemon = cluster->tablet_server(id.index());
       *kdc = nullptr;
@@ -136,12 +140,12 @@ Status FindDaemon(const unique_ptr<ExternalMiniCluster>& cluster,
   return Status::OK();
 }
 
-Status ProcessRequest(const ControlShellRequestPB& req,
-                      ControlShellResponsePB* resp,
-                      unique_ptr<ExternalMiniCluster>* cluster) {
+Status ProcessRequest(
+    const ControlShellRequestPB& req,
+    ControlShellResponsePB* resp,
+    unique_ptr<ExternalMiniCluster>* cluster) {
   switch (req.request_case()) {
-    case ControlShellRequestPB::kCreateCluster:
-    {
+    case ControlShellRequestPB::kCreateCluster: {
       if (*cluster) {
         RETURN_NOT_OK(Status::InvalidArgument("cluster already created"));
       }
@@ -164,27 +168,28 @@ Status ProcessRequest(const ControlShellRequestPB& req,
       } else {
         RETURN_NOT_OK(MakeClusterRoot(&opts.cluster_root));
       }
-      opts.extra_master_flags.assign(cc.extra_master_flags().begin(),
-                                     cc.extra_master_flags().end());
-      opts.extra_tserver_flags.assign(cc.extra_tserver_flags().begin(),
-                                      cc.extra_tserver_flags().end());
+      opts.extra_master_flags.assign(
+          cc.extra_master_flags().begin(), cc.extra_master_flags().end());
+      opts.extra_tserver_flags.assign(
+          cc.extra_tserver_flags().begin(), cc.extra_tserver_flags().end());
       if (opts.enable_kerberos) {
-        opts.mini_kdc_options.data_root = JoinPathSegments(opts.cluster_root, "krb5kdc");
-        opts.mini_kdc_options.ticket_lifetime = cc.mini_kdc_options().ticket_lifetime();
-        opts.mini_kdc_options.renew_lifetime = cc.mini_kdc_options().renew_lifetime();
+        opts.mini_kdc_options.data_root =
+            JoinPathSegments(opts.cluster_root, "krb5kdc");
+        opts.mini_kdc_options.ticket_lifetime =
+            cc.mini_kdc_options().ticket_lifetime();
+        opts.mini_kdc_options.renew_lifetime =
+            cc.mini_kdc_options().renew_lifetime();
       }
 
       cluster->reset(new ExternalMiniCluster(std::move(opts)));
       break;
     }
-    case ControlShellRequestPB::kDestroyCluster:
-    {
+    case ControlShellRequestPB::kDestroyCluster: {
       RETURN_NOT_OK(CheckClusterExists(*cluster));
       cluster->reset();
       break;
     }
-    case ControlShellRequestPB::kStartCluster:
-    {
+    case ControlShellRequestPB::kStartCluster: {
       RETURN_NOT_OK(CheckClusterExists(*cluster));
       if ((*cluster)->num_masters() != 0) {
         DCHECK_GT((*cluster)->num_tablet_servers(), 0);
@@ -194,20 +199,19 @@ Status ProcessRequest(const ControlShellRequestPB& req,
       }
       break;
     }
-    case ControlShellRequestPB::kStopCluster:
-    {
+    case ControlShellRequestPB::kStopCluster: {
       RETURN_NOT_OK(CheckClusterExists(*cluster));
       (*cluster)->Shutdown();
       break;
     }
-    case ControlShellRequestPB::kStartDaemon:
-    {
+    case ControlShellRequestPB::kStartDaemon: {
       if (!req.start_daemon().has_id()) {
         RETURN_NOT_OK(Status::InvalidArgument("missing process id"));
       }
       ExternalDaemon* daemon;
       MiniKdc* kdc;
-      RETURN_NOT_OK(FindDaemon(*cluster, req.start_daemon().id(), &daemon, &kdc));
+      RETURN_NOT_OK(
+          FindDaemon(*cluster, req.start_daemon().id(), &daemon, &kdc));
       if (daemon) {
         DCHECK(!kdc);
         RETURN_NOT_OK(daemon->Restart());
@@ -217,14 +221,14 @@ Status ProcessRequest(const ControlShellRequestPB& req,
       }
       break;
     }
-    case ControlShellRequestPB::kStopDaemon:
-    {
+    case ControlShellRequestPB::kStopDaemon: {
       if (!req.stop_daemon().has_id()) {
         RETURN_NOT_OK(Status::InvalidArgument("missing process id"));
       }
       ExternalDaemon* daemon;
       MiniKdc* kdc;
-      RETURN_NOT_OK(FindDaemon(*cluster, req.stop_daemon().id(), &daemon, &kdc));
+      RETURN_NOT_OK(
+          FindDaemon(*cluster, req.stop_daemon().id(), &daemon, &kdc));
       if (daemon) {
         DCHECK(!kdc);
         daemon->Shutdown();
@@ -234,34 +238,35 @@ Status ProcessRequest(const ControlShellRequestPB& req,
       }
       break;
     }
-    case ControlShellRequestPB::kGetMasters:
-    {
+    case ControlShellRequestPB::kGetMasters: {
       RETURN_NOT_OK(CheckClusterExists(*cluster));
       for (int i = 0; i < (*cluster)->num_masters(); i++) {
         HostPortPB pb;
-        RETURN_NOT_OK(HostPortToPB((*cluster)->master(i)->bound_rpc_hostport(), &pb));
-        DaemonInfoPB* info = resp->mutable_get_masters()->mutable_masters()->Add();
+        RETURN_NOT_OK(
+            HostPortToPB((*cluster)->master(i)->bound_rpc_hostport(), &pb));
+        DaemonInfoPB* info =
+            resp->mutable_get_masters()->mutable_masters()->Add();
         info->mutable_id()->set_type(MASTER);
         info->mutable_id()->set_index(i);
         *info->mutable_bound_rpc_address() = std::move(pb);
       }
       break;
     }
-    case ControlShellRequestPB::kGetTservers:
-    {
+    case ControlShellRequestPB::kGetTservers: {
       RETURN_NOT_OK(CheckClusterExists(*cluster));
       for (int i = 0; i < (*cluster)->num_tablet_servers(); i++) {
         HostPortPB pb;
-        RETURN_NOT_OK(HostPortToPB((*cluster)->tablet_server(i)->bound_rpc_hostport(), &pb));
-        DaemonInfoPB* info = resp->mutable_get_tservers()->mutable_tservers()->Add();
+        RETURN_NOT_OK(HostPortToPB(
+            (*cluster)->tablet_server(i)->bound_rpc_hostport(), &pb));
+        DaemonInfoPB* info =
+            resp->mutable_get_tservers()->mutable_tservers()->Add();
         info->mutable_id()->set_type(TSERVER);
         info->mutable_id()->set_index(i);
         *info->mutable_bound_rpc_address() = std::move(pb);
       }
       break;
     }
-    case ControlShellRequestPB::kGetKdcEnvVars:
-    {
+    case ControlShellRequestPB::kGetKdcEnvVars: {
       if (!(*cluster)->kdc()) {
         RETURN_NOT_OK(Status::NotFound("kdc not found"));
       }
@@ -270,16 +275,14 @@ Status ProcessRequest(const ControlShellRequestPB& req,
           env_vars.begin(), env_vars.end());
       break;
     }
-    case ControlShellRequestPB::kKdestroy:
-    {
+    case ControlShellRequestPB::kKdestroy: {
       if (!(*cluster)->kdc()) {
         RETURN_NOT_OK(Status::NotFound("kdc not found"));
       }
       RETURN_NOT_OK((*cluster)->kdc()->Kdestroy());
       break;
     }
-    case ControlShellRequestPB::kKinit:
-    {
+    case ControlShellRequestPB::kKinit: {
       if (!(*cluster)->kdc()) {
         RETURN_NOT_OK(Status::NotFound("kdc not found"));
       }
@@ -298,7 +301,8 @@ Status RunControlShell(const RunnerContext& /*context*/) {
   //
   // Because we use stdin and stdout to communicate with the shell's parent,
   // it's critical that none of our subprocesses write to stdout. To that end,
-  // the protocol will use stdout via another fd, and we'll redirect fd 1 to stderr.
+  // the protocol will use stdout via another fd, and we'll redirect fd 1 to
+  // stderr.
   int new_stdout;
   RETRY_ON_EINTR(new_stdout, dup(STDOUT_FILENO));
   CHECK_ERR(new_stdout);
@@ -312,10 +316,11 @@ Status RunControlShell(const RunnerContext& /*context*/) {
     DCHECK(boost::iequals(FLAGS_serialization, "pb"));
     serde_mode = ControlShellProtocol::SerializationMode::PB;
   }
-  ControlShellProtocol protocol(serde_mode,
-                                ControlShellProtocol::CloseMode::NO_CLOSE_ON_DESTROY,
-                                STDIN_FILENO,
-                                new_stdout);
+  ControlShellProtocol protocol(
+      serde_mode,
+      ControlShellProtocol::CloseMode::NO_CLOSE_ON_DESTROY,
+      STDIN_FILENO,
+      new_stdout);
 
   // Run the shell loop, processing each message as it is received.
   unique_ptr<ExternalMiniCluster> cluster;
@@ -358,26 +363,27 @@ Status RunControlShell(const RunnerContext& /*context*/) {
   // Normal exit, clean up cluster root.
   if (cluster) {
     cluster->Shutdown();
-    WARN_NOT_OK(Env::Default()->DeleteRecursively(cluster->cluster_root()),
-                "Could not delete cluster root");
+    WARN_NOT_OK(
+        Env::Default()->DeleteRecursively(cluster->cluster_root()),
+        "Could not delete cluster root");
   }
   return Status::OK();
 }
 
 string SerializeRequest(const ControlShellRequestPB& req) {
   string serialized;
-  auto google_status = google::protobuf::util::MessageToJsonString(
-      req, &serialized);
+  auto google_status =
+      google::protobuf::util::MessageToJsonString(req, &serialized);
   CHECK(google_status.ok()) << Substitute(
       "unable to serialize JSON ($0): $1",
-      google_status.error_message().ToString(), pb_util::SecureDebugString(req));
+      google_status.error_message().ToString(),
+      pb_util::SecureDebugString(req));
   return serialized;
 }
 
 } // anonymous namespace
 
 unique_ptr<Mode> BuildTestMode() {
-
   ControlShellRequestPB create;
   create.mutable_create_cluster()->set_num_tservers(3);
   ControlShellRequestPB start;
@@ -396,10 +402,10 @@ unique_ptr<Mode> BuildTestMode() {
 
   unique_ptr<Action> control_shell =
       ActionBuilder("mini_cluster", &RunControlShell)
-      .Description("Spawn a control shell for running a mini-cluster")
-      .ExtraDescription(extra)
-      .AddOptionalParameter("serialization")
-      .Build();
+          .Description("Spawn a control shell for running a mini-cluster")
+          .ExtraDescription(extra)
+          .AddOptionalParameter("serialization")
+          .Build();
 
   return ModeBuilder("test")
       .Description("Various test actions")
@@ -409,4 +415,3 @@ unique_ptr<Mode> BuildTestMode() {
 
 } // namespace tools
 } // namespace kudu
-

@@ -57,8 +57,8 @@ Status ParseStacksFromPath(const string& path) {
   int line_number = 0;
   while (std::getline(in, line)) {
     line_number++;
-    RETURN_NOT_OK_PREPEND(lp.ParseLine(std::move(line)),
-                          Substitute("at line $0", line_number));
+    RETURN_NOT_OK_PREPEND(
+        lp.ParseLine(std::move(line)), Substitute("at line $0", line_number));
   }
 
   return Status::OK();
@@ -70,8 +70,9 @@ Status ParseStacks(const RunnerContext& context) {
   // timestamp-based sorting.
   std::sort(paths.begin(), paths.end());
   for (const auto& path : paths) {
-    RETURN_NOT_OK_PREPEND(ParseStacksFromPath(path),
-                          Substitute("failed to parse stacks from $0", path));
+    RETURN_NOT_OK_PREPEND(
+        ParseStacksFromPath(path),
+        Substitute("failed to parse stacks from $0", path));
   }
   return Status::OK();
 }
@@ -81,9 +82,10 @@ Status ParseStacks(const RunnerContext& context) {
 unique_ptr<Mode> BuildDiagnoseMode() {
   unique_ptr<Action> parse_stacks =
       ActionBuilder("parse_stacks", &ParseStacks)
-      .Description("Parse sampled stack traces out of a diagnostics log")
-      .AddRequiredVariadicParameter({ kLogPathArg, "path to log file(s) to parse" })
-      .Build();
+          .Description("Parse sampled stack traces out of a diagnostics log")
+          .AddRequiredVariadicParameter(
+              {kLogPathArg, "path to log file(s) to parse"})
+          .Build();
 
   return ModeBuilder("diagnose")
       .Description("Diagnostic tools for Kudu servers and clusters")

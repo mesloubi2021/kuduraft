@@ -30,8 +30,8 @@
 
 #include "kudu/util/alignment.h"
 #include "kudu/util/flag_tags.h"
-#include "kudu/util/memory/overwrite.h"
 #include "kudu/util/mem_tracker.h"
+#include "kudu/util/memory/overwrite.h"
 
 using std::copy;
 using std::min;
@@ -39,9 +39,11 @@ using std::min;
 // TODO(onufry) - test whether the code still tests OK if we set this to true,
 // or remove this code and add a test that Google allocator does not change it's
 // contract - 16-aligned in -c opt and %16 == 8 in debug.
-DEFINE_bool(allocator_aligned_mode, false,
-            "Use 16-byte alignment instead of 8-byte, "
-            "unless explicitly specified otherwise - to boost SIMD");
+DEFINE_bool(
+    allocator_aligned_mode,
+    false,
+    "Use 16-byte alignment instead of 8-byte, "
+    "unless explicitly specified otherwise - to boost SIMD");
 TAG_FLAG(allocator_aligned_mode, hidden);
 
 namespace kudu {
@@ -56,19 +58,23 @@ Buffer::~Buffer() {
   // OverwriteWithPattern call in debug mode, so we can keep this
   // useful bit of code without tests going slower!
   //
-  // In ASAN mode, we don't bother with this, because when we free the memory, ASAN will
-  // prevent us from accessing it anyway.
-  OverwriteWithPattern(reinterpret_cast<char*>(data_), size_,
-                       "BADBADBADBADBADBADBADBADBADBADBAD"
-                       "BADBADBADBADBADBADBADBADBADBADBAD"
-                       "BADBADBADBADBADBADBADBADBADBADBAD");
+  // In ASAN mode, we don't bother with this, because when we free the memory,
+  // ASAN will prevent us from accessing it anyway.
+  OverwriteWithPattern(
+      reinterpret_cast<char*>(data_),
+      size_,
+      "BADBADBADBADBADBADBADBADBADBADBAD"
+      "BADBADBADBADBADBADBADBADBADBADBAD"
+      "BADBADBADBADBADBADBADBADBADBADBAD");
 #endif
-  if (allocator_ != nullptr) allocator_->FreeInternal(this);
+  if (allocator_ != nullptr)
+    allocator_->FreeInternal(this);
 }
 
-void BufferAllocator::LogAllocation(size_t requested,
-                                    size_t minimal,
-                                    Buffer* buffer) {
+void BufferAllocator::LogAllocation(
+    size_t requested,
+    size_t minimal,
+    Buffer* buffer) {
   if (buffer == nullptr) {
     LOG(WARNING) << "Memory allocation failed. "
                  << "Number of bytes requested: " << requested
@@ -84,8 +90,7 @@ void BufferAllocator::LogAllocation(size_t requested,
 }
 
 HeapBufferAllocator::HeapBufferAllocator()
-  : aligned_mode_(FLAGS_allocator_aligned_mode) {
-}
+    : aligned_mode_(FLAGS_allocator_aligned_mode) {}
 
 Buffer* HeapBufferAllocator::AllocateInternal(
     const size_t requested,
@@ -99,7 +104,8 @@ Buffer* HeapBufferAllocator::AllocateInternal(
     if (data != nullptr) {
       return CreateBuffer(data, attempted, originator);
     }
-    if (attempted == minimal) return nullptr;
+    if (attempted == minimal)
+      return nullptr;
     attempted = minimal + (attempted - minimal - 1) / 2;
   }
 }
@@ -114,7 +120,8 @@ bool HeapBufferAllocator::ReallocateInternal(
   size_t attempted = requested;
   while (true) {
     if (attempted == 0) {
-      if (buffer->size() > 0) free(buffer->data());
+      if (buffer->size() > 0)
+        free(buffer->data());
       data = &dummy_buffer[0];
     } else {
       if (buffer->size() > 0) {
@@ -127,20 +134,22 @@ bool HeapBufferAllocator::ReallocateInternal(
       UpdateBuffer(data, attempted, buffer);
       return true;
     }
-    if (attempted == minimal) return false;
+    if (attempted == minimal)
+      return false;
     attempted = minimal + (attempted - minimal - 1) / 2;
   }
 }
 
 void HeapBufferAllocator::FreeInternal(Buffer* buffer) {
-  if (buffer->size() > 0) free(buffer->data());
+  if (buffer->size() > 0)
+    free(buffer->data());
 }
 
 void* HeapBufferAllocator::Malloc(size_t size) {
   if (aligned_mode_) {
     void* data;
     if (posix_memalign(&data, 16, KUDU_ALIGN_UP(size, 16))) {
-       return nullptr;
+      return nullptr;
     }
     return data;
   } else {
@@ -148,15 +157,18 @@ void* HeapBufferAllocator::Malloc(size_t size) {
   }
 }
 
-void* HeapBufferAllocator::Realloc(void* previous_data, size_t previous_size,
-                                   size_t new_size) {
+void* HeapBufferAllocator::Realloc(
+    void* previous_data,
+    size_t previous_size,
+    size_t new_size) {
   if (aligned_mode_) {
     void* data = Malloc(new_size);
     if (data) {
-// NOTE(ptab): We should use realloc here to avoid memmory coping,
-// but it doesn't work on memory allocated by posix_memalign(...).
-// realloc reallocates the memory but doesn't preserve the content.
-// TODO(ptab): reiterate after some time to check if it is fixed (tcmalloc ?)
+      // NOTE(ptab): We should use realloc here to avoid memmory coping,
+      // but it doesn't work on memory allocated by posix_memalign(...).
+      // realloc reallocates the memory but doesn't preserve the content.
+      // TODO(ptab): reiterate after some time to check if it is fixed (tcmalloc
+      // ?)
       memcpy(data, previous_data, min(previous_size, new_size));
       free(previous_data);
       return data;
@@ -168,25 +180,29 @@ void* HeapBufferAllocator::Realloc(void* previous_data, size_t previous_size,
   }
 }
 
-Buffer* ClearingBufferAllocator::AllocateInternal(size_t requested,
-                                                  size_t minimal,
-                                                  BufferAllocator* originator) {
-  Buffer* buffer = DelegateAllocate(delegate_, requested, minimal,
-                                    originator);
-  if (buffer != nullptr) memset(buffer->data(), 0, buffer->size());
+Buffer* ClearingBufferAllocator::AllocateInternal(
+    size_t requested,
+    size_t minimal,
+    BufferAllocator* originator) {
+  Buffer* buffer = DelegateAllocate(delegate_, requested, minimal, originator);
+  if (buffer != nullptr)
+    memset(buffer->data(), 0, buffer->size());
   return buffer;
 }
 
-bool ClearingBufferAllocator::ReallocateInternal(size_t requested,
-                                                 size_t minimal,
-                                                 Buffer* buffer,
-                                                 BufferAllocator* originator) {
+bool ClearingBufferAllocator::ReallocateInternal(
+    size_t requested,
+    size_t minimal,
+    Buffer* buffer,
+    BufferAllocator* originator) {
   size_t offset = (buffer != nullptr ? buffer->size() : 0);
-  bool success = DelegateReallocate(delegate_, requested, minimal, buffer,
-                                    originator);
+  bool success =
+      DelegateReallocate(delegate_, requested, minimal, buffer, originator);
   if (success && buffer->size() > offset) {
-    memset(static_cast<char*>(buffer->data()) + offset, 0,
-           buffer->size() - offset);
+    memset(
+        static_cast<char*>(buffer->data()) + offset,
+        0,
+        buffer->size() - offset);
   }
   return success;
 }
@@ -203,7 +219,8 @@ Buffer* MediatingBufferAllocator::AllocateInternal(
   size_t granted;
   if (requested > 0) {
     granted = mediator_->Allocate(requested, minimal);
-    if (granted < minimal) return nullptr;
+    if (granted < minimal)
+      return nullptr;
   } else {
     granted = 0;
   }
@@ -226,7 +243,8 @@ bool MediatingBufferAllocator::ReallocateInternal(
   size_t granted;
   if (requested > 0) {
     granted = mediator_->Allocate(requested, minimal);
-    if (granted < minimal) return false;
+    if (granted < minimal)
+      return false;
   } else {
     granted = 0;
   }
@@ -264,8 +282,8 @@ bool MemoryStatisticsCollectingBufferAllocator::ReallocateInternal(
     Buffer* const buffer,
     BufferAllocator* const originator) {
   const size_t old_size = buffer->size();
-  bool outcome = DelegateReallocate(delegate_, requested, minimal, buffer,
-                                    originator);
+  bool outcome =
+      DelegateReallocate(delegate_, requested, minimal, buffer, originator);
   if (buffer->size() > old_size) {
     memory_stats_collector_->AllocatedMemoryBytes(buffer->size() - old_size);
   } else if (buffer->size() < old_size) {
@@ -282,7 +300,8 @@ void MemoryStatisticsCollectingBufferAllocator::FreeInternal(Buffer* buffer) {
 }
 
 size_t MemoryTrackingBufferAllocator::Available() const {
-  return enforce_limit_ ? mem_tracker_->SpareCapacity() : std::numeric_limits<int64_t>::max();
+  return enforce_limit_ ? mem_tracker_->SpareCapacity()
+                        : std::numeric_limits<int64_t>::max();
 }
 
 bool MemoryTrackingBufferAllocator::TryConsume(int64_t bytes) {
@@ -299,11 +318,13 @@ bool MemoryTrackingBufferAllocator::TryConsume(int64_t bytes) {
   return true;
 }
 
-Buffer* MemoryTrackingBufferAllocator::AllocateInternal(size_t requested,
-                                                        size_t minimal,
-                                                        BufferAllocator* originator) {
+Buffer* MemoryTrackingBufferAllocator::AllocateInternal(
+    size_t requested,
+    size_t minimal,
+    BufferAllocator* originator) {
   if (TryConsume(requested)) {
-    Buffer* buffer = DelegateAllocate(delegate_, requested, requested, originator);
+    Buffer* buffer =
+        DelegateAllocate(delegate_, requested, requested, originator);
     if (buffer == nullptr) {
       mem_tracker_->Release(requested);
     } else {
@@ -322,11 +343,11 @@ Buffer* MemoryTrackingBufferAllocator::AllocateInternal(size_t requested,
   return nullptr;
 }
 
-
-bool MemoryTrackingBufferAllocator::ReallocateInternal(size_t requested,
-                                                       size_t minimal,
-                                                       Buffer* buffer,
-                                                       BufferAllocator* originator) {
+bool MemoryTrackingBufferAllocator::ReallocateInternal(
+    size_t requested,
+    size_t minimal,
+    Buffer* buffer,
+    BufferAllocator* originator) {
   LOG(FATAL) << "Not implemented";
   return false;
 }
@@ -336,4 +357,4 @@ void MemoryTrackingBufferAllocator::FreeInternal(Buffer* buffer) {
   mem_tracker_->Release(buffer->size());
 }
 
-}  // namespace kudu
+} // namespace kudu

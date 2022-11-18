@@ -33,12 +33,23 @@ namespace fs {
 static void DoNothingErrorNotification(const string& /* uuid */) {}
 
 FsErrorManager::FsErrorManager() {
-  InsertOrDie(&callbacks_, ErrorHandlerType::DISK_ERROR, Bind(DoNothingErrorNotification));
-  InsertOrDie(&callbacks_, ErrorHandlerType::NO_AVAILABLE_DISKS, Bind(DoNothingErrorNotification));
-  InsertOrDie(&callbacks_, ErrorHandlerType::CFILE_CORRUPTION, Bind(DoNothingErrorNotification));
+  InsertOrDie(
+      &callbacks_,
+      ErrorHandlerType::DISK_ERROR,
+      Bind(DoNothingErrorNotification));
+  InsertOrDie(
+      &callbacks_,
+      ErrorHandlerType::NO_AVAILABLE_DISKS,
+      Bind(DoNothingErrorNotification));
+  InsertOrDie(
+      &callbacks_,
+      ErrorHandlerType::CFILE_CORRUPTION,
+      Bind(DoNothingErrorNotification));
 }
 
-void FsErrorManager::SetErrorNotificationCb(ErrorHandlerType e, ErrorNotificationCb cb) {
+void FsErrorManager::SetErrorNotificationCb(
+    ErrorHandlerType e,
+    ErrorNotificationCb cb) {
   std::lock_guard<Mutex> l(lock_);
   EmplaceOrUpdate(&callbacks_, e, std::move(cb));
 }
@@ -48,10 +59,12 @@ void FsErrorManager::UnsetErrorNotificationCb(ErrorHandlerType e) {
   EmplaceOrUpdate(&callbacks_, e, Bind(DoNothingErrorNotification));
 }
 
-void FsErrorManager::RunErrorNotificationCb(ErrorHandlerType e, const string& uuid) const {
+void FsErrorManager::RunErrorNotificationCb(
+    ErrorHandlerType e,
+    const string& uuid) const {
   std::lock_guard<Mutex> l(lock_);
   FindOrDie(callbacks_, e).Run(uuid);
 }
 
-}  // namespace fs
-}  // namespace kudu
+} // namespace fs
+} // namespace kudu

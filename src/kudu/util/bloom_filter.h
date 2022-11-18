@@ -34,7 +34,8 @@ namespace kudu {
 // so that when many bloom filters have to be consulted for a given
 // key, we only need to calculate the hashes once.
 //
-// This is implemented based on the idea of double-hashing from the following paper:
+// This is implemented based on the idea of double-hashing from the following
+// paper:
 //   "Less Hashing, Same Performance: Building a Better Bloom Filter"
 //   Kirsch and Mitzenmacher, ESA 2006
 //   https://www.eecs.harvard.edu/~michaelm/postscripts/tr-02-05.pdf
@@ -52,10 +53,9 @@ class BloomKeyProbe {
   //
   // NOTE: proper operation requires that the referenced memory remain
   // valid for the lifetime of this object.
-  explicit BloomKeyProbe(const Slice &key) : key_(key) {
+  explicit BloomKeyProbe(const Slice& key) : key_(key) {
     uint64_t h = util_hash::CityHash64(
-      reinterpret_cast<const char *>(key.data()),
-      key.size());
+        reinterpret_cast<const char*>(key.data()), key.size());
 
     // Use the top and bottom halves of the 64-bit hash
     // as the two independent hash functions for mixing.
@@ -63,7 +63,9 @@ class BloomKeyProbe {
     h_2_ = static_cast<uint32_t>(h >> 32);
   }
 
-  const Slice &key() const { return key_; }
+  const Slice& key() const {
+    return key_;
+  }
 
   // The initial hash value. See MixHash() for usage example.
   uint32_t initial_hash() const {
@@ -99,34 +101,37 @@ class BloomFilterSizing {
   // Size the bloom filer by an expected count and false positive rate.
   //
   // Picks the number of bytes to achieve the above.
-  static BloomFilterSizing ByCountAndFPRate(size_t expected_count, double fp_rate);
+  static BloomFilterSizing ByCountAndFPRate(
+      size_t expected_count,
+      double fp_rate);
 
-  size_t n_bytes() const { return n_bytes_; }
-  size_t expected_count() const { return expected_count_; }
+  size_t n_bytes() const {
+    return n_bytes_;
+  }
+  size_t expected_count() const {
+    return expected_count_;
+  }
 
  private:
-  BloomFilterSizing(size_t n_bytes, size_t expected_count) :
-    n_bytes_(n_bytes),
-    expected_count_(expected_count)
-  {}
+  BloomFilterSizing(size_t n_bytes, size_t expected_count)
+      : n_bytes_(n_bytes), expected_count_(expected_count) {}
 
   size_t n_bytes_;
   size_t expected_count_;
 };
-
 
 // Builder for a BloomFilter structure.
 class BloomFilterBuilder {
  public:
   // Create a bloom filter.
   // See BloomFilterSizing static methods to specify this argument.
-  explicit BloomFilterBuilder(const BloomFilterSizing &sizing);
+  explicit BloomFilterBuilder(const BloomFilterSizing& sizing);
 
   // Clear all entries, reset insertion count.
   void Clear();
 
   // Add the given key to the bloom filter.
-  void AddKey(const BloomKeyProbe &probe);
+  void AddKey(const BloomKeyProbe& probe);
 
   // Return an estimate of the false positive rate.
   double false_positive_rate() const;
@@ -147,12 +152,18 @@ class BloomFilterBuilder {
 
   // Return the number of hashes that are calculated for each entry
   // in the bloom filter.
-  size_t n_hashes() const { return n_hashes_; }
+  size_t n_hashes() const {
+    return n_hashes_;
+  }
 
-  size_t expected_count() const { return expected_count_; }
+  size_t expected_count() const {
+    return expected_count_;
+  }
 
   // Return the number of keys inserted.
-  size_t count() const { return n_inserted_; }
+  size_t count() const {
+    return n_inserted_;
+  }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(BloomFilterBuilder);
@@ -170,26 +181,24 @@ class BloomFilterBuilder {
   size_t n_inserted_;
 };
 
-
 // Wrapper around a byte array for reading it as a bloom filter.
 class BloomFilter {
  public:
   BloomFilter() : bitmap_(nullptr) {}
-  BloomFilter(const Slice &data, size_t n_hashes);
+  BloomFilter(const Slice& data, size_t n_hashes);
 
   // Return true if the filter may contain the given key.
-  bool MayContainKey(const BloomKeyProbe &probe) const;
+  bool MayContainKey(const BloomKeyProbe& probe) const;
 
  private:
   friend class BloomFilterBuilder;
   static uint32_t PickBit(uint32_t hash, size_t n_bits);
 
   size_t n_bits_;
-  const uint8_t *bitmap_;
+  const uint8_t* bitmap_;
 
   size_t n_hashes_;
 };
-
 
 ////////////////////////////////////////////////////////////
 // Inline implementations
@@ -207,7 +216,7 @@ inline uint32_t BloomFilter::PickBit(uint32_t hash, size_t n_bits) {
   }
 }
 
-inline void BloomFilterBuilder::AddKey(const BloomKeyProbe &probe) {
+inline void BloomFilterBuilder::AddKey(const BloomKeyProbe& probe) {
   uint32_t h = probe.initial_hash();
   for (size_t i = 0; i < n_hashes_; i++) {
     uint32_t bitpos = BloomFilter::PickBit(h, n_bits_);
@@ -217,12 +226,13 @@ inline void BloomFilterBuilder::AddKey(const BloomKeyProbe &probe) {
   n_inserted_++;
 }
 
-inline bool BloomFilter::MayContainKey(const BloomKeyProbe &probe) const {
+inline bool BloomFilter::MayContainKey(const BloomKeyProbe& probe) const {
   uint32_t h = probe.initial_hash();
 
-  // Basic unrolling by 2s gives a small benefit here since the two bit positions
-  // can be calculated in parallel -- it's a 50% chance that the first will be
-  // set even if it's a bloom miss, in which case we can parallelize the load.
+  // Basic unrolling by 2s gives a small benefit here since the two bit
+  // positions can be calculated in parallel -- it's a 50% chance that the first
+  // will be set even if it's a bloom miss, in which case we can parallelize the
+  // load.
   int rem_hashes = n_hashes_;
   while (rem_hashes >= 2) {
     uint32_t bitpos1 = PickBit(h, n_bits_);

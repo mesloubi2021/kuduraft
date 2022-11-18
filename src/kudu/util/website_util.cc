@@ -33,7 +33,8 @@ string KuduUrl() {
 }
 
 string KuduDocsUrl() {
-  return Substitute("$0/releases/$1/docs", kKuduUrl, VersionInfo::GetShortVersionInfo());
+  return Substitute(
+      "$0/releases/$1/docs", kKuduUrl, VersionInfo::GetShortVersionInfo());
 }
 
 string KuduDocsTroubleshootingUrl() {

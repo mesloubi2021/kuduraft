@@ -25,8 +25,8 @@
 #include <utility>
 
 #include <boost/bind.hpp>
-#include <glog/logging.h>
 #include <gflags/gflags.h>
+#include <glog/logging.h>
 
 #include "kudu/gutil/dynamic_annotations.h"
 #include "kudu/gutil/map-util.h"
@@ -42,13 +42,17 @@
 #include "kudu/util/status.h"
 #include "kudu/util/thread.h"
 
-DEFINE_int32(hung_task_check_interval_ms, 200,
-             "Number of milliseconds in between checks for hung threads");
+DEFINE_int32(
+    hung_task_check_interval_ms,
+    200,
+    "Number of milliseconds in between checks for hung threads");
 TAG_FLAG(hung_task_check_interval_ms, hidden);
 
-DEFINE_int32(inject_latency_on_kernel_stack_lookup_ms, 0,
-             "Number of milliseconds of latency to inject when reading a thread's "
-             "kernel stack");
+DEFINE_int32(
+    inject_latency_on_kernel_stack_lookup_ms,
+    0,
+    "Number of milliseconds of latency to inject when reading a thread's "
+    "kernel stack");
 TAG_FLAG(inject_latency_on_kernel_stack_lookup_ms, hidden);
 
 using std::lock_guard;
@@ -62,14 +66,14 @@ namespace kudu {
 __thread KernelStackWatchdog::TLS* KernelStackWatchdog::tls_;
 
 KernelStackWatchdog::KernelStackWatchdog()
-  : log_collector_(nullptr),
-    finish_(1) {
-
+    : log_collector_(nullptr), finish_(1) {
   // During creation of the stack watchdog thread, we need to disable using
   // the stack watchdog itself. Otherwise, the 'StartThread' function will
-  // try to call back into initializing the stack watchdog, and will self-deadlock.
+  // try to call back into initializing the stack watchdog, and will
+  // self-deadlock.
   CHECK_OK(Thread::CreateWithFlags(
-      "kernel-watchdog", "kernel-watcher",
+      "kernel-watchdog",
+      "kernel-watcher",
       boost::bind(&KernelStackWatchdog::RunThread, this),
       Thread::NO_STACK_WATCHDOG,
       &thread_));
@@ -123,37 +127,40 @@ void KernelStackWatchdog::Unregister() {
 Status GetKernelStack(pid_t p, string* ret) {
   MAYBE_INJECT_FIXED_LATENCY(FLAGS_inject_latency_on_kernel_stack_lookup_ms);
   faststring buf;
-  RETURN_NOT_OK(ReadFileToString(Env::Default(), Substitute("/proc/$0/stack", p), &buf));
+  RETURN_NOT_OK(
+      ReadFileToString(Env::Default(), Substitute("/proc/$0/stack", p), &buf));
   *ret = buf.ToString();
   return Status::OK();
 }
 
 void KernelStackWatchdog::RunThread() {
   while (true) {
-    MonoDelta delta = MonoDelta::FromMilliseconds(FLAGS_hung_task_check_interval_ms);
+    MonoDelta delta =
+        MonoDelta::FromMilliseconds(FLAGS_hung_task_check_interval_ms);
     if (finish_.WaitFor(delta)) {
       // Watchdog exiting.
       break;
     }
 
-    // Don't send signals while the debugger is running, since it makes it hard to
-    // use.
+    // Don't send signals while the debugger is running, since it makes it hard
+    // to use.
     if (IsBeingDebugged()) {
       continue;
     }
 
-    // Prevent threads from deleting their TLS objects between the snapshot loop and the sending of
-    // signals. This makes it safe for us to access their TLS.
+    // Prevent threads from deleting their TLS objects between the snapshot loop
+    // and the sending of signals. This makes it safe for us to access their
+    // TLS.
     //
-    // NOTE: it's still possible that the thread will have exited in between grabbing its pointer
-    // and sending a signal, but DumpThreadStack() already is safe about not sending a signal
-    // to some other non-Kudu thread.
+    // NOTE: it's still possible that the thread will have exited in between
+    // grabbing its pointer and sending a signal, but DumpThreadStack() already
+    // is safe about not sending a signal to some other non-Kudu thread.
     MutexLock l(unregister_lock_);
 
     // Take the snapshot of the thread information under a short lock.
     //
-    // 'tls_lock_' prevents new threads from starting, so we don't want to do any lengthy work
-    // (such as gathering stack traces) under this lock.
+    // 'tls_lock_' prevents new threads from starting, so we don't want to do
+    // any lengthy work (such as gathering stack traces) under this lock.
     TLSMap tls_map_copy;
     vector<unique_ptr<TLS>> to_delete;
     {
@@ -184,22 +191,27 @@ void KernelStackWatchdog::RunThread() {
 
           string user_stack = DumpThreadStack(p);
 
-          // If the thread exited the frame we're looking at in between when we started
-          // grabbing the stack and now, then our stack isn't correct. We shouldn't log it.
+          // If the thread exited the frame we're looking at in between when we
+          // started grabbing the stack and now, then our stack isn't correct.
+          // We shouldn't log it.
           //
-          // We just use unprotected reads here since this is a somewhat best-effort
-          // check.
+          // We just use unprotected reads here since this is a somewhat
+          // best-effort check.
           if (ANNOTATE_UNPROTECTED_READ(tls->depth_) < tls_copy.depth_ ||
-              ANNOTATE_UNPROTECTED_READ(tls->frames_[i].start_time_) != frame->start_time_) {
+              ANNOTATE_UNPROTECTED_READ(tls->frames_[i].start_time_) !=
+                  frame->start_time_) {
             break;
           }
 
           lock_guard<simple_spinlock> l(log_lock_);
           LOG_STRING(WARNING, log_collector_.get())
-              << "Thread " << p << " stuck at " << frame->status_
-              << " for " << paused_ms << "ms" << ":\n"
-              << "Kernel stack:\n" << kernel_stack << "\n"
-              << "User stack:\n" << user_stack;
+              << "Thread " << p << " stuck at " << frame->status_ << " for "
+              << paused_ms << "ms"
+              << ":\n"
+              << "Kernel stack:\n"
+              << kernel_stack << "\n"
+              << "User stack:\n"
+              << user_stack;
         }
       }
     }
@@ -225,8 +237,7 @@ KernelStackWatchdog::TLS::TLS() {
   memset(&data_, 0, sizeof(data_));
 }
 
-KernelStackWatchdog::TLS::~TLS() {
-}
+KernelStackWatchdog::TLS::~TLS() {}
 
 // Optimistic concurrency control approach to snapshot the value of another
 // thread's TLS, even though that thread might be changing it.
@@ -249,7 +260,8 @@ void KernelStackWatchdog::TLS::Data::SnapshotCopy(Data* copy) const {
 
     // If the value hasn't changed since we started the copy, then
     // we know that the copy was a consistent snapshot.
-    if (v_1 == v_0) break;
+    if (v_1 == v_0)
+      break;
   }
 }
 

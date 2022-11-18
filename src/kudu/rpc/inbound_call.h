@@ -60,9 +60,9 @@ class RpcCallInProgressPB;
 class RpcSidecar;
 
 struct InboundCallTiming {
-  MonoTime time_received;   // Time the call was first accepted.
-  MonoTime time_handled;    // Time the call handler was kicked off.
-  MonoTime time_completed;  // Time the call handler completed.
+  MonoTime time_received; // Time the call was first accepted.
+  MonoTime time_handled; // Time the call handler was kicked off.
+  MonoTime time_completed; // Time the call handler completed.
 
   MonoDelta TotalDuration() const {
     return time_completed - time_received;
@@ -111,19 +111,26 @@ class InboundCall {
   //
   // This method deletes the InboundCall object, so no further calls may be
   // made after this one.
-  void RespondFailure(ErrorStatusPB::RpcErrorCodePB error_code,
-                      const Status &status);
+  void RespondFailure(
+      ErrorStatusPB::RpcErrorCodePB error_code,
+      const Status& status);
 
-  void RespondUnsupportedFeature(const std::vector<uint32_t>& unsupported_features);
+  void RespondUnsupportedFeature(
+      const std::vector<uint32_t>& unsupported_features);
 
-  void RespondApplicationError(int error_ext_id, const std::string& message,
-                               const google::protobuf::MessageLite& app_error_pb);
+  void RespondApplicationError(
+      int error_ext_id,
+      const std::string& message,
+      const google::protobuf::MessageLite& app_error_pb);
 
   // Convert an application error extension to an ErrorStatusPB.
-  // These ErrorStatusPB objects are what are returned in application error responses.
-  static void ApplicationErrorToPB(int error_ext_id, const std::string& message,
-                                   const google::protobuf::MessageLite& app_error_pb,
-                                   ErrorStatusPB* err);
+  // These ErrorStatusPB objects are what are returned in application error
+  // responses.
+  static void ApplicationErrorToPB(
+      int error_ext_id,
+      const std::string& message,
+      const google::protobuf::MessageLite& app_error_pb,
+      ErrorStatusPB* err);
 
   // Serialize the response packet for the finished call into 'slices'.
   // The resulting slices refer to memory in this object.
@@ -196,30 +203,32 @@ class InboundCall {
   // the RPC.
   std::vector<uint32_t> GetRequiredFeatures() const;
 
-  // Get a sidecar sent as part of the request. If idx < 0 || idx > num sidecars - 1,
-  // returns an error.
+  // Get a sidecar sent as part of the request. If idx < 0 || idx > num sidecars
+  // - 1, returns an error.
   Status GetInboundSidecar(int idx, Slice* sidecar) const;
 
-  // Releases the buffer that contains the request + sidecar data. It is an error to
-  // access sidecars or serialized_request() after this method is called.
+  // Releases the buffer that contains the request + sidecar data. It is an
+  // error to access sidecars or serialized_request() after this method is
+  // called.
   void DiscardTransfer();
 
-  // Returns the size of the transfer buffer that backs this call. If the transfer does
-  // not exist (e.g. GetTransferSize() is called after DiscardTransfer()), returns 0.
+  // Returns the size of the transfer buffer that backs this call. If the
+  // transfer does not exist (e.g. GetTransferSize() is called after
+  // DiscardTransfer()), returns 0.
   size_t GetTransferSize();
 
  private:
   friend class RpczStore;
 
   // Serialize and queue the response.
-  void Respond(const google::protobuf::MessageLite& response,
-               bool is_success);
+  void Respond(const google::protobuf::MessageLite& response, bool is_success);
 
-  // Serialize a response message for either success or failure. If it is a success,
-  // 'response' should be the user-defined response type for the call. If it is a
-  // failure, 'response' should be an ErrorStatusPB instance.
-  void SerializeResponseBuffer(const google::protobuf::MessageLite& response,
-                               bool is_success);
+  // Serialize a response message for either success or failure. If it is a
+  // success, 'response' should be the user-defined response type for the call.
+  // If it is a failure, 'response' should be an ErrorStatusPB instance.
+  void SerializeResponseBuffer(
+      const google::protobuf::MessageLite& response,
+      bool is_success);
 
   // When RPC call Handle() completed execution on the server side.
   // Updates the Histogram with time elapsed since the call was started,
@@ -254,8 +263,8 @@ class InboundCall {
   // of TransferLimits::kMaxTotalSidecarBytes.
   int32_t outbound_sidecars_total_bytes_ = 0;
 
-  // Inbound sidecars from the request. The slices are views onto transfer_. There are as
-  // many slices as header_.sidecar_offsets_size().
+  // Inbound sidecars from the request. The slices are views onto transfer_.
+  // There are as many slices as header_.sidecar_offsets_size().
   Slice inbound_sidecar_slices_[TransferLimits::kMaxSidecars];
 
   // The trace buffer.

@@ -63,7 +63,7 @@ using strings::Substitute;
 DECLARE_int32(log_cache_size_limit_mb);
 DECLARE_int32(global_log_cache_size_limit_mb);
 
-//METRIC_DECLARE_entity(tablet);
+// METRIC_DECLARE_entity(tablet);
 
 namespace kudu {
 namespace consensus {
@@ -74,22 +74,24 @@ static const char* kTestTablet = "test-tablet";
 class LogCacheTest : public KuduTest {
  public:
   LogCacheTest()
-    : schema_(GetSimpleTestSchema()),
-      metric_entity_(METRIC_ENTITY_server.Instantiate(&metric_registry_, "LogCacheTest")) {
-  }
+      : schema_(GetSimpleTestSchema()),
+        metric_entity_(METRIC_ENTITY_server.Instantiate(
+            &metric_registry_,
+            "LogCacheTest")) {}
 
   virtual void SetUp() override {
     KuduTest::SetUp();
     fs_manager_.reset(new FsManager(env_, GetTestPath("fs_root")));
     ASSERT_OK(fs_manager_->CreateInitialFileSystemLayout());
     ASSERT_OK(fs_manager_->Open());
-    CHECK_OK(log::Log::Open(log::LogOptions(),
-                            fs_manager_.get(),
-                            kTestTablet,
-                            schema_,
-                            0, // schema_version
-                            nullptr,
-                            &log_));
+    CHECK_OK(log::Log::Open(
+        log::LogOptions(),
+        fs_manager_.get(),
+        kTestTablet,
+        schema_,
+        0, // schema_version
+        nullptr,
+        &log_));
 
     CloseAndReopenCache(MinimumOpId());
     clock_.reset(new clock::HybridClock());
@@ -101,10 +103,8 @@ class LogCacheTest : public KuduTest {
   }
 
   void CloseAndReopenCache(const OpId& preceding_id) {
-    cache_.reset(new LogCache(metric_entity_,
-                              log_.get(),
-                              kPeerUuid,
-                              kTestTablet));
+    cache_.reset(
+        new LogCache(metric_entity_, log_.get(), kPeerUuid, kTestTablet));
     cache_->Init(preceding_id);
   }
 
@@ -113,15 +113,17 @@ class LogCacheTest : public KuduTest {
     CHECK_OK(s);
   }
 
-  Status AppendReplicateMessagesToCache(int64_t first, int64_t count,
-                                        size_t payload_size = 0) {
-
+  Status AppendReplicateMessagesToCache(
+      int64_t first,
+      int64_t count,
+      size_t payload_size = 0) {
     for (int64_t cur_index = first; cur_index < first + count; cur_index++) {
       int64_t term = cur_index / 7;
       int64_t index = cur_index;
       vector<ReplicateRefPtr> msgs;
       msgs.push_back(make_scoped_refptr_replicate(
-                       CreateDummyReplicate(term, index, clock_->Now(), payload_size).release()));
+          CreateDummyReplicate(term, index, clock_->Now(), payload_size)
+              .release()));
       RETURN_NOT_OK(cache_->AppendOperations(msgs, Bind(&FatalOnError)));
     }
     return Status::OK();
@@ -136,7 +138,6 @@ class LogCacheTest : public KuduTest {
   scoped_refptr<clock::Clock> clock_;
 };
 
-
 TEST_F(LogCacheTest, TestAppendAndGetMessages) {
   ASSERT_EQ(0, cache_->metrics_.log_cache_num_ops->value());
   ASSERT_EQ(0, cache_->metrics_.log_cache_size->value());
@@ -148,22 +149,14 @@ TEST_F(LogCacheTest, TestAppendAndGetMessages) {
   vector<ReplicateRefPtr> messages;
   OpId preceding;
   ASSERT_OK(cache_->ReadOps(
-        0,
-        8 * 1024 * 1024,
-        ReadContext(),
-        &messages,
-        &preceding));
+      0, 8 * 1024 * 1024, ReadContext(), &messages, &preceding));
   EXPECT_EQ(100, messages.size());
   EXPECT_EQ("0.0", OpIdToString(preceding));
 
   // Get starting in the middle of the cache.
   messages.clear();
   ASSERT_OK(cache_->ReadOps(
-        70,
-        8 * 1024 * 1024,
-        ReadContext(),
-        &messages,
-        &preceding));
+      70, 8 * 1024 * 1024, ReadContext(), &messages, &preceding));
   EXPECT_EQ(30, messages.size());
   EXPECT_EQ("10.70", OpIdToString(preceding));
   EXPECT_EQ("10.71", OpIdToString(messages[0]->get()->id()));
@@ -171,11 +164,7 @@ TEST_F(LogCacheTest, TestAppendAndGetMessages) {
   // Get at the end of the cache
   messages.clear();
   ASSERT_OK(cache_->ReadOps(
-        100,
-        8 * 1024 * 1024,
-        ReadContext(),
-        &messages,
-        &preceding));
+      100, 8 * 1024 * 1024, ReadContext(), &messages, &preceding));
   EXPECT_EQ(0, messages.size());
   EXPECT_EQ("14.100", OpIdToString(preceding));
 
@@ -186,16 +175,11 @@ TEST_F(LogCacheTest, TestAppendAndGetMessages) {
   // Can still read data that was evicted, since it got written through.
   messages.clear();
   ASSERT_OK(cache_->ReadOps(
-        20,
-        8 * 1024 * 1024,
-        ReadContext(),
-        &messages,
-        &preceding));
+      20, 8 * 1024 * 1024, ReadContext(), &messages, &preceding));
   EXPECT_EQ(80, messages.size());
   EXPECT_EQ("2.20", OpIdToString(preceding));
   EXPECT_EQ("3.21", OpIdToString(messages[0]->get()->id()));
 }
-
 
 // Ensure that the cache always yields at least one message,
 // even if that message is larger than the batch size. This ensures
@@ -212,21 +196,20 @@ TEST_F(LogCacheTest, TestAlwaysYieldsAtLeastOneMessage) {
   // We should get one of them, even though we only ask for 100 bytes
   vector<ReplicateRefPtr> messages;
   OpId preceding;
-  ASSERT_OK(cache_->ReadOps(
-        0, 100, ReadContext(), &messages, &preceding));
+  ASSERT_OK(cache_->ReadOps(0, 100, ReadContext(), &messages, &preceding));
   ASSERT_EQ(1, messages.size());
 
   // Should yield one op also in the 'cache miss' case.
   messages.clear();
   cache_->EvictThroughOp(50);
-  ASSERT_OK(cache_->ReadOps(
-        0, 100, ReadContext(), &messages, &preceding));
+  ASSERT_OK(cache_->ReadOps(0, 100, ReadContext(), &messages, &preceding));
   ASSERT_EQ(1, messages.size());
 }
 
-// Tests that the cache returns Status::NotFound() if queried for messages after an
-// index that is higher than it's latest, returns an empty set of messages when queried for
-// the the last index and returns all messages when queried for MinimumOpId().
+// Tests that the cache returns Status::NotFound() if queried for messages after
+// an index that is higher than it's latest, returns an empty set of messages
+// when queried for the the last index and returns all messages when queried for
+// MinimumOpId().
 TEST_F(LogCacheTest, TestCacheEdgeCases) {
   // Append 1 message to the cache
   ASSERT_OK(AppendReplicateMessagesToCache(1, 1));
@@ -236,16 +219,14 @@ TEST_F(LogCacheTest, TestCacheEdgeCases) {
   OpId preceding;
 
   // Test when the searched index is MinimumOpId().index().
-  ASSERT_OK(cache_->ReadOps(
-        0, 100, ReadContext(), &messages, &preceding));
+  ASSERT_OK(cache_->ReadOps(0, 100, ReadContext(), &messages, &preceding));
   ASSERT_EQ(1, messages.size());
   ASSERT_OPID_EQ(MakeOpId(0, 0), preceding);
 
   messages.clear();
   preceding.Clear();
   // Test when 'after_op_index' is the last index in the cache.
-  ASSERT_OK(cache_->ReadOps(
-        1, 100, ReadContext(), &messages, &preceding));
+  ASSERT_OK(cache_->ReadOps(1, 100, ReadContext(), &messages, &preceding));
   ASSERT_EQ(0, messages.size());
   ASSERT_OPID_EQ(MakeOpId(0, 1), preceding);
 
@@ -253,8 +234,7 @@ TEST_F(LogCacheTest, TestCacheEdgeCases) {
   preceding.Clear();
   // Now test the case when 'after_op_index' is after the last index
   // in the cache.
-  Status s = cache_->ReadOps(
-      2, 100, ReadContext(), &messages, &preceding);
+  Status s = cache_->ReadOps(2, 100, ReadContext(), &messages, &preceding);
   ASSERT_TRUE(s.IsIncomplete()) << "unexpected status: " << s.ToString();
   ASSERT_EQ(0, messages.size());
   ASSERT_FALSE(preceding.IsInitialized());
@@ -265,12 +245,10 @@ TEST_F(LogCacheTest, TestCacheEdgeCases) {
   // Evict entries from the cache, and ensure that we can still read
   // entries at the beginning of the log.
   cache_->EvictThroughOp(50);
-  ASSERT_OK(cache_->ReadOps(
-        0, 100, ReadContext(), &messages, &preceding));
+  ASSERT_OK(cache_->ReadOps(0, 100, ReadContext(), &messages, &preceding));
   ASSERT_EQ(1, messages.size());
   ASSERT_OPID_EQ(MakeOpId(0, 0), preceding);
 }
-
 
 TEST_F(LogCacheTest, TestMemoryLimit) {
   FLAGS_log_cache_size_limit_mb = 1;
@@ -282,8 +260,8 @@ TEST_F(LogCacheTest, TestMemoryLimit) {
   log_->WaitUntilAllFlushed();
   ASSERT_EQ(1, cache_->num_cached_ops());
 
-  // Verify the size is right. It's not exactly kPayloadSize because of in-memory
-  // overhead, etc.
+  // Verify the size is right. It's not exactly kPayloadSize because of
+  // in-memory overhead, etc.
   int size_with_one_msg = cache_->BytesUsed();
   ASSERT_GT(size_with_one_msg, 300 * 1024);
   ASSERT_LT(size_with_one_msg, 500 * 1024);
@@ -297,8 +275,8 @@ TEST_F(LogCacheTest, TestMemoryLimit) {
   ASSERT_GT(size_with_two_msgs, 2 * 300 * 1024);
   ASSERT_LT(size_with_two_msgs, 2 * 500 * 1024);
 
-  // Append a third operation, which will push the cache size above the 1MB limit
-  // and cause eviction of the first operation.
+  // Append a third operation, which will push the cache size above the 1MB
+  // limit and cause eviction of the first operation.
   LOG(INFO) << "appending op 3";
   // Verify that we have trimmed by appending a message that would
   // otherwise be rejected, since the cache max size limit is 2MB.
@@ -328,11 +306,13 @@ TEST_F(LogCacheTest, TestGlobalMemoryLimit) {
   CloseAndReopenCache(MinimumOpId());
 
   // Exceed the global hard limit.
-  ScopedTrackedConsumption consumption(cache_->parent_tracker_, 3*1024*1024);
+  ScopedTrackedConsumption consumption(
+      cache_->parent_tracker_, 3 * 1024 * 1024);
 
   const int kPayloadSize = 768 * 1024;
 
-  // Should succeed, but only end up caching one of the two ops because of the global limit.
+  // Should succeed, but only end up caching one of the two ops because of the
+  // global limit.
   ASSERT_OK(AppendReplicateMessagesToCache(1, 2, kPayloadSize));
   log_->WaitUntilAllFlushed();
 
@@ -358,18 +338,17 @@ TEST_F(LogCacheTest, TestReplaceMessages) {
   log_->WaitUntilAllFlushed();
 
   EXPECT_EQ(size_with_one_msg, tracker->consumption());
-  EXPECT_EQ(Substitute("Pinned index: 2, LogCacheStats(num_ops=1, bytes=$0)",
-                       size_with_one_msg),
-            cache_->ToString());
+  EXPECT_EQ(
+      Substitute(
+          "Pinned index: 2, LogCacheStats(num_ops=1, bytes=$0)",
+          size_with_one_msg),
+      cache_->ToString());
 }
 
 // Test that the cache truncates any future messages when either explicitly
 // truncated or replacing any earlier message.
 TEST_F(LogCacheTest, TestTruncation) {
-  enum {
-    TRUNCATE_BY_APPEND,
-    TRUNCATE_EXPLICITLY
-  };
+  enum { TRUNCATE_BY_APPEND, TRUNCATE_EXPLICITLY };
 
   // Append 1 through 3.
   AppendReplicateMessagesToCache(1, 3, 100);
@@ -398,46 +377,47 @@ TEST_F(LogCacheTest, TestTruncation) {
 
     // Op 4 should have been removed.
     Status s = cache_->LookupOpId(4, &op);
-    ASSERT_TRUE(s.IsIncomplete()) << "should be truncated, but got: " << s.ToString();
+    ASSERT_TRUE(s.IsIncomplete())
+        << "should be truncated, but got: " << s.ToString();
     ASSERT_FALSE(cache_->HasOpBeenWritten(4));
   }
 }
 
 TEST_F(LogCacheTest, TestMTReadAndWrite) {
-  atomic<bool> stop { false };
+  atomic<bool> stop{false};
   vector<thread> threads;
   SCOPED_CLEANUP({
-      stop = true;
-      for (auto& t : threads) {
-        t.join();
-      }
-    });
+    stop = true;
+    for (auto& t : threads) {
+      t.join();
+    }
+  });
 
   // Add a writer thread.
   threads.emplace_back([&] {
-      const int kBatch = 10;
-      int64_t index = 1;
-      while (!stop) {
-        CHECK_OK(AppendReplicateMessagesToCache(index, kBatch));
-        index += kBatch;
-      }
-    });
+    const int kBatch = 10;
+    int64_t index = 1;
+    while (!stop) {
+      CHECK_OK(AppendReplicateMessagesToCache(index, kBatch));
+      index += kBatch;
+    }
+  });
   // Add a reader thread.
   threads.emplace_back([&] {
-      int64_t index = 0;
-      while (!stop) {
-        vector<ReplicateRefPtr> messages;
-        OpId preceding;
-        CHECK_OK(cache_->ReadOps(
-              index,
-              1024 * 1024,
-              ReadContext(),
-              /*for_peer_uuid=*/boost::none,
-              &messages,
-              &preceding));
-        index += messages.size();
-      }
-    });
+    int64_t index = 0;
+    while (!stop) {
+      vector<ReplicateRefPtr> messages;
+      OpId preceding;
+      CHECK_OK(cache_->ReadOps(
+          index,
+          1024 * 1024,
+          ReadContext(),
+          /*for_peer_uuid=*/boost::none,
+          &messages,
+          &preceding));
+      index += messages.size();
+    }
+  });
 
   SleepFor(MonoDelta::FromSeconds(AllowSlowTests() ? 10 : 2));
 }

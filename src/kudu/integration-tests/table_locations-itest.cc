@@ -63,7 +63,6 @@ const int kNumTabletServers = 3;
 // report tablet locations.
 class TableLocationsTest : public KuduTest {
  public:
-
   void SetUp() override {
     KuduTest::SetUp();
 
@@ -88,22 +87,22 @@ class TableLocationsTest : public KuduTest {
     KuduTest::TearDown();
   }
 
-  Status CreateTable(const string& table_name,
-                     const Schema& schema,
-                     const vector<KuduPartialRow>& split_rows,
-                     const vector<pair<KuduPartialRow, KuduPartialRow>>& bounds);
+  Status CreateTable(
+      const string& table_name,
+      const Schema& schema,
+      const vector<KuduPartialRow>& split_rows,
+      const vector<pair<KuduPartialRow, KuduPartialRow>>& bounds);
 
   shared_ptr<Messenger> client_messenger_;
   unique_ptr<InternalMiniCluster> cluster_;
   unique_ptr<MasterServiceProxy> proxy_;
 };
 
-Status TableLocationsTest::CreateTable(const string& table_name,
-                                       const Schema& schema,
-                                       const vector<KuduPartialRow>& split_rows,
-                                       const vector<pair<KuduPartialRow,
-                                                          KuduPartialRow>>& bounds) {
-
+Status TableLocationsTest::CreateTable(
+    const string& table_name,
+    const Schema& schema,
+    const vector<KuduPartialRow>& split_rows,
+    const vector<pair<KuduPartialRow, KuduPartialRow>>& bounds) {
   CreateTableRequestPB req;
   CreateTableResponsePB resp;
   RpcController controller;
@@ -128,7 +127,7 @@ Status TableLocationsTest::CreateTable(const string& table_name,
 // document.
 TEST_F(TableLocationsTest, TestGetTableLocations) {
   const string table_name = "test";
-  Schema schema({ ColumnSchema("key", STRING) }, 1);
+  Schema schema({ColumnSchema("key", STRING)}, 1);
   KuduPartialRow row(&schema);
 
   vector<KuduPartialRow> splits(6, row);
@@ -139,7 +138,7 @@ TEST_F(TableLocationsTest, TestGetTableLocations) {
   ASSERT_OK(splits[4].SetStringNoCopy(0, "cb"));
   ASSERT_OK(splits[5].SetStringNoCopy(0, "cc"));
 
-  vector<pair<KuduPartialRow, KuduPartialRow>> bounds(2, { row, row });
+  vector<pair<KuduPartialRow, KuduPartialRow>> bounds(2, {row, row});
   ASSERT_OK(bounds[0].first.SetStringNoCopy(0, "a"));
   ASSERT_OK(bounds[0].second.SetStringNoCopy(0, "b"));
   ASSERT_OK(bounds[1].first.SetStringNoCopy(0, "c"));
@@ -147,13 +146,14 @@ TEST_F(TableLocationsTest, TestGetTableLocations) {
 
   ASSERT_OK(CreateTable(table_name, schema, splits, bounds));
 
-  { // Check that the master doesn't give back partial results while the table is being created.
+  { // Check that the master doesn't give back partial results while the table
+    // is being created.
     GetTableLocationsRequestPB req;
     GetTableLocationsResponsePB resp;
     RpcController controller;
     req.mutable_table()->set_table_name(table_name);
 
-    for (int i = 1; ; i++) {
+    for (int i = 1;; i++) {
       if (i > 10) {
         FAIL() << "Create table timed out";
       }

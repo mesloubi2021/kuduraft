@@ -57,14 +57,15 @@ namespace strings {
 
 StringPiece FindEol(StringPiece sp);
 
-}  // namespace strings
+} // namespace strings
 
 // Older functions.
 
 // Duplicates a non-null, non-empty char* string. Returns a pointer to the new
 // string, or NULL if the input is null or empty.
 inline char* strdup_nonempty(const char* src) {
-  if (src && src[0]) return strdup(src);
+  if (src && src[0])
+    return strdup(src);
   return NULL;
 }
 
@@ -97,19 +98,19 @@ char* strnstr(const char* haystack, const char* needle, size_t haystack_len);
 //
 // The ""'s catch people who don't pass in a literal for "prefix"
 #ifndef strprefix
-#define strprefix(str, prefix) \
-  (strncmp(str, prefix, sizeof("" prefix "")-1) == 0 ? \
-      (str) + sizeof(prefix)-1 :                       \
-      NULL)
+#define strprefix(str, prefix)                         \
+  (strncmp(str, prefix, sizeof("" prefix "") - 1) == 0 \
+       ? (str) + sizeof(prefix) - 1                    \
+       : NULL)
 #endif
 
 // Same as strprefix() (immediately above), but matches a case-insensitive
 // prefix.
 #ifndef strcaseprefix
-#define strcaseprefix(str, prefix) \
-  (strncasecmp(str, prefix, sizeof("" prefix "")-1) == 0 ? \
-      (str) + sizeof(prefix)-1 :                           \
-      NULL)
+#define strcaseprefix(str, prefix)                         \
+  (strncasecmp(str, prefix, sizeof("" prefix "") - 1) == 0 \
+       ? (str) + sizeof(prefix) - 1                        \
+       : NULL)
 #endif
 
 // Matches a prefix (up to the first needle_size bytes of needle) in the first
@@ -125,33 +126,39 @@ char* strnstr(const char* haystack, const char* needle, size_t haystack_len);
 #ifdef strnprefix
 #undef strnprefix
 #endif
-const char* strnprefix(const char* haystack, int haystack_size,
-                       const char* needle, int needle_size);
+const char* strnprefix(
+    const char* haystack,
+    int haystack_size,
+    const char* needle,
+    int needle_size);
 
 // Matches a case-insensitive prefix (up to the first needle_size bytes of
 // needle) in the first haystack_size byte of haystack. Returns a pointer past
 // the prefix, or NULL if the prefix wasn't matched.
 //
 // Always returns either NULL or haystack + needle_size.
-const char* strncaseprefix(const char* haystack, int haystack_size,
-                           const char* needle, int needle_size);
+const char* strncaseprefix(
+    const char* haystack,
+    int haystack_size,
+    const char* needle,
+    int needle_size);
 
 // Matches a prefix; returns a pointer past the prefix, or NULL if not found.
 // (Like strprefix() and strcaseprefix() but not restricted to searching for
 // char* literals). Templated so searching a const char* returns a const char*,
 // and searching a non-const char* returns a non-const char*.
-template<class CharStar>
+template <class CharStar>
 inline CharStar var_strprefix(CharStar str, const char* prefix) {
   const int len = strlen(prefix);
-  return strncmp(str, prefix, len) == 0 ?  str + len : NULL;
+  return strncmp(str, prefix, len) == 0 ? str + len : NULL;
 }
 
 // Same as var_strprefix() (immediately above), but matches a case-insensitive
 // prefix.
-template<class CharStar>
+template <class CharStar>
 inline CharStar var_strcaseprefix(CharStar str, const char* prefix) {
   const int len = strlen(prefix);
-  return strncasecmp(str, prefix, len) == 0 ?  str + len : NULL;
+  return strncasecmp(str, prefix, len) == 0 ? str + len : NULL;
 }
 
 // Returns input, or "(null)" if NULL. (Useful for logging.)
@@ -160,14 +167,12 @@ inline const char* GetPrintableString(const char* const in) {
 }
 
 // Returns whether str begins with prefix.
-inline bool HasPrefixString(const StringPiece& str,
-                            const StringPiece& prefix) {
+inline bool HasPrefixString(const StringPiece& str, const StringPiece& prefix) {
   return str.starts_with(prefix);
 }
 
 // Returns whether str ends with suffix.
-inline bool HasSuffixString(const StringPiece& str,
-                            const StringPiece& suffix) {
+inline bool HasSuffixString(const StringPiece& str, const StringPiece& suffix) {
   return str.ends_with(suffix);
 }
 
@@ -176,8 +181,7 @@ inline bool HasSuffixString(const StringPiece& str,
 // The backslash character (\) is an escape character for * and ?
 // We limit the patterns to having a max of 16 * or ? characters.
 // ? matches 0 or 1 character, while * matches 0 or more characters.
-bool MatchPattern(const StringPiece& str,
-                  const StringPiece& pattern);
+bool MatchPattern(const StringPiece& str, const StringPiece& pattern);
 
 // Returns where suffix begins in str, or NULL if str doesn't end with suffix.
 inline char* strsuffix(char* str, const char* suffix) {
@@ -202,10 +206,16 @@ inline const char* strcasesuffix(const char* str, const char* suffix) {
   return const_cast<const char*>(strcasesuffix(const_cast<char*>(str), suffix));
 }
 
-const char* strnsuffix(const char* haystack, int haystack_size,
-                       const char* needle, int needle_size);
-const char* strncasesuffix(const char* haystack, int haystack_size,
-                           const char* needle, int needle_size);
+const char* strnsuffix(
+    const char* haystack,
+    int haystack_size,
+    const char* needle,
+    int needle_size);
+const char* strncasesuffix(
+    const char* haystack,
+    int haystack_size,
+    const char* needle,
+    int needle_size);
 
 // Returns the number of times a character occurs in a string for a null
 // terminated string.
@@ -261,8 +271,9 @@ char* AdjustedLastPos(const char* str, char separator, int n);
 //    hash_map<const char*, Value, hash<const char*>, streq> ht;
 struct streq : public std::binary_function<const char*, const char*, bool> {
   bool operator()(const char* s1, const char* s2) const {
-    return ((s1 == 0 && s2 == 0) ||
-            (s1 && s2 && *s1 == *s2 && strcmp(s1, s2) == 0));
+    return (
+        (s1 == 0 && s2 == 0) ||
+        (s1 && s2 && *s1 == *s2 && strcmp(s1, s2) == 0));
   }
 };
 
@@ -318,14 +329,17 @@ std::string ImmediateSuccessor(const StringPiece& s);
 // FindShortestSeparator("foobar", "foxhunt", &sep) => sep == "fop"
 // FindShortestSeparator("abracadabra", "bacradabra", &sep) => sep == "b"
 // If limit is less than or equal to start, fills in *separator with start.
-void FindShortestSeparator(const StringPiece& start, const StringPiece& limit,
-                           std::string* separator);
+void FindShortestSeparator(
+    const StringPiece& start,
+    const StringPiece& limit,
+    std::string* separator);
 
 // Copies at most n-1 bytes from src to dest, and returns dest. If n >=1, null
 // terminates dest; otherwise, returns dest unchanged. Unlike strncpy(), only
 // puts one null character at the end of dest.
 inline char* safestrncpy(char* dest, const char* src, size_t n) {
-  if (n < 1) return dest;
+  if (n < 1)
+    return dest;
 
   // Avoid using non-ANSI memccpy(), which is also deprecated in MSVC
   for (size_t i = 0; i < n; ++i) {
@@ -333,7 +347,7 @@ inline char* safestrncpy(char* dest, const char* src, size_t n) {
       return dest;
   }
 
-  dest[n-1] = '\0';
+  dest[n - 1] = '\0';
   return dest;
 }
 
@@ -352,24 +366,33 @@ size_t strlcpy(char* dst, const char* src, size_t dst_size);
 // Replaces the first occurrence (if replace_all is false) or all occurrences
 // (if replace_all is true) of oldsub in s with newsub. In the second version,
 // *res must be distinct from all the other arguments.
-std::string StringReplace(const StringPiece& s, const StringPiece& oldsub,
-                     const StringPiece& newsub, bool replace_all);
-void StringReplace(const StringPiece& s, const StringPiece& oldsub,
-                   const StringPiece& newsub, bool replace_all,
-                   std::string* res);
+std::string StringReplace(
+    const StringPiece& s,
+    const StringPiece& oldsub,
+    const StringPiece& newsub,
+    bool replace_all);
+void StringReplace(
+    const StringPiece& s,
+    const StringPiece& oldsub,
+    const StringPiece& newsub,
+    bool replace_all,
+    std::string* res);
 
 // Replaces all occurrences of substring in s with replacement. Returns the
 // number of instances replaced. s must be distinct from the other arguments.
 //
 // Less flexible, but faster, than RE::GlobalReplace().
-int GlobalReplaceSubstring(const StringPiece& substring,
-                           const StringPiece& replacement,
-                           std::string* s);
+int GlobalReplaceSubstring(
+    const StringPiece& substring,
+    const StringPiece& replacement,
+    std::string* s);
 
 // Removes v[i] for every element i in indices. Does *not* preserve the order of
 // v. indices must be sorted in strict increasing order (no duplicates). Runs in
 // O(indices.size()).
-void RemoveStrings(std::vector<std::string>* v, const std::vector<int>& indices);
+void RemoveStrings(
+    std::vector<std::string>* v,
+    const std::vector<int>& indices);
 
 // Case-insensitive strstr(); use system strcasestr() instead.
 // WARNING: Removes const-ness of string argument!
@@ -386,10 +409,12 @@ char* gstrncasestr(char* haystack, const char* needle, size_t len);
 // non_alpha), a token prefix and a token suffix. Returns a pointer into str of
 // the position of prefix, or NULL if not found.
 // WARNING: Removes const-ness of string argument!
-char* gstrncasestr_split(const char* str,
-                         const char* prefix, char non_alpha,
-                         const char* suffix,
-                         size_t n);
+char* gstrncasestr_split(
+    const char* str,
+    const char* prefix,
+    char non_alpha,
+    const char* suffix,
+    size_t n);
 
 // Finds (case insensitively) needle in haystack, paying attention only to
 // alphanumerics in either string. Returns a pointer into haystack, or NULL if
@@ -407,9 +432,8 @@ int CountSubstring(StringPiece text, StringPiece substring);
 // Finds, in haystack (which is a list of tokens separated by delim), an token
 // equal to needle. Returns a pointer into haystack, or NULL if not found (or
 // either needle or haystack is empty).
-const char* strstr_delimited(const char* haystack,
-                             const char* needle,
-                             char delim);
+const char*
+strstr_delimited(const char* haystack, const char* needle, char delim);
 
 // Gets the next token from string *stringp, where tokens are strings separated
 // by characters from delim.
@@ -434,9 +458,8 @@ const char* ScanForFirstWord(const char* the_string, const char** end_ptr);
 inline char* ScanForFirstWord(char* the_string, char** end_ptr) {
   // implicit_cast<> would be more appropriate for casting to const,
   // but we save the inclusion of "base/casts.h" here by using const_cast<>.
-  return const_cast<char*>(
-      ScanForFirstWord(const_cast<const char*>(the_string),
-                       const_cast<const char**>(end_ptr)));
+  return const_cast<char*>(ScanForFirstWord(
+      const_cast<const char*>(the_string), const_cast<const char**>(end_ptr)));
 }
 
 // For the following functions, an "identifier" is a letter or underscore,
@@ -463,10 +486,15 @@ bool IsIdentifier(const char* str);
 //
 // Returns true (and populates tag, tag_len, value, and value_len) if a
 // tag/value pair is founds; returns false otherwise.
-bool FindTagValuePair(const char* in_str, char tag_value_separator,
-                      char attribute_separator, char string_terminal,
-                      char** tag, int* tag_len,
-                      char** value, int* value_len);
+bool FindTagValuePair(
+    const char* in_str,
+    char tag_value_separator,
+    char attribute_separator,
+    char string_terminal,
+    char** tag,
+    int* tag_len,
+    char** value,
+    int* value_len);
 
 // Inserts separator after every interval characters in *s (but never appends to
 // the end of the original *s).
@@ -475,7 +503,9 @@ void UniformInsertString(std::string* s, int interval, const char* separator);
 // Inserts separator into s at each specified index. indices must be sorted in
 // ascending order.
 void InsertString(
-    std::string* s, const std::vector<uint32>& indices, char const* separator);
+    std::string* s,
+    const std::vector<uint32>& indices,
+    char const* separator);
 
 // Finds the nth occurrence of c in n; returns the index in s of that
 // occurrence, or string::npos if fewer than n occurrences.
@@ -503,4 +533,4 @@ int SafeSnprintf(char* str, size_t size, const char* format, ...)
 // line, or false on end-of-file or error.
 bool GetlineFromStdioFile(FILE* file, std::string* str, char delim);
 
-#endif  // STRINGS_UTIL_H_
+#endif // STRINGS_UTIL_H_

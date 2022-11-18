@@ -15,11 +15,11 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#include <sys/socket.h>
 #include <ifaddrs.h>
 #include <limits.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <sys/socket.h>
 #include <unistd.h>
 
 #include <cerrno>
@@ -60,13 +60,16 @@
 #define HOST_NAME_MAX 64
 #endif
 
-DEFINE_bool(fail_dns_resolution, false, "Whether to fail all dns resolution, for tests.");
+DEFINE_bool(
+    fail_dns_resolution,
+    false,
+    "Whether to fail all dns resolution, for tests.");
 TAG_FLAG(fail_dns_resolution, hidden);
 
 using std::function;
 using std::string;
-using std::unordered_set;
 using std::unique_ptr;
+using std::unordered_set;
 using std::vector;
 using strings::Substitute;
 
@@ -78,10 +81,11 @@ using AddrInfo = unique_ptr<addrinfo, function<void(addrinfo*)>>;
 
 // An utility wrapper around getaddrinfo() call to convert the return code
 // of the libc library function into Status.
-Status GetAddrInfo(const string& hostname,
-                   const addrinfo& hints,
-                   const string& op_description,
-                   AddrInfo* info) {
+Status GetAddrInfo(
+    const string& hostname,
+    const addrinfo& hints,
+    const string& op_description,
+    AddrInfo* info) {
   addrinfo* res = nullptr;
   const int rc = getaddrinfo(hostname.c_str(), nullptr, &hints, &res);
   const int err = errno; // preserving the errno from the getaddrinfo() call
@@ -101,18 +105,13 @@ Status GetAddrInfo(const string& hostname,
 
 } // anonymous namespace
 
-HostPort::HostPort()
-  : host_(""),
-    port_(0) {
-}
+HostPort::HostPort() : host_(""), port_(0) {}
 
 HostPort::HostPort(std::string host, uint16_t port)
     : host_(std::move(host)), port_(port) {}
 
 HostPort::HostPort(const Sockaddr& addr)
-  : host_(addr.host()),
-    port_(addr.port()) {
-}
+    : host_(addr.host()), port_(addr.port()) {}
 
 bool operator==(const HostPort& hp1, const HostPort& hp2) {
   return hp1.port() == hp2.port() && hp1.host() == hp2.host();
@@ -189,8 +188,7 @@ Status HostPort::ParseString(const string& str, uint16_t default_port) {
 }
 
 Status HostPort::ResolveAddresses(vector<Sockaddr>* addresses) const {
-  TRACE_EVENT1("net", "HostPort::ResolveAddresses",
-               "host", host_);
+  TRACE_EVENT1("net", "HostPort::ResolveAddresses", "host", host_);
   TRACE_COUNTER_SCOPE_LATENCY_US("dns_us");
   struct addrinfo hints;
   memset(&hints, 0, sizeof(hints));
@@ -211,14 +209,15 @@ Status HostPort::ResolveAddresses(vector<Sockaddr>* addresses) const {
   }
   for (const addrinfo* ai = result.get(); ai != nullptr; ai = ai->ai_next) {
     CHECK_EQ(ai->ai_family, AF_INET6);
-    struct sockaddr_in6* addr = reinterpret_cast<struct sockaddr_in6*>(ai->ai_addr);
+    struct sockaddr_in6* addr =
+        reinterpret_cast<struct sockaddr_in6*>(ai->ai_addr);
     addr->sin6_port = htons(port_);
     Sockaddr sockaddr(*addr);
     if (addresses) {
       addresses->push_back(sockaddr);
     }
-    VLOG(2) << "Resolved address " << sockaddr.ToString()
-            << " for host/port " << ToString();
+    VLOG(2) << "Resolved address " << sockaddr.ToString() << " for host/port "
+            << ToString();
   }
   if (PREDICT_FALSE(FLAGS_fail_dns_resolution)) {
     return Status::NetworkError("injected DNS resolution failure");
@@ -226,10 +225,12 @@ Status HostPort::ResolveAddresses(vector<Sockaddr>* addresses) const {
   return Status::OK();
 }
 
-Status HostPort::ParseStrings(const string& comma_sep_addrs,
-                              uint16_t default_port,
-                              vector<HostPort>* res) {
-  vector<string> addr_strings = strings::Split(comma_sep_addrs, ",", strings::SkipEmpty());
+Status HostPort::ParseStrings(
+    const string& comma_sep_addrs,
+    uint16_t default_port,
+    vector<HostPort>* res) {
+  vector<string> addr_strings =
+      strings::Split(comma_sep_addrs, ",", strings::SkipEmpty());
   for (const string& addr_string : addr_strings) {
     HostPort host_port;
     RETURN_NOT_OK(host_port.ParseString(addr_string, default_port));
@@ -241,8 +242,8 @@ Status HostPort::ParseStrings(const string& comma_sep_addrs,
 string HostPort::ToString() const {
   // to be compatible with RFC 3986, [2001:db8:1f70::999:de8:7648:6e8]:100
   // style of host:port
-  return IsHostIPV6Address() ? Substitute("[$0]:$1", host_, port_) :
-      Substitute("$0:$1", host_, port_);
+  return IsHostIPV6Address() ? Substitute("[$0]:$1", host_, port_)
+                             : Substitute("$0:$1", host_, port_);
 }
 
 string HostPort::ToCommaSeparatedString(const vector<HostPort>& hostports) {
@@ -253,21 +254,19 @@ string HostPort::ToCommaSeparatedString(const vector<HostPort>& hostports) {
   return JoinStrings(hostport_strs, ",");
 }
 
-Network::Network()
-  : addr_(0),
-    netmask_(0) {
-}
+Network::Network() : addr_(0), netmask_(0) {}
 
 Network::Network(uint128 addr, uint128 netmask)
-  : addr_(addr), netmask_(netmask) {}
+    : addr_(addr), netmask_(netmask) {}
 
 bool Network::WithinNetwork(const Sockaddr& addr) const {
-  return (NetworkByteOrder::Load128(addr.addr().sin6_addr.s6_addr) & netmask_) ==
-          (addr_ & netmask_);
+  return (NetworkByteOrder::Load128(addr.addr().sin6_addr.s6_addr) &
+          netmask_) == (addr_ & netmask_);
 }
 
 Status Network::ParseCIDRString(const string& addr) {
-  std::pair<string, string> p = strings::Split(addr, strings::delimiter::Limit("/", 1));
+  std::pair<string, string> p =
+      strings::Split(addr, strings::delimiter::Limit("/", 1));
 
   kudu::Sockaddr sockaddr;
   Status s = sockaddr.ParseString(p.first, 0);
@@ -289,9 +288,11 @@ Status Network::ParseCIDRString(const string& addr) {
   return Status::OK();
 }
 
-Status Network::ParseCIDRStrings(const string& comma_sep_addrs,
-                                 vector<Network>* res) {
-  vector<string> addr_strings = strings::Split(comma_sep_addrs, ",", strings::SkipEmpty());
+Status Network::ParseCIDRStrings(
+    const string& comma_sep_addrs,
+    vector<Network>* res) {
+  vector<string> addr_strings =
+      strings::Split(comma_sep_addrs, ",", strings::SkipEmpty());
   for (const string& addr_string : addr_strings) {
     Network network;
     RETURN_NOT_OK(network.ParseCIDRString(addr_string));
@@ -304,12 +305,14 @@ bool IsPrivilegedPort(uint16_t port) {
   return port <= 1024 && port != 0;
 }
 
-Status ParseAddressList(const std::string& addr_list,
-                        uint16_t default_port,
-                        std::vector<Sockaddr>* addresses) {
+Status ParseAddressList(
+    const std::string& addr_list,
+    uint16_t default_port,
+    std::vector<Sockaddr>* addresses) {
   vector<HostPort> host_ports;
   RETURN_NOT_OK(HostPort::ParseStrings(addr_list, default_port, &host_ports));
-  if (host_ports.empty()) return Status::InvalidArgument("No address specified");
+  if (host_ports.empty())
+    return Status::InvalidArgument("No address specified");
   unordered_set<Sockaddr> uniqued;
   for (const HostPort& host_port : host_ports) {
     vector<Sockaddr> this_addresses;
@@ -321,7 +324,8 @@ Status ParseAddressList(const std::string& addr_list,
       if (InsertIfNotPresent(&uniqued, addr)) {
         addresses->push_back(addr);
       } else {
-        LOG(INFO) << "Address " << addr.ToString() << " for " << host_port.ToString()
+        LOG(INFO) << "Address " << addr.ToString() << " for "
+                  << host_port.ToString()
                   << " duplicates an earlier resolved entry.";
       }
     }
@@ -334,35 +338,38 @@ Status GetHostname(string* hostname) {
   char name[HOST_NAME_MAX];
   int ret = gethostname(name, HOST_NAME_MAX);
   if (ret != 0) {
-    return Status::NetworkError("Unable to determine local hostname",
-                                ErrnoToString(errno),
-                                errno);
+    return Status::NetworkError(
+        "Unable to determine local hostname", ErrnoToString(errno), errno);
   }
   *hostname = name;
   return Status::OK();
 }
 
 Status GetLocalNetworks(std::vector<Network>* net) {
-  struct ifaddrs *ifap = nullptr;
+  struct ifaddrs* ifap = nullptr;
 
   int ret = getifaddrs(&ifap);
   SCOPED_CLEANUP({
-    if (ifap) freeifaddrs(ifap);
+    if (ifap)
+      freeifaddrs(ifap);
   });
 
   if (ret != 0) {
-    return Status::NetworkError("Unable to determine local network addresses",
-                                ErrnoToString(errno),
-                                errno);
+    return Status::NetworkError(
+        "Unable to determine local network addresses",
+        ErrnoToString(errno),
+        errno);
   }
 
   net->clear();
-  for (struct ifaddrs *ifa = ifap; ifa; ifa = ifa->ifa_next) {
-    if (ifa->ifa_addr == nullptr || ifa->ifa_netmask == nullptr) continue;
+  for (struct ifaddrs* ifa = ifap; ifa; ifa = ifa->ifa_next) {
+    if (ifa->ifa_addr == nullptr || ifa->ifa_netmask == nullptr)
+      continue;
 
     if (ifa->ifa_addr->sa_family == AF_INET6) {
       Sockaddr addr(*reinterpret_cast<struct sockaddr_in6*>(ifa->ifa_addr));
-      Sockaddr netmask(*reinterpret_cast<struct sockaddr_in6*>(ifa->ifa_netmask));
+      Sockaddr netmask(
+          *reinterpret_cast<struct sockaddr_in6*>(ifa->ifa_netmask));
       Network network(
           NetworkByteOrder::Load128(addr.addr().sin6_addr.s6_addr),
           NetworkByteOrder::Load128(netmask.addr().sin6_addr.s6_addr));
@@ -398,11 +405,13 @@ Status SockaddrFromHostPort(const HostPort& host_port, Sockaddr* addr) {
   vector<Sockaddr> addrs;
   RETURN_NOT_OK(host_port.ResolveAddresses(&addrs));
   if (addrs.empty()) {
-    return Status::NetworkError("Unable to resolve address", host_port.ToString());
+    return Status::NetworkError(
+        "Unable to resolve address", host_port.ToString());
   }
   *addr = addrs[0];
   if (addrs.size() > 1) {
-    VLOG(1) << "Hostname " << host_port.host() << " resolved to more than one address. "
+    VLOG(1) << "Hostname " << host_port.host()
+            << " resolved to more than one address. "
             << "Using address: " << addr->ToString();
   }
   return Status::OK();
@@ -448,7 +457,7 @@ void TryRunLsof(const Sockaddr& addr, vector<string>* log) {
       << "Trying to use lsof to find any processes listening on "
       << addr.ToString();
   LOG_STRING(INFO, log) << "$ " << cmd;
-  vector<string> argv = { "bash", "-c", cmd };
+  vector<string> argv = {"bash", "-c", cmd};
   string results;
   Status s = Subprocess::Call(argv, "", &results);
   if (PREDICT_FALSE(!s.ok())) {

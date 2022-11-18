@@ -32,64 +32,76 @@
 #include "kudu/util/slice.h"
 
 /// @brief Return the given status if it is not @c OK.
-#define KUDU_RETURN_NOT_OK(s) do { \
-    const ::kudu::Status& _s = (s);             \
-    if (PREDICT_FALSE(!_s.ok())) return _s;     \
+#define KUDU_RETURN_NOT_OK(s)       \
+  do {                              \
+    const ::kudu::Status& _s = (s); \
+    if (PREDICT_FALSE(!_s.ok()))    \
+      return _s;                    \
   } while (0);
 
 /// @brief Return the given status if it is not OK, but first clone it and
 ///   prepend the given message.
-#define KUDU_RETURN_NOT_OK_PREPEND(s, msg) do { \
-    const ::kudu::Status& _s = (s);                              \
-    if (PREDICT_FALSE(!_s.ok())) return _s.CloneAndPrepend(msg); \
+#define KUDU_RETURN_NOT_OK_PREPEND(s, msg) \
+  do {                                     \
+    const ::kudu::Status& _s = (s);        \
+    if (PREDICT_FALSE(!_s.ok()))           \
+      return _s.CloneAndPrepend(msg);      \
   } while (0);
 
 /// @brief Return @c to_return if @c to_call returns a bad status.
 ///   The substitution for 'to_return' may reference the variable
 ///   @c s for the bad status.
-#define KUDU_RETURN_NOT_OK_RET(to_call, to_return) do { \
-    const ::kudu::Status& s = (to_call);                \
-    if (PREDICT_FALSE(!s.ok())) return (to_return);  \
+#define KUDU_RETURN_NOT_OK_RET(to_call, to_return) \
+  do {                                             \
+    const ::kudu::Status& s = (to_call);           \
+    if (PREDICT_FALSE(!s.ok()))                    \
+      return (to_return);                          \
   } while (0);
 
 /// @brief Return the given status if it is not OK, evaluating `on_error` if so.
-#define KUDU_RETURN_NOT_OK_EVAL(s, on_error) do { \
-    const ::kudu::Status& _s = (s); \
-    if (PREDICT_FALSE(!_s.ok())) { \
-      (on_error); \
-      return _s; \
-    } \
+#define KUDU_RETURN_NOT_OK_EVAL(s, on_error) \
+  do {                                       \
+    const ::kudu::Status& _s = (s);          \
+    if (PREDICT_FALSE(!_s.ok())) {           \
+      (on_error);                            \
+      return _s;                             \
+    }                                        \
   } while (0);
 
 /// @brief Emit a warning if @c to_call returns a bad status.
-#define KUDU_WARN_NOT_OK(to_call, warning_prefix) do { \
-    const ::kudu::Status& _s = (to_call);              \
-    if (PREDICT_FALSE(!_s.ok())) { \
-      KUDU_LOG(WARNING) << (warning_prefix) << ": " << _s.ToString();  \
-    } \
+#define KUDU_WARN_NOT_OK(to_call, warning_prefix)                     \
+  do {                                                                \
+    const ::kudu::Status& _s = (to_call);                             \
+    if (PREDICT_FALSE(!_s.ok())) {                                    \
+      KUDU_LOG(WARNING) << (warning_prefix) << ": " << _s.ToString(); \
+    }                                                                 \
   } while (0);
 
 /// @brief Log the given status and return immediately.
-#define KUDU_LOG_AND_RETURN(level, status) do { \
-    const ::kudu::Status& _s = (status);        \
-    KUDU_LOG(level) << _s.ToString(); \
-    return _s; \
+#define KUDU_LOG_AND_RETURN(level, status) \
+  do {                                     \
+    const ::kudu::Status& _s = (status);   \
+    KUDU_LOG(level) << _s.ToString();      \
+    return _s;                             \
   } while (0);
 
-/// @brief If the given status is not OK, log it and 'msg' at 'level' and return the status.
-#define KUDU_RETURN_NOT_OK_LOG(s, level, msg) do { \
-    const ::kudu::Status& _s = (s);             \
-    if (PREDICT_FALSE(!_s.ok())) { \
+/// @brief If the given status is not OK, log it and 'msg' at 'level' and return
+/// the status.
+#define KUDU_RETURN_NOT_OK_LOG(s, level, msg)                         \
+  do {                                                                \
+    const ::kudu::Status& _s = (s);                                   \
+    if (PREDICT_FALSE(!_s.ok())) {                                    \
       KUDU_LOG(level) << "Status: " << _s.ToString() << " " << (msg); \
-      return _s;     \
-    } \
+      return _s;                                                      \
+    }                                                                 \
   } while (0);
 
 /// @brief If @c to_call returns a bad status, CHECK immediately with
 ///   a logged message of @c msg followed by the status.
-#define KUDU_CHECK_OK_PREPEND(to_call, msg) do { \
-    const ::kudu::Status& _s = (to_call);                   \
-    KUDU_CHECK(_s.ok()) << (msg) << ": " << _s.ToString();  \
+#define KUDU_CHECK_OK_PREPEND(to_call, msg)                \
+  do {                                                     \
+    const ::kudu::Status& _s = (to_call);                  \
+    KUDU_CHECK(_s.ok()) << (msg) << ": " << _s.ToString(); \
   } while (0);
 
 /// @brief If the status is bad, CHECK immediately, appending the status to the
@@ -98,9 +110,10 @@
 
 /// @brief If @c to_call returns a bad status, DCHECK immediately with
 ///   a logged message of @c msg followed by the status.
-#define KUDU_DCHECK_OK_PREPEND(to_call, msg) do { \
+#define KUDU_DCHECK_OK_PREPEND(to_call, msg)                \
+  do {                                                      \
     const ::kudu::Status& _s = (to_call);                   \
-    KUDU_DCHECK(_s.ok()) << (msg) << ": " << _s.ToString();  \
+    KUDU_DCHECK(_s.ok()) << (msg) << ": " << _s.ToString(); \
   } while (0);
 
 /// @brief If the status is bad, DCHECK immediately, appending the status to the
@@ -121,22 +134,22 @@
 /// @li Namespaced versions of glog macros are mapped to the real glog macros
 ///   (otherwise the macros are defined in the C++ client stubs).
 #ifdef KUDU_HEADERS_USE_SHORT_STATUS_MACROS
-#define RETURN_NOT_OK         KUDU_RETURN_NOT_OK
+#define RETURN_NOT_OK KUDU_RETURN_NOT_OK
 #define RETURN_NOT_OK_PREPEND KUDU_RETURN_NOT_OK_PREPEND
-#define RETURN_NOT_OK_RET     KUDU_RETURN_NOT_OK_RET
-#define RETURN_NOT_OK_EVAL    KUDU_RETURN_NOT_OK_EVAL
-#define WARN_NOT_OK           KUDU_WARN_NOT_OK
-#define LOG_AND_RETURN        KUDU_LOG_AND_RETURN
-#define RETURN_NOT_OK_LOG     KUDU_RETURN_NOT_OK_LOG
-#define CHECK_OK_PREPEND      KUDU_CHECK_OK_PREPEND
-#define CHECK_OK              KUDU_CHECK_OK
-#define DCHECK_OK_PREPEND     KUDU_DCHECK_OK_PREPEND
-#define DCHECK_OK             KUDU_DCHECK_OK
+#define RETURN_NOT_OK_RET KUDU_RETURN_NOT_OK_RET
+#define RETURN_NOT_OK_EVAL KUDU_RETURN_NOT_OK_EVAL
+#define WARN_NOT_OK KUDU_WARN_NOT_OK
+#define LOG_AND_RETURN KUDU_LOG_AND_RETURN
+#define RETURN_NOT_OK_LOG KUDU_RETURN_NOT_OK_LOG
+#define CHECK_OK_PREPEND KUDU_CHECK_OK_PREPEND
+#define CHECK_OK KUDU_CHECK_OK
+#define DCHECK_OK_PREPEND KUDU_DCHECK_OK_PREPEND
+#define DCHECK_OK KUDU_DCHECK_OK
 
 // These are standard glog macros.
-#define KUDU_LOG              LOG
-#define KUDU_CHECK            CHECK
-#define KUDU_DCHECK           DCHECK
+#define KUDU_LOG LOG
+#define KUDU_CHECK CHECK
+#define KUDU_DCHECK DCHECK
 #endif
 
 namespace kudu {
@@ -145,9 +158,11 @@ namespace kudu {
 class KUDU_EXPORT Status {
  public:
   /// Create an object representing success status.
-  Status() : state_(NULL) { }
+  Status() : state_(NULL) {}
 
-  ~Status() { delete[] state_; }
+  ~Status() {
+    delete[] state_;
+  }
 
   /// Copy the specified status.
   ///
@@ -190,14 +205,15 @@ class KUDU_EXPORT Status {
   ///               ->NewSequentialFile("/tmp/example.txt", &file)
   ///               .AndThen([&] {
   ///                 return file->Write(0, "some data")
-  ///                             .CloneAndPrepend("failed to write to example file");
+  ///                             .CloneAndPrepend("failed to write to example
+  ///                             file");
   ///               });
   /// @endcode
   ///
   /// @param [in] op
   ///   Status-returning closure or function to run.
   /// @return 'this', if this is not OK, or the result of running op.
-  template<typename F>
+  template <typename F>
   Status AndThen(F op) {
     if (ok()) {
       return op();
@@ -207,8 +223,9 @@ class KUDU_EXPORT Status {
 #endif
 
   /// @return A success status.
-  static Status OK() { return Status(); }
-
+  static Status OK() {
+    return Status();
+  }
 
   /// @name Methods to build status objects for various types of errors.
   ///
@@ -221,136 +238,210 @@ class KUDU_EXPORT Status {
   /// @return The error status of an appropriate type.
   ///
   ///@{
-  static Status NotFound(const Slice& msg, const Slice& msg2 = Slice(),
-                         int16_t posix_code = -1) {
+  static Status NotFound(
+      const Slice& msg,
+      const Slice& msg2 = Slice(),
+      int16_t posix_code = -1) {
     return Status(kNotFound, msg, msg2, posix_code);
   }
-  static Status Corruption(const Slice& msg, const Slice& msg2 = Slice(),
-                         int16_t posix_code = -1) {
+  static Status Corruption(
+      const Slice& msg,
+      const Slice& msg2 = Slice(),
+      int16_t posix_code = -1) {
     return Status(kCorruption, msg, msg2, posix_code);
   }
-  static Status NotSupported(const Slice& msg, const Slice& msg2 = Slice(),
-                         int16_t posix_code = -1) {
+  static Status NotSupported(
+      const Slice& msg,
+      const Slice& msg2 = Slice(),
+      int16_t posix_code = -1) {
     return Status(kNotSupported, msg, msg2, posix_code);
   }
-  static Status InvalidArgument(const Slice& msg, const Slice& msg2 = Slice(),
-                         int16_t posix_code = -1) {
+  static Status InvalidArgument(
+      const Slice& msg,
+      const Slice& msg2 = Slice(),
+      int16_t posix_code = -1) {
     return Status(kInvalidArgument, msg, msg2, posix_code);
   }
-  static Status IOError(const Slice& msg, const Slice& msg2 = Slice(),
-                         int16_t posix_code = -1) {
+  static Status IOError(
+      const Slice& msg,
+      const Slice& msg2 = Slice(),
+      int16_t posix_code = -1) {
     return Status(kIOError, msg, msg2, posix_code);
   }
-  static Status AlreadyPresent(const Slice& msg, const Slice& msg2 = Slice(),
-                         int16_t posix_code = -1) {
+  static Status AlreadyPresent(
+      const Slice& msg,
+      const Slice& msg2 = Slice(),
+      int16_t posix_code = -1) {
     return Status(kAlreadyPresent, msg, msg2, posix_code);
   }
-  static Status RuntimeError(const Slice& msg, const Slice& msg2 = Slice(),
-                         int16_t posix_code = -1) {
+  static Status RuntimeError(
+      const Slice& msg,
+      const Slice& msg2 = Slice(),
+      int16_t posix_code = -1) {
     return Status(kRuntimeError, msg, msg2, posix_code);
   }
-  static Status NetworkError(const Slice& msg, const Slice& msg2 = Slice(),
-                         int16_t posix_code = -1) {
+  static Status NetworkError(
+      const Slice& msg,
+      const Slice& msg2 = Slice(),
+      int16_t posix_code = -1) {
     return Status(kNetworkError, msg, msg2, posix_code);
   }
-  static Status IllegalState(const Slice& msg, const Slice& msg2 = Slice(),
-                         int16_t posix_code = -1) {
+  static Status IllegalState(
+      const Slice& msg,
+      const Slice& msg2 = Slice(),
+      int16_t posix_code = -1) {
     return Status(kIllegalState, msg, msg2, posix_code);
   }
-  static Status NotAuthorized(const Slice& msg, const Slice& msg2 = Slice(),
-                         int16_t posix_code = -1) {
+  static Status NotAuthorized(
+      const Slice& msg,
+      const Slice& msg2 = Slice(),
+      int16_t posix_code = -1) {
     return Status(kNotAuthorized, msg, msg2, posix_code);
   }
-  static Status Aborted(const Slice& msg, const Slice& msg2 = Slice(),
-                         int16_t posix_code = -1) {
+  static Status Aborted(
+      const Slice& msg,
+      const Slice& msg2 = Slice(),
+      int16_t posix_code = -1) {
     return Status(kAborted, msg, msg2, posix_code);
   }
-  static Status RemoteError(const Slice& msg, const Slice& msg2 = Slice(),
-                         int16_t posix_code = -1) {
+  static Status RemoteError(
+      const Slice& msg,
+      const Slice& msg2 = Slice(),
+      int16_t posix_code = -1) {
     return Status(kRemoteError, msg, msg2, posix_code);
   }
-  static Status ServiceUnavailable(const Slice& msg, const Slice& msg2 = Slice(),
-                         int16_t posix_code = -1) {
+  static Status ServiceUnavailable(
+      const Slice& msg,
+      const Slice& msg2 = Slice(),
+      int16_t posix_code = -1) {
     return Status(kServiceUnavailable, msg, msg2, posix_code);
   }
-  static Status TimedOut(const Slice& msg, const Slice& msg2 = Slice(),
-                         int16_t posix_code = -1) {
+  static Status TimedOut(
+      const Slice& msg,
+      const Slice& msg2 = Slice(),
+      int16_t posix_code = -1) {
     return Status(kTimedOut, msg, msg2, posix_code);
   }
-  static Status Uninitialized(const Slice& msg, const Slice& msg2 = Slice(),
-                              int16_t posix_code = -1) {
+  static Status Uninitialized(
+      const Slice& msg,
+      const Slice& msg2 = Slice(),
+      int16_t posix_code = -1) {
     return Status(kUninitialized, msg, msg2, posix_code);
   }
-  static Status ConfigurationError(const Slice& msg, const Slice& msg2 = Slice(),
-                                   int16_t posix_code = -1) {
+  static Status ConfigurationError(
+      const Slice& msg,
+      const Slice& msg2 = Slice(),
+      int16_t posix_code = -1) {
     return Status(kConfigurationError, msg, msg2, posix_code);
   }
-  static Status Incomplete(const Slice& msg, const Slice& msg2 = Slice(),
-                           int64_t posix_code = -1) {
+  static Status Incomplete(
+      const Slice& msg,
+      const Slice& msg2 = Slice(),
+      int64_t posix_code = -1) {
     return Status(kIncomplete, msg, msg2, posix_code);
   }
-  static Status EndOfFile(const Slice& msg, const Slice& msg2 = Slice(),
-                          int64_t posix_code = -1) {
+  static Status EndOfFile(
+      const Slice& msg,
+      const Slice& msg2 = Slice(),
+      int64_t posix_code = -1) {
     return Status(kEndOfFile, msg, msg2, posix_code);
   }
   ///@}
 
   /// @return @c true iff the status indicates success.
-  bool ok() const { return (state_ == NULL); }
+  bool ok() const {
+    return (state_ == NULL);
+  }
 
   /// @return @c true iff the status indicates a NotFound error.
-  bool IsNotFound() const { return code() == kNotFound; }
+  bool IsNotFound() const {
+    return code() == kNotFound;
+  }
 
   /// @return @c true iff the status indicates a Corruption error.
-  bool IsCorruption() const { return code() == kCorruption; }
+  bool IsCorruption() const {
+    return code() == kCorruption;
+  }
 
   /// @return @c true iff the status indicates a NotSupported error.
-  bool IsNotSupported() const { return code() == kNotSupported; }
+  bool IsNotSupported() const {
+    return code() == kNotSupported;
+  }
 
   /// @return @c true iff the status indicates an IOError.
-  bool IsIOError() const { return code() == kIOError; }
+  bool IsIOError() const {
+    return code() == kIOError;
+  }
 
   /// @return @c true iff the status indicates an InvalidArgument error.
-  bool IsInvalidArgument() const { return code() == kInvalidArgument; }
+  bool IsInvalidArgument() const {
+    return code() == kInvalidArgument;
+  }
 
   /// @return @c true iff the status indicates an AlreadyPresent error.
-  bool IsAlreadyPresent() const { return code() == kAlreadyPresent; }
+  bool IsAlreadyPresent() const {
+    return code() == kAlreadyPresent;
+  }
 
   /// @return @c true iff the status indicates a RuntimeError.
-  bool IsRuntimeError() const { return code() == kRuntimeError; }
+  bool IsRuntimeError() const {
+    return code() == kRuntimeError;
+  }
 
   /// @return @c true iff the status indicates a NetworkError.
-  bool IsNetworkError() const { return code() == kNetworkError; }
+  bool IsNetworkError() const {
+    return code() == kNetworkError;
+  }
 
   /// @return @c true iff the status indicates an IllegalState error.
-  bool IsIllegalState() const { return code() == kIllegalState; }
+  bool IsIllegalState() const {
+    return code() == kIllegalState;
+  }
 
   /// @return @c true iff the status indicates a NotAuthorized error.
-  bool IsNotAuthorized() const { return code() == kNotAuthorized; }
+  bool IsNotAuthorized() const {
+    return code() == kNotAuthorized;
+  }
 
   /// @return @c true iff the status indicates an Aborted error.
-  bool IsAborted() const { return code() == kAborted; }
+  bool IsAborted() const {
+    return code() == kAborted;
+  }
 
   /// @return @c true iff the status indicates a RemoteError.
-  bool IsRemoteError() const { return code() == kRemoteError; }
+  bool IsRemoteError() const {
+    return code() == kRemoteError;
+  }
 
   /// @return @c true iff the status indicates ServiceUnavailable.
-  bool IsServiceUnavailable() const { return code() == kServiceUnavailable; }
+  bool IsServiceUnavailable() const {
+    return code() == kServiceUnavailable;
+  }
 
   /// @return @c true iff the status indicates TimedOut.
-  bool IsTimedOut() const { return code() == kTimedOut; }
+  bool IsTimedOut() const {
+    return code() == kTimedOut;
+  }
 
   /// @return @c true iff the status indicates Uninitialized.
-  bool IsUninitialized() const { return code() == kUninitialized; }
+  bool IsUninitialized() const {
+    return code() == kUninitialized;
+  }
 
   /// @return @c true iff the status indicates ConfigurationError.
-  bool IsConfigurationError() const { return code() == kConfigurationError; }
+  bool IsConfigurationError() const {
+    return code() == kConfigurationError;
+  }
 
   /// @return @c true iff the status indicates Incomplete.
-  bool IsIncomplete() const { return code() == kIncomplete; }
+  bool IsIncomplete() const {
+    return code() == kIncomplete;
+  }
 
   /// @return @c true iff the status indicates end of file.
-  bool IsEndOfFile() const { return code() == kEndOfFile; }
+  bool IsEndOfFile() const {
+    return code() == kEndOfFile;
+  }
 
   /// @return @c true iff the status indicates a disk failure.
   bool IsDiskFailure() const {
@@ -488,6 +579,6 @@ inline Status& Status::operator=(Status&& s) noexcept {
 }
 #endif
 
-}  // namespace kudu
+} // namespace kudu
 
-#endif  // KUDU_UTIL_STATUS_H_
+#endif // KUDU_UTIL_STATUS_H_

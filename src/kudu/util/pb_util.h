@@ -31,8 +31,8 @@
 #include <gtest/gtest_prod.h>
 
 #include "kudu/gutil/ref_counted.h"
-#include "kudu/util/mutex.h"
 #include "kudu/util/debug/trace_event_impl.h"
+#include "kudu/util/mutex.h"
 
 namespace google {
 namespace protobuf {
@@ -56,49 +56,56 @@ class faststring;
 
 namespace pb_util {
 
-enum SyncMode {
-  SYNC,
-  NO_SYNC
-};
+enum SyncMode { SYNC, NO_SYNC };
 
-enum CreateMode {
-  OVERWRITE,
-  NO_OVERWRITE
-};
+enum CreateMode { OVERWRITE, NO_OVERWRITE };
 
-enum class FileState {
-  NOT_INITIALIZED,
-  OPEN,
-  CLOSED
-};
+enum class FileState { NOT_INITIALIZED, OPEN, CLOSED };
 
 // The minimum valid length of a PBC file.
 extern const int kPBContainerMinimumValidLength;
 
 // See MessageLite::AppendToString
-void AppendToString(const google::protobuf::MessageLite &msg, faststring *output);
+void AppendToString(
+    const google::protobuf::MessageLite& msg,
+    faststring* output);
 
 // See MessageLite::AppendPartialToString
-void AppendPartialToString(const google::protobuf::MessageLite &msg, faststring *output);
+void AppendPartialToString(
+    const google::protobuf::MessageLite& msg,
+    faststring* output);
 
 // See MessageLite::SerializeToString.
-void SerializeToString(const google::protobuf::MessageLite &msg, faststring *output);
+void SerializeToString(
+    const google::protobuf::MessageLite& msg,
+    faststring* output);
 
 // See MessageLite::ParseFromZeroCopyStream
-Status ParseFromSequentialFile(google::protobuf::MessageLite *msg, SequentialFile *rfile);
+Status ParseFromSequentialFile(
+    google::protobuf::MessageLite* msg,
+    SequentialFile* rfile);
 
 // Similar to MessageLite::ParseFromArray, with the difference that it returns
 // Status::Corruption() if the message could not be parsed.
-Status ParseFromArray(google::protobuf::MessageLite* msg, const uint8_t* data, uint32_t length);
+Status ParseFromArray(
+    google::protobuf::MessageLite* msg,
+    const uint8_t* data,
+    uint32_t length);
 
 // Load a protobuf from the given path.
-Status ReadPBFromPath(Env* env, const std::string& path, google::protobuf::MessageLite* msg);
+Status ReadPBFromPath(
+    Env* env,
+    const std::string& path,
+    google::protobuf::MessageLite* msg);
 
 // Serialize a protobuf to the given path.
 //
 // If SyncMode SYNC is provided, ensures the changes are made durable.
-Status WritePBToPath(Env* env, const std::string& path,
-                     const google::protobuf::MessageLite& msg, SyncMode sync);
+Status WritePBToPath(
+    Env* env,
+    const std::string& path,
+    const google::protobuf::MessageLite& msg,
+    SyncMode sync);
 
 // Truncate any 'bytes' or 'string' fields of this message to max_len.
 // The text "<truncated>" is appended to any such truncated fields.
@@ -106,14 +113,15 @@ void TruncateFields(google::protobuf::Message* message, int max_len);
 
 // Redaction-sensitive variant of Message::DebugString.
 //
-// For most protobufs, this has identical output to Message::DebugString. However,
-// a field with string or binary type may be tagged with the 'kudu.REDACT' option,
-// available by importing 'pb_util.proto'. When such a field is encountered by this
-// method, its contents will be redacted using the 'KUDU_REDACT' macro as documented
-// in kudu/util/logging.h.
+// For most protobufs, this has identical output to Message::DebugString.
+// However, a field with string or binary type may be tagged with the
+// 'kudu.REDACT' option, available by importing 'pb_util.proto'. When such a
+// field is encountered by this method, its contents will be redacted using the
+// 'KUDU_REDACT' macro as documented in kudu/util/logging.h.
 std::string SecureDebugString(const google::protobuf::Message& msg);
 
-// Same as SecureDebugString() above, but equivalent to Message::ShortDebugString.
+// Same as SecureDebugString() above, but equivalent to
+// Message::ShortDebugString.
 std::string SecureShortDebugString(const google::protobuf::Message& msg);
 
 // A protobuf "container" has the following format (all integers in
@@ -163,7 +171,8 @@ std::string SecureShortDebugString(const google::protobuf::Message& msg);
 //    writing a stream of messages to the same file requires
 //    delimiting each with its size.
 //
-//    See https://developers.google.com/protocol-buffers/docs/techniques?hl=zh-cn#streaming
+//    See
+//    https://developers.google.com/protocol-buffers/docs/techniques?hl=zh-cn#streaming
 //    for more details.
 //
 // length checksum (version 2+ only): 4-byte unsigned integer containing the
@@ -176,7 +185,8 @@ std::string SecureShortDebugString(const google::protobuf::Message& msg);
 //
 //    Our payload.
 //
-// data checksum: 4 byte unsigned integer containing the CRC32C checksum of "data".
+// data checksum: 4 byte unsigned integer containing the CRC32C checksum of
+// "data".
 //
 //    Included to ensure validity of the data on-disk.
 //    Note: In version 1 of the file format, this is a checksum of both the
@@ -267,7 +277,6 @@ std::string SecureShortDebugString(const google::protobuf::Message& msg);
 // Every function is thread-safe unless indicated otherwise.
 class WritablePBContainerFile {
  public:
-
   // Initializes the class instance; writer must be open.
   explicit WritablePBContainerFile(std::shared_ptr<RWFile> writer);
 
@@ -336,12 +345,15 @@ class WritablePBContainerFile {
   //
   // Schemas are written in dependency order (i.e. if A depends on B which
   // depends on C, the order is C, B, A).
-  static void PopulateDescriptorSet(const google::protobuf::FileDescriptor* desc,
-                                    google::protobuf::FileDescriptorSet* output);
+  static void PopulateDescriptorSet(
+      const google::protobuf::FileDescriptor* desc,
+      google::protobuf::FileDescriptorSet* output);
 
   // Serialize the contents of 'msg' into 'buf' along with additional metadata
   // to aid in deserialization.
-  Status AppendMsgToBuffer(const google::protobuf::Message& msg, faststring* buf);
+  Status AppendMsgToBuffer(
+      const google::protobuf::Message& msg,
+      faststring* buf);
 
   // Append bytes to the file.
   Status AppendBytes(const Slice& data);
@@ -368,7 +380,6 @@ class WritablePBContainerFile {
 // which case it's safe to interleave with WritablePBContainerFile).
 class ReadablePBContainerFile {
  public:
-
   // Initializes the class instance; reader must be open.
   explicit ReadablePBContainerFile(std::shared_ptr<RandomAccessFile> reader);
 
@@ -417,13 +428,16 @@ class ReadablePBContainerFile {
   // Expected PB type and schema for each message to be read.
   //
   // Only valid after a successful call to Open().
-  const std::string& pb_type() const { return pb_type_; }
+  const std::string& pb_type() const {
+    return pb_type_;
+  }
   const google::protobuf::FileDescriptorSet* protos() const {
     return protos_.get();
   }
 
   // Get the prototype instance for the type of messages stored in this
-  // file. The returned Message is owned by this ReadablePBContainerFile instance.
+  // file. The returned Message is owned by this ReadablePBContainerFile
+  // instance.
   Status GetPrototype(const google::protobuf::Message** prototype);
 
   // Return the protobuf container file format version.
@@ -463,17 +477,21 @@ class ReadablePBContainerFile {
 // Load a "containerized" protobuf from the given path.
 // If the file does not exist, returns Status::NotFound(). Otherwise, may
 // return other Status error codes such as Status::IOError.
-Status ReadPBContainerFromPath(Env* env, const std::string& path,
-                               google::protobuf::Message* msg);
+Status ReadPBContainerFromPath(
+    Env* env,
+    const std::string& path,
+    google::protobuf::Message* msg);
 
 // Serialize a "containerized" protobuf to the given path.
 //
 // If create == NO_OVERWRITE and 'path' already exists, the function will fail.
 // If sync == SYNC, the newly created file will be fsynced before returning.
-Status WritePBContainerToPath(Env* env, const std::string& path,
-                              const google::protobuf::Message& msg,
-                              CreateMode create,
-                              SyncMode sync);
+Status WritePBContainerToPath(
+    Env* env,
+    const std::string& path,
+    const google::protobuf::Message& msg,
+    CreateMode create,
+    SyncMode sync);
 
 // Wrapper for a protobuf message which lazily converts to JSON when
 // the trace buffer is dumped.
@@ -484,14 +502,13 @@ Status WritePBContainerToPath(Env* env, const std::string& path,
 //
 // Example usage:
 //  TRACE_EVENT_ASYNC_END2("rpc_call", "RPC", this,
-//                         "response", pb_util::PbTracer::TracePb(*response_pb_),
+//                         "response",
+//                         pb_util::PbTracer::TracePb(*response_pb_),
 //                         ...);
 //
 class PbTracer : public debug::ConvertableToTraceFormat {
  public:
-  enum {
-    kMaxFieldLengthToTrace = 100
-  };
+  enum { kMaxFieldLengthToTrace = 100 };
 
   // Static helper to be called when adding a stringified PB to a trace.
   // This does not actually stringify 'msg', that will be done later
@@ -503,6 +520,7 @@ class PbTracer : public debug::ConvertableToTraceFormat {
 
   // Actually stringifies the PB and appends the string to 'out'.
   void AppendAsTraceFormat(std::string* out) const override;
+
  private:
   const std::unique_ptr<google::protobuf::Message> msg_;
 };

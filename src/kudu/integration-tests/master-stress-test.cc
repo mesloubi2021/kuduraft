@@ -60,16 +60,26 @@
 #include "kudu/util/test_util.h"
 
 DECLARE_int64(timeout_ms);
-DEFINE_int32(num_create_table_threads, 4,
-            "Number of threads that should create tables");
-DEFINE_int32(num_alter_table_threads, 2,
-            "Number of threads that should alter tables");
-DEFINE_int32(num_delete_table_threads, 2,
-            "Number of threads that should delete tables");
-DEFINE_int32(num_replace_tablet_threads, 2,
-            "Number of threads that should replace tablets");
-DEFINE_int32(num_seconds_to_run, 10,
-             "Number of seconds that the test should run");
+DEFINE_int32(
+    num_create_table_threads,
+    4,
+    "Number of threads that should create tables");
+DEFINE_int32(
+    num_alter_table_threads,
+    2,
+    "Number of threads that should alter tables");
+DEFINE_int32(
+    num_delete_table_threads,
+    2,
+    "Number of threads that should delete tables");
+DEFINE_int32(
+    num_replace_tablet_threads,
+    2,
+    "Number of threads that should replace tablets");
+DEFINE_int32(
+    num_seconds_to_run,
+    10,
+    "Number of seconds that the test should run");
 
 using kudu::client::KuduClient;
 using kudu::client::KuduClientBuilder;
@@ -84,9 +94,9 @@ using kudu::cluster::ExternalMiniClusterOptions;
 using kudu::itest::ListTablets;
 using kudu::master::ListTablesRequestPB;
 using kudu::master::ListTablesResponsePB;
+using kudu::master::MasterServiceProxy;
 using kudu::master::ReplaceTabletRequestPB;
 using kudu::master::ReplaceTabletResponsePB;
-using kudu::master::MasterServiceProxy;
 using kudu::rpc::Messenger;
 using kudu::rpc::MessengerBuilder;
 using kudu::rpc::RpcController;
@@ -107,15 +117,14 @@ class MasterStressTest : public KuduTest,
                          public ::testing::WithParamInterface<HmsMode> {
  public:
   MasterStressTest()
-    : done_(1),
-      num_tables_created_(0),
-      num_tables_altered_(0),
-      num_tables_deleted_(0),
-      num_tablets_replaced_(0),
-      num_masters_restarted_(0),
-      table_names_condvar_(&table_names_lock_),
-      rand_(SeedRandom()) {
-  }
+      : done_(1),
+        num_tables_created_(0),
+        num_tables_altered_(0),
+        num_tables_deleted_(0),
+        num_tablets_replaced_(0),
+        num_masters_restarted_(0),
+        table_names_condvar_(&table_names_lock_),
+        rand_(SeedRandom()) {}
 
   ~MasterStressTest() {
     STLDeleteValues(&ts_map_);
@@ -135,11 +144,14 @@ class MasterStressTest : public KuduTest,
     opts.rpc_negotiation_timeout = MonoDelta::FromSeconds(30);
 
     opts.hms_mode = GetParam();
-    // Tune down the notification log poll period in order to speed up catalog convergence.
-    opts.extra_master_flags.emplace_back("--hive_metastore_notification_log_poll_period_seconds=1");
+    // Tune down the notification log poll period in order to speed up catalog
+    // convergence.
+    opts.extra_master_flags.emplace_back(
+        "--hive_metastore_notification_log_poll_period_seconds=1");
 
     // Set max missed heartbeats periods to 1.0 (down from 3.0).
-    opts.extra_master_flags.emplace_back("--leader_failure_max_missed_heartbeat_periods=1.0");
+    opts.extra_master_flags.emplace_back(
+        "--leader_failure_max_missed_heartbeat_periods=1.0");
 
     // Don't preallocate log segments, since we're creating many tablets here.
     // If each preallocates 64M or so, we use a ton of disk space in this
@@ -162,8 +174,10 @@ class MasterStressTest : public KuduTest,
     // Set the TS->master heartbeat timeout to 1 second (down from 15 seconds).
     opts.extra_tserver_flags.emplace_back("--heartbeat_rpc_timeout_ms=1000");
 
-    // Allow one TS heartbeat failure before retrying with back-off (down from 3).
-    opts.extra_tserver_flags.emplace_back("--heartbeat_max_failures_before_backoff=1");
+    // Allow one TS heartbeat failure before retrying with back-off (down from
+    // 3).
+    opts.extra_tserver_flags.emplace_back(
+        "--heartbeat_max_failures_before_backoff=1");
 
     // Set custom TS->master heartbeat interval. This is to allow for faster
     // registration of tablet servers with recently restarted masters.
@@ -211,17 +225,20 @@ class MasterStressTest : public KuduTest,
       // Create a basic table with a random name.
       KuduSchema schema;
       KuduSchemaBuilder b;
-      b.AddColumn("key")->Type(KuduColumnSchema::INT32)->NotNull()->PrimaryKey();
+      b.AddColumn("key")
+          ->Type(KuduColumnSchema::INT32)
+          ->NotNull()
+          ->PrimaryKey();
       CHECK_OK(b.Build(&schema));
 
       string to_create = GenerateTableName();
       unique_ptr<KuduTableCreator> table_creator(client_->NewTableCreator());
       Status s = table_creator->table_name(to_create)
-          .schema(&schema)
-          .set_range_partition_columns({ "key" })
-          .wait(false)
-          .timeout(kDefaultAdminTimeout)
-          .Create();
+                     .schema(&schema)
+                     .set_range_partition_columns({"key"})
+                     .wait(false)
+                     .timeout(kDefaultAdminTimeout)
+                     .Create();
       if (s.IsAlreadyPresent()) {
         // The client retried after the RPC timed out, but the master did in
         // fact create the table.
@@ -252,7 +269,6 @@ class MasterStressTest : public KuduTest,
 
       done_.WaitFor(MonoDelta::FromMilliseconds(200));
     }
-
   }
 
   void AlterTableThread() {
@@ -265,11 +281,10 @@ class MasterStressTest : public KuduTest,
       string new_table_name = GenerateTableName();
       unique_ptr<KuduTableAlterer> table_alterer(
           client_->NewTableAlterer(to_alter));
-      Status s = table_alterer
-        ->RenameTo(new_table_name)
-        ->wait(false)
-        ->timeout(kDefaultAdminTimeout)
-        ->Alter();
+      Status s = table_alterer->RenameTo(new_table_name)
+                     ->wait(false)
+                     ->timeout(kDefaultAdminTimeout)
+                     ->Alter();
       if (s.IsNotFound()) {
         // The client retried after the RPC timed out, but the master did in
         // fact rename the table, or is actively renaming it.
@@ -310,8 +325,8 @@ class MasterStressTest : public KuduTest,
   void ReplaceTabletThread() {
     LeaderMasterProxy lm_proxy(client_);
 
-    // Since there are three tablet servers and 3 replicas per tablet, it doesn't
-    // matter which tablet server we list tablets from.
+    // Since there are three tablet servers and 3 replicas per tablet, it
+    // doesn't matter which tablet server we list tablets from.
     auto* ts = ts_map_.begin()->second;
     vector<tserver::ListTabletsResponsePB_StatusAndSchemaPB> tablet_ids;
     while (done_.count()) {
@@ -338,7 +353,8 @@ class MasterStressTest : public KuduTest,
       req.set_tablet_id(tablet_id);
       s = lm_proxy.SyncRpc<ReplaceTabletRequestPB, ReplaceTabletResponsePB>(
           req, &resp, "ReplaceTablet", &MasterServiceProxy::ReplaceTablet);
-      // NotFound is OK because it means the tablet was already replaced or deleted.
+      // NotFound is OK because it means the tablet was already replaced or
+      // deleted.
       if (!s.IsNotFound()) {
         CHECK_OK(s);
         num_tablets_replaced_.Increment();
@@ -347,10 +363,12 @@ class MasterStressTest : public KuduTest,
     }
   }
 
-  Status WaitForMasterUpAndRunning(const shared_ptr<Messenger>& messenger,
-                                   ExternalMaster* master) {
+  Status WaitForMasterUpAndRunning(
+      const shared_ptr<Messenger>& messenger,
+      ExternalMaster* master) {
     const auto& addr = master->bound_rpc_addr();
-    unique_ptr<MasterServiceProxy> proxy(new MasterServiceProxy(messenger, addr, addr.host()));
+    unique_ptr<MasterServiceProxy> proxy(
+        new MasterServiceProxy(messenger, addr, addr.host()));
     while (true) {
       ListTablesRequestPB req;
       ListTablesResponsePB resp;
@@ -392,8 +410,8 @@ class MasterStressTest : public KuduTest,
 
     MonoTime now(MonoTime::Now());
     while (now < deadline) {
-      ExternalMaster* master = cluster_->master(
-          rand_.Uniform(cluster_->num_masters()));
+      ExternalMaster* master =
+          cluster_->master(rand_.Uniform(cluster_->num_masters()));
       master->Shutdown();
 
       // Give the rest of the test a chance to operate with the master down.
@@ -484,8 +502,10 @@ class MasterStressTest : public KuduTest,
 };
 
 // Run the test with the HMS integration enabled and disabled.
-INSTANTIATE_TEST_CASE_P(HmsConfigurations, MasterStressTest,
-                        ::testing::Values(HmsMode::NONE, HmsMode::ENABLE_METASTORE_INTEGRATION));
+INSTANTIATE_TEST_CASE_P(
+    HmsConfigurations,
+    MasterStressTest,
+    ::testing::Values(HmsMode::NONE, HmsMode::ENABLE_METASTORE_INTEGRATION));
 
 TEST_P(MasterStressTest, Test) {
   OverrideFlagForSlowTests("num_create_table_threads", "10");

@@ -25,8 +25,8 @@
 #include <gtest/gtest.h>
 
 #include "kudu/gutil/gscoped_ptr.h"
-#include "kudu/util/countdown_latch.h"
 #include "kudu/util/blocking_queue.h"
+#include "kudu/util/countdown_latch.h"
 #include "kudu/util/monotime.h"
 #include "kudu/util/mutex.h"
 #include "kudu/util/status.h"
@@ -64,18 +64,21 @@ TEST(BlockingQueueTest, TestBlockingDrainTo) {
   ASSERT_EQ(test_queue.Put(2), QUEUE_SUCCESS);
   ASSERT_EQ(test_queue.Put(3), QUEUE_SUCCESS);
   vector<int32_t> out;
-  ASSERT_OK(test_queue.BlockingDrainTo(&out, MonoTime::Now() + MonoDelta::FromSeconds(30)));
+  ASSERT_OK(test_queue.BlockingDrainTo(
+      &out, MonoTime::Now() + MonoDelta::FromSeconds(30)));
   ASSERT_EQ(1, out[0]);
   ASSERT_EQ(2, out[1]);
   ASSERT_EQ(3, out[2]);
 
   // Set a deadline in the past and ensure we time out.
-  Status s = test_queue.BlockingDrainTo(&out, MonoTime::Now() - MonoDelta::FromSeconds(1));
+  Status s = test_queue.BlockingDrainTo(
+      &out, MonoTime::Now() - MonoDelta::FromSeconds(1));
   ASSERT_TRUE(s.IsTimedOut());
 
   // Ensure that if the queue is shut down, we get Aborted status.
   test_queue.Shutdown();
-  s = test_queue.BlockingDrainTo(&out, MonoTime::Now() - MonoDelta::FromSeconds(1));
+  s = test_queue.BlockingDrainTo(
+      &out, MonoTime::Now() - MonoDelta::FromSeconds(1));
   ASSERT_TRUE(s.IsAborted());
 }
 
@@ -138,13 +141,15 @@ TEST(BlockingQueueTest, TestNonPointerParamsMayBeNonEmptyOnDestruct) {
 #ifndef NDEBUG
 TEST(BlockingQueueDeathTest, TestPointerParamsMustBeEmptyOnDestruct) {
   ::testing::FLAGS_gtest_death_test_style = "threadsafe";
-  ASSERT_DEATH({
-      BlockingQueue<int32_t*> test_queue(1);
-      int32_t element = 123;
-      ASSERT_EQ(test_queue.Put(&element), QUEUE_SUCCESS);
-      // Debug assertion triggered on queue destruction since type is a pointer.
-    },
-    "BlockingQueue holds bare pointers");
+  ASSERT_DEATH(
+      {
+        BlockingQueue<int32_t*> test_queue(1);
+        int32_t element = 123;
+        ASSERT_EQ(test_queue.Put(&element), QUEUE_SUCCESS);
+        // Debug assertion triggered on queue destruction since type is a
+        // pointer.
+      },
+      "BlockingQueue holds bare pointers");
 }
 #endif // NDEBUG
 
@@ -172,13 +177,12 @@ TEST(BlockingQueueTest, TestGscopedPtrMethods) {
 class MultiThreadTest {
  public:
   MultiThreadTest()
-   :  puts_(4),
-      blocking_puts_(4),
-      nthreads_(5),
-      queue_(nthreads_ * puts_),
-      num_inserters_(nthreads_),
-      sync_latch_(nthreads_) {
-  }
+      : puts_(4),
+        blocking_puts_(4),
+        nthreads_(5),
+        queue_(nthreads_ * puts_),
+        num_inserters_(nthreads_),
+        sync_latch_(nthreads_) {}
 
   void InserterThread(int arg) {
     for (int i = 0; i < puts_; i++) {
@@ -246,4 +250,4 @@ TEST(BlockingQueueTest, TestMultipleThreads) {
   test.Run();
 }
 
-}  // namespace kudu
+} // namespace kudu

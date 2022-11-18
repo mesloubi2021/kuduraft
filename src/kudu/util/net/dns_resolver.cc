@@ -25,11 +25,14 @@
 
 #include "kudu/gutil/callback.h"
 #include "kudu/util/flag_tags.h"
-#include "kudu/util/threadpool.h"
 #include "kudu/util/net/net_util.h"
 #include "kudu/util/status.h"
+#include "kudu/util/threadpool.h"
 
-DEFINE_int32(dns_num_resolver_threads, 1, "The number of threads to use for DNS resolution");
+DEFINE_int32(
+    dns_num_resolver_threads,
+    1,
+    "The number of threads to use for DNS resolution");
 TAG_FLAG(dns_num_resolver_threads, advanced);
 
 using std::vector;
@@ -38,8 +41,8 @@ namespace kudu {
 
 DnsResolver::DnsResolver() {
   CHECK_OK(ThreadPoolBuilder("dns-resolver")
-           .set_max_threads(FLAGS_dns_num_resolver_threads)
-           .Build(&pool_));
+               .set_max_threads(FLAGS_dns_num_resolver_threads)
+               .Build(&pool_));
 }
 
 DnsResolver::~DnsResolver() {
@@ -47,16 +50,20 @@ DnsResolver::~DnsResolver() {
 }
 
 namespace {
-void DoResolution(const HostPort &hostport, vector<Sockaddr>* addresses,
-                  const StatusCallback& cb) {
+void DoResolution(
+    const HostPort& hostport,
+    vector<Sockaddr>* addresses,
+    const StatusCallback& cb) {
   cb.Run(hostport.ResolveAddresses(addresses));
 }
 } // anonymous namespace
 
-void DnsResolver::ResolveAddresses(const HostPort& hostport,
-                                   vector<Sockaddr>* addresses,
-                                   const StatusCallback& cb) {
-  Status s = pool_->SubmitFunc(boost::bind(&DoResolution, hostport, addresses, cb));
+void DnsResolver::ResolveAddresses(
+    const HostPort& hostport,
+    vector<Sockaddr>* addresses,
+    const StatusCallback& cb) {
+  Status s =
+      pool_->SubmitFunc(boost::bind(&DoResolution, hostport, addresses, cb));
   if (!s.ok()) {
     cb.Run(s);
   }

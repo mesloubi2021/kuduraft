@@ -55,8 +55,8 @@
 #include "kudu/gutil/strings/escaping.h"
 #include "kudu/gutil/strings/fastmem.h"
 #include "kudu/gutil/strings/substitute.h"
-#include "kudu/util/coding.h"
 #include "kudu/util/coding-inl.h"
+#include "kudu/util/coding.h"
 #include "kudu/util/crc.h"
 #include "kudu/util/debug/sanitizer_scopes.h"
 #include "kudu/util/debug/trace_event.h"
@@ -79,13 +79,13 @@ using google::protobuf::FieldDescriptor;
 using google::protobuf::FileDescriptor;
 using google::protobuf::FileDescriptorProto;
 using google::protobuf::FileDescriptorSet;
-using google::protobuf::io::ArrayInputStream;
-using google::protobuf::io::CodedInputStream;
 using google::protobuf::Message;
 using google::protobuf::MessageLite;
 using google::protobuf::Reflection;
 using google::protobuf::SimpleDescriptorDatabase;
 using google::protobuf::TextFormat;
+using google::protobuf::io::ArrayInputStream;
+using google::protobuf::io::CodedInputStream;
 using kudu::crc::Crc;
 using kudu::pb_util::internal::SequentialFileFileInputStream;
 using kudu::pb_util::internal::WritableFileOutputStream;
@@ -104,7 +104,9 @@ using strings::Utf8SafeCEscape;
 namespace std {
 
 // Allow the use of FileState with DCHECK_EQ.
-std::ostream& operator<< (std::ostream& os, const kudu::pb_util::FileState& state) {
+std::ostream& operator<<(
+    std::ostream& os,
+    const kudu::pb_util::FileState& state) {
   os << static_cast<int>(state);
   return os;
 }
@@ -124,13 +126,14 @@ static const char kPBContainerMagic[] = "kuducntr";
 static const int kPBContainerMagicLen = 8;
 static const int kPBContainerV1HeaderLen =
     kPBContainerMagicLen + sizeof(uint32_t); // Magic number + version.
-static const int kPBContainerV2HeaderLen =
-    kPBContainerV1HeaderLen + kPBContainerChecksumLen; // Same as V1 plus a checksum.
+static const int kPBContainerV2HeaderLen = kPBContainerV1HeaderLen +
+    kPBContainerChecksumLen; // Same as V1 plus a checksum.
 
 const int kPBContainerMinimumValidLength = kPBContainerV1HeaderLen;
 
-static_assert(arraysize(kPBContainerMagic) - 1 == kPBContainerMagicLen,
-              "kPBContainerMagic does not match expected length");
+static_assert(
+    arraysize(kPBContainerMagic) - 1 == kPBContainerMagicLen,
+    "kPBContainerMagic does not match expected length");
 
 namespace {
 
@@ -140,9 +143,10 @@ namespace {
 // protobuf implementation but is more likely caused by concurrent modification
 // of the message.  This function attempts to distinguish between the two and
 // provide a useful error message.
-void ByteSizeConsistencyError(int byte_size_before_serialization,
-                              int byte_size_after_serialization,
-                              int bytes_produced_by_serialization) {
+void ByteSizeConsistencyError(
+    int byte_size_before_serialization,
+    int byte_size_after_serialization,
+    int bytes_produced_by_serialization) {
   CHECK_EQ(byte_size_before_serialization, byte_size_after_serialization)
       << "Protocol message was modified concurrently during serialization.";
   CHECK_EQ(bytes_produced_by_serialization, byte_size_before_serialization)
@@ -152,8 +156,9 @@ void ByteSizeConsistencyError(int byte_size_before_serialization,
   LOG(FATAL) << "This shouldn't be called if all the sizes are equal.";
 }
 
-string InitializationErrorMessage(const char* action,
-                                  const MessageLite& message) {
+string InitializationErrorMessage(
+    const char* action,
+    const MessageLite& message) {
   // Note:  We want to avoid depending on strutil in the lite library, otherwise
   //   we'd use:
   //
@@ -192,18 +197,25 @@ bool IsSupportedContainerVersion(uint32_t version) {
 // If there is an unexpected short read, returns Status::Corruption.
 //
 // NOTE: the data in 'result' may be modified even in the case of a failed read.
-template<typename ReadableFileType>
-Status ValidateAndReadData(ReadableFileType* reader, uint64_t file_size,
-                           uint64_t* offset, uint64_t length,
-                           faststring* result) {
+template <typename ReadableFileType>
+Status ValidateAndReadData(
+    ReadableFileType* reader,
+    uint64_t file_size,
+    uint64_t* offset,
+    uint64_t length,
+    faststring* result) {
   // Validate the read length using the file size.
   if (*offset + length > file_size) {
-    return Status::Incomplete("File size not large enough to be valid",
-                              Substitute("Proto container file $0: "
-                                  "Tried to read $1 bytes at offset "
-                                  "$2 but file size is only $3 bytes",
-                                  reader->filename(), length,
-                                  *offset, file_size));
+    return Status::Incomplete(
+        "File size not large enough to be valid",
+        Substitute(
+            "Proto container file $0: "
+            "Tried to read $1 bytes at offset "
+            "$2 but file size is only $3 bytes",
+            reader->filename(),
+            length,
+            *offset,
+            file_size));
   }
 
   // Perform the read.
@@ -217,14 +229,19 @@ Status ValidateAndReadData(ReadableFileType* reader, uint64_t file_size,
 // RETURN_NOT_OK_PREPEND(ParseAndCompareChecksum(checksum.data(), { data }),
 //    CHECKSUM_ERR_MSG("Data checksum does not match", filename, offset));
 #define CHECKSUM_ERR_MSG(prefix, filename, cksum_offset) \
-  Substitute("$0: Incorrect checksum in file $1 at offset $2", prefix, filename, cksum_offset)
+  Substitute(                                            \
+      "$0: Incorrect checksum in file $1 at offset $2",  \
+      prefix,                                            \
+      filename,                                          \
+      cksum_offset)
 
 // Parses a checksum from the specified buffer and compares it to the bytes
 // given in 'slices' by calculating a rolling CRC32 checksum of the bytes in
 // the 'slices'.
 // If they match, returns OK. Otherwise, returns Status::Corruption.
-Status ParseAndCompareChecksum(const uint8_t* checksum_buf,
-                               const initializer_list<Slice>& slices) {
+Status ParseAndCompareChecksum(
+    const uint8_t* checksum_buf,
+    const initializer_list<Slice>& slices) {
   uint32_t written_checksum = DecodeFixed32(checksum_buf);
   uint64_t actual_checksum = 0;
   Crc* crc32c = crc::GetCrc32cInstance();
@@ -232,17 +249,21 @@ Status ParseAndCompareChecksum(const uint8_t* checksum_buf,
     crc32c->Compute(s.data(), s.size(), &actual_checksum);
   }
   if (PREDICT_FALSE(actual_checksum != written_checksum)) {
-    return Status::Corruption(Substitute("Checksum does not match. Expected: $0. Actual: $1",
-                                         written_checksum, actual_checksum));
+    return Status::Corruption(Substitute(
+        "Checksum does not match. Expected: $0. Actual: $1",
+        written_checksum,
+        actual_checksum));
   }
   return Status::OK();
 }
 
-// If necessary, get the size of the file opened by 'reader' in 'cached_file_size'.
-// If 'cached_file_size' already has a value, this is a no-op.
-template<typename ReadableFileType>
-Status CacheFileSize(ReadableFileType* reader,
-                     boost::optional<uint64_t>* cached_file_size) {
+// If necessary, get the size of the file opened by 'reader' in
+// 'cached_file_size'. If 'cached_file_size' already has a value, this is a
+// no-op.
+template <typename ReadableFileType>
+Status CacheFileSize(
+    ReadableFileType* reader,
+    boost::optional<uint64_t>* cached_file_size) {
   if (*cached_file_size) {
     return Status::OK();
   }
@@ -253,11 +274,12 @@ Status CacheFileSize(ReadableFileType* reader,
   return Status::OK();
 }
 
-template<typename ReadableFileType>
-Status RestOfFileIsAllZeros(ReadableFileType* reader,
-                            uint64_t filesize,
-                            uint64_t offset,
-                            bool* all_zeros) {
+template <typename ReadableFileType>
+Status RestOfFileIsAllZeros(
+    ReadableFileType* reader,
+    uint64_t filesize,
+    uint64_t offset,
+    bool* all_zeros) {
   DCHECK(reader);
   DCHECK_GE(filesize, offset);
   DCHECK(all_zeros);
@@ -283,12 +305,16 @@ Status RestOfFileIsAllZeros(ReadableFileType* reader,
 // Read and parse a message of the specified format at the given offset in the
 // format documented in pb_util.h. 'offset' is an in-out parameter and will be
 // updated with the new offset on success. On failure, 'offset' is not modified.
-template<typename ReadableFileType>
-Status ReadPBStartingAt(ReadableFileType* reader, int version,
-                        boost::optional<uint64_t>* cached_file_size,
-                        uint64_t* offset, Message* msg) {
+template <typename ReadableFileType>
+Status ReadPBStartingAt(
+    ReadableFileType* reader,
+    int version,
+    boost::optional<uint64_t>* cached_file_size,
+    uint64_t* offset,
+    Message* msg) {
   uint64_t tmp_offset = *offset;
-  VLOG(1) << "Reading PB with version " << version << " starting at offset " << *offset;
+  VLOG(1) << "Reading PB with version " << version << " starting at offset "
+          << *offset;
 
   RETURN_NOT_OK(CacheFileSize(reader, cached_file_size));
   uint64_t file_size = cached_file_size->get();
@@ -299,13 +325,18 @@ Status ReadPBStartingAt(ReadableFileType* reader, int version,
 
   // Read the data length from the file.
   // Version 2+ includes a checksum for the length field.
-  uint64_t length_buflen = (version == 1) ? sizeof(uint32_t)
-                                          : sizeof(uint32_t) + kPBContainerChecksumLen;
+  uint64_t length_buflen = (version == 1)
+      ? sizeof(uint32_t)
+      : sizeof(uint32_t) + kPBContainerChecksumLen;
   faststring length_and_cksum_buf;
-  RETURN_NOT_OK_PREPEND(ValidateAndReadData(reader, file_size, &tmp_offset, length_buflen,
-                                            &length_and_cksum_buf),
-                        Substitute("Could not read data length from proto container file $0 "
-                                   "at offset $1", reader->filename(), *offset));
+  RETURN_NOT_OK_PREPEND(
+      ValidateAndReadData(
+          reader, file_size, &tmp_offset, length_buflen, &length_and_cksum_buf),
+      Substitute(
+          "Could not read data length from proto container file $0 "
+          "at offset $1",
+          reader->filename(),
+          *offset));
   Slice length(length_and_cksum_buf.data(), sizeof(uint32_t));
 
   // Versions >= 2 have an individual checksum for the data length.
@@ -317,39 +348,60 @@ Status ReadPBStartingAt(ReadableFileType* reader, int version,
     // See https://plus.google.com/+KentonVarda/posts/JDwHfAiLGNQ.
     if (IsAllZeros(length_and_cksum_buf)) {
       bool all_zeros;
-      RETURN_NOT_OK(RestOfFileIsAllZeros(reader, file_size, tmp_offset, &all_zeros));
+      RETURN_NOT_OK(
+          RestOfFileIsAllZeros(reader, file_size, tmp_offset, &all_zeros));
       if (all_zeros) {
-        return Status::Incomplete("incomplete write of PB: rest of file is NULL bytes");
+        return Status::Incomplete(
+            "incomplete write of PB: rest of file is NULL bytes");
       }
     }
-    Slice length_checksum(length_and_cksum_buf.data() + sizeof(uint32_t), kPBContainerChecksumLen);
-    RETURN_NOT_OK_PREPEND(ParseAndCompareChecksum(length_checksum.data(), { length }),
-        CHECKSUM_ERR_MSG("Data length checksum does not match",
-                         reader->filename(), tmp_offset - kPBContainerChecksumLen));
+    Slice length_checksum(
+        length_and_cksum_buf.data() + sizeof(uint32_t),
+        kPBContainerChecksumLen);
+    RETURN_NOT_OK_PREPEND(
+        ParseAndCompareChecksum(length_checksum.data(), {length}),
+        CHECKSUM_ERR_MSG(
+            "Data length checksum does not match",
+            reader->filename(),
+            tmp_offset - kPBContainerChecksumLen));
   }
   uint32_t data_length = DecodeFixed32(length.data());
 
   // Read body and checksum into buffer for checksum & parsing.
   uint64_t data_and_cksum_buflen = data_length + kPBContainerChecksumLen;
   faststring body_and_cksum_buf;
-  RETURN_NOT_OK_PREPEND(ValidateAndReadData(reader, file_size, &tmp_offset, data_and_cksum_buflen,
-                                            &body_and_cksum_buf),
-                        Substitute("Could not read PB message data from proto container file $0 "
-                                   "at offset $1",
-                                   reader->filename(), tmp_offset));
+  RETURN_NOT_OK_PREPEND(
+      ValidateAndReadData(
+          reader,
+          file_size,
+          &tmp_offset,
+          data_and_cksum_buflen,
+          &body_and_cksum_buf),
+      Substitute(
+          "Could not read PB message data from proto container file $0 "
+          "at offset $1",
+          reader->filename(),
+          tmp_offset));
   Slice body(body_and_cksum_buf.data(), data_length);
-  Slice record_checksum(body_and_cksum_buf.data() + data_length, kPBContainerChecksumLen);
+  Slice record_checksum(
+      body_and_cksum_buf.data() + data_length, kPBContainerChecksumLen);
 
   // Version 1 has a single checksum for length, body.
   // Version 2+ has individual checksums for length and body, respectively.
   if (version == 1) {
-    RETURN_NOT_OK_PREPEND(ParseAndCompareChecksum(record_checksum.data(), { length, body }),
-        CHECKSUM_ERR_MSG("Length and data checksum does not match",
-                         reader->filename(), tmp_offset - kPBContainerChecksumLen));
+    RETURN_NOT_OK_PREPEND(
+        ParseAndCompareChecksum(record_checksum.data(), {length, body}),
+        CHECKSUM_ERR_MSG(
+            "Length and data checksum does not match",
+            reader->filename(),
+            tmp_offset - kPBContainerChecksumLen));
   } else {
-    RETURN_NOT_OK_PREPEND(ParseAndCompareChecksum(record_checksum.data(), { body }),
-        CHECKSUM_ERR_MSG("Data checksum does not match",
-                         reader->filename(), tmp_offset - kPBContainerChecksumLen));
+    RETURN_NOT_OK_PREPEND(
+        ParseAndCompareChecksum(record_checksum.data(), {body}),
+        CHECKSUM_ERR_MSG(
+            "Data checksum does not match",
+            reader->filename(),
+            tmp_offset - kPBContainerChecksumLen));
   }
 
   // The checksum is correct. Time to decode the body.
@@ -380,17 +432,21 @@ Status ReadPBStartingAt(ReadableFileType* reader, int version,
 
 // Wrapper around ReadPBStartingAt() to enforce that we don't return
 // Status::Incomplete() for V1 format files.
-template<typename ReadableFileType>
-Status ReadFullPB(ReadableFileType* reader, int version,
-                  boost::optional<uint64_t>* cached_file_size,
-                  uint64_t* offset, Message* msg) {
+template <typename ReadableFileType>
+Status ReadFullPB(
+    ReadableFileType* reader,
+    int version,
+    boost::optional<uint64_t>* cached_file_size,
+    uint64_t* offset,
+    Message* msg) {
   bool had_cached_size = *cached_file_size != boost::none;
   Status s = ReadPBStartingAt(reader, version, cached_file_size, offset, msg);
   if (PREDICT_FALSE(s.IsIncomplete() && version == 1)) {
     return Status::Corruption("Unrecoverable incomplete record", s.ToString());
   }
-  // If we hit EOF, but we were using a cached view of the file size, then it might be
-  // that the file has been extended. Invalidate the cache and try again.
+  // If we hit EOF, but we were using a cached view of the file size, then it
+  // might be that the file has been extended. Invalidate the cache and try
+  // again.
   if (had_cached_size && (s.IsIncomplete() || s.IsEndOfFile())) {
     *cached_file_size = boost::none;
     return ReadFullPB(reader, version, cached_file_size, offset, msg);
@@ -398,10 +454,14 @@ Status ReadFullPB(ReadableFileType* reader, int version,
   return s;
 }
 
-// Read and parse the protobuf container file-level header documented in pb_util.h.
-template<typename ReadableFileType>
-Status ParsePBFileHeader(ReadableFileType* reader, boost::optional<uint64_t>* cached_file_size,
-                         uint64_t* offset, int* version) {
+// Read and parse the protobuf container file-level header documented in
+// pb_util.h.
+template <typename ReadableFileType>
+Status ParsePBFileHeader(
+    ReadableFileType* reader,
+    boost::optional<uint64_t>* cached_file_size,
+    uint64_t* offset,
+    int* version) {
   RETURN_NOT_OK(CacheFileSize(reader, cached_file_size));
   uint64_t file_size = cached_file_size->get();
 
@@ -412,36 +472,49 @@ Status ParsePBFileHeader(ReadableFileType* reader, boost::optional<uint64_t>* ca
   // minimum number of bytes required for a V1 format data record.
   uint64_t tmp_offset = *offset;
   faststring header;
-  RETURN_NOT_OK_PREPEND(ValidateAndReadData(reader, file_size, &tmp_offset, kPBContainerV2HeaderLen,
-                                            &header),
-                        Substitute("Could not read header for proto container file $0",
-                                   reader->filename()));
-  Slice magic_and_version(header.data(), kPBContainerMagicLen + sizeof(uint32_t));
-  Slice checksum(header.data() + kPBContainerMagicLen + sizeof(uint32_t), kPBContainerChecksumLen);
+  RETURN_NOT_OK_PREPEND(
+      ValidateAndReadData(
+          reader, file_size, &tmp_offset, kPBContainerV2HeaderLen, &header),
+      Substitute(
+          "Could not read header for proto container file $0",
+          reader->filename()));
+  Slice magic_and_version(
+      header.data(), kPBContainerMagicLen + sizeof(uint32_t));
+  Slice checksum(
+      header.data() + kPBContainerMagicLen + sizeof(uint32_t),
+      kPBContainerChecksumLen);
 
   // Validate magic number.
-  if (PREDICT_FALSE(!strings::memeq(kPBContainerMagic, header.data(), kPBContainerMagicLen))) {
-    string file_magic(reinterpret_cast<const char*>(header.data()), kPBContainerMagicLen);
-    return Status::Corruption("Invalid magic number",
-                              Substitute("Expected: $0, found: $1",
-                                         Utf8SafeCEscape(kPBContainerMagic),
-                                         Utf8SafeCEscape(file_magic)));
+  if (PREDICT_FALSE(!strings::memeq(
+          kPBContainerMagic, header.data(), kPBContainerMagicLen))) {
+    string file_magic(
+        reinterpret_cast<const char*>(header.data()), kPBContainerMagicLen);
+    return Status::Corruption(
+        "Invalid magic number",
+        Substitute(
+            "Expected: $0, found: $1",
+            Utf8SafeCEscape(kPBContainerMagic),
+            Utf8SafeCEscape(file_magic)));
   }
 
   // Validate container file version.
   uint32_t tmp_version = DecodeFixed32(header.data() + kPBContainerMagicLen);
   if (PREDICT_FALSE(!IsSupportedContainerVersion(tmp_version))) {
-    return Status::NotSupported(
-        Substitute("Protobuf container has unsupported version: $0. Default version: $1",
-                   tmp_version, kPBContainerDefaultVersion));
+    return Status::NotSupported(Substitute(
+        "Protobuf container has unsupported version: $0. Default version: $1",
+        tmp_version,
+        kPBContainerDefaultVersion));
   }
 
   // Versions >= 2 have a checksum after the magic number and encoded version
   // to ensure the integrity of these fields.
   if (tmp_version >= 2) {
-    RETURN_NOT_OK_PREPEND(ParseAndCompareChecksum(checksum.data(), { magic_and_version }),
-        CHECKSUM_ERR_MSG("File header checksum does not match",
-                         reader->filename(), tmp_offset - kPBContainerChecksumLen));
+    RETURN_NOT_OK_PREPEND(
+        ParseAndCompareChecksum(checksum.data(), {magic_and_version}),
+        CHECKSUM_ERR_MSG(
+            "File header checksum does not match",
+            reader->filename(),
+            tmp_offset - kPBContainerChecksumLen));
   } else {
     // Version 1 doesn't have a header checksum. Rewind our read offset so this
     // data will be read again when we next attempt to read a data record.
@@ -454,26 +527,32 @@ Status ParsePBFileHeader(ReadableFileType* reader, boost::optional<uint64_t>* ca
 }
 
 // Read and parse the supplemental header from the container file.
-template<typename ReadableFileType>
-Status ReadSupplementalHeader(ReadableFileType* reader, int version,
-                              boost::optional<uint64_t>* cached_file_size,
-                              uint64_t* offset,
-                              ContainerSupHeaderPB* sup_header) {
-  RETURN_NOT_OK_PREPEND(ReadFullPB(reader, version, cached_file_size, offset, sup_header),
-      Substitute("Could not read supplemental header from proto container file $0 "
-                 "with version $1 at offset $2",
-                 reader->filename(), version, *offset));
+template <typename ReadableFileType>
+Status ReadSupplementalHeader(
+    ReadableFileType* reader,
+    int version,
+    boost::optional<uint64_t>* cached_file_size,
+    uint64_t* offset,
+    ContainerSupHeaderPB* sup_header) {
+  RETURN_NOT_OK_PREPEND(
+      ReadFullPB(reader, version, cached_file_size, offset, sup_header),
+      Substitute(
+          "Could not read supplemental header from proto container file $0 "
+          "with version $1 at offset $2",
+          reader->filename(),
+          version,
+          *offset));
   return Status::OK();
 }
 
 } // anonymous namespace
 
-void AppendToString(const MessageLite &msg, faststring *output) {
+void AppendToString(const MessageLite& msg, faststring* output) {
   DCHECK(msg.IsInitialized()) << InitializationErrorMessage("serialize", msg);
   AppendPartialToString(msg, output);
 }
 
-void AppendPartialToString(const MessageLite &msg, faststring* output) {
+void AppendPartialToString(const MessageLite& msg, faststring* output) {
   size_t old_size = output->size();
   int byte_size = msg.ByteSize();
   // Messages >2G cannot be serialized due to overflow computing ByteSize.
@@ -488,38 +567,43 @@ void AppendPartialToString(const MessageLite &msg, faststring* output) {
   }
 }
 
-void SerializeToString(const MessageLite &msg, faststring *output) {
+void SerializeToString(const MessageLite& msg, faststring* output) {
   output->clear();
   AppendToString(msg, output);
 }
 
-Status ParseFromSequentialFile(MessageLite *msg, SequentialFile *rfile) {
+Status ParseFromSequentialFile(MessageLite* msg, SequentialFile* rfile) {
   SequentialFileFileInputStream input(rfile);
   if (!msg->ParseFromZeroCopyStream(&input)) {
     RETURN_NOT_OK(input.status());
 
     // If it's not a file IO error then it's a parsing error.
     // Probably, we read wrong or damaged data here.
-    return Status::Corruption("Error parsing msg", InitializationErrorMessage("parse", *msg));
+    return Status::Corruption(
+        "Error parsing msg", InitializationErrorMessage("parse", *msg));
   }
   return Status::OK();
 }
 
 Status ParseFromArray(MessageLite* msg, const uint8_t* data, uint32_t length) {
   if (!msg->ParseFromArray(data, length)) {
-    return Status::Corruption("Error parsing msg", InitializationErrorMessage("parse", *msg));
+    return Status::Corruption(
+        "Error parsing msg", InitializationErrorMessage("parse", *msg));
   }
   return Status::OK();
 }
 
-Status WritePBToPath(Env* env, const std::string& path,
-                     const MessageLite& msg,
-                     SyncMode sync) {
+Status WritePBToPath(
+    Env* env,
+    const std::string& path,
+    const MessageLite& msg,
+    SyncMode sync) {
   const string tmp_template = path + kTmpInfix + kTmpTemplateSuffix;
   string tmp_path;
 
   unique_ptr<WritableFile> file;
-  RETURN_NOT_OK(env->NewTempWritableFile(WritableFileOptions(), tmp_template, &tmp_path, &file));
+  RETURN_NOT_OK(env->NewTempWritableFile(
+      WritableFileOptions(), tmp_template, &tmp_path, &file));
   auto tmp_deleter = MakeScopedCleanup([&]() {
     WARN_NOT_OK(env->DeleteFile(tmp_path), "Could not delete file " + tmp_path);
   });
@@ -534,10 +618,12 @@ Status WritePBToPath(Env* env, const std::string& path,
     RETURN_NOT_OK_PREPEND(file->Sync(), "Failed to Sync() " + tmp_path);
   }
   RETURN_NOT_OK_PREPEND(file->Close(), "Failed to Close() " + tmp_path);
-  RETURN_NOT_OK_PREPEND(env->RenameFile(tmp_path, path), "Failed to rename tmp file to " + path);
+  RETURN_NOT_OK_PREPEND(
+      env->RenameFile(tmp_path, path), "Failed to rename tmp file to " + path);
   tmp_deleter.cancel();
   if (sync == pb_util::SYNC) {
-    RETURN_NOT_OK_PREPEND(env->SyncDir(DirName(path)), "Failed to SyncDir() parent of " + path);
+    RETURN_NOT_OK_PREPEND(
+        env->SyncDir(DirName(path)), "Failed to SyncDir() parent of " + path);
   }
   return Status::OK();
 }
@@ -565,13 +651,14 @@ void TruncateFields(Message* message, int max_len) {
       for (int i = 0; i < reflection->FieldSize(*message, field); i++) {
         switch (field->cpp_type()) {
           case FieldDescriptor::CPPTYPE_STRING: {
-            const string& s_const = reflection->GetRepeatedStringReference(*message, field, i,
-                                                                           nullptr);
+            const string& s_const = reflection->GetRepeatedStringReference(
+                *message, field, i, nullptr);
             TruncateString(const_cast<string*>(&s_const), max_len);
             break;
           }
           case FieldDescriptor::CPPTYPE_MESSAGE: {
-            TruncateFields(reflection->MutableRepeatedMessage(message, field, i), max_len);
+            TruncateFields(
+                reflection->MutableRepeatedMessage(message, field, i), max_len);
             break;
           }
           default:
@@ -581,7 +668,8 @@ void TruncateFields(Message* message, int max_len) {
     } else {
       switch (field->cpp_type()) {
         case FieldDescriptor::CPPTYPE_STRING: {
-          const string& s_const = reflection->GetStringReference(*message, field, nullptr);
+          const string& s_const =
+              reflection->GetStringReference(*message, field, nullptr);
           TruncateString(const_cast<string*>(&s_const), max_len);
           break;
         }
@@ -601,9 +689,10 @@ class SecureFieldPrinter : public TextFormat::FieldValuePrinter {
  public:
   using super = TextFormat::FieldValuePrinter;
 
-  string PrintFieldName(const Message& message,
-                        const Reflection* reflection,
-                        const FieldDescriptor* field) const override {
+  string PrintFieldName(
+      const Message& message,
+      const Reflection* reflection,
+      const FieldDescriptor* field) const override {
     hide_next_string_ = field->cpp_type() == FieldDescriptor::CPPTYPE_STRING &&
         field->options().GetExtension(REDACT);
     return super::PrintFieldName(message, reflection, field);
@@ -645,21 +734,18 @@ string SecureShortDebugString(const Message& msg) {
 
   printer.PrintToString(msg, &debug_string);
   // Single line mode currently might have an extra space at the end.
-  if (!debug_string.empty() &&
-      debug_string[debug_string.size() - 1] == ' ') {
+  if (!debug_string.empty() && debug_string[debug_string.size() - 1] == ' ') {
     debug_string.resize(debug_string.size() - 1);
   }
 
   return debug_string;
 }
 
-
 WritablePBContainerFile::WritablePBContainerFile(shared_ptr<RWFile> writer)
-  : state_(FileState::NOT_INITIALIZED),
-    offset_(0),
-    version_(kPBContainerDefaultVersion),
-    writer_(std::move(writer)) {
-}
+    : state_(FileState::NOT_INITIALIZED),
+      offset_(0),
+      version_(kPBContainerDefaultVersion),
+      writer_(std::move(writer)) {}
 
 WritablePBContainerFile::~WritablePBContainerFile() {
   WARN_NOT_OK(Close(), "Could not Close() when destroying file");
@@ -668,7 +754,8 @@ WritablePBContainerFile::~WritablePBContainerFile() {
 Status WritablePBContainerFile::SetVersionForTests(int version) {
   DCHECK_EQ(FileState::NOT_INITIALIZED, state_);
   if (!IsSupportedContainerVersion(version)) {
-    return Status::NotSupported(Substitute("Version $0 is not supported", version));
+    return Status::NotSupported(
+        Substitute("Version $0 is not supported", version));
   }
   version_ = version;
   return Status::OK();
@@ -677,8 +764,9 @@ Status WritablePBContainerFile::SetVersionForTests(int version) {
 Status WritablePBContainerFile::CreateNew(const Message& msg) {
   DCHECK_EQ(FileState::NOT_INITIALIZED, state_);
 
-  const uint64_t kHeaderLen = (version_ == 1) ? kPBContainerV1HeaderLen
-                                              : kPBContainerV1HeaderLen + kPBContainerChecksumLen;
+  const uint64_t kHeaderLen = (version_ == 1)
+      ? kPBContainerV1HeaderLen
+      : kPBContainerV1HeaderLen + kPBContainerChecksumLen;
 
   faststring buf;
   buf.resize(kHeaderLen);
@@ -691,7 +779,7 @@ Status WritablePBContainerFile::CreateNew(const Message& msg) {
   InlineEncodeFixed32(buf.data() + offset, version_);
   offset += sizeof(uint32_t);
   DCHECK_EQ(kPBContainerV1HeaderLen, offset)
-    << "Serialized unexpected number of total bytes";
+      << "Serialized unexpected number of total bytes";
 
   // Versions >= 2: Checksum the magic and version.
   if (version_ >= 2) {
@@ -703,15 +791,15 @@ Status WritablePBContainerFile::CreateNew(const Message& msg) {
 
   // Serialize the supplemental header.
   ContainerSupHeaderPB sup_header;
-  PopulateDescriptorSet(msg.GetDescriptor()->file(),
-                        sup_header.mutable_protos());
+  PopulateDescriptorSet(
+      msg.GetDescriptor()->file(), sup_header.mutable_protos());
   sup_header.set_pb_type(msg.GetTypeName());
-  RETURN_NOT_OK_PREPEND(AppendMsgToBuffer(sup_header, &buf),
-                        "Failed to prepare supplemental header for writing");
+  RETURN_NOT_OK_PREPEND(
+      AppendMsgToBuffer(sup_header, &buf),
+      "Failed to prepare supplemental header for writing");
 
   // Write the serialized buffer to the file.
-  RETURN_NOT_OK_PREPEND(AppendBytes(buf),
-                        "Failed to append header to file");
+  RETURN_NOT_OK_PREPEND(AppendBytes(buf), "Failed to append header to file");
   state_ = FileState::OPEN;
   return Status::OK();
 }
@@ -721,8 +809,8 @@ Status WritablePBContainerFile::OpenExisting() {
   boost::optional<uint64_t> size;
   RETURN_NOT_OK(ParsePBFileHeader(writer_.get(), &size, &offset_, &version_));
   ContainerSupHeaderPB sup_header;
-  RETURN_NOT_OK(ReadSupplementalHeader(writer_.get(), version_, &size,
-                                       &offset_, &sup_header));
+  RETURN_NOT_OK(ReadSupplementalHeader(
+      writer_.get(), version_, &size, &offset_, &sup_header));
   offset_ = size.get(); // Reset the write offset to the end of the file.
   state_ = FileState::OPEN;
   return Status::OK();
@@ -739,8 +827,8 @@ Status WritablePBContainerFile::Append(const Message& msg) {
   DCHECK_EQ(FileState::OPEN, state_);
 
   faststring buf;
-  RETURN_NOT_OK_PREPEND(AppendMsgToBuffer(msg, &buf),
-                        "Failed to prepare buffer for writing");
+  RETURN_NOT_OK_PREPEND(
+      AppendMsgToBuffer(msg, &buf), "Failed to prepare buffer for writing");
   RETURN_NOT_OK_PREPEND(AppendBytes(buf), "Failed to append data to file");
 
   return Status::OK();
@@ -750,7 +838,8 @@ Status WritablePBContainerFile::Flush() {
   DCHECK_EQ(FileState::OPEN, state_);
 
   // TODO: Flush just the dirty bytes.
-  RETURN_NOT_OK_PREPEND(writer_->Flush(RWFile::FLUSH_ASYNC, 0, 0), "Failed to Flush() file");
+  RETURN_NOT_OK_PREPEND(
+      writer_->Flush(RWFile::FLUSH_ASYNC, 0, 0), "Failed to Flush() file");
 
   return Status::OK();
 }
@@ -777,14 +866,17 @@ const string& WritablePBContainerFile::filename() const {
   return writer_->filename();
 }
 
-Status WritablePBContainerFile::AppendMsgToBuffer(const Message& msg, faststring* buf) {
+Status WritablePBContainerFile::AppendMsgToBuffer(
+    const Message& msg,
+    faststring* buf) {
   DCHECK(msg.IsInitialized()) << InitializationErrorMessage("serialize", msg);
   int data_len = msg.ByteSize();
   // Messages >2G cannot be serialized due to overflow computing ByteSize.
   DCHECK_GE(data_len, 0) << "Error computing ByteSize";
-  uint64_t record_buflen =  sizeof(uint32_t) + data_len + sizeof(uint32_t);
+  uint64_t record_buflen = sizeof(uint32_t) + data_len + sizeof(uint32_t);
   if (version_ >= 2) {
-    record_buflen += sizeof(uint32_t); // Additional checksum just for the length.
+    record_buflen +=
+        sizeof(uint32_t); // Additional checksum just for the length.
   }
 
   // Grow the buffer to hold the new data.
@@ -823,12 +915,14 @@ Status WritablePBContainerFile::AppendMsgToBuffer(const Message& msg, faststring
   InlineEncodeFixed32(dst + cur_offset, data_checksum);
   cur_offset += sizeof(uint32_t);
 
-  DCHECK_EQ(record_buflen, cur_offset) << "Serialized unexpected number of total bytes";
+  DCHECK_EQ(record_buflen, cur_offset)
+      << "Serialized unexpected number of total bytes";
   return Status::OK();
 }
 
 void WritablePBContainerFile::PopulateDescriptorSet(
-    const FileDescriptor* desc, FileDescriptorSet* output) {
+    const FileDescriptor* desc,
+    FileDescriptorSet* output) {
   // Because we don't compile protobuf with TSAN enabled, copying the
   // static PB descriptors in this function ends up triggering a lot of
   // race reports. We suppress the reports, but TSAN still has to walk
@@ -868,12 +962,12 @@ void WritablePBContainerFile::PopulateDescriptorSet(
   all_descs.Swap(output);
 }
 
-ReadablePBContainerFile::ReadablePBContainerFile(shared_ptr<RandomAccessFile> reader)
-  : state_(FileState::NOT_INITIALIZED),
-    version_(kPBContainerInvalidVersion),
-    offset_(0),
-    reader_(std::move(reader)) {
-}
+ReadablePBContainerFile::ReadablePBContainerFile(
+    shared_ptr<RandomAccessFile> reader)
+    : state_(FileState::NOT_INITIALIZED),
+      version_(kPBContainerInvalidVersion),
+      offset_(0),
+      reader_(std::move(reader)) {}
 
 ReadablePBContainerFile::~ReadablePBContainerFile() {
   Close();
@@ -881,10 +975,11 @@ ReadablePBContainerFile::~ReadablePBContainerFile() {
 
 Status ReadablePBContainerFile::Open() {
   DCHECK_EQ(FileState::NOT_INITIALIZED, state_);
-  RETURN_NOT_OK(ParsePBFileHeader(reader_.get(), &cached_file_size_, &offset_, &version_));
+  RETURN_NOT_OK(ParsePBFileHeader(
+      reader_.get(), &cached_file_size_, &offset_, &version_));
   ContainerSupHeaderPB sup_header;
-  RETURN_NOT_OK(ReadSupplementalHeader(reader_.get(), version_, &cached_file_size_,
-                                       &offset_, &sup_header));
+  RETURN_NOT_OK(ReadSupplementalHeader(
+      reader_.get(), version_, &cached_file_size_, &offset_, &sup_header));
   protos_.reset(sup_header.release_protos());
   pb_type_ = sup_header.pb_type();
   state_ = FileState::OPEN;
@@ -904,25 +999,31 @@ Status ReadablePBContainerFile::GetPrototype(const Message** prototype) {
     unique_ptr<SimpleDescriptorDatabase> db(new SimpleDescriptorDatabase());
     for (int i = 0; i < protos()->file_size(); i++) {
       if (!db->Add(protos()->file(i))) {
-        return Status::Corruption("Descriptor not loaded", Substitute(
-            "Could not load descriptor for PB type $0 referenced in container file",
-            pb_type()));
+        return Status::Corruption(
+            "Descriptor not loaded",
+            Substitute(
+                "Could not load descriptor for PB type $0 referenced in container file",
+                pb_type()));
       }
     }
     unique_ptr<DescriptorPool> pool(new DescriptorPool(db.get()));
     const Descriptor* desc = pool->FindMessageTypeByName(pb_type());
     if (!desc) {
-      return Status::NotFound("Descriptor not found", Substitute(
-          "Could not find descriptor for PB type $0 referenced in container file",
-          pb_type()));
+      return Status::NotFound(
+          "Descriptor not found",
+          Substitute(
+              "Could not find descriptor for PB type $0 referenced in container file",
+              pb_type()));
     }
 
     unique_ptr<DynamicMessageFactory> factory(new DynamicMessageFactory());
     const Message* p = factory->GetPrototype(desc);
     if (!p) {
-      return Status::NotSupported("Descriptor not supported", Substitute(
-          "Descriptor $0 referenced in container file not supported",
-          pb_type()));
+      return Status::NotSupported(
+          "Descriptor not supported",
+          Substitute(
+              "Descriptor $0 referenced in container file not supported",
+              pb_type()));
     }
 
     db_ = std::move(db);
@@ -934,14 +1035,17 @@ Status ReadablePBContainerFile::GetPrototype(const Message** prototype) {
   return Status::OK();
 }
 
-Status ReadablePBContainerFile::Dump(ostream* os, ReadablePBContainerFile::Format format) {
+Status ReadablePBContainerFile::Dump(
+    ostream* os,
+    ReadablePBContainerFile::Format format) {
   DCHECK_EQ(FileState::OPEN, state_);
 
-  // Since we use the protobuf library support for dumping JSON, there isn't any easy
-  // way to hook in our redaction support. Since this is only used by CLI tools,
-  // just refuse to dump JSON if redaction is enabled.
+  // Since we use the protobuf library support for dumping JSON, there isn't any
+  // easy way to hook in our redaction support. Since this is only used by CLI
+  // tools, just refuse to dump JSON if redaction is enabled.
   if (format == Format::JSON && KUDU_SHOULD_REDACT()) {
-    return Status::NotSupported("cannot dump PBC file in JSON format if redaction is enabled");
+    return Status::NotSupported(
+        "cannot dump PBC file in JSON format if redaction is enabled");
   }
 
   const char* const kDashes = "-------";
@@ -966,9 +1070,7 @@ Status ReadablePBContainerFile::Dump(ostream* os, ReadablePBContainerFile::Forma
   uint64_t prev_offset = offset_;
   Status s;
   string buf;
-  for (s = ReadNextPB(msg.get());
-      s.ok();
-      s = ReadNextPB(msg.get())) {
+  for (s = ReadNextPB(msg.get()); s.ok(); s = ReadNextPB(msg.get())) {
     switch (format) {
       case Format::ONELINE:
         *os << count << "\t" << SecureShortDebugString(*msg) << endl;
@@ -988,7 +1090,8 @@ Status ReadablePBContainerFile::Dump(ostream* os, ReadablePBContainerFile::Forma
         const auto& google_status = google::protobuf::util::MessageToJsonString(
             *msg, &buf, google::protobuf::util::JsonPrintOptions());
         if (!google_status.ok()) {
-          return Status::RuntimeError("could not convert PB to JSON", google_status.ToString());
+          return Status::RuntimeError(
+              "could not convert PB to JSON", google_status.ToString());
         }
         *os << buf << endl;
         break;
@@ -1001,7 +1104,8 @@ Status ReadablePBContainerFile::Dump(ostream* os, ReadablePBContainerFile::Forma
     *os << "Message " << count << endl;
     *os << "error: failed to parse protobuf message" << endl;
     *os << "offset: " << prev_offset << endl;
-    *os << "remaining file length: " << (*cached_file_size_ - prev_offset) << endl;
+    *os << "remaining file length: " << (*cached_file_size_ - prev_offset)
+        << endl;
     *os << kDashes << endl;
   }
   return s.IsEndOfFile() ? Status::OK() : s;
@@ -1023,7 +1127,8 @@ uint64_t ReadablePBContainerFile::offset() const {
   return offset_;
 }
 
-Status ReadPBContainerFromPath(Env* env, const std::string& path, Message* msg) {
+Status
+ReadPBContainerFromPath(Env* env, const std::string& path, Message* msg) {
   unique_ptr<RandomAccessFile> file;
   RETURN_NOT_OK(env->NewRandomAccessFile(path, &file));
 
@@ -1033,13 +1138,19 @@ Status ReadPBContainerFromPath(Env* env, const std::string& path, Message* msg) 
   return pb_file.Close();
 }
 
-Status WritePBContainerToPath(Env* env, const std::string& path,
-                              const Message& msg,
-                              CreateMode create,
-                              SyncMode sync) {
-  TRACE_EVENT2("io", "WritePBContainerToPath",
-               "path", path,
-               "msg_type", msg.GetTypeName());
+Status WritePBContainerToPath(
+    Env* env,
+    const std::string& path,
+    const Message& msg,
+    CreateMode create,
+    SyncMode sync) {
+  TRACE_EVENT2(
+      "io",
+      "WritePBContainerToPath",
+      "path",
+      path,
+      "msg_type",
+      msg.GetTypeName());
 
   if (create == NO_OVERWRITE && env->FileExists(path)) {
     return Status::AlreadyPresent(Substitute("File $0 already exists", path));
@@ -1049,7 +1160,8 @@ Status WritePBContainerToPath(Env* env, const std::string& path,
   string tmp_path;
 
   unique_ptr<RWFile> file;
-  RETURN_NOT_OK(env->NewTempRWFile(RWFileOptions(), tmp_template, &tmp_path, &file));
+  RETURN_NOT_OK(
+      env->NewTempRWFile(RWFileOptions(), tmp_template, &tmp_path, &file));
   auto tmp_deleter = MakeScopedCleanup([&]() {
     WARN_NOT_OK(env->DeleteFile(tmp_path), "Could not delete file " + tmp_path);
   });
@@ -1061,18 +1173,18 @@ Status WritePBContainerToPath(Env* env, const std::string& path,
     RETURN_NOT_OK(pb_file.Sync());
   }
   RETURN_NOT_OK(pb_file.Close());
-  RETURN_NOT_OK_PREPEND(env->RenameFile(tmp_path, path),
-                        "Failed to rename tmp file to " + path);
+  RETURN_NOT_OK_PREPEND(
+      env->RenameFile(tmp_path, path), "Failed to rename tmp file to " + path);
   tmp_deleter.cancel();
   if (sync == pb_util::SYNC) {
-    RETURN_NOT_OK_PREPEND(env->SyncDir(DirName(path)),
-                          "Failed to SyncDir() parent of " + path);
+    RETURN_NOT_OK_PREPEND(
+        env->SyncDir(DirName(path)), "Failed to SyncDir() parent of " + path);
   }
   return Status::OK();
 }
 
-
-scoped_refptr<debug::ConvertableToTraceFormat> PbTracer::TracePb(const Message& msg) {
+scoped_refptr<debug::ConvertableToTraceFormat> PbTracer::TracePb(
+    const Message& msg) {
   return make_scoped_refptr(new PbTracer(msg));
 }
 

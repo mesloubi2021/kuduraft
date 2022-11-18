@@ -19,8 +19,8 @@
 
 #include <iosfwd>
 
-#include "kudu/gutil/ref_counted.h"
 #include "kudu/gutil/macros.h"
+#include "kudu/gutil/ref_counted.h"
 #include "kudu/security/security_flags.h"
 
 namespace kudu {
@@ -39,16 +39,19 @@ enum class AuthenticationType {
 };
 const char* AuthenticationTypeToString(AuthenticationType t);
 
-std::ostream& operator<<(std::ostream& o, AuthenticationType authentication_type);
+std::ostream& operator<<(
+    std::ostream& o,
+    AuthenticationType authentication_type);
 
 class Negotiation {
  public:
-
   // Perform negotiation for a connection (either server or client)
-  static void RunNegotiation(const scoped_refptr<Connection>& conn,
-                             security::RpcAuthentication authentication,
-                             security::RpcEncryption encryption,
-                             MonoTime deadline);
+  static void RunNegotiation(
+      const scoped_refptr<Connection>& conn,
+      security::RpcAuthentication authentication,
+      security::RpcEncryption encryption,
+      MonoTime deadline);
+
  private:
   DISALLOW_IMPLICIT_CONSTRUCTORS(Negotiation);
 };

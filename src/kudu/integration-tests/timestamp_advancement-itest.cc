@@ -88,8 +88,8 @@ using std::vector;
 using tablet::TabletReplica;
 using tserver::MiniTabletServer;
 using tserver::NewScanRequestPB;
-using tserver::ScanResponsePB;
 using tserver::ScanRequestPB;
+using tserver::ScanResponsePB;
 using tserver::TabletServerErrorPB;
 using tserver::TabletServerServiceProxy;
 
@@ -105,9 +105,11 @@ class TimestampAdvancementITest : public MiniClusterITestBase {
 
   // Sets up a cluster and returns the tablet replica on 'ts' that has written
   // to its WAL. 'replica' will write further messages to a new WAL segment.
-  void SetupClusterWithWritesInWAL(int ts, scoped_refptr<TabletReplica>* replica) {
-    // We're going to manually trigger maintenance ops, so disable maintenance op
-    // scheduling.
+  void SetupClusterWithWritesInWAL(
+      int ts,
+      scoped_refptr<TabletReplica>* replica) {
+    // We're going to manually trigger maintenance ops, so disable maintenance
+    // op scheduling.
     FLAGS_enable_maintenance_manager = false;
 
     // Prevent preallocation of WAL segments in order to prevent races between
@@ -118,7 +120,8 @@ class TimestampAdvancementITest : public MiniClusterITestBase {
     NO_FATALS(StartCluster(3));
 
     // Write some rows to the cluster.
-    TestWorkload write(cluster_.get());;
+    TestWorkload write(cluster_.get());
+    ;
 
     // Set a low batch size so we have finer-grained control over flushing of
     // the WAL. Too large, and the WAL may end up flushing in the background.
@@ -134,8 +137,11 @@ class TimestampAdvancementITest : public MiniClusterITestBase {
     // have all the rows. This will allow us to GC the WAL, as they will not
     // need to retain them if fully-replicated.
     scoped_refptr<TabletReplica> tablet_replica = tablet_replica_on_ts(ts);
-    ASSERT_OK(WaitForServersToAgree(MonoDelta::FromSeconds(30),
-          ts_map_, tablet_replica->tablet_id(), write.batches_completed()));
+    ASSERT_OK(WaitForServersToAgree(
+        MonoDelta::FromSeconds(30),
+        ts_map_,
+        tablet_replica->tablet_id(),
+        write.batches_completed()));
 
     // Flush the current log batch and roll over to get a fresh WAL segment.
     ASSERT_OK(tablet_replica->log()->WaitUntilAllFlushed());
@@ -170,20 +176,26 @@ class TimestampAdvancementITest : public MiniClusterITestBase {
     scan->set_read_mode(READ_LATEST);
     const Schema schema = GetSimpleTestSchema();
     CHECK_OK(SchemaToColumnPBs(schema, scan->mutable_projected_columns()));
-    shared_ptr<TabletServerServiceProxy> tserver_proxy = cluster_->tserver_proxy(ts);
+    shared_ptr<TabletServerServiceProxy> tserver_proxy =
+        cluster_->tserver_proxy(ts);
     CHECK_OK(tserver_proxy->Scan(req, &resp, &rpc));
     return resp;
   }
 
   // Returns true if there are any write replicate messages in the WALs of
   // 'tablet_id' on 'ts'.
-  Status CheckForWriteReplicatesInLog(MiniTabletServer* ts, const string& tablet_id,
-                                      bool* has_write_replicates) const {
+  Status CheckForWriteReplicatesInLog(
+      MiniTabletServer* ts,
+      const string& tablet_id,
+      bool* has_write_replicates) const {
     shared_ptr<LogReader> reader;
-    RETURN_NOT_OK(LogReader::Open(env_,
-                  ts->server()->fs_manager()->GetTabletWalDir(tablet_id),
-                  scoped_refptr<log::LogIndex>(), tablet_id,
-                  scoped_refptr<MetricEntity>(), &reader));
+    RETURN_NOT_OK(LogReader::Open(
+        env_,
+        ts->server()->fs_manager()->GetTabletWalDir(tablet_id),
+        scoped_refptr<log::LogIndex>(),
+        tablet_id,
+        scoped_refptr<MetricEntity>(),
+        &reader));
     log::SegmentSequence segs;
     RETURN_NOT_OK(reader->GetSegmentsSnapshot(&segs));
     unique_ptr<log::LogEntryPB> entry;
@@ -191,7 +203,8 @@ class TimestampAdvancementITest : public MiniClusterITestBase {
       log::LogEntryReader reader(seg.get());
       while (true) {
         Status s = reader.ReadNextEntry(&entry);
-        if (s.IsEndOfFile()) break;
+        if (s.IsEndOfFile())
+          break;
         RETURN_NOT_OK(s);
         if (entry->type() == log::REPLICATE &&
             entry->replicate().op_type() == consensus::WRITE_OP) {
@@ -206,8 +219,9 @@ class TimestampAdvancementITest : public MiniClusterITestBase {
 
   // Repeatedly GCs the replica's WALs until there are no more write replicates
   // in the WAL.
-  void GCUntilNoWritesInWAL(MiniTabletServer* tserver,
-                            scoped_refptr<TabletReplica> replica) {
+  void GCUntilNoWritesInWAL(
+      MiniTabletServer* tserver,
+      scoped_refptr<TabletReplica> replica) {
     ASSERT_EVENTUALLY([&] {
       LOG(INFO) << "GCing logs...";
       int64_t gcable_size;
@@ -217,16 +231,17 @@ class TimestampAdvancementITest : public MiniClusterITestBase {
 
       // Ensure that we have no writes in our WALs.
       bool has_write_replicates;
-      ASSERT_OK(CheckForWriteReplicatesInLog(tserver, replica->tablet_id(),
-                                             &has_write_replicates));
+      ASSERT_OK(CheckForWriteReplicatesInLog(
+          tserver, replica->tablet_id(), &has_write_replicates));
       ASSERT_FALSE(has_write_replicates);
     });
   }
 
   // Shuts down all the nodes in a cluster and restarts the given tserver.
   // Waits for the given replica on the tserver to start.
-  Status ShutdownAllNodesAndRestartTserver(MiniTabletServer* tserver,
-                                          const string& tablet_id) {
+  Status ShutdownAllNodesAndRestartTserver(
+      MiniTabletServer* tserver,
+      const string& tablet_id) {
     LOG(INFO) << "Shutting down cluster...";
     cluster_->ShutdownNodes(cluster::ClusterNodes::MASTERS_ONLY);
     // Note: We shut down tservers individually rather than using
@@ -305,9 +320,11 @@ TEST_F(TimestampAdvancementITest, Kudu2463Test) {
   ASSERT_OK(FindTabletFollowers(ts_map_, tablet_id, kTimeout, &followers));
   ASSERT_FALSE(followers.empty());
   for (int i = 0; i < 20; i++) {
-    RaftPeerPB::MemberType type = i % 2 == 0 ? RaftPeerPB::NON_VOTER : RaftPeerPB::VOTER;
-    WARN_NOT_OK(ChangeReplicaType(leader, tablet_id, followers[0], type, kTimeout),
-                "Couldn't send a change config!");
+    RaftPeerPB::MemberType type =
+        i % 2 == 0 ? RaftPeerPB::NON_VOTER : RaftPeerPB::VOTER;
+    WARN_NOT_OK(
+        ChangeReplicaType(leader, tablet_id, followers[0], type, kTimeout),
+        "Couldn't send a change config!");
   }
   NO_FATALS(GCUntilNoWritesInWAL(ts, replica));
 
@@ -323,7 +340,9 @@ TEST_F(TimestampAdvancementITest, Kudu2463Test) {
   ASSERT_TRUE(resp.has_error());
   const TabletServerErrorPB& error = resp.error();
   ASSERT_EQ(error.code(), TabletServerErrorPB::TABLET_NOT_RUNNING);
-  ASSERT_STR_CONTAINS(resp.error().status().message(), "safe time has not yet been initialized");
+  ASSERT_STR_CONTAINS(
+      resp.error().status().message(),
+      "safe time has not yet been initialized");
   ASSERT_EQ(error.status().code(), AppStatusPB::UNINITIALIZED);
 }
 
@@ -331,7 +350,7 @@ TEST_F(TimestampAdvancementITest, Kudu2463Test) {
 // both the "normal" case and the single-replica case.
 TEST_F(TimestampAdvancementITest, TestTimestampsAdvancedFromRaftNoOp) {
   const int kTserver = 0;
-  for (int num_replicas : { 1, 3 }) {
+  for (int num_replicas : {1, 3}) {
     LOG(INFO) << strings::Substitute("Running with $0 replicas", num_replicas);
     NO_FATALS(StartCluster(num_replicas));
 
@@ -345,13 +364,14 @@ TEST_F(TimestampAdvancementITest, TestTimestampsAdvancedFromRaftNoOp) {
     // MVCC clean time on its own when a leader gets elected and replicates a
     // no-op message.
     ASSERT_EVENTUALLY([&] {
-      ASSERT_NE(replica->tablet()->mvcc_manager()->GetCleanTimestamp(),
-                Timestamp::kInitialTimestamp);
+      ASSERT_NE(
+          replica->tablet()->mvcc_manager()->GetCleanTimestamp(),
+          Timestamp::kInitialTimestamp);
     });
     replica.reset();
     StopCluster();
   }
 }
 
-}  // namespace itest
-}  // namespace kudu
+} // namespace itest
+} // namespace kudu

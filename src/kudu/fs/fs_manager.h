@@ -127,8 +127,8 @@ struct FsManagerOpts {
 //    <kudu.root.dir>/data/<prefix-0>/<prefix-2>/<prefix-4>/<name>
 class FsManager {
  public:
-  static const char *kWalFileNamePrefix;
-  static const char *kWalsRecoveryDirSuffix;
+  static const char* kWalFileNamePrefix;
+  static const char* kWalsRecoveryDirSuffix;
 
   // Only for unit tests.
   FsManager(Env* env, const std::string& root_path);
@@ -154,7 +154,9 @@ class FsManager {
   //
   // If a disk failure is detected, this callback will be invoked with the
   // relevant DataDir's UUID as its input parameter.
-  void SetErrorNotificationCb(fs::ErrorHandlerType e, fs::ErrorNotificationCb cb);
+  void SetErrorNotificationCb(
+      fs::ErrorHandlerType e,
+      fs::ErrorNotificationCb cb);
 
   // Unregisters the error-handling callback with the FsErrorManager.
   //
@@ -182,11 +184,13 @@ class FsManager {
   // Creates a new block based on the options specified in 'opts'.
   //
   // Block will be synced on close.
-  Status CreateNewBlock(const fs::CreateBlockOptions& opts,
-                        std::unique_ptr<fs::WritableBlock>* block);
+  Status CreateNewBlock(
+      const fs::CreateBlockOptions& opts,
+      std::unique_ptr<fs::WritableBlock>* block);
 
-  Status OpenBlock(const BlockId& block_id,
-                   std::unique_ptr<fs::ReadableBlock>* block);
+  Status OpenBlock(
+      const BlockId& block_id,
+      std::unique_ptr<fs::ReadableBlock>* block);
 
   Status DeleteBlock(const BlockId& block_id);
 
@@ -208,8 +212,9 @@ class FsManager {
 
   std::string GetTabletWalRecoveryDir(const std::string& tablet_id) const;
 
-  std::string GetWalSegmentFileName(const std::string& tablet_id,
-                                    uint64_t sequence_number) const;
+  std::string GetWalSegmentFileName(
+      const std::string& tablet_id,
+      uint64_t sequence_number) const;
 
   // Return the directory where tablet superblocks should be stored.
   std::string GetTabletMetadataDir() const;
@@ -226,7 +231,8 @@ class FsManager {
   // Return the directory where the consensus metadata is stored.
   std::string GetConsensusMetadataDir() const {
     DCHECK(initted_);
-    return JoinPathSegments(canonicalized_metadata_fs_root_.path, kConsensusMetadataDirName);
+    return JoinPathSegments(
+        canonicalized_metadata_fs_root_.path, kConsensusMetadataDirName);
   }
 
   // Return the path where ConsensusMetadataPB is stored.
@@ -241,10 +247,13 @@ class FsManager {
 
   // Return the path where PersistentVarsPB is stored.
   std::string GetPersistentVarsPath(const std::string& tablet_id) const {
-     return JoinPathSegments(GetConsensusMetadataDir(), tablet_id + ".persistent_vars");
+    return JoinPathSegments(
+        GetConsensusMetadataDir(), tablet_id + ".persistent_vars");
   }
 
-  Env* env() { return env_; }
+  Env* env() {
+    return env_;
+  }
 
   bool read_only() const {
     return opts_.read_only;
@@ -257,7 +266,8 @@ class FsManager {
     return env_->FileExists(path);
   }
 
-  Status ListDir(const std::string& path, std::vector<std::string> *objects) const {
+  Status ListDir(const std::string& path, std::vector<std::string>* objects)
+      const {
     return env_->GetChildren(path, objects);
   }
 
@@ -293,27 +303,31 @@ class FsManager {
   // All created directories and files will be appended to 'created_dirs' and
   // 'created_files' respectively. It is the responsibility of the caller to
   // synchronize the directories containing these newly created file objects.
-  Status CreateFileSystemRoots(CanonicalizedRootsList canonicalized_roots,
-                               const InstanceMetadataPB& metadata,
-                               std::vector<std::string>* created_dirs,
-                               std::vector<std::string>* created_files);
+  Status CreateFileSystemRoots(
+      CanonicalizedRootsList canonicalized_roots,
+      const InstanceMetadataPB& metadata,
+      std::vector<std::string>* created_dirs,
+      std::vector<std::string>* created_files);
 
   // Create a new InstanceMetadataPB.
-  Status CreateInstanceMetadata(boost::optional<std::string> uuid,
-                                InstanceMetadataPB* metadata);
+  Status CreateInstanceMetadata(
+      boost::optional<std::string> uuid,
+      InstanceMetadataPB* metadata);
 
   // Save a InstanceMetadataPB to the filesystem.
   // Does not mutate the current state of the fsmanager.
-  Status WriteInstanceMetadata(const InstanceMetadataPB& metadata,
-                               const std::string& root);
+  Status WriteInstanceMetadata(
+      const InstanceMetadataPB& metadata,
+      const std::string& root);
 
   // ==========================================================================
   //  file-system helpers
   // ==========================================================================
-  void DumpFileSystemTree(std::ostream& out,
-                          const std::string& prefix,
-                          const std::string& path,
-                          const std::vector<std::string>& objects);
+  void DumpFileSystemTree(
+      std::ostream& out,
+      const std::string& prefix,
+      const std::string& path,
+      const std::vector<std::string>& objects);
 
   // Deletes leftover temporary files in all "special" top-level directories
   // (e.g. WAL root directory).
@@ -328,14 +342,14 @@ class FsManager {
   // Returns true if 'fname' is a valid tablet ID.
   bool IsValidTabletId(const std::string& fname);
 
-  static const char *kDataDirName;
-  static const char *kTabletMetadataDirName;
-  static const char *kWalDirName;
-  static const char *kCorruptedSuffix;
-  static const char *kInstanceMetadataFileName;
-  static const char *kInstanceMetadataMagicNumber;
-  static const char *kTabletSuperBlockMagicNumber;
-  static const char *kConsensusMetadataDirName;
+  static const char* kDataDirName;
+  static const char* kTabletMetadataDirName;
+  static const char* kWalDirName;
+  static const char* kCorruptedSuffix;
+  static const char* kInstanceMetadataFileName;
+  static const char* kInstanceMetadataMagicNumber;
+  static const char* kTabletSuperBlockMagicNumber;
+  static const char* kConsensusMetadataDirName;
 
   // The environment to be used for all filesystem operations.
   Env* env_;
@@ -367,4 +381,3 @@ class FsManager {
 };
 
 } // namespace kudu
-

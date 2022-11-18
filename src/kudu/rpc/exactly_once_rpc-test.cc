@@ -72,10 +72,11 @@ namespace {
 
 const char* kClientId = "test-client";
 
-void AddRequestId(RpcController* controller,
-                  const std::string& client_id,
-                  ResultTracker::SequenceNumber sequence_number,
-                  int64_t attempt_no) {
+void AddRequestId(
+    RpcController* controller,
+    const std::string& client_id,
+    ResultTracker::SequenceNumber sequence_number,
+    int64_t attempt_no) {
   unique_ptr<RequestIdPB> request_id(new RequestIdPB());
   request_id->set_client_id(client_id);
   request_id->set_seq_no(sequence_number);
@@ -88,7 +89,9 @@ class TestServerPicker : public ServerPicker<CalculatorServiceProxy> {
  public:
   explicit TestServerPicker(CalculatorServiceProxy* proxy) : proxy_(proxy) {}
 
-  void PickLeader(const ServerPickedCallback& callback, const MonoTime& deadline) override {
+  void PickLeader(
+      const ServerPickedCallback& callback,
+      const MonoTime& deadline) override {
     callback.Run(Status::OK(), proxy_);
   }
 
@@ -102,50 +105,58 @@ class TestServerPicker : public ServerPicker<CalculatorServiceProxy> {
 
 } // anonymous namespace
 
-class CalculatorServiceRpc : public RetriableRpc<CalculatorServiceProxy,
-                                                 ExactlyOnceRequestPB,
-                                                 ExactlyOnceResponsePB> {
+class CalculatorServiceRpc : public RetriableRpc<
+                                 CalculatorServiceProxy,
+                                 ExactlyOnceRequestPB,
+                                 ExactlyOnceResponsePB> {
  public:
-  CalculatorServiceRpc(const scoped_refptr<TestServerPicker>& server_picker,
-                       const scoped_refptr<RequestTracker>& request_tracker,
-                       const MonoTime& deadline,
-                       shared_ptr<Messenger> messenger,
-                       int value,
-                       CountDownLatch* latch,
-                       int server_sleep = 0)
-      : RetriableRpc(server_picker, request_tracker, deadline, std::move(messenger)),
+  CalculatorServiceRpc(
+      const scoped_refptr<TestServerPicker>& server_picker,
+      const scoped_refptr<RequestTracker>& request_tracker,
+      const MonoTime& deadline,
+      shared_ptr<Messenger> messenger,
+      int value,
+      CountDownLatch* latch,
+      int server_sleep = 0)
+      : RetriableRpc(
+            server_picker,
+            request_tracker,
+            deadline,
+            std::move(messenger)),
         latch_(latch) {
     req_.set_value_to_add(value);
     req_.set_randomly_fail(true);
     req_.set_sleep_for_ms(server_sleep);
   }
 
-  void Try(CalculatorServiceProxy* server, const ResponseCallback& callback) override {
-    server->AddExactlyOnceAsync(req_,
-                                &resp_,
-                                mutable_retrier()->mutable_controller(),
-                                callback);
+  void Try(CalculatorServiceProxy* server, const ResponseCallback& callback)
+      override {
+    server->AddExactlyOnceAsync(
+        req_, &resp_, mutable_retrier()->mutable_controller(), callback);
   }
 
   RetriableRpcStatus AnalyzeResponse(const Status& rpc_cb_status) override {
-    // We shouldn't get errors from the server/rpc system since we set a high timeout.
+    // We shouldn't get errors from the server/rpc system since we set a high
+    // timeout.
     CHECK_OK(rpc_cb_status);
 
     if (!mutable_retrier()->controller().status().ok()) {
       CHECK(mutable_retrier()->controller().status().IsRemoteError());
-      if (mutable_retrier()->controller().error_response()->code()
-          == ErrorStatusPB::ERROR_REQUEST_STALE) {
-        return { RetriableRpcStatus::NON_RETRIABLE_ERROR,
-              mutable_retrier()->controller().status() };
+      if (mutable_retrier()->controller().error_response()->code() ==
+          ErrorStatusPB::ERROR_REQUEST_STALE) {
+        return {
+            RetriableRpcStatus::NON_RETRIABLE_ERROR,
+            mutable_retrier()->controller().status()};
       }
-      return { RetriableRpcStatus::SERVICE_UNAVAILABLE,
-               mutable_retrier()->controller().status() };
+      return {
+          RetriableRpcStatus::SERVICE_UNAVAILABLE,
+          mutable_retrier()->controller().status()};
     }
 
     // If the controller is not finished we're in the ReplicaFoundCb() callback.
     // Return ok to proceed with the call to the server.
     if (!mutable_retrier()->mutable_controller()->finished()) {
-      return { RetriableRpcStatus::OK, Status::OK() };
+      return {RetriableRpcStatus::OK, Status::OK()};
     }
 
     // If we've received a response in the past, all following responses must
@@ -153,8 +164,8 @@ class CalculatorServiceRpc : public RetriableRpc<CalculatorServiceProxy,
     if (!successful_response_.IsInitialized()) {
       successful_response_.CopyFrom(resp_);
     } else {
-      CHECK_EQ(SecureDebugString(successful_response_),
-               SecureDebugString(resp_));
+      CHECK_EQ(
+          SecureDebugString(successful_response_), SecureDebugString(resp_));
     }
 
     if (sometimes_retry_successful_) {
@@ -164,20 +175,22 @@ class CalculatorServiceRpc : public RetriableRpc<CalculatorServiceProxy,
       int random = rand() % 4;
       switch (random) {
         case 0:
-          return { RetriableRpcStatus::SERVICE_UNAVAILABLE,
-                   Status::RemoteError("") };
+          return {
+              RetriableRpcStatus::SERVICE_UNAVAILABLE, Status::RemoteError("")};
         case 1:
-          return { RetriableRpcStatus::RESOURCE_NOT_FOUND,
-                   Status::RemoteError("") };
+          return {
+              RetriableRpcStatus::RESOURCE_NOT_FOUND, Status::RemoteError("")};
         case 2:
-          return { RetriableRpcStatus::SERVER_NOT_ACCESSIBLE,
-                   Status::RemoteError("") };
+          return {
+              RetriableRpcStatus::SERVER_NOT_ACCESSIBLE,
+              Status::RemoteError("")};
         case 3:
-          return { RetriableRpcStatus::OK, Status::OK() };
-        default: LOG(FATAL) << "Unexpected value";
+          return {RetriableRpcStatus::OK, Status::OK()};
+        default:
+          LOG(FATAL) << "Unexpected value";
       }
     }
-    return { RetriableRpcStatus::OK, Status::OK() };
+    return {RetriableRpcStatus::OK, Status::OK()};
   }
 
   void Finish(const Status& status) override {
@@ -186,7 +199,9 @@ class CalculatorServiceRpc : public RetriableRpc<CalculatorServiceProxy,
     delete this;
   }
 
-  std::string ToString() const override { return "test-rpc"; }
+  std::string ToString() const override {
+    return "test-rpc";
+  }
   CountDownLatch* latch_;
   ExactlyOnceResponsePB successful_response_;
   bool sometimes_retry_successful_ = true;
@@ -214,27 +229,32 @@ class ExactlyOnceRpcTest : public RpcTestBase {
 
   // An exactly once adder that uses RetriableRpc to perform the requests.
   struct RetriableRpcExactlyOnceAdder {
-    RetriableRpcExactlyOnceAdder(const scoped_refptr<TestServerPicker>& server_picker,
-                     const scoped_refptr<RequestTracker>& request_tracker,
-                     shared_ptr<Messenger> messenger,
-                     int value,
-                     int server_sleep = 0) : latch_(1) {
+    RetriableRpcExactlyOnceAdder(
+        const scoped_refptr<TestServerPicker>& server_picker,
+        const scoped_refptr<RequestTracker>& request_tracker,
+        shared_ptr<Messenger> messenger,
+        int value,
+        int server_sleep = 0)
+        : latch_(1) {
       MonoTime now = MonoTime::Now();
       now.AddDelta(MonoDelta::FromMilliseconds(10000));
-      rpc_ = new CalculatorServiceRpc(server_picker,
-                                      request_tracker,
-                                      now,
-                                      std::move(messenger),
-                                      value,
-                                      &latch_,
-                                      server_sleep);
+      rpc_ = new CalculatorServiceRpc(
+          server_picker,
+          request_tracker,
+          now,
+          std::move(messenger),
+          value,
+          &latch_,
+          server_sleep);
     }
 
     void Start() {
       CHECK_OK(kudu::Thread::Create(
-                   "test",
-                   "test",
-                   &RetriableRpcExactlyOnceAdder::SleepAndSend, this, &thread));
+          "test",
+          "test",
+          &RetriableRpcExactlyOnceAdder::SleepAndSend,
+          this,
+          &thread));
     }
 
     void SleepAndSend() {
@@ -247,17 +267,17 @@ class ExactlyOnceRpcTest : public RpcTestBase {
     CalculatorServiceRpc* rpc_;
   };
 
-  // An exactly once adder that sends multiple, simultaneous calls, to the server
-  // and makes sure that only one of the calls was successful.
+  // An exactly once adder that sends multiple, simultaneous calls, to the
+  // server and makes sure that only one of the calls was successful.
   struct SimultaneousExactlyOnceAdder {
-    SimultaneousExactlyOnceAdder(CalculatorServiceProxy* p,
-                     ResultTracker::SequenceNumber sequence_number,
-                     int value,
-                     uint64_t client_sleep,
-                     uint64_t server_sleep,
-                     int64_t attempt_no)
-     : proxy(p),
-       client_sleep_for_ms(client_sleep) {
+    SimultaneousExactlyOnceAdder(
+        CalculatorServiceProxy* p,
+        ResultTracker::SequenceNumber sequence_number,
+        int value,
+        uint64_t client_sleep,
+        uint64_t server_sleep,
+        int64_t attempt_no)
+        : proxy(p), client_sleep_for_ms(client_sleep) {
       req.set_value_to_add(value);
       req.set_sleep_for_ms(server_sleep);
       AddRequestId(&controller, kClientId, sequence_number, attempt_no);
@@ -267,7 +287,9 @@ class ExactlyOnceRpcTest : public RpcTestBase {
       CHECK_OK(kudu::Thread::Create(
           "test",
           "test",
-          &SimultaneousExactlyOnceAdder::SleepAndSend, this, &thread));
+          &SimultaneousExactlyOnceAdder::SleepAndSend,
+          this,
+          &thread));
     }
 
     // Sleeps the preset number of msecs before sending the call.
@@ -285,7 +307,6 @@ class ExactlyOnceRpcTest : public RpcTestBase {
     scoped_refptr<kudu::Thread> thread;
   };
 
-
   void CheckValueMatches(int expected_value) {
     RpcController controller;
     ExactlyOnceRequestPB req;
@@ -299,7 +320,6 @@ class ExactlyOnceRpcTest : public RpcTestBase {
     request_tracker_->RpcCompleted(seq_no);
   }
 
-
   // This continuously issues calls to the server, that often last longer than
   // 'remember_responses_ttl_ms', making sure that we don't get errors back.
   void DoLongWritesThread(MonoDelta run_for) {
@@ -307,13 +327,18 @@ class ExactlyOnceRpcTest : public RpcTestBase {
     run_until.AddDelta(run_for);
     int counter = 0;
     while (MonoTime::Now() < run_until) {
-      unique_ptr<RetriableRpcExactlyOnceAdder> adder(new RetriableRpcExactlyOnceAdder(
-          test_picker_, request_tracker_, client_messenger_, 1,
-          rand() % (2 * FLAGS_remember_responses_ttl_ms)));
+      unique_ptr<RetriableRpcExactlyOnceAdder> adder(
+          new RetriableRpcExactlyOnceAdder(
+              test_picker_,
+              request_tracker_,
+              client_messenger_,
+              1,
+              rand() % (2 * FLAGS_remember_responses_ttl_ms)));
 
-      // This thread is used in the stress test where we're constantly running GC.
-      // So, once we get a "success" response, it's likely that the result will be
-      // GCed on the server side, and thus it's not safe to spuriously retry.
+      // This thread is used in the stress test where we're constantly running
+      // GC. So, once we get a "success" response, it's likely that the result
+      // will be GCed on the server side, and thus it's not safe to spuriously
+      // retry.
       adder->rpc_->sometimes_retry_successful_ = false;
       adder->SleepAndSend();
       SleepFor(MonoDelta::FromMilliseconds(rand() % 10));
@@ -327,20 +352,21 @@ class ExactlyOnceRpcTest : public RpcTestBase {
     request_tracker_->RpcCompleted(sequence_number);
   }
 
-  // Stubbornly sends the same request to the server, this should observe three states.
-  // The request should be successful at first, then its result should be GCed and the
-  // client should be GCed.
-  void StubbornlyWriteTheSameRequestThread(ResultTracker::SequenceNumber sequence_number,
-                                           MonoDelta run_for) {
+  // Stubbornly sends the same request to the server, this should observe three
+  // states. The request should be successful at first, then its result should
+  // be GCed and the client should be GCed.
+  void StubbornlyWriteTheSameRequestThread(
+      ResultTracker::SequenceNumber sequence_number,
+      MonoDelta run_for) {
     MonoTime run_until = MonoTime::Now();
     run_until.AddDelta(run_for);
     // Make an initial request, so that we get a response to compare to.
     ExactlyOnceResponsePB original_response;
     CHECK_OK(MakeAddCall(sequence_number, 0, &original_response));
 
-    // Now repeat the same request. At first we should get the same response, then the result
-    // should be GCed and we should get STALE back. Finally the request should succeed again
-    // but we should get a new response.
+    // Now repeat the same request. At first we should get the same response,
+    // then the result should be GCed and we should get STALE back. Finally the
+    // request should succeed again but we should get a new response.
     bool result_gced = false;
     bool client_gced = false;
     while (MonoTime::Now() < run_until) {
@@ -348,29 +374,36 @@ class ExactlyOnceRpcTest : public RpcTestBase {
       Status s = MakeAddCall(sequence_number, 0, &response);
       if (s.ok()) {
         if (!result_gced) {
-          CHECK_EQ(SecureDebugString(response), SecureDebugString(original_response));
+          CHECK_EQ(
+              SecureDebugString(response),
+              SecureDebugString(original_response));
         } else {
           client_gced = true;
-          CHECK_NE(SecureDebugString(response), SecureDebugString(original_response));
+          CHECK_NE(
+              SecureDebugString(response),
+              SecureDebugString(original_response));
         }
         SleepFor(MonoDelta::FromMilliseconds(rand() % 10));
       } else if (s.IsRemoteError()) {
         result_gced = true;
-        SleepFor(MonoDelta::FromMilliseconds(FLAGS_remember_clients_ttl_ms * 2));
+        SleepFor(
+            MonoDelta::FromMilliseconds(FLAGS_remember_clients_ttl_ms * 2));
       }
     }
     CHECK(result_gced);
     CHECK(client_gced);
   }
 
-  Status MakeAddCall(ResultTracker::SequenceNumber sequence_number,
-                     int value_to_add,
-                     ExactlyOnceResponsePB* response,
-                     int attempt_no = -1) {
+  Status MakeAddCall(
+      ResultTracker::SequenceNumber sequence_number,
+      int value_to_add,
+      ExactlyOnceResponsePB* response,
+      int attempt_no = -1) {
     RpcController controller;
     ExactlyOnceRequestPB req;
     req.set_value_to_add(value_to_add);
-    if (attempt_no == -1) attempt_no = attempt_nos_.fetch_add(1);
+    if (attempt_no == -1)
+      attempt_no = attempt_nos_.fetch_add(1);
     AddRequestId(&controller, kClientId, sequence_number, attempt_no);
     Status s = proxy_->AddExactlyOnce(req, response, &controller);
     return s;
@@ -385,8 +418,8 @@ class ExactlyOnceRpcTest : public RpcTestBase {
   scoped_refptr<RequestTracker> request_tracker_;
 };
 
-// Tests that we get exactly once semantics on RPCs when we send a bunch of requests with the
-// same sequence number as previous requests.
+// Tests that we get exactly once semantics on RPCs when we send a bunch of
+// requests with the same sequence number as previous requests.
 TEST_F(ExactlyOnceRpcTest, TestExactlyOnceSemanticsAfterRpcCompleted) {
   ASSERT_OK(StartServer());
   ExactlyOnceResponsePB original_resp;
@@ -407,12 +440,13 @@ TEST_F(ExactlyOnceRpcTest, TestExactlyOnceSemanticsAfterRpcCompleted) {
     int expected_incremental_usage = original_resp.SpaceUsed() + 200;
 
     int mem_consumption_after = mem_tracker_->consumption();
-    ASSERT_GT(mem_consumption_after - mem_consumption, expected_incremental_usage);
+    ASSERT_GT(
+        mem_consumption_after - mem_consumption, expected_incremental_usage);
     mem_consumption = mem_consumption_after;
   }
 
-  // Now repeat the rpc 10 times, using the same sequence number, none of these should be executed
-  // and they should get the same response back.
+  // Now repeat the rpc 10 times, using the same sequence number, none of these
+  // should be executed and they should get the same response back.
   for (int i = 0; i < 10; i++) {
     RpcController controller;
     controller.set_timeout(MonoDelta::FromSeconds(20));
@@ -423,14 +457,16 @@ TEST_F(ExactlyOnceRpcTest, TestExactlyOnceSemanticsAfterRpcCompleted) {
     ASSERT_OK(proxy_->AddExactlyOnce(req, &resp, &controller));
     ASSERT_EQ(resp.current_val(), 1);
     ASSERT_EQ(resp.current_time_micros(), original_resp.current_time_micros());
-    // Sleep to give the MemTracker time to update -- we don't expect any update,
-    // but if we had a bug here, we'd only see it with this sleep.
+    // Sleep to give the MemTracker time to update -- we don't expect any
+    // update, but if we had a bug here, we'd only see it with this sleep.
     SleepFor(MonoDelta::FromMilliseconds(100));
-    // We shouldn't have consumed any more memory since the responses were cached.
+    // We shouldn't have consumed any more memory since the responses were
+    // cached.
     ASSERT_EQ(mem_consumption, mem_tracker_->consumption());
   }
 
-  // Making a new request, from a new client, should double the memory consumption.
+  // Making a new request, from a new client, should double the memory
+  // consumption.
   {
     RpcController controller;
     ExactlyOnceRequestPB req;
@@ -446,10 +482,11 @@ TEST_F(ExactlyOnceRpcTest, TestExactlyOnceSemanticsAfterRpcCompleted) {
   }
 }
 
-// Performs a series of requests in which each single request is attempted multiple times, as
-// the server side is instructed to spuriously fail attempts.
-// In CalculatorServiceRpc we sure that the same response is returned by all retries and,
-// after all the rpcs are done, we make sure that final result is the expected one.
+// Performs a series of requests in which each single request is attempted
+// multiple times, as the server side is instructed to spuriously fail attempts.
+// In CalculatorServiceRpc we sure that the same response is returned by all
+// retries and, after all the rpcs are done, we make sure that final result is
+// the expected one.
 TEST_F(ExactlyOnceRpcTest, TestExactlyOnceSemanticsWithReplicatedRpc) {
   ASSERT_OK(StartServer());
   int kNumIterations = 10;
@@ -461,11 +498,12 @@ TEST_F(ExactlyOnceRpcTest, TestExactlyOnceSemanticsWithReplicatedRpc) {
   }
 
   int count = 0;
-  for (int i = 0; i < kNumIterations; i ++) {
+  for (int i = 0; i < kNumIterations; i++) {
     vector<unique_ptr<RetriableRpcExactlyOnceAdder>> adders;
     for (int j = 0; j < kNumRpcs; j++) {
       unique_ptr<RetriableRpcExactlyOnceAdder> adder(
-          new RetriableRpcExactlyOnceAdder(test_picker_, request_tracker_, client_messenger_, j));
+          new RetriableRpcExactlyOnceAdder(
+              test_picker_, request_tracker_, client_messenger_, j));
       adders.push_back(std::move(adder));
       adders[j]->Start();
       count += j;
@@ -477,9 +515,9 @@ TEST_F(ExactlyOnceRpcTest, TestExactlyOnceSemanticsWithReplicatedRpc) {
   }
 }
 
-// Performs a series of requests in which each single request is attempted by multiple threads.
-// On each iteration, after all the threads complete, we expect that the add operation was
-// executed exactly once.
+// Performs a series of requests in which each single request is attempted by
+// multiple threads. On each iteration, after all the threads complete, we
+// expect that the add operation was executed exactly once.
 TEST_F(ExactlyOnceRpcTest, TestExactlyOnceSemanticsWithConcurrentUpdaters) {
   ASSERT_OK(StartServer());
   int kNumIterations = 10;
@@ -498,16 +536,17 @@ TEST_F(ExactlyOnceRpcTest, TestExactlyOnceSemanticsWithConcurrentUpdaters) {
   ExactlyOnceResponsePB resp;
   ASSERT_OK(MakeAddCall(sequence_number, 1, &resp));
 
-  for (int i = 1; i <= kNumIterations; i ++) {
+  for (int i = 1; i <= kNumIterations; i++) {
     vector<unique_ptr<SimultaneousExactlyOnceAdder>> adders;
     for (int j = 0; j < kNumThreads; j++) {
       unique_ptr<SimultaneousExactlyOnceAdder> adder(
-          new SimultaneousExactlyOnceAdder(proxy_.get(),
-                                           i, // sequence number
-                                           1, // value
-                                           rand() % 20, // client_sleep
-                                           rand() % 10, // server_sleep
-                                           attempt_nos_.fetch_add(1))); // attempt number
+          new SimultaneousExactlyOnceAdder(
+              proxy_.get(),
+              i, // sequence number
+              1, // value
+              rand() % 20, // client_sleep
+              rand() % 10, // server_sleep
+              attempt_nos_.fetch_add(1))); // attempt number
       adders.push_back(std::move(adder));
       adders[j]->Start();
     }
@@ -522,11 +561,13 @@ TEST_F(ExactlyOnceRpcTest, TestExactlyOnceSemanticsWithConcurrentUpdaters) {
       }
     }
 
-    // After all adders finished we should at least the size of one more response.
-    // The actual size depends of multiple factors, for instance, how many calls were "attached"
-    // (which is timing dependent) so we can't be more precise than this.
-    ASSERT_GT(mem_tracker_->consumption(),
-              memory_consumption_initial + single_response_size * i);
+    // After all adders finished we should at least the size of one more
+    // response. The actual size depends of multiple factors, for instance, how
+    // many calls were "attached" (which is timing dependent) so we can't be
+    // more precise than this.
+    ASSERT_GT(
+        mem_tracker_->consumption(),
+        memory_consumption_initial + single_response_size * i);
   }
 }
 
@@ -570,13 +611,16 @@ TEST_F(ExactlyOnceRpcTest, TestExactlyOnceSemanticsGarbageCollection) {
   ASSERT_NE(SecureShortDebugString(resp), SecureShortDebugString(original));
 }
 
-// This test creates a thread continuously making requests to the server, some lasting longer
-// than the GC period, at the same time it runs GC, making sure that the corresponding
-// CompletionRecords/ClientStates are not deleted from underneath the ongoing requests.
-// This also creates a thread that runs GC very frequently and another thread that sends the
-// same request over and over and observes the possible states: request is ok, request is stale
-// request is ok again (because the client was forgotten).
-TEST_F(ExactlyOnceRpcTest, TestExactlyOnceSemanticsGarbageCollectionStressTest) {
+// This test creates a thread continuously making requests to the server, some
+// lasting longer than the GC period, at the same time it runs GC, making sure
+// that the corresponding CompletionRecords/ClientStates are not deleted from
+// underneath the ongoing requests. This also creates a thread that runs GC very
+// frequently and another thread that sends the same request over and over and
+// observes the possible states: request is ok, request is stale request is ok
+// again (because the client was forgotten).
+TEST_F(
+    ExactlyOnceRpcTest,
+    TestExactlyOnceSemanticsGarbageCollectionStressTest) {
   FLAGS_remember_clients_ttl_ms = 100;
   FLAGS_remember_responses_ttl_ms = 10;
   FLAGS_result_tracker_gc_interval_ms = 10;
@@ -604,13 +648,22 @@ TEST_F(ExactlyOnceRpcTest, TestExactlyOnceSemanticsGarbageCollectionStressTest) 
 
   scoped_refptr<kudu::Thread> stubborn_thread;
   CHECK_OK(kudu::Thread::Create(
-      "stubborn", "stubborn", &ExactlyOnceRpcTest::StubbornlyWriteTheSameRequestThread,
-      this, stubborn_req_seq_num, stubborn_run_for, &stubborn_thread));
+      "stubborn",
+      "stubborn",
+      &ExactlyOnceRpcTest::StubbornlyWriteTheSameRequestThread,
+      this,
+      stubborn_req_seq_num,
+      stubborn_run_for,
+      &stubborn_thread));
 
   scoped_refptr<kudu::Thread> write_thread;
   CHECK_OK(kudu::Thread::Create(
-      "write", "write", &ExactlyOnceRpcTest::DoLongWritesThread,
-      this, writes_run_for, &write_thread));
+      "write",
+      "write",
+      &ExactlyOnceRpcTest::DoLongWritesThread,
+      this,
+      writes_run_for,
+      &write_thread));
 
   write_thread->Join();
   stubborn_thread->Join();
@@ -618,12 +671,11 @@ TEST_F(ExactlyOnceRpcTest, TestExactlyOnceSemanticsGarbageCollectionStressTest) 
   // Within a few seconds, the consumption should be back to zero.
   // Really, this should be within 100ms, but we'll give it a bit of
   // time to avoid test flakiness.
-  AssertEventually([&]() {
-      ASSERT_EQ(0, mem_tracker_->consumption());
-    }, MonoDelta::FromSeconds(5));
+  AssertEventually(
+      [&]() { ASSERT_EQ(0, mem_tracker_->consumption()); },
+      MonoDelta::FromSeconds(5));
   NO_PENDING_FATALS();
 }
-
 
 } // namespace rpc
 } // namespace kudu

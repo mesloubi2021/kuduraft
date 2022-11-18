@@ -45,5 +45,5 @@ struct IOContext {
   std::string tablet_id;
 };
 
-}  // namespace fs
-}  // namespace kudu
+} // namespace fs
+} // namespace kudu

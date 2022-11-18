@@ -33,7 +33,7 @@ package kudu;
 option java_package = "org.apache.kudu";
 
 import "kudu/common/common.proto";
-//import "kudu/consensus/metadata.proto";
+// import "kudu/consensus/metadata.proto";
 import "kudu/util/pb_util.proto";
 
 // Error status returned by any RPC method.
@@ -192,16 +192,22 @@ message RowOperationsPB {
   // The row data for each operation is stored in the following format:
   //
   // [operation type] (one byte):
-  //   A single-byte field which determines the type of operation. The values are
+  //   A single-byte field which determines the type of operation. The values
+are
   //   based on the 'Type' enum above.
-  // [column isset bitmap]   (one bit for each column in the Schema, rounded to nearest byte)
-  //   A set bit in this bitmap indicates that the user has specified the given column
-  //   in the row. This indicates that the column will be present in the data to follow.
-  // [null bitmap]           (one bit for each Schema column, rounded to nearest byte)
+  // [column isset bitmap]   (one bit for each column in the Schema, rounded to
+nearest byte)
+  //   A set bit in this bitmap indicates that the user has specified the given
+column
+  //   in the row. This indicates that the column will be present in the data to
+follow.
+  // [null bitmap]           (one bit for each Schema column, rounded to nearest
+byte)
   //   A set bit in this bitmap indicates that the given column is NULL.
   //   This is only present if there are any nullable columns.
   // [column data]
-  //   For each column which is set and not NULL, the column's data follows. The data
+  //   For each column which is set and not NULL, the column's data follows. The
+data
   //   format of each cell is the canonical in-memory format (eg little endian).
   //   For string data, the pointers are relative to 'indirect_data'.
   //

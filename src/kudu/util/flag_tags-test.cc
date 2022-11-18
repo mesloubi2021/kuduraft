@@ -19,12 +19,12 @@
 #include <unordered_set>
 #include <vector>
 
-#include <gtest/gtest.h>
 #include <gflags/gflags.h>
 #include <gflags/gflags_declare.h>
+#include <gtest/gtest.h>
 
-#include "kudu/gutil/map-util.h"
 #include "kudu/gutil/macros.h"
+#include "kudu/gutil/map-util.h"
 #include "kudu/gutil/strings/substitute.h"
 #include "kudu/util/flag_tags.h"
 #include "kudu/util/flags.h"
@@ -83,9 +83,10 @@ TEST_F(FlagTagsTest, TestUnlockFlags) {
   {
     gflags::FlagSaver s;
     gflags::SetCommandLineOption("test_unsafe_flag", "true");
-    ASSERT_DEATH({ HandleCommonFlags(); },
-                 "Flag --test_unsafe_flag is unsafe and unsupported.*"
-                 "Use --unlock_unsafe_flags to proceed");
+    ASSERT_DEATH(
+        { HandleCommonFlags(); },
+        "Flag --test_unsafe_flag is unsafe and unsupported.*"
+        "Use --unlock_unsafe_flags to proceed");
   }
 
   // Setting an unsafe flag with unlocking should proceed with a warning.
@@ -97,16 +98,18 @@ TEST_F(FlagTagsTest, TestUnlockFlags) {
     gflags::SetCommandLineOption("unlock_unsafe_flags", "true");
     HandleCommonFlags();
     ASSERT_EQ(1, sink.logged_msgs().size());
-    ASSERT_STR_CONTAINS(sink.logged_msgs()[0], "Enabled unsafe flag: --test_unsafe_flag");
+    ASSERT_STR_CONTAINS(
+        sink.logged_msgs()[0], "Enabled unsafe flag: --test_unsafe_flag");
   }
 
   // Setting an experimental flag without unlocking should crash.
   {
     gflags::FlagSaver s;
     gflags::SetCommandLineOption("test_experimental_flag", "true");
-    ASSERT_DEATH({ HandleCommonFlags(); },
-                 "Flag --test_experimental_flag is experimental and unsupported.*"
-                 "Use --unlock_experimental_flags to proceed");
+    ASSERT_DEATH(
+        { HandleCommonFlags(); },
+        "Flag --test_experimental_flag is experimental and unsupported.*"
+        "Use --unlock_experimental_flags to proceed");
   }
 
   // Setting an experimental flag with unlocking should proceed with a warning.
@@ -118,8 +121,9 @@ TEST_F(FlagTagsTest, TestUnlockFlags) {
     gflags::SetCommandLineOption("unlock_experimental_flags", "true");
     HandleCommonFlags();
     ASSERT_EQ(1, sink.logged_msgs().size());
-    ASSERT_STR_CONTAINS(sink.logged_msgs()[0],
-                        "Enabled experimental flag: --test_experimental_flag");
+    ASSERT_STR_CONTAINS(
+        sink.logged_msgs()[0],
+        "Enabled experimental flag: --test_experimental_flag");
   }
 }
 
@@ -127,8 +131,9 @@ TEST_F(FlagTagsTest, TestSensitiveFlags) {
   // Setting a sensitive flag should return a redacted value.
   {
     kudu::g_should_redact = kudu::RedactContext::LOG;
-    ASSERT_STR_CONTAINS(CommandlineFlagsIntoString(EscapeMode::NONE), strings::Substitute(
-                        "--test_sensitive_flag=$0", kRedactionMessage));
+    ASSERT_STR_CONTAINS(
+        CommandlineFlagsIntoString(EscapeMode::NONE),
+        strings::Substitute("--test_sensitive_flag=$0", kRedactionMessage));
   }
 }
 

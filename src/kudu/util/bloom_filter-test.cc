@@ -29,21 +29,22 @@ namespace kudu {
 
 static const int kRandomSeed = 0xdeadbeef;
 
-static void AddRandomKeys(int random_seed, int n_keys, BloomFilterBuilder *bf) {
+static void AddRandomKeys(int random_seed, int n_keys, BloomFilterBuilder* bf) {
   srandom(random_seed);
   for (int i = 0; i < n_keys; i++) {
     uint64_t key = random();
-    Slice key_slice(reinterpret_cast<const uint8_t *>(&key), sizeof(key));
+    Slice key_slice(reinterpret_cast<const uint8_t*>(&key), sizeof(key));
     BloomKeyProbe probe(key_slice);
     bf->AddKey(probe);
   }
 }
 
-static void CheckRandomKeys(int random_seed, int n_keys, const BloomFilter &bf) {
+static void
+CheckRandomKeys(int random_seed, int n_keys, const BloomFilter& bf) {
   srandom(random_seed);
   for (int i = 0; i < n_keys; i++) {
     uint64_t key = random();
-    Slice key_slice(reinterpret_cast<const uint8_t *>(&key), sizeof(key));
+    Slice key_slice(reinterpret_cast<const uint8_t*>(&key), sizeof(key));
     BloomKeyProbe probe(key_slice);
     ASSERT_TRUE(bf.MayContainKey(probe));
   }
@@ -51,8 +52,7 @@ static void CheckRandomKeys(int random_seed, int n_keys, const BloomFilter &bf) 
 
 TEST(TestBloomFilter, TestInsertAndProbe) {
   int n_keys = 2000;
-  BloomFilterBuilder bfb(
-    BloomFilterSizing::ByCountAndFPRate(n_keys, 0.01));
+  BloomFilterBuilder bfb(BloomFilterSizing::ByCountAndFPRate(n_keys, 0.01));
 
   // Check that the desired false positive rate is achieved.
   double expected_fp_rate = bfb.false_positive_rate();
@@ -74,19 +74,21 @@ TEST(TestBloomFilter, TestInsertAndProbe) {
   uint32_t num_positives = 0;
   for (int i = 0; i < num_queries; i++) {
     uint64_t key = random();
-    Slice key_slice(reinterpret_cast<const uint8_t *>(&key), sizeof(key));
+    Slice key_slice(reinterpret_cast<const uint8_t*>(&key), sizeof(key));
     BloomKeyProbe probe(key_slice);
     if (bf.MayContainKey(probe)) {
       num_positives++;
     }
   }
 
-  double fp_rate = static_cast<double>(num_positives) / static_cast<double>(num_queries);
-  LOG(INFO) << "FP rate: " << fp_rate << " (" << num_positives << "/" << num_queries << ")";
+  double fp_rate =
+      static_cast<double>(num_positives) / static_cast<double>(num_queries);
+  LOG(INFO) << "FP rate: " << fp_rate << " (" << num_positives << "/"
+            << num_queries << ")";
   LOG(INFO) << "Expected FP rate: " << expected_fp_rate;
 
   // Actual FP rate should be within 20% of the estimated FP rate
-  ASSERT_NEAR(fp_rate, expected_fp_rate, 0.20*expected_fp_rate);
+  ASSERT_NEAR(fp_rate, expected_fp_rate, 0.20 * expected_fp_rate);
 }
 
 } // namespace kudu

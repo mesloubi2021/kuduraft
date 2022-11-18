@@ -38,7 +38,8 @@ Status BadCPUStatus(const base::CPU& cpu, const char* instruction_set) {
       "The CPU on this system ($0) does not support the $1 instruction "
       "set which is required for running Kudu. If you are running inside a VM, "
       "you may need to enable SSE4.2 pass-through.",
-      cpu.cpu_brand(), instruction_set));
+      cpu.cpu_brand(),
+      instruction_set));
 }
 
 bool IsFdOpen(int fd) {
@@ -55,13 +56,12 @@ bool IsFdOpen(int fd) {
 // would then overwrite one of our important data files and cause
 // corruption!
 void CheckStandardFds() {
-  if (!IsFdOpen(STDIN_FILENO) ||
-      !IsFdOpen(STDOUT_FILENO) ||
+  if (!IsFdOpen(STDIN_FILENO) || !IsFdOpen(STDOUT_FILENO) ||
       !IsFdOpen(STDERR_FILENO)) {
-    // We can't use LOG(FATAL) here because glog isn't initialized yet, and even if it
-    // were, it would try to write to stderr, which might end up writing the log message
-    // into some unexpected place. This is a rare enough issue that people can deal with
-    // the core dump.
+    // We can't use LOG(FATAL) here because glog isn't initialized yet, and even
+    // if it were, it would try to write to stderr, which might end up writing
+    // the log message into some unexpected place. This is a rare enough issue
+    // that people can deal with the core dump.
     abort();
   }
 }

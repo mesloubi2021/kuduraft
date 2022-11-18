@@ -57,7 +57,7 @@ TimeSeriesCollector::~TimeSeriesCollector() {
   }
 }
 
-shared_ptr<TimeSeries> TimeSeriesCollector::GetTimeSeries(const string &key) {
+shared_ptr<TimeSeries> TimeSeriesCollector::GetTimeSeries(const string& key) {
   MutexLock l(series_lock_);
   SeriesMap::const_iterator it = series_map_.find(key);
   if (it == series_map_.end()) {
@@ -74,8 +74,12 @@ void TimeSeriesCollector::StartDumperThread() {
   CHECK(!started_);
   exit_latch_.Reset(1);
   started_ = true;
-  CHECK_OK(kudu::Thread::Create("time series", "dumper",
-      &TimeSeriesCollector::DumperThread, this, &dumper_thread_));
+  CHECK_OK(kudu::Thread::Create(
+      "time series",
+      "dumper",
+      &TimeSeriesCollector::DumperThread,
+      this,
+      &dumper_thread_));
 }
 
 void TimeSeriesCollector::StopDumperThread() {
@@ -104,18 +108,18 @@ void TimeSeriesCollector::DumperThread() {
 }
 
 void TimeSeriesCollector::BuildMetricsString(
-  WallTime time_since_start, faststring *dst_buf) const {
+    WallTime time_since_start,
+    faststring* dst_buf) const {
   MutexLock l(series_lock_);
 
-  dst_buf->append(StringPrintf("{ \"scope\": \"%s\", \"time\": %.3f",
-                               scope_.c_str(), time_since_start));
+  dst_buf->append(StringPrintf(
+      "{ \"scope\": \"%s\", \"time\": %.3f", scope_.c_str(), time_since_start));
 
   for (SeriesMap::const_reference entry : series_map_) {
-    dst_buf->append(StringPrintf(", \"%s\": %.3f",
-                                 entry.first.c_str(),  entry.second->value()));
+    dst_buf->append(StringPrintf(
+        ", \"%s\": %.3f", entry.first.c_str(), entry.second->value()));
   }
   dst_buf->append("}");
 }
-
 
 } // namespace kudu

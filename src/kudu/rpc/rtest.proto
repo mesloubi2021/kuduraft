@@ -52,8 +52,7 @@ message SleepRequestPB {
   optional bool client_timeout_defined = 4 [ default = false ];
 }
 
-message SleepResponsePB {
-}
+message SleepResponsePB {}
 
 message SleepWithSidecarRequestPB {
   required uint32 sleep_micros = 1;
@@ -62,8 +61,7 @@ message SleepWithSidecarRequestPB {
   required uint32 sidecar_idx = 4;
 }
 
-message SleepWithSidecarResponsePB {
-}
+message SleepWithSidecarResponsePB {}
 
 message SendTwoStringsRequestPB {
   required uint32 random_seed = 1;
@@ -96,8 +94,7 @@ message EchoResponsePB {
   required string data = 1;
 }
 
-message WhoAmIRequestPB {
-}
+message WhoAmIRequestPB {}
 message WhoAmIResponsePB {
   required kudu.rpc.UserInformationPB credentials = 1;
   required string address = 2;
@@ -127,14 +124,14 @@ message TestInvalidResponseResponsePB {
 }
 
 enum FeatureFlags {
-  UNKNOWN=0;
-  FOO=1;
+  UNKNOWN = 0;
+  FOO = 1;
 }
 
 message ExactlyOnceRequestPB {
-  optional uint32 sleep_for_ms = 1 [default = 0];
+  optional uint32 sleep_for_ms = 1 [ default = 0 ];
   required uint32 value_to_add = 2;
-  optional bool randomly_fail = 3 [default = false];
+  optional bool randomly_fail = 3 [ default = false ];
 }
 message ExactlyOnceResponsePB {
   required uint32 current_val = 1;
@@ -144,17 +141,18 @@ message ExactlyOnceResponsePB {
 service CalculatorService {
   option (kudu.rpc.default_authz_method) = "AuthorizeDisallowAlice";
 
-  rpc Add(AddRequestPB) returns(AddResponsePB);
-  rpc Sleep(SleepRequestPB) returns(SleepResponsePB) {
+  rpc Add(AddRequestPB) returns (AddResponsePB);
+  rpc Sleep(SleepRequestPB) returns (SleepResponsePB) {
     option (kudu.rpc.authz_method) = "AuthorizeDisallowBob";
   };
-  rpc Echo(EchoRequestPB) returns(EchoResponsePB);
+  rpc Echo(EchoRequestPB) returns (EchoResponsePB);
   rpc WhoAmI(WhoAmIRequestPB) returns (WhoAmIResponsePB);
   rpc TestArgumentsInDiffPackage(kudu.rpc_test_diff_package.ReqDiffPackagePB)
-    returns(kudu.rpc_test_diff_package.RespDiffPackagePB);
+      returns (kudu.rpc_test_diff_package.RespDiffPackagePB);
   rpc Panic(PanicRequestPB) returns (PanicResponsePB);
   rpc AddExactlyOnce(ExactlyOnceRequestPB) returns (ExactlyOnceResponsePB) {
     option (kudu.rpc.track_rpc_result) = true;
   }
-  rpc TestInvalidResponse(TestInvalidResponseRequestPB) returns (TestInvalidResponseResponsePB);
+  rpc TestInvalidResponse(TestInvalidResponseRequestPB)
+      returns (TestInvalidResponseResponsePB);
 }

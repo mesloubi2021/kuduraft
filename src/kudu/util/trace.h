@@ -22,11 +22,11 @@
 #include <utility>
 #include <vector>
 
+#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/macros.h"
+#include "kudu/gutil/ref_counted.h"
 #include "kudu/gutil/strings/stringpiece.h"
 #include "kudu/gutil/strings/substitute.h"
-#include "kudu/gutil/gscoped_ptr.h"
-#include "kudu/gutil/ref_counted.h"
 #include "kudu/gutil/threading/thread_collision_warner.h"
 #include "kudu/gutil/walltime.h"
 #include "kudu/util/locks.h"
@@ -46,13 +46,13 @@ class Trace;
 // See Trace::SubstituteAndTrace for arguments.
 // Example:
 //  TRACE("Acquired timestamp $0", timestamp);
-#define TRACE(format, substitutions...) \
-  do { \
-    kudu::Trace* _trace = Trace::CurrentTrace(); \
-    if (_trace) { \
-      _trace->SubstituteAndTrace(__FILE__, __LINE__, (format),  \
-        ##substitutions); \
-    } \
+#define TRACE(format, substitutions...)                   \
+  do {                                                    \
+    kudu::Trace* _trace = Trace::CurrentTrace();          \
+    if (_trace) {                                         \
+      _trace->SubstituteAndTrace(                         \
+          __FILE__, __LINE__, (format), ##substitutions); \
+    }                                                     \
   } while (0);
 
 // Like the above, but takes the trace pointer as an explicit argument.
@@ -76,12 +76,12 @@ class Trace;
 //
 // If no trace is active, this does nothing and does not evaluate its
 // parameters.
-#define TRACE_COUNTER_INCREMENT(counter_name, val) \
-  do { \
-    kudu::Trace* _trace = Trace::CurrentTrace(); \
-    if (_trace) { \
+#define TRACE_COUNTER_INCREMENT(counter_name, val)     \
+  do {                                                 \
+    kudu::Trace* _trace = Trace::CurrentTrace();       \
+    if (_trace) {                                      \
       _trace->metrics()->Increment(counter_name, val); \
-    } \
+    }                                                  \
   } while (0);
 
 // Increment a counter for the amount of wall time spent in the current
@@ -99,17 +99,17 @@ class Trace;
 
 // Construct a constant C string counter name which acts as a sort of
 // coarse-grained histogram for trace metrics.
-#define BUCKETED_COUNTER_NAME(prefix, duration_us)      \
-  [=]() -> const char* {                                \
-    if ((duration_us) >= 100 * 1000) {                    \
-      return prefix "_gt_100_ms";                       \
-    } else if ((duration_us) >= 10 * 1000) {              \
-      return prefix "_10-100_ms";                       \
-    } else if ((duration_us) >= 1000) {                   \
-      return prefix "_1-10_ms";                         \
-    } else {                                            \
-      return prefix "_lt_1ms";                          \
-    }                                                   \
+#define BUCKETED_COUNTER_NAME(prefix, duration_us) \
+  [=]() -> const char* {                           \
+    if ((duration_us) >= 100 * 1000) {             \
+      return prefix "_gt_100_ms";                  \
+    } else if ((duration_us) >= 10 * 1000) {       \
+      return prefix "_10-100_ms";                  \
+    } else if ((duration_us) >= 1000) {            \
+      return prefix "_1-10_ms";                    \
+    } else {                                       \
+      return prefix "_lt_1ms";                     \
+    }                                              \
   }();
 
 namespace kudu {
@@ -118,8 +118,8 @@ class JsonWriter;
 class ThreadSafeArena;
 struct TraceEntry;
 
-// A trace for a request or other process. This supports collecting trace entries
-// from a number of threads, and later dumping the results to a stream.
+// A trace for a request or other process. This supports collecting trace
+// entries from a number of threads, and later dumping the results to a stream.
 //
 // Callers should generally not add trace messages directly using the public
 // methods of this class. Rather, the TRACE(...) macros defined above should
@@ -136,38 +136,41 @@ class Trace : public RefCountedThreadSafe<Trace> {
   //
   // N.B.: the file path passed here is not copied, so should be a static
   // constant (eg __FILE__).
-  void SubstituteAndTrace(const char* filepath, int line_number,
-                          StringPiece format,
-                          const strings::internal::SubstituteArg& arg0 =
-                            strings::internal::SubstituteArg::kNoArg,
-                          const strings::internal::SubstituteArg& arg1 =
-                            strings::internal::SubstituteArg::kNoArg,
-                          const strings::internal::SubstituteArg& arg2 =
-                            strings::internal::SubstituteArg::kNoArg,
-                          const strings::internal::SubstituteArg& arg3 =
-                            strings::internal::SubstituteArg::kNoArg,
-                          const strings::internal::SubstituteArg& arg4 =
-                            strings::internal::SubstituteArg::kNoArg,
-                          const strings::internal::SubstituteArg& arg5 =
-                            strings::internal::SubstituteArg::kNoArg,
-                          const strings::internal::SubstituteArg& arg6 =
-                            strings::internal::SubstituteArg::kNoArg,
-                          const strings::internal::SubstituteArg& arg7 =
-                            strings::internal::SubstituteArg::kNoArg,
-                          const strings::internal::SubstituteArg& arg8 =
-                            strings::internal::SubstituteArg::kNoArg,
-                          const strings::internal::SubstituteArg& arg9 =
-                            strings::internal::SubstituteArg::kNoArg);
+  void SubstituteAndTrace(
+      const char* filepath,
+      int line_number,
+      StringPiece format,
+      const strings::internal::SubstituteArg& arg0 =
+          strings::internal::SubstituteArg::kNoArg,
+      const strings::internal::SubstituteArg& arg1 =
+          strings::internal::SubstituteArg::kNoArg,
+      const strings::internal::SubstituteArg& arg2 =
+          strings::internal::SubstituteArg::kNoArg,
+      const strings::internal::SubstituteArg& arg3 =
+          strings::internal::SubstituteArg::kNoArg,
+      const strings::internal::SubstituteArg& arg4 =
+          strings::internal::SubstituteArg::kNoArg,
+      const strings::internal::SubstituteArg& arg5 =
+          strings::internal::SubstituteArg::kNoArg,
+      const strings::internal::SubstituteArg& arg6 =
+          strings::internal::SubstituteArg::kNoArg,
+      const strings::internal::SubstituteArg& arg7 =
+          strings::internal::SubstituteArg::kNoArg,
+      const strings::internal::SubstituteArg& arg8 =
+          strings::internal::SubstituteArg::kNoArg,
+      const strings::internal::SubstituteArg& arg9 =
+          strings::internal::SubstituteArg::kNoArg);
 
   // Dump the trace buffer to the given output stream.
   //
   enum {
     NO_FLAGS = 0,
 
-    // If set, calculate and print the difference between successive trace messages.
+    // If set, calculate and print the difference between successive trace
+    // messages.
     INCLUDE_TIME_DELTAS = 1 << 0,
     // If set, include a 'Metrics' line showing any attached trace metrics.
-    INCLUDE_METRICS =     1 << 1,
+    INCLUDE_METRICS = 1 << 1,
 
     INCLUDE_ALL = INCLUDE_TIME_DELTAS | INCLUDE_METRICS
   };
@@ -246,8 +249,7 @@ class Trace : public RefCountedThreadSafe<Trace> {
 // on the same thread)
 class ScopedAdoptTrace {
  public:
-  explicit ScopedAdoptTrace(Trace* t) :
-    old_trace_(Trace::threadlocal_trace_) {
+  explicit ScopedAdoptTrace(Trace* t) : old_trace_(Trace::threadlocal_trace_) {
     Trace::threadlocal_trace_ = t;
     if (t) {
       t->AddRef();
@@ -274,9 +276,7 @@ class ScopedAdoptTrace {
 class ScopedTraceLatencyCounter {
  public:
   explicit ScopedTraceLatencyCounter(const char* counter)
-      : counter_(counter),
-        start_time_(GetCurrentTimeMicros()) {
-  }
+      : counter_(counter), start_time_(GetCurrentTimeMicros()) {}
 
   ~ScopedTraceLatencyCounter() {
     TRACE_COUNTER_INCREMENT(counter_, GetCurrentTimeMicros() - start_time_);

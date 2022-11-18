@@ -45,7 +45,7 @@ class AcceptorPool {
   // Create a new acceptor pool.  Calls socket::Release to take ownership of the
   // socket.
   // 'socket' must be already bound, but should not yet be listening.
-  AcceptorPool(Messenger *messenger, Socket *socket, Sockaddr bind_address);
+  AcceptorPool(Messenger* messenger, Socket* socket, Sockaddr bind_address);
   ~AcceptorPool();
 
   // Start listening and accepting connections.
@@ -67,10 +67,10 @@ class AcceptorPool {
  private:
   void RunThread();
 
-  Messenger *messenger_;
+  Messenger* messenger_;
   Socket socket_;
   Sockaddr bind_address_;
-  std::vector<scoped_refptr<kudu::Thread> > threads_;
+  std::vector<scoped_refptr<kudu::Thread>> threads_;
 
   scoped_refptr<Counter> rpc_connections_accepted_;
 

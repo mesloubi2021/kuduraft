@@ -5,8 +5,8 @@
 #include <cinttypes>
 #include <cstdlib>
 #include <string>
-#include <utility>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "kudu/gutil/casts.h"
@@ -16,10 +16,10 @@
 #include "kudu/gutil/strings/split.h"
 #include "kudu/gutil/strtoint.h"
 
-using std::unordered_map;
 using std::make_pair;
 using std::pair;
 using std::string;
+using std::unordered_map;
 using std::vector;
 
 // Convert a uint32 to a 4-byte string.
@@ -56,7 +56,7 @@ void KeyFromInt32(int32 i32, string* key) {
   key->resize(sizeof(i32));
   for (int i = sizeof(i32) - 1; i >= 0; --i) {
     (*key)[i] = i32 & 0xff;
-    i32  = (i32 >> 8);
+    i32 = (i32 >> 8);
   }
 }
 
@@ -118,9 +118,9 @@ double KeyToDouble(const StringPiece& key) {
 void OrderedStringFromInt32(int32 i32, string* key) {
   uint32 ui32 = static_cast<uint32>(i32) ^ 0x80000000;
   key->resize(sizeof ui32);
-  for ( int i = (sizeof ui32) - 1; i >= 0; --i ) {
+  for (int i = (sizeof ui32) - 1; i >= 0; --i) {
     (*key)[i] = ui32 & 0xff;
-    ui32  = (ui32 >> 8);
+    ui32 = (ui32 >> 8);
   }
 }
 
@@ -134,7 +134,7 @@ string Int32ToOrderedString(int32 i32) {
 int32 OrderedStringToInt32(const StringPiece& key) {
   uint32 ui32 = 0;
   CHECK(key.size() == sizeof ui32);
-  for ( int i = 0; i < sizeof ui32; ++i ) {
+  for (int i = 0; i < sizeof ui32; ++i) {
     ui32 = (ui32 << 8);
     ui32 = ui32 | static_cast<unsigned char>(key[i]);
   }
@@ -147,9 +147,9 @@ int32 OrderedStringToInt32(const StringPiece& key) {
 void OrderedStringFromInt64(int64 i64, string* key) {
   uint64 ui64 = static_cast<uint64>(i64) ^ (GG_ULONGLONG(1) << 63);
   key->resize(sizeof ui64);
-  for ( int i = (sizeof ui64) - 1; i >= 0; --i ) {
+  for (int i = (sizeof ui64) - 1; i >= 0; --i) {
     (*key)[i] = ui64 & 0xff;
-    ui64  = (ui64 >> 8);
+    ui64 = (ui64 >> 8);
   }
 }
 
@@ -163,7 +163,7 @@ string Int64ToOrderedString(int64 i64) {
 int64 OrderedStringToInt64(const StringPiece& key) {
   uint64 ui64 = 0;
   CHECK(key.size() == sizeof ui64);
-  for ( int i = 0; i < sizeof ui64; ++i ) {
+  for (int i = 0; i < sizeof ui64; ++i) {
     ui64 = (ui64 << 8);
     ui64 = ui64 | static_cast<unsigned char>(key[i]);
   }
@@ -234,8 +234,8 @@ string DictionaryInt32Encode(const unordered_map<string, int32>* dictionary) {
 string DictionaryInt64Encode(const unordered_map<string, int64>* dictionary) {
   vector<string> entries;
   for (const auto& entry : *dictionary) {
-    entries.push_back(StringPrintf("%s:%" PRId64,
-                                   entry.first.c_str(), entry.second));
+    entries.push_back(
+        StringPrintf("%s:%" PRId64, entry.first.c_str(), entry.second));
   }
 
   string result;
@@ -254,29 +254,31 @@ string DictionaryDoubleEncode(const unordered_map<string, double>* dictionary) {
   return result;
 }
 
-bool DictionaryParse(const string& encoded_str,
-                     vector<pair<string, string> >* items) {
+bool DictionaryParse(
+    const string& encoded_str,
+    vector<pair<string, string>>* items) {
   vector<string> entries;
   SplitStringUsing(encoded_str, ",", &entries);
   for (const auto& entry : entries) {
     vector<string> fields;
     SplitStringAllowEmpty(entry, ":", &fields);
-    if (fields.size() != 2)  // parsing error
+    if (fields.size() != 2) // parsing error
       return false;
     items->push_back(make_pair(fields[0], fields[1]));
   }
   return true;
 }
 
-bool DictionaryInt32Decode(unordered_map<string, int32>* dictionary,
-                           const string& encoded_str) {
-  vector<pair<string, string> > items;
+bool DictionaryInt32Decode(
+    unordered_map<string, int32>* dictionary,
+    const string& encoded_str) {
+  vector<pair<string, string>> items;
   if (!DictionaryParse(encoded_str, &items))
     return false;
 
   dictionary->clear();
   for (const auto& item : items) {
-    char *error = nullptr;
+    char* error = nullptr;
     const int32 value = strto32(item.second.c_str(), &error, 0);
     if (error == item.second.c_str() || *error != '\0') {
       // parsing error
@@ -287,17 +289,18 @@ bool DictionaryInt32Decode(unordered_map<string, int32>* dictionary,
   return true;
 }
 
-bool DictionaryInt64Decode(unordered_map<string, int64>* dictionary,
-                           const string& encoded_str) {
-  vector<pair<string, string> > items;
+bool DictionaryInt64Decode(
+    unordered_map<string, int64>* dictionary,
+    const string& encoded_str) {
+  vector<pair<string, string>> items;
   if (!DictionaryParse(encoded_str, &items))
     return false;
 
   dictionary->clear();
   for (const auto& item : items) {
-    char *error = nullptr;
+    char* error = nullptr;
     const int64 value = strto64(item.second.c_str(), &error, 0);
-    if (error == item.second.c_str() || *error != '\0')  {
+    if (error == item.second.c_str() || *error != '\0') {
       // parsing error
       return false;
     }
@@ -306,16 +309,16 @@ bool DictionaryInt64Decode(unordered_map<string, int64>* dictionary,
   return true;
 }
 
-
-bool DictionaryDoubleDecode(unordered_map<string, double>* dictionary,
-                            const string& encoded_str) {
-  vector<pair<string, string> > items;
+bool DictionaryDoubleDecode(
+    unordered_map<string, double>* dictionary,
+    const string& encoded_str) {
+  vector<pair<string, string>> items;
   if (!DictionaryParse(encoded_str, &items))
     return false;
 
   dictionary->clear();
   for (const auto& item : items) {
-    char *error = nullptr;
+    char* error = nullptr;
     const double value = strtod(item.second.c_str(), &error);
     if (error == item.second.c_str() || *error != '\0') {
       // parsing error

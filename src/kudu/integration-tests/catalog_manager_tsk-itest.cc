@@ -17,8 +17,8 @@
 
 #include <algorithm>
 #include <atomic>
-#include <cstdlib>
 #include <cstdint>
+#include <cstdlib>
 #include <iterator>
 #include <memory>
 #include <ostream>
@@ -82,25 +82,29 @@ class CatalogManagerTskITest : public KuduTest {
         hb_interval_ms_(16),
         run_time_seconds_(AllowSlowTests() ? 100 : 5)
 #endif
-        {
+  {
     cluster_opts_.num_masters = num_masters_;
     cluster_opts_.num_tablet_servers = num_tservers_;
 
     // Add master-only flags.
     const vector<string> master_flags = {
-      "--catalog_manager_inject_latency_prior_tsk_write_ms=1000",
-      "--raft_enable_pre_election=false",
-      "--master_non_leader_masters_propagate_tsk",
-      "--tsk_rotation_seconds=2",
+        "--catalog_manager_inject_latency_prior_tsk_write_ms=1000",
+        "--raft_enable_pre_election=false",
+        "--master_non_leader_masters_propagate_tsk",
+        "--tsk_rotation_seconds=2",
     };
-    copy(master_flags.begin(), master_flags.end(),
+    copy(
+        master_flags.begin(),
+        master_flags.end(),
         back_inserter(cluster_opts_.extra_master_flags));
 
     // Add tserver-only flags.
     const vector<string> tserver_flags = {
-      Substitute("--heartbeat_interval_ms=$0", hb_interval_ms_),
+        Substitute("--heartbeat_interval_ms=$0", hb_interval_ms_),
     };
-    copy(tserver_flags.begin(), tserver_flags.end(),
+    copy(
+        tserver_flags.begin(),
+        tserver_flags.end(),
         back_inserter(cluster_opts_.extra_tserver_flags));
   }
 
@@ -115,19 +119,21 @@ class CatalogManagerTskITest : public KuduTest {
     // Using the setting for both RPC and admin operation timeout.
     const MonoDelta timeout = MonoDelta::FromSeconds(120);
     KuduClientBuilder builder;
-    builder.default_admin_operation_timeout(timeout).default_rpc_timeout(timeout);
+    builder.default_admin_operation_timeout(timeout).default_rpc_timeout(
+        timeout);
     shared_ptr<KuduClient> client;
     ASSERT_OK(cluster_->CreateClient(&builder, &client));
 
     // Create a table.
-    KuduSchema schema = client::KuduSchemaFromSchema(CreateKeyValueTestSchema());
+    KuduSchema schema =
+        client::KuduSchemaFromSchema(CreateKeyValueTestSchema());
     gscoped_ptr<KuduTableCreator> table_creator(client->NewTableCreator());
 
     ASSERT_OK(table_creator->table_name(kTableName)
-              .set_range_partition_columns({ "key" })
-              .schema(&schema)
-              .num_replicas(num_tservers_)
-              .Create());
+                  .set_range_partition_columns({"key"})
+                  .schema(&schema)
+                  .num_replicas(num_tservers_)
+                  .Create());
 
     // Insert a row.
     shared_ptr<KuduTable> table;
@@ -162,36 +168,42 @@ class CatalogManagerTskITest : public KuduTest {
 TEST_F(CatalogManagerTskITest, LeadershipChangeOnTskGeneration) {
   NO_FATALS(StartCluster());
 
-  std::atomic<bool> done { false };
+  std::atomic<bool> done{false};
   std::thread t([&]() {
-      // At the start of the test, cause leader elections rapidly,
-      // but then space them out further and further as the test goes
-      // to ensure that we eventually do get a successful run.
-      double max_sleep_ms = 5;
-      while (!done) {
-        for (int i = 0; i < cluster_->num_masters() && !done; i++) {
-          LOG(INFO) << "Attempting to promote master " << i << " to leader";
-          consensus::ConsensusServiceProxy proxy(
-              cluster_->messenger(), cluster_->master(i)->bound_rpc_addr(), "master");
-          consensus::RunLeaderElectionRequestPB req;
-          consensus::RunLeaderElectionResponsePB resp;
-          rpc::RpcController rpc;
-          req.set_tablet_id(master::SysCatalogTable::kSysCatalogTabletId);
-          req.set_dest_uuid(cluster_->master(i)->uuid());
-          rpc.set_timeout(MonoDelta::FromSeconds(10));
-          WARN_NOT_OK(proxy.RunLeaderElection(req, &resp, &rpc),
-                      "couldn't promote new leader");
-          int s = rand() % static_cast<int>(max_sleep_ms);
-          LOG(INFO) << "Sleeping for " << s;
-          SleepFor(MonoDelta::FromMilliseconds(s));
-          max_sleep_ms = std::min(max_sleep_ms * 1.1, 3000.0);
-        }
+    // At the start of the test, cause leader elections rapidly,
+    // but then space them out further and further as the test goes
+    // to ensure that we eventually do get a successful run.
+    double max_sleep_ms = 5;
+    while (!done) {
+      for (int i = 0; i < cluster_->num_masters() && !done; i++) {
+        LOG(INFO) << "Attempting to promote master " << i << " to leader";
+        consensus::ConsensusServiceProxy proxy(
+            cluster_->messenger(),
+            cluster_->master(i)->bound_rpc_addr(),
+            "master");
+        consensus::RunLeaderElectionRequestPB req;
+        consensus::RunLeaderElectionResponsePB resp;
+        rpc::RpcController rpc;
+        req.set_tablet_id(master::SysCatalogTable::kSysCatalogTabletId);
+        req.set_dest_uuid(cluster_->master(i)->uuid());
+        rpc.set_timeout(MonoDelta::FromSeconds(10));
+        WARN_NOT_OK(
+            proxy.RunLeaderElection(req, &resp, &rpc),
+            "couldn't promote new leader");
+        int s = rand() % static_cast<int>(max_sleep_ms);
+        LOG(INFO) << "Sleeping for " << s;
+        SleepFor(MonoDelta::FromMilliseconds(s));
+        max_sleep_ms = std::min(max_sleep_ms * 1.1, 3000.0);
       }
-    });
-  SCOPED_CLEANUP({ done = true; t.join(); });
+    }
+  });
+  SCOPED_CLEANUP({
+    done = true;
+    t.join();
+  });
 
-  const MonoTime t_stop = MonoTime::Now() +
-      MonoDelta::FromSeconds(run_time_seconds_);
+  const MonoTime t_stop =
+      MonoTime::Now() + MonoDelta::FromSeconds(run_time_seconds_);
   while (MonoTime::Now() < t_stop) {
     NO_FATALS(SmokeTestCluster());
     NO_FATALS(cluster_->AssertNoCrashes());

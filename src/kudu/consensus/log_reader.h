@@ -62,28 +62,31 @@ class LogReader : public enable_make_shared<LogReader> {
   //
   // 'index' may be NULL, but if it is, ReadReplicatesInRange() may not
   // be used.
-  static Status Open(Env* env,
-                     const std::string& tablet_wal_dir,
-                     const scoped_refptr<LogIndex>& index,
-                     const std::string& tablet_id,
-                     const scoped_refptr<MetricEntity>& metric_entity,
-                     std::shared_ptr<LogReader>* reader);
+  static Status Open(
+      Env* env,
+      const std::string& tablet_wal_dir,
+      const scoped_refptr<LogIndex>& index,
+      const std::string& tablet_id,
+      const scoped_refptr<MetricEntity>& metric_entity,
+      std::shared_ptr<LogReader>* reader);
 
   // Same as above, but will use `fs_manager` to determine the default WAL dir
   // for the tablet.
-  static Status Open(FsManager* fs_manager,
-                     const scoped_refptr<LogIndex>& index,
-                     const std::string& tablet_id,
-                     const scoped_refptr<MetricEntity>& metric_entity,
-                     std::shared_ptr<LogReader>* reader);
+  static Status Open(
+      FsManager* fs_manager,
+      const scoped_refptr<LogIndex>& index,
+      const std::string& tablet_id,
+      const scoped_refptr<MetricEntity>& metric_entity,
+      std::shared_ptr<LogReader>* reader);
 
-  // Return the minimum replicate index that is retained in the currently available
-  // logs. May return -1 if no replicates have been logged.
+  // Return the minimum replicate index that is retained in the currently
+  // available logs. May return -1 if no replicates have been logged.
   int64_t GetMinReplicateIndex() const;
 
   // Return a readable segment with the given sequence number, or NULL if it
   // cannot be found (e.g. if it has already been GCed).
-  scoped_refptr<ReadableLogSegment> GetSegmentBySequenceNumber(int64_t seq) const;
+  scoped_refptr<ReadableLogSegment> GetSegmentBySequenceNumber(
+      int64_t seq) const;
 
   // Copies a snapshot of the current sequence of segments into 'segments'.
   // 'segments' will be cleared first.
@@ -93,8 +96,8 @@ class LogReader : public enable_make_shared<LogReader> {
   // The caller takes ownership of the returned ReplicateMsg objects.
   //
   // Will attempt to read no more than 'max_bytes_to_read', unless it is set to
-  // LogReader::kNoSizeLimit. If the size limit would prevent reading any operations at
-  // all, then will read exactly one operation.
+  // LogReader::kNoSizeLimit. If the size limit would prevent reading any
+  // operations at all, then will read exactly one operation.
   //
   // Requires that a LogIndex was passed into LogReader::Open().
   Status ReadReplicatesInRange(
@@ -105,7 +108,8 @@ class LogReader : public enable_make_shared<LogReader> {
   static const int64_t kNoSizeLimit;
 
   // Look up the OpId for the given operation index.
-  // Returns a bad Status if the log index fails to load (eg. due to an IO error).
+  // Returns a bad Status if the log index fails to load (eg. due to an IO
+  // error).
   Status LookupOpId(int64_t op_index, consensus::OpId* op_id) const;
 
   // Returns the number of segments.
@@ -114,8 +118,11 @@ class LogReader : public enable_make_shared<LogReader> {
   std::string ToString() const;
 
  protected:
-  LogReader(Env* env, scoped_refptr<LogIndex> index, std::string tablet_id,
-            const scoped_refptr<MetricEntity>& metric_entity);
+  LogReader(
+      Env* env,
+      scoped_refptr<LogIndex> index,
+      std::string tablet_id,
+      const scoped_refptr<MetricEntity>& metric_entity);
 
  private:
   FRIEND_TEST(LogTestOptionalCompression, TestLogReader);
@@ -124,11 +131,7 @@ class LogReader : public enable_make_shared<LogReader> {
   friend class LogTest;
   friend class LogTestOptionalCompression;
 
-  enum State {
-    kLogReaderInitialized,
-    kLogReaderReading,
-    kLogReaderClosed
-  };
+  enum State { kLogReaderInitialized, kLogReaderReading, kLogReaderClosed };
 
   // Appends 'segment' to the segments available for read by this reader.
   // Index entries in 'segment's footer will be added to the index.
@@ -154,10 +157,11 @@ class LogReader : public enable_make_shared<LogReader> {
 
   // Appends 'segment' to the segment sequence.
   // Assumes that the segment was scanned, if no footer was found.
-  // To be used only internally, clients of this class with private access (i.e. friends)
-  // should use the thread safe version, AppendSegment(), which will also scan the segment
-  // if no footer is present.
-  Status AppendSegmentUnlocked(const scoped_refptr<ReadableLogSegment>& segment);
+  // To be used only internally, clients of this class with private access (i.e.
+  // friends) should use the thread safe version, AppendSegment(), which will
+  // also scan the segment if no footer is present.
+  Status AppendSegmentUnlocked(
+      const scoped_refptr<ReadableLogSegment>& segment);
 
   // Used by Log to update its LogReader on how far it is possible to read
   // the current segment. Requires that the reader has at least one segment
@@ -167,14 +171,16 @@ class LogReader : public enable_make_shared<LogReader> {
 
   // Read the LogEntryBatchPB pointed to by the provided index entry.
   // 'tmp_buf' is used as scratch space to avoid extra allocation.
-  Status ReadBatchUsingIndexEntry(const LogIndexEntry& index_entry,
-                                  faststring* tmp_buf,
-                                  std::unique_ptr<LogEntryBatchPB>* batch) const;
+  Status ReadBatchUsingIndexEntry(
+      const LogIndexEntry& index_entry,
+      faststring* tmp_buf,
+      std::unique_ptr<LogEntryBatchPB>* batch) const;
 
   // Reads the headers of all segments in 'tablet_wal_path'.
   Status Init(const std::string& tablet_wal_path);
 
-  // Initializes an 'empty' reader for tests, i.e. does not scan a path looking for segments.
+  // Initializes an 'empty' reader for tests, i.e. does not scan a path looking
+  // for segments.
   Status InitEmptyReaderForTests();
 
   Env* env_;
@@ -197,7 +203,7 @@ class LogReader : public enable_make_shared<LogReader> {
   DISALLOW_COPY_AND_ASSIGN(LogReader);
 };
 
-}  // namespace log
-}  // namespace kudu
+} // namespace log
+} // namespace kudu
 
 #endif /* KUDU_LOG_LOG_READER_H_ */

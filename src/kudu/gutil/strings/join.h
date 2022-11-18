@@ -13,7 +13,7 @@
 #include <utility>
 #include <vector>
 
-#include "kudu/gutil/strings/strcat.h"    // For backward compatibility.
+#include "kudu/gutil/strings/strcat.h" // For backward compatibility.
 #include "kudu/gutil/strings/stringpiece.h"
 //
 // ----------------------------------------------------------------------
@@ -29,9 +29,10 @@
 //    If result_length_p is not NULL, it will contain the length of the
 //    result string (not including the trailing '\0').
 // ----------------------------------------------------------------------
-char* JoinUsing(const std::vector<const char*>& components,
-                const char* delim,
-                int*  result_length_p);
+char* JoinUsing(
+    const std::vector<const char*>& components,
+    const char* delim,
+    int* result_length_p);
 
 // ----------------------------------------------------------------------
 // JoinUsingToBuffer()
@@ -43,11 +44,12 @@ char* JoinUsing(const std::vector<const char*>& components,
 //    If result_length_p is not NULL, it will contain the length of the
 //    result string (not including the trailing '\0').
 // ----------------------------------------------------------------------
-char* JoinUsingToBuffer(const std::vector<const char*>& components,
-                        const char* delim,
-                        int result_buffer_size,
-                        char* result_buffer,
-                        int*  result_length_p);
+char* JoinUsingToBuffer(
+    const std::vector<const char*>& components,
+    const char* delim,
+    int result_buffer_size,
+    char* result_buffer,
+    int* result_length_p);
 
 // ----------------------------------------------------------------------
 // JoinStrings(), JoinStringsIterator(), JoinStringsInArray()
@@ -74,29 +76,32 @@ char* JoinUsingToBuffer(const std::vector<const char*>& components,
 //    the latter case the target string is cleared and overwritten.
 // ----------------------------------------------------------------------
 template <class CONTAINER>
-void JoinStrings(const CONTAINER& components,
-                 const StringPiece& delim,
-                 std::string* result);
+void JoinStrings(
+    const CONTAINER& components,
+    const StringPiece& delim,
+    std::string* result);
 template <class CONTAINER>
-std::string JoinStrings(const CONTAINER& components,
-                   const StringPiece& delim);
+std::string JoinStrings(const CONTAINER& components, const StringPiece& delim);
 
 template <class ITERATOR>
-void JoinStringsIterator(const ITERATOR& start,
-                         const ITERATOR& end,
-                         const StringPiece& delim,
-                         std::string* result);
+void JoinStringsIterator(
+    const ITERATOR& start,
+    const ITERATOR& end,
+    const StringPiece& delim,
+    std::string* result);
 template <class ITERATOR>
-std::string JoinStringsIterator(const ITERATOR& start,
-                           const ITERATOR& end,
-                           const StringPiece& delim);
+std::string JoinStringsIterator(
+    const ITERATOR& start,
+    const ITERATOR& end,
+    const StringPiece& delim);
 
 // Join the keys of a map using the specified delimiter.
-template<typename ITERATOR>
-void JoinKeysIterator(const ITERATOR& start,
-                      const ITERATOR& end,
-                      const StringPiece& delim,
-                      std::string *result) {
+template <typename ITERATOR>
+void JoinKeysIterator(
+    const ITERATOR& start,
+    const ITERATOR& end,
+    const StringPiece& delim,
+    std::string* result) {
   result->clear();
   for (ITERATOR iter = start; iter != end; ++iter) {
     if (iter == start) {
@@ -108,21 +113,23 @@ void JoinKeysIterator(const ITERATOR& start,
 }
 
 template <typename ITERATOR>
-std::string JoinKeysIterator(const ITERATOR& start,
-                        const ITERATOR& end,
-                        const StringPiece& delim) {
+std::string JoinKeysIterator(
+    const ITERATOR& start,
+    const ITERATOR& end,
+    const StringPiece& delim) {
   std::string result;
   JoinKeysIterator(start, end, delim, &result);
   return result;
 }
 
 // Join the keys and values of a map using the specified delimiters.
-template<typename ITERATOR>
-void JoinKeysAndValuesIterator(const ITERATOR& start,
-                               const ITERATOR& end,
-                               const StringPiece& intra_delim,
-                               const StringPiece& inter_delim,
-                               std::string *result) {
+template <typename ITERATOR>
+void JoinKeysAndValuesIterator(
+    const ITERATOR& start,
+    const ITERATOR& end,
+    const StringPiece& intra_delim,
+    const StringPiece& inter_delim,
+    std::string* result) {
   result->clear();
   for (ITERATOR iter = start; iter != end; ++iter) {
     if (iter == start) {
@@ -134,43 +141,50 @@ void JoinKeysAndValuesIterator(const ITERATOR& start,
 }
 
 template <typename ITERATOR>
-std::string JoinKeysAndValuesIterator(const ITERATOR& start,
-                                 const ITERATOR& end,
-                                 const StringPiece& intra_delim,
-                                 const StringPiece& inter_delim) {
+std::string JoinKeysAndValuesIterator(
+    const ITERATOR& start,
+    const ITERATOR& end,
+    const StringPiece& intra_delim,
+    const StringPiece& inter_delim) {
   std::string result;
   JoinKeysAndValuesIterator(start, end, intra_delim, inter_delim, &result);
   return result;
 }
 
-void JoinStringsInArray(std::string const* const* components,
-                        int num_components,
-                        const char* delim,
-                        std::string* result);
-void JoinStringsInArray(std::string const* components,
-                        int num_components,
-                        const char* delim,
-                        std::string* result);
-std::string JoinStringsInArray(std::string const* const* components,
-                          int num_components,
-                          const char* delim);
-std::string JoinStringsInArray(std::string const* components,
-                          int num_components,
-                          const char* delim);
+void JoinStringsInArray(
+    std::string const* const* components,
+    int num_components,
+    const char* delim,
+    std::string* result);
+void JoinStringsInArray(
+    std::string const* components,
+    int num_components,
+    const char* delim,
+    std::string* result);
+std::string JoinStringsInArray(
+    std::string const* const* components,
+    int num_components,
+    const char* delim);
+std::string JoinStringsInArray(
+    std::string const* components,
+    int num_components,
+    const char* delim);
 
 // ----------------------------------------------------------------------
 // Definitions of above JoinStrings* methods
 // ----------------------------------------------------------------------
 template <class CONTAINER>
-inline void JoinStrings(const CONTAINER& components,
-                        const StringPiece& delim,
-                        std::string* result) {
+inline void JoinStrings(
+    const CONTAINER& components,
+    const StringPiece& delim,
+    std::string* result) {
   JoinStringsIterator(components.begin(), components.end(), delim, result);
 }
 
 template <class CONTAINER>
-inline std::string JoinStrings(const CONTAINER& components,
-                          const StringPiece& delim) {
+inline std::string JoinStrings(
+    const CONTAINER& components,
+    const StringPiece& delim) {
   std::string result;
   JoinStrings(components, delim, &result);
   return result;
@@ -178,10 +192,11 @@ inline std::string JoinStrings(const CONTAINER& components,
 
 // Join the strings produced by calling 'functor' on each element of
 // 'components'.
-template<class CONTAINER, typename FUNC>
-std::string JoinMapped(const CONTAINER& components,
-                       const FUNC& functor,
-                       const StringPiece& delim) {
+template <class CONTAINER, typename FUNC>
+std::string JoinMapped(
+    const CONTAINER& components,
+    const FUNC& functor,
+    const StringPiece& delim) {
   std::string result;
   bool append_delim = false;
   for (const auto& component : components) {
@@ -196,15 +211,16 @@ std::string JoinMapped(const CONTAINER& components,
 }
 
 template <class ITERATOR>
-void JoinStringsIterator(const ITERATOR& start,
-                         const ITERATOR& end,
-                         const StringPiece& delim,
-                         std::string* result) {
+void JoinStringsIterator(
+    const ITERATOR& start,
+    const ITERATOR& end,
+    const StringPiece& delim,
+    std::string* result) {
   result->clear();
 
   // Precompute resulting length so we can reserve() memory in one shot.
   if (start != end) {
-    int length = delim.size()*(distance(start, end)-1);
+    int length = delim.size() * (distance(start, end) - 1);
     for (ITERATOR iter = start; iter != end; ++iter) {
       length += iter->size();
     }
@@ -221,25 +237,28 @@ void JoinStringsIterator(const ITERATOR& start,
 }
 
 template <class ITERATOR>
-inline std::string JoinStringsIterator(const ITERATOR& start,
-                                       const ITERATOR& end,
-                                       const StringPiece& delim) {
+inline std::string JoinStringsIterator(
+    const ITERATOR& start,
+    const ITERATOR& end,
+    const StringPiece& delim) {
   std::string result;
   JoinStringsIterator(start, end, delim, &result);
   return result;
 }
 
-inline std::string JoinStringsInArray(std::string const* const* components,
-                                      int num_components,
-                                      const char* delim) {
+inline std::string JoinStringsInArray(
+    std::string const* const* components,
+    int num_components,
+    const char* delim) {
   std::string result;
   JoinStringsInArray(components, num_components, delim, &result);
   return result;
 }
 
-inline std::string JoinStringsInArray(std::string const* components,
-                                      int num_components,
-                                      const char* delim) {
+inline std::string JoinStringsInArray(
+    std::string const* components,
+    int num_components,
+    const char* delim) {
   std::string result;
   JoinStringsInArray(components, num_components, delim, &result);
   return result;
@@ -256,25 +275,26 @@ inline std::string JoinStringsInArray(std::string const* components,
 //    as the last argument).
 // ----------------------------------------------------------------------
 
-void JoinMapKeysAndValues(const std::map<std::string, std::string>& components,
-                          const StringPiece& intra_delim,
-                          const StringPiece& inter_delim,
-                          std::string* result);
+void JoinMapKeysAndValues(
+    const std::map<std::string, std::string>& components,
+    const StringPiece& intra_delim,
+    const StringPiece& inter_delim,
+    std::string* result);
 void JoinVectorKeysAndValues(
-    const std::vector< std::pair<std::string, std::string> >& components,
+    const std::vector<std::pair<std::string, std::string>>& components,
     const StringPiece& intra_delim,
     const StringPiece& inter_delim,
     std::string* result);
 
 // DEPRECATED(jyrki): use JoinKeysAndValuesIterator directly.
-template<typename T>
-void JoinHashMapKeysAndValues(const T& container,
-                              const StringPiece& intra_delim,
-                              const StringPiece& inter_delim,
-                              std::string* result) {
-  JoinKeysAndValuesIterator(container.begin(), container.end(),
-                            intra_delim, inter_delim,
-                            result);
+template <typename T>
+void JoinHashMapKeysAndValues(
+    const T& container,
+    const StringPiece& intra_delim,
+    const StringPiece& inter_delim,
+    std::string* result) {
+  JoinKeysAndValuesIterator(
+      container.begin(), container.end(), intra_delim, inter_delim, result);
 }
 
 // ----------------------------------------------------------------------
@@ -297,11 +317,14 @@ void JoinHashMapKeysAndValues(const T& container,
 //    A convenience wrapper around JoinCSVLineWithDelimiter which uses
 //    ',' as the delimiter.
 // ----------------------------------------------------------------------
-void JoinCSVLine(const std::vector<std::string>& original_cols, std::string* output);
+void JoinCSVLine(
+    const std::vector<std::string>& original_cols,
+    std::string* output);
 std::string JoinCSVLine(const std::vector<std::string>& original_cols);
-void JoinCSVLineWithDelimiter(const std::vector<std::string>& original_cols,
-                              char delimiter,
-                              std::string* output);
+void JoinCSVLineWithDelimiter(
+    const std::vector<std::string>& original_cols,
+    char delimiter,
+    std::string* output);
 
 // ----------------------------------------------------------------------
 // JoinElements()
@@ -315,10 +338,11 @@ void JoinCSVLineWithDelimiter(const std::vector<std::string>& original_cols,
 // ----------------------------------------------------------------------
 
 template <class ITERATOR>
-void JoinElementsIterator(ITERATOR first,
-                          ITERATOR last,
-                          StringPiece delim,
-                          std::string* result) {
+void JoinElementsIterator(
+    ITERATOR first,
+    ITERATOR last,
+    StringPiece delim,
+    std::string* result) {
   result->clear();
   for (ITERATOR it = first; it != last; ++it) {
     if (it != first) {
@@ -329,39 +353,41 @@ void JoinElementsIterator(ITERATOR first,
 }
 
 template <class ITERATOR>
-std::string JoinElementsIterator(ITERATOR first,
-                            ITERATOR last,
-                            StringPiece delim) {
+std::string
+JoinElementsIterator(ITERATOR first, ITERATOR last, StringPiece delim) {
   std::string result;
   JoinElementsIterator(first, last, delim, &result);
   return result;
 }
 
 template <class CONTAINER>
-inline void JoinElements(const CONTAINER& components,
-                         StringPiece delim,
-                         std::string* result) {
+inline void JoinElements(
+    const CONTAINER& components,
+    StringPiece delim,
+    std::string* result) {
   JoinElementsIterator(components.begin(), components.end(), delim, result);
 }
 
 template <class CONTAINER>
-inline std::string JoinElements(const CONTAINER& components, StringPiece delim) {
+inline std::string JoinElements(
+    const CONTAINER& components,
+    StringPiece delim) {
   std::string result;
   JoinElements(components, delim, &result);
   return result;
 }
 
 template <class CONTAINER>
-void JoinInts(const CONTAINER& components,
-              const char* delim,
-              std::string* result) {
+void JoinInts(
+    const CONTAINER& components,
+    const char* delim,
+    std::string* result) {
   JoinElements(components, delim, result);
 }
 
 template <class CONTAINER>
-inline std::string JoinInts(const CONTAINER& components,
-                       const char* delim) {
+inline std::string JoinInts(const CONTAINER& components, const char* delim) {
   return JoinElements(components, delim);
 }
 
-#endif  // STRINGS_JOIN_H_
+#endif // STRINGS_JOIN_H_

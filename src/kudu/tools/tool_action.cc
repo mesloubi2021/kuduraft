@@ -49,15 +49,15 @@ namespace {
 
 string FakeDescribeOneFlag(const ActionArgsDescriptor::Arg& arg) {
   string res = gflags::DescribeOneFlag({
-    arg.name,        // name
-    "string",        // type
-    arg.description, // description
-    "",              // current_value
-    "",              // default_value
-    "",              // filename
-    false,           // has_validator_fn
-    true,            // is_default
-    nullptr          // flag_ptr
+      arg.name, // name
+      "string", // type
+      arg.description, // description
+      "", // current_value
+      "", // default_value
+      "", // filename
+      false, // has_validator_fn
+      true, // is_default
+      nullptr // flag_ptr
   });
 
   // Strip the first dash from the description; this is a positional parameter
@@ -68,15 +68,16 @@ string FakeDescribeOneFlag(const ActionArgsDescriptor::Arg& arg) {
 }
 
 string BuildUsageString(const vector<Mode*>& chain) {
-  return JoinMapped(chain, [](Mode* a){ return a->name(); }, " ");
+  return JoinMapped(
+      chain, [](Mode* a) { return a->name(); }, " ");
 }
-
 
 // Append 'to_append' to 'dst', but hard-wrapped at 78 columns.
 // After any newline, 'continuation_indent' spaces are prepended.
-void AppendHardWrapped(StringPiece to_append,
-                       int continuation_indent,
-                       string* dst) {
+void AppendHardWrapped(
+    StringPiece to_append,
+    int continuation_indent,
+    string* dst) {
   const int kWrapColumns = 78;
   DCHECK_LT(continuation_indent, kWrapColumns);
 
@@ -89,7 +90,8 @@ void AppendHardWrapped(StringPiece to_append,
 
   // Iterate through the words deciding where to wrap.
   vector<StringPiece> words = strings::Split(to_append, " ");
-  if (words.empty()) return;
+  if (words.empty())
+    return;
 
   for (const auto& word : words) {
     // If the next word won't fit on this line, break before we append it.
@@ -113,14 +115,12 @@ string SpacePad(StringPiece s, int len) {
   if (s.size() >= len) {
     return s.ToString();
   }
-  return string(len - s.size(), ' ' ) + s.ToString();
+  return string(len - s.size(), ' ') + s.ToString();
 }
 
 } // anonymous namespace
 
-ModeBuilder::ModeBuilder(string name)
-    : name_(std::move(name)) {
-}
+ModeBuilder::ModeBuilder(string name) : name_(std::move(name)) {}
 
 ModeBuilder& ModeBuilder::Description(const string& description) {
   CHECK(description_.empty());
@@ -151,8 +151,8 @@ unique_ptr<Mode> ModeBuilder::Build() {
 // Get help for this mode, passing in its parent mode chain.
 string Mode::BuildHelp(const vector<Mode*>& chain) const {
   string msg;
-  msg += Substitute("Usage: $0 <command> [<args>]\n\n",
-                    BuildUsageString(chain));
+  msg +=
+      Substitute("Usage: $0 <command> [<args>]\n\n", BuildUsageString(chain));
   msg += "<command> can be one of the following:\n";
 
   vector<pair<string, string>> line_pairs;
@@ -181,8 +181,8 @@ string Mode::BuildHelpXML(const vector<Mode*>& chain) const {
   string xml;
   xml += "<mode>";
   xml += Substitute("<name>$0</name>", name());
-  xml += Substitute("<description>$0</description>",
-                    EscapeForHtmlToString(description()));
+  xml += Substitute(
+      "<description>$0</description>", EscapeForHtmlToString(description()));
   for (const auto& a : actions()) {
     xml += a->BuildHelpXML(chain);
   }
@@ -197,9 +197,7 @@ string Mode::BuildHelpXML(const vector<Mode*>& chain) const {
 }
 
 ActionBuilder::ActionBuilder(string name, ActionRunner runner)
-    : name_(std::move(name)),
-      runner_(std::move(runner)) {
-}
+    : name_(std::move(name)), runner_(std::move(runner)) {}
 
 ActionBuilder& ActionBuilder::Description(const string& description) {
   CHECK(description_.empty());
@@ -207,7 +205,8 @@ ActionBuilder& ActionBuilder::Description(const string& description) {
   return *this;
 }
 
-ActionBuilder& ActionBuilder::ExtraDescription(const string& extra_description) {
+ActionBuilder& ActionBuilder::ExtraDescription(
+    const string& extra_description) {
   CHECK(!extra_description_.is_initialized());
   extra_description_ = extra_description;
   return *this;
@@ -226,17 +225,18 @@ ActionBuilder& ActionBuilder::AddRequiredVariadicParameter(
   return *this;
 }
 
-ActionBuilder& ActionBuilder::AddOptionalParameter(string param,
-                                                   boost::optional<std::string> default_value,
-                                                   boost::optional<std::string> description) {
+ActionBuilder& ActionBuilder::AddOptionalParameter(
+    string param,
+    boost::optional<std::string> default_value,
+    boost::optional<std::string> description) {
 #ifndef NDEBUG
   // Make sure this gflag exists.
   string option;
-  DCHECK(gflags::GetCommandLineOption(param.c_str(), &option)) << "unknown option: " << param;
+  DCHECK(gflags::GetCommandLineOption(param.c_str(), &option))
+      << "unknown option: " << param;
 #endif
-  args_.optional.emplace_back(ActionArgsDescriptor::Flag({ std::move(param),
-                                                           std::move(default_value),
-                                                           std::move(description) }));
+  args_.optional.emplace_back(ActionArgsDescriptor::Flag(
+      {std::move(param), std::move(default_value), std::move(description)}));
   return *this;
 }
 
@@ -251,17 +251,19 @@ unique_ptr<Action> ActionBuilder::Build() {
   return action;
 }
 
-Status Action::Run(const vector<Mode*>& chain,
-                   const unordered_map<string, string>& required_args,
-                   const vector<string>& variadic_args) const {
+Status Action::Run(
+    const vector<Mode*>& chain,
+    const unordered_map<string, string>& required_args,
+    const vector<string>& variadic_args) const {
   SetOptionalParameterDefaultValues();
-  return runner_({ chain, this, required_args, variadic_args });
+  return runner_({chain, this, required_args, variadic_args});
 }
 
-string Action::BuildHelp(const vector<Mode*>& chain,
-                         Action::HelpMode mode) const {
+string Action::BuildHelp(const vector<Mode*>& chain, Action::HelpMode mode)
+    const {
   SetOptionalParameterDefaultValues();
-  string usage_msg = Substitute("Usage: $0 $1", BuildUsageString(chain), name());
+  string usage_msg =
+      Substitute("Usage: $0 $1", BuildUsageString(chain), name());
   string desc_msg;
   for (const auto& param : args_.required) {
     usage_msg += Substitute(" <$0>", param.name);
@@ -324,18 +326,18 @@ string Action::BuildHelpXML(const vector<Mode*>& chain) const {
   string xml;
   xml += "<action>";
   xml += Substitute("<name>$0</name>", name());
-  xml += Substitute("<description>$0</description>",
-                    EscapeForHtmlToString(description()));
-  xml += Substitute("<extra_description>$0</extra_description>",
-                    EscapeForHtmlToString(extra_description()
-                                              .get_value_or("")));
+  xml += Substitute(
+      "<description>$0</description>", EscapeForHtmlToString(description()));
+  xml += Substitute(
+      "<extra_description>$0</extra_description>",
+      EscapeForHtmlToString(extra_description().get_value_or("")));
   for (const auto& r : args().required) {
     usage += Substitute(" &lt;$0&gt;", r.name);
     xml += "<argument>";
     xml += "<kind>required</kind>";
     xml += Substitute("<name>$0</name>", r.name);
-    xml += Substitute("<description>$0</description>",
-                      EscapeForHtmlToString(r.description));
+    xml += Substitute(
+        "<description>$0</description>", EscapeForHtmlToString(r.description));
     xml += "<type>string</type>";
     xml += "</argument>";
   }
@@ -346,8 +348,8 @@ string Action::BuildHelpXML(const vector<Mode*>& chain) const {
     xml += "<argument>";
     xml += "<kind>variadic</kind>";
     xml += Substitute("<name>$0</name>", v.name);
-    xml += Substitute("<description>$0</description>",
-                      EscapeForHtmlToString(v.description));
+    xml += Substitute(
+        "<description>$0</description>", EscapeForHtmlToString(v.description));
     xml += "<type>string</type>";
     xml += "</argument>";
   }
@@ -383,8 +385,8 @@ string Action::BuildHelpXML(const vector<Mode*>& chain) const {
     xml += Substitute("<name>$0</name>", gflag_info.name);
     xml += Substitute("<description>$0</description>", gflag_info.description);
     xml += Substitute("<type>$0</type>", gflag_info.type);
-    xml += Substitute("<default_value>$0</default_value>",
-                      gflag_info.default_value);
+    xml += Substitute(
+        "<default_value>$0</default_value>", gflag_info.default_value);
     xml += "</argument>";
   }
   xml += Substitute("<usage>$0</usage>", EscapeForHtmlToString(usage));
@@ -395,9 +397,10 @@ string Action::BuildHelpXML(const vector<Mode*>& chain) const {
 void Action::SetOptionalParameterDefaultValues() const {
   for (const auto& param : args_.optional) {
     if (param.default_value) {
-      gflags::SetCommandLineOptionWithMode(param.name.c_str(),
-                                           param.default_value->c_str(),
-                                           gflags::FlagSettingMode::SET_FLAGS_DEFAULT);
+      gflags::SetCommandLineOptionWithMode(
+          param.name.c_str(),
+          param.default_value->c_str(),
+          gflags::FlagSettingMode::SET_FLAGS_DEFAULT);
     }
   }
 }

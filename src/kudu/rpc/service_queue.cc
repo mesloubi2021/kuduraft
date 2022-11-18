@@ -27,11 +27,11 @@
 namespace kudu {
 namespace rpc {
 
-__thread LifoServiceQueue::ConsumerState* LifoServiceQueue::tl_consumer_ = nullptr;
+__thread LifoServiceQueue::ConsumerState* LifoServiceQueue::tl_consumer_ =
+    nullptr;
 
 LifoServiceQueue::LifoServiceQueue(int max_size)
-   : shutdown_(false),
-     max_queue_size_(max_size) {
+    : shutdown_(false), max_queue_size_(max_size) {
   CHECK_GT(max_queue_size_, 0);
 }
 
@@ -73,8 +73,9 @@ bool LifoServiceQueue::BlockingGet(std::unique_ptr<InboundCall>* out) {
   }
 }
 
-QueueStatus LifoServiceQueue::Put(InboundCall* call,
-                                  boost::optional<InboundCall*>* evicted) {
+QueueStatus LifoServiceQueue::Put(
+    InboundCall* call,
+    boost::optional<InboundCall*>* evicted) {
   std::unique_lock<simple_spinlock> l(lock_);
   if (PREDICT_FALSE(shutdown_)) {
     return QUEUE_SHUTDOWN;

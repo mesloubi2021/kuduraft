@@ -85,9 +85,11 @@ TEST_F(StackWatchdogTest, TestNestedScopes) {
   int line1;
   int line2;
   {
-    SCOPED_WATCH_STACK(20); line1 = __LINE__;
+    SCOPED_WATCH_STACK(20);
+    line1 = __LINE__;
     {
-      SCOPED_WATCH_STACK(20); line2 = __LINE__;
+      SCOPED_WATCH_STACK(20);
+      line2 = __LINE__;
       for (int i = 0; i < 50; i++) {
         SleepFor(MonoDelta::FromMilliseconds(100));
         log = KernelStackWatchdog::GetInstance()->LoggedMessagesForTests();
@@ -115,17 +117,19 @@ TEST_F(StackWatchdogTest, TestPerformance) {
   }
 }
 
-// Stress test to ensure that we properly handle the case where threads are short-lived
-// and the watchdog may try to grab a stack of a thread that has already exited.
+// Stress test to ensure that we properly handle the case where threads are
+// short-lived and the watchdog may try to grab a stack of a thread that has
+// already exited.
 //
-// This also serves as a benchmark -- we make the stack-grabbing especially slow and
-// ensure that we can still start and join threads quickly.
+// This also serves as a benchmark -- we make the stack-grabbing especially slow
+// and ensure that we can still start and join threads quickly.
 TEST_F(StackWatchdogTest, TestShortLivedThreadsStress) {
   // Run the stack watchdog continuously.
   FLAGS_hung_task_check_interval_ms = 0;
 
   // Make the actual stack trace collection slow. In practice we find that
-  // stack trace collection can often take quite some time due to symbolization, etc.
+  // stack trace collection can often take quite some time due to symbolization,
+  // etc.
   FLAGS_inject_latency_on_kernel_stack_lookup_ms = 1000;
 
   MonoTime deadline = MonoTime::Now() + MonoDelta::FromSeconds(5);
@@ -137,15 +141,16 @@ TEST_F(StackWatchdogTest, TestShortLivedThreadsStress) {
       t->join();
     }
     *t = thread([&]() {
-        // Trigger watchdog at 1ms, but then sleep for 2ms, to ensure that
-        // the watchdog has plenty of work to do.
-        SCOPED_WATCH_STACK(1);
-        SleepFor(MonoDelta::FromMilliseconds(2));
-      });
+      // Trigger watchdog at 1ms, but then sleep for 2ms, to ensure that
+      // the watchdog has plenty of work to do.
+      SCOPED_WATCH_STACK(1);
+      SleepFor(MonoDelta::FromMilliseconds(2));
+    });
     started++;
   }
   for (auto& t : threads) {
-    if (t.joinable()) t.join();
+    if (t.joinable())
+      t.join();
   }
   LOG(INFO) << "started and joined " << started << " threads";
 }

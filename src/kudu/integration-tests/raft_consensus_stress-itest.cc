@@ -50,41 +50,55 @@ constexpr int kBuildCfgFactor = 2;
 constexpr int kBuildCfgFactor = 1;
 #endif
 
-DEFINE_bool(test_raft_prepare_replacement_before_eviction, true,
-            "When enabled, failed replicas will only be evicted after a "
-            "replacement has been prepared for them.");
-DEFINE_double(test_tablet_copy_early_session_timeout_prob,
-              0.25 / kBuildCfgFactor,
-              "The probability that a tablet copy session will time out early, "
-              "resulting in a tablet copy failure.");
-DEFINE_int32(test_follower_unavailable_considered_failed_sec,
-             1 * kBuildCfgFactor,
-             "Seconds that a leader tablet replica is unable to successfully "
-             "heartbeat to a follower after which the follower is considered "
-             "to be failed and evicted from the config.");
-DEFINE_int32(test_heartbeat_interval_ms,
-             250 * kBuildCfgFactor,
-             "Interval at which the TS heartbeats to the master.");
-DEFINE_int32(test_max_ksck_failures, 50,
-             "Maximum number of ksck failures in a row to tolerate before "
-             "considering the test as failed.");
+DEFINE_bool(
+    test_raft_prepare_replacement_before_eviction,
+    true,
+    "When enabled, failed replicas will only be evicted after a "
+    "replacement has been prepared for them.");
+DEFINE_double(
+    test_tablet_copy_early_session_timeout_prob,
+    0.25 / kBuildCfgFactor,
+    "The probability that a tablet copy session will time out early, "
+    "resulting in a tablet copy failure.");
+DEFINE_int32(
+    test_follower_unavailable_considered_failed_sec,
+    1 * kBuildCfgFactor,
+    "Seconds that a leader tablet replica is unable to successfully "
+    "heartbeat to a follower after which the follower is considered "
+    "to be failed and evicted from the config.");
+DEFINE_int32(
+    test_heartbeat_interval_ms,
+    250 * kBuildCfgFactor,
+    "Interval at which the TS heartbeats to the master.");
+DEFINE_int32(
+    test_max_ksck_failures,
+    50,
+    "Maximum number of ksck failures in a row to tolerate before "
+    "considering the test as failed.");
 // GLOG_FATAL:    3
 // GLOG_ERROR:    2
 // GLOG_WARNING:  1
 // GLOG_INFO:     0
-DEFINE_int32(test_minloglevel, google::GLOG_ERROR,
-             "Logging level for masters and tablet servers under test.");
-DEFINE_int32(test_num_iterations,
-             10 / kBuildCfgFactor,
-             "Number of iterations, repeating the test scenario.");
-DEFINE_int32(test_num_replicas_per_server,
-             20 / kBuildCfgFactor,
-             "Number of tablets per server to create.");
-DEFINE_int32(test_raft_heartbeat_interval_ms,
-             100 * kBuildCfgFactor,
-             "The Raft heartbeat interval for tablet servers under the test.");
-DEFINE_int32(test_replication_factor, 3,
-             "The replication factor of the test table.");
+DEFINE_int32(
+    test_minloglevel,
+    google::GLOG_ERROR,
+    "Logging level for masters and tablet servers under test.");
+DEFINE_int32(
+    test_num_iterations,
+    10 / kBuildCfgFactor,
+    "Number of iterations, repeating the test scenario.");
+DEFINE_int32(
+    test_num_replicas_per_server,
+    20 / kBuildCfgFactor,
+    "Number of tablets per server to create.");
+DEFINE_int32(
+    test_raft_heartbeat_interval_ms,
+    100 * kBuildCfgFactor,
+    "The Raft heartbeat interval for tablet servers under the test.");
+DEFINE_int32(
+    test_replication_factor,
+    3,
+    "The replication factor of the test table.");
 
 DECLARE_int32(num_replicas);
 DECLARE_int32(num_tablet_servers);
@@ -99,8 +113,7 @@ using strings::Substitute;
 namespace kudu {
 namespace tserver {
 
-class RaftConsensusStressITest : public RaftConsensusITestBase {
-};
+class RaftConsensusStressITest : public RaftConsensusITestBase {};
 
 // Test scenario to verify the behavior of the system when tablet replicas fail
 // and are replaced again and again. With high enough number of iterations, at
@@ -112,12 +125,15 @@ TEST_F(RaftConsensusStressITest, RemoveReplaceInCycle) {
     return;
   }
 
-  const bool is_343_scheme = FLAGS_test_raft_prepare_replacement_before_eviction;
-  const int kReplicaUnavailableSec = FLAGS_test_follower_unavailable_considered_failed_sec;
+  const bool is_343_scheme =
+      FLAGS_test_raft_prepare_replacement_before_eviction;
+  const int kReplicaUnavailableSec =
+      FLAGS_test_follower_unavailable_considered_failed_sec;
   const int kReplicationFactor = FLAGS_test_replication_factor;
   const int kNumTabletServers = 2 * kReplicationFactor;
   const int kNumReplicasPerServer = FLAGS_test_num_replicas_per_server;
-  const int kNumTablets = kNumTabletServers * kNumReplicasPerServer / kReplicationFactor;
+  const int kNumTablets =
+      kNumTabletServers * kNumReplicasPerServer / kReplicationFactor;
   const MonoDelta kTimeout = MonoDelta::FromSeconds(60 * kBuildCfgFactor);
   const MonoDelta kShortTimeout = MonoDelta::FromSeconds(1 * kBuildCfgFactor);
 
@@ -132,20 +148,28 @@ TEST_F(RaftConsensusStressITest, RemoveReplaceInCycle) {
   // a lot of information. Setting --minloglevel=2 allow for logging only of
   // error and fatal messages from tablet servers and masters.
   const vector<string> kMasterFlags = {
-    Substitute("--minloglevel=$0", FLAGS_test_minloglevel),
-    Substitute("--raft_prepare_replacement_before_eviction=$0", is_343_scheme),
-    Substitute("--max_create_tablets_per_ts=$0", kMaxCreateTabletsPerTs),
+      Substitute("--minloglevel=$0", FLAGS_test_minloglevel),
+      Substitute(
+          "--raft_prepare_replacement_before_eviction=$0", is_343_scheme),
+      Substitute("--max_create_tablets_per_ts=$0", kMaxCreateTabletsPerTs),
   };
   const vector<string> kTserverFlags = {
-    Substitute("--minloglevel=$0", FLAGS_test_minloglevel),
-    Substitute("--tablet_copy_early_session_timeout_prob=$0",
-               FLAGS_test_tablet_copy_early_session_timeout_prob),
-    Substitute("--raft_prepare_replacement_before_eviction=$0", is_343_scheme),
-    Substitute("--follower_unavailable_considered_failed_sec=$0",
-               kReplicaUnavailableSec),
-    Substitute("--consensus_rpc_timeout_ms=$0", 1000 * kReplicaUnavailableSec),
-    Substitute("--heartbeat_interval_ms=$0", FLAGS_test_heartbeat_interval_ms),
-    Substitute("--raft_heartbeat_interval_ms=$0", FLAGS_test_raft_heartbeat_interval_ms),
+      Substitute("--minloglevel=$0", FLAGS_test_minloglevel),
+      Substitute(
+          "--tablet_copy_early_session_timeout_prob=$0",
+          FLAGS_test_tablet_copy_early_session_timeout_prob),
+      Substitute(
+          "--raft_prepare_replacement_before_eviction=$0", is_343_scheme),
+      Substitute(
+          "--follower_unavailable_considered_failed_sec=$0",
+          kReplicaUnavailableSec),
+      Substitute(
+          "--consensus_rpc_timeout_ms=$0", 1000 * kReplicaUnavailableSec),
+      Substitute(
+          "--heartbeat_interval_ms=$0", FLAGS_test_heartbeat_interval_ms),
+      Substitute(
+          "--raft_heartbeat_interval_ms=$0",
+          FLAGS_test_raft_heartbeat_interval_ms),
   };
 
   FLAGS_num_replicas = kReplicationFactor;
@@ -169,7 +193,8 @@ TEST_F(RaftConsensusStressITest, RemoveReplaceInCycle) {
   // Check failed: row_count >= expected_row_count (31049 vs. 31050)
   //
   workload.set_num_read_threads(0);
-  workload.set_client_default_admin_operation_timeout_millis(kTimeout.ToMilliseconds());
+  workload.set_client_default_admin_operation_timeout_millis(
+      kTimeout.ToMilliseconds());
   workload.Setup();
   workload.Start();
   while (workload.rows_inserted() < 100L * kNumTablets) {
@@ -233,7 +258,7 @@ TEST_F(RaftConsensusStressITest, RemoveReplaceInCycle) {
 
   auto ksck_failures_in_a_row = 0;
   int64_t rows_inserted = workload.rows_inserted();
-  for (auto iteration = 0; iteration < FLAGS_test_num_iterations; ) {
+  for (auto iteration = 0; iteration < FLAGS_test_num_iterations;) {
     workload.Start();
     while (workload.rows_inserted() < rows_inserted + 10) {
       SleepFor(MonoDelta::FromMilliseconds(1));
@@ -257,7 +282,8 @@ TEST_F(RaftConsensusStressITest, RemoveReplaceInCycle) {
       if (ksck_failures_in_a_row > FLAGS_test_max_ksck_failures) {
         break;
       }
-      SleepFor(MonoDelta::FromMilliseconds(FLAGS_test_raft_heartbeat_interval_ms));
+      SleepFor(
+          MonoDelta::FromMilliseconds(FLAGS_test_raft_heartbeat_interval_ms));
       continue;
     }
     ksck_failures_in_a_row = 0;
@@ -282,7 +308,8 @@ TEST_F(RaftConsensusStressITest, RemoveReplaceInCycle) {
     // right at this point.
     const auto& s = v.RunKsck();
     if (!s.ok()) {
-      FAIL() << Substitute("$0: tablet replicas haven't converged", s.ToString());
+      FAIL() << Substitute(
+          "$0: tablet replicas haven't converged", s.ToString());
     }
   }
 
@@ -291,10 +318,11 @@ TEST_F(RaftConsensusStressITest, RemoveReplaceInCycle) {
   // with the 'timeout_allowed' option enabled. In that case, the actual actual
   // number of inserted rows may be greater than workload reports via its
   // rows_inserted() method.
-  NO_FATALS(v.CheckRowCount(workload.table_name(),
-                            ClusterVerifier::AT_LEAST,
-                            workload.rows_inserted()));
+  NO_FATALS(v.CheckRowCount(
+      workload.table_name(),
+      ClusterVerifier::AT_LEAST,
+      workload.rows_inserted()));
 }
 
-}  // namespace tserver
-}  // namespace kudu
+} // namespace tserver
+} // namespace kudu

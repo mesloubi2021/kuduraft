@@ -49,8 +49,11 @@ using strings::Substitute;
 
 PstackWatcher::PstackWatcher(MonoDelta timeout)
     : timeout_(timeout), running_(true), cond_(&lock_) {
-  CHECK_OK(Thread::Create("pstack_watcher", "pstack_watcher",
-                 boost::bind(&PstackWatcher::Run, this), &thread_));
+  CHECK_OK(Thread::Create(
+      "pstack_watcher",
+      "pstack_watcher",
+      boost::bind(&PstackWatcher::Run, this),
+      &thread_));
 }
 
 PstackWatcher::~PstackWatcher() {
@@ -83,9 +86,11 @@ void PstackWatcher::Wait() const {
 
 void PstackWatcher::Run() {
   MutexLock guard(lock_);
-  if (!running_) return;
+  if (!running_)
+    return;
   cond_.WaitFor(timeout_);
-  if (!running_) return;
+  if (!running_)
+    return;
 
   WARN_NOT_OK(DumpStacks(DUMP_FULL), "Unable to print pstack from watcher");
   running_ = false;
@@ -93,10 +98,11 @@ void PstackWatcher::Run() {
 }
 
 Status PstackWatcher::HasProgram(const char* progname) {
-  Subprocess proc({ "which", progname } );
+  Subprocess proc({"which", progname});
   proc.DisableStderr();
   proc.DisableStdout();
-  RETURN_NOT_OK_PREPEND(proc.Start(),
+  RETURN_NOT_OK_PREPEND(
+      proc.Start(),
       Substitute("HasProgram($0): error running 'which'", progname));
   RETURN_NOT_OK(proc.Wait());
   int exit_status;
@@ -162,7 +168,6 @@ Status PstackWatcher::DumpStacks(int flags) {
 }
 
 Status PstackWatcher::DumpPidStacks(pid_t pid, int flags) {
-
   // Prefer GDB if available; it gives us line numbers and thread names.
   Status s = HasGoodGdb();
   if (s.ok()) {
@@ -171,7 +176,7 @@ Status PstackWatcher::DumpPidStacks(pid_t pid, int flags) {
   WARN_NOT_OK(s, "gdb not available");
 
   // Otherwise, try to use pstack or gstack.
-  for (const auto& p : { "pstack", "gstack" }) {
+  for (const auto& p : {"pstack", "gstack"}) {
     s = HasProgram(p);
     if (s.ok()) {
       return RunPstack(p, pid);
@@ -179,7 +184,8 @@ Status PstackWatcher::DumpPidStacks(pid_t pid, int flags) {
     WARN_NOT_OK(s, Substitute("$0 not available", p));
   }
 
-  return Status::ServiceUnavailable("Neither gdb, pstack, nor gstack appear to be installed.");
+  return Status::ServiceUnavailable(
+      "Neither gdb, pstack, nor gstack appear to be installed.");
 }
 
 Status PstackWatcher::RunGdbStackDump(pid_t pid, int flags) {
@@ -221,26 +227,31 @@ Status PstackWatcher::RunPstack(const std::string& progname, pid_t pid) {
 Status PstackWatcher::RunStackDump(const vector<string>& argv) {
   printf("************************ BEGIN STACKS **************************\n");
   if (fflush(stdout) == EOF) {
-    return Status::IOError("Unable to flush stdout", ErrnoToString(errno), errno);
+    return Status::IOError(
+        "Unable to flush stdout", ErrnoToString(errno), errno);
   }
   Subprocess pstack_proc(argv);
-  RETURN_NOT_OK_PREPEND(pstack_proc.Start(), "RunStackDump proc.Start() failed");
+  RETURN_NOT_OK_PREPEND(
+      pstack_proc.Start(), "RunStackDump proc.Start() failed");
   int ret;
   RETRY_ON_EINTR(ret, ::close(pstack_proc.ReleaseChildStdinFd()));
   if (ret == -1) {
-    return Status::IOError("Unable to close child stdin", ErrnoToString(errno), errno);
+    return Status::IOError(
+        "Unable to close child stdin", ErrnoToString(errno), errno);
   }
   RETURN_NOT_OK_PREPEND(pstack_proc.Wait(), "RunStackDump proc.Wait() failed");
   int exit_code;
   string exit_info;
-  RETURN_NOT_OK_PREPEND(pstack_proc.GetExitStatus(&exit_code, &exit_info),
-                        "RunStackDump proc.GetExitStatus() failed");
+  RETURN_NOT_OK_PREPEND(
+      pstack_proc.GetExitStatus(&exit_code, &exit_info),
+      "RunStackDump proc.GetExitStatus() failed");
   if (exit_code != 0) {
     return Status::RuntimeError("RunStackDump proc.Wait() error", exit_info);
   }
   printf("************************* END STACKS ***************************\n");
   if (fflush(stdout) == EOF) {
-    return Status::IOError("Unable to flush stdout", ErrnoToString(errno), errno);
+    return Status::IOError(
+        "Unable to flush stdout", ErrnoToString(errno), errno);
   }
 
   return Status::OK();

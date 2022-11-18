@@ -22,7 +22,7 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #ifdef TCMALLOC_ENABLED
-#include <gperftools/malloc_extension.h>  // IWYU pragma: keep
+#include <gperftools/malloc_extension.h> // IWYU pragma: keep
 #endif
 
 #include "kudu/gutil/atomicops.h"
@@ -31,44 +31,54 @@
 #include "kudu/gutil/port.h"
 #include "kudu/gutil/stringprintf.h"
 #include "kudu/gutil/strings/substitute.h"
-#include "kudu/gutil/walltime.h"          // IWYU pragma: keep
-#include "kudu/util/debug/trace_event.h"  // IWYU pragma: keep
+#include "kudu/gutil/walltime.h" // IWYU pragma: keep
+#include "kudu/util/debug/trace_event.h" // IWYU pragma: keep
 #include "kudu/util/env.h"
 #include "kudu/util/flag_tags.h"
 #include "kudu/util/locks.h"
-#include "kudu/util/mem_tracker.h"        // IWYU pragma: keep
+#include "kudu/util/mem_tracker.h" // IWYU pragma: keep
 #include "kudu/util/process_memory.h"
 #include "kudu/util/random.h"
 #include "kudu/util/status.h"
 
-DEFINE_int64(memory_limit_hard_bytes, 0,
-             "Maximum amount of memory this daemon should use, in bytes. "
-             "A value of 0 autosizes based on the total system memory. "
-             "A value of -1 disables all memory limiting.");
+DEFINE_int64(
+    memory_limit_hard_bytes,
+    0,
+    "Maximum amount of memory this daemon should use, in bytes. "
+    "A value of 0 autosizes based on the total system memory. "
+    "A value of -1 disables all memory limiting.");
 TAG_FLAG(memory_limit_hard_bytes, stable);
 
-DEFINE_int32(memory_pressure_percentage, 60,
-             "Percentage of the hard memory limit that this daemon may "
-             "consume before flushing of in-memory data becomes prioritized.");
+DEFINE_int32(
+    memory_pressure_percentage,
+    60,
+    "Percentage of the hard memory limit that this daemon may "
+    "consume before flushing of in-memory data becomes prioritized.");
 TAG_FLAG(memory_pressure_percentage, advanced);
 
-DEFINE_int32(memory_limit_soft_percentage, 80,
-             "Percentage of the hard memory limit that this daemon may "
-             "consume before memory throttling of writes begins. The greater "
-             "the excess, the higher the chance of throttling. In general, a "
-             "lower soft limit leads to smoother write latencies but "
-             "decreased throughput, and vice versa for a higher soft limit.");
+DEFINE_int32(
+    memory_limit_soft_percentage,
+    80,
+    "Percentage of the hard memory limit that this daemon may "
+    "consume before memory throttling of writes begins. The greater "
+    "the excess, the higher the chance of throttling. In general, a "
+    "lower soft limit leads to smoother write latencies but "
+    "decreased throughput, and vice versa for a higher soft limit.");
 TAG_FLAG(memory_limit_soft_percentage, advanced);
 
-DEFINE_int32(memory_limit_warn_threshold_percentage, 98,
-             "Percentage of the hard memory limit that this daemon may "
-             "consume before WARNING level messages are periodically logged.");
+DEFINE_int32(
+    memory_limit_warn_threshold_percentage,
+    98,
+    "Percentage of the hard memory limit that this daemon may "
+    "consume before WARNING level messages are periodically logged.");
 TAG_FLAG(memory_limit_warn_threshold_percentage, advanced);
 
 #ifdef TCMALLOC_ENABLED
-DEFINE_int32(tcmalloc_max_free_bytes_percentage, 10,
-             "Maximum percentage of the RSS that tcmalloc is allowed to use for "
-             "reserved but unallocated memory.");
+DEFINE_int32(
+    tcmalloc_max_free_bytes_percentage,
+    10,
+    "Maximum percentage of the RSS that tcmalloc is allowed to use for "
+    "reserved but unallocated memory.");
 TAG_FLAG(tcmalloc_max_free_bytes_percentage, advanced);
 #endif
 
@@ -89,9 +99,9 @@ ThreadSafeRandom* g_rand = nullptr;
 // is greater than GC_RELEASE_SIZE, this will trigger a tcmalloc gc.
 Atomic64 g_released_memory_since_gc;
 
-// Size, in bytes, that is considered a large value for Release() (or Consume() with
-// a negative value). If tcmalloc is used, this can trigger it to GC.
-// A higher value will make us call into tcmalloc less often (and therefore more
+// Size, in bytes, that is considered a large value for Release() (or Consume()
+// with a negative value). If tcmalloc is used, this can trigger it to GC. A
+// higher value will make us call into tcmalloc less often (and therefore more
 // efficient). A lower value will mean our memory overhead is lower.
 // TODO(todd): this is a stopgap.
 const int64_t kGcReleaseSize = 128 * 1024L * 1024L;
@@ -100,7 +110,6 @@ const int64_t kGcReleaseSize = 128 * 1024L * 1024L;
 
 } // anonymous namespace
 
-
 // Flag validation
 // ------------------------------------------------------------
 // Validate that various flags are percentages.
@@ -108,19 +117,25 @@ static bool ValidatePercentage(const char* flagname, int value) {
   if (value >= 0 && value <= 100) {
     return true;
   }
-  LOG(ERROR) << Substitute("$0 must be a percentage, value $1 is invalid",
-                           flagname, value);
+  LOG(ERROR) << Substitute(
+      "$0 must be a percentage, value $1 is invalid", flagname, value);
   return false;
 }
 
 static bool dummy[] = {
-  gflags::RegisterFlagValidator(&FLAGS_memory_limit_soft_percentage, &ValidatePercentage),
-  gflags::RegisterFlagValidator(&FLAGS_memory_limit_warn_threshold_percentage, &ValidatePercentage)
+    gflags::RegisterFlagValidator(
+        &FLAGS_memory_limit_soft_percentage,
+        &ValidatePercentage),
+    gflags::RegisterFlagValidator(
+        &FLAGS_memory_limit_warn_threshold_percentage,
+        &ValidatePercentage)
 #ifdef TCMALLOC_ENABLED
-  ,gflags::RegisterFlagValidator(&FLAGS_tcmalloc_max_free_bytes_percentage, &ValidatePercentage)
+        ,
+    gflags::RegisterFlagValidator(
+        &FLAGS_tcmalloc_max_free_bytes_percentage,
+        &ValidatePercentage)
 #endif
 };
-
 
 // Wrappers around tcmalloc functionality
 // ------------------------------------------------------------
@@ -146,20 +161,20 @@ void GcTcmalloc() {
   // Bytes allocated by the application.
   int64_t bytes_used = GetTCMallocCurrentAllocatedBytes();
 
-  int64_t max_overhead = bytes_used * FLAGS_tcmalloc_max_free_bytes_percentage / 100.0;
+  int64_t max_overhead =
+      bytes_used * FLAGS_tcmalloc_max_free_bytes_percentage / 100.0;
   if (bytes_overhead > max_overhead) {
     int64_t extra = bytes_overhead - max_overhead;
     while (extra > 0) {
       // Release 1MB at a time, so that tcmalloc releases its page heap lock
-      // allowing other threads to make progress. This still disrupts the current
-      // thread, but is better than disrupting all.
+      // allowing other threads to make progress. This still disrupts the
+      // current thread, but is better than disrupting all.
       MallocExtension::instance()->ReleaseToSystem(1024 * 1024);
       extra -= 1024 * 1024;
     }
   }
 }
 #endif // TCMALLOC_ENABLED
-
 
 // Consumption and soft memory limit behavior
 // ------------------------------------------------------------
@@ -195,11 +210,12 @@ int64_t CurrentConsumption() {
   static Atomic64 consumption = 0;
   uint64_t time = GetMonoTimeMicros();
   if (time > last_read_time + kReadIntervalMicros && read_lock.try_lock()) {
-    base::subtle::NoBarrier_Store(&consumption, GetTCMallocCurrentAllocatedBytes());
-    // Re-fetch the time after getting the consumption. This way, in case fetching
-    // consumption is extremely slow for some reason (eg due to lots of contention
-    // in tcmalloc) we at least ensure that we wait at least another full interval
-    // before fetching the information again.
+    base::subtle::NoBarrier_Store(
+        &consumption, GetTCMallocCurrentAllocatedBytes());
+    // Re-fetch the time after getting the consumption. This way, in case
+    // fetching consumption is extremely slow for some reason (eg due to lots of
+    // contention in tcmalloc) we at least ensure that we wait at least another
+    // full interval before fetching the information again.
     time = GetMonoTimeMicros();
     base::subtle::NoBarrier_Store(&last_read_time, time);
     read_lock.unlock();
@@ -236,7 +252,8 @@ bool UnderMemoryPressure(double* current_capacity_pct) {
     return false;
   }
   if (current_capacity_pct) {
-    *current_capacity_pct = static_cast<double>(consumption) / g_hard_limit * 100;
+    *current_capacity_pct =
+        static_cast<double>(consumption) / g_hard_limit * 100;
   }
   return true;
 }
@@ -247,7 +264,8 @@ bool SoftLimitExceeded(double* current_capacity_pct) {
   // Did we exceed the actual limit?
   if (consumption > g_hard_limit) {
     if (current_capacity_pct) {
-      *current_capacity_pct = static_cast<double>(consumption) / g_hard_limit * 100;
+      *current_capacity_pct =
+          static_cast<double>(consumption) / g_hard_limit * 100;
     }
     return true;
   }
@@ -262,10 +280,13 @@ bool SoftLimitExceeded(double* current_capacity_pct) {
     return false;
   }
 
-  // We're over the threshold; were we randomly chosen to be over the soft limit?
-  if (consumption + g_rand->Uniform64(g_hard_limit - g_soft_limit) > g_hard_limit) {
+  // We're over the threshold; were we randomly chosen to be over the soft
+  // limit?
+  if (consumption + g_rand->Uniform64(g_hard_limit - g_soft_limit) >
+      g_hard_limit) {
     if (current_capacity_pct) {
-      *current_capacity_pct = static_cast<double>(consumption) / g_hard_limit * 100;
+      *current_capacity_pct =
+          static_cast<double>(consumption) / g_hard_limit * 100;
     }
     return true;
   }

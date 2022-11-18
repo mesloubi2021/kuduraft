@@ -195,9 +195,10 @@ class TokenSigner {
   // That corresponds to the maximum possible token lifetime for the effective
   // TSK validity and rotation intervals: see the class comment above for
   // details.
-  TokenSigner(int64_t authn_token_validity_seconds,
-              int64_t key_rotation_seconds,
-              std::shared_ptr<TokenVerifier> verifier = nullptr);
+  TokenSigner(
+      int64_t authn_token_validity_seconds,
+      int64_t key_rotation_seconds,
+      std::shared_ptr<TokenVerifier> verifier = nullptr);
   ~TokenSigner();
 
   // Import token signing keys in PB format, notifying TokenVerifier
@@ -266,12 +267,14 @@ class TokenSigner {
   // See the class comment above for more information about the intended usage.
   Status TryRotateKey(bool* has_rotated = nullptr) WARN_UNUSED_RESULT;
 
-  Status GenerateAuthnToken(std::string username,
-                            SignedTokenPB* signed_token) const WARN_UNUSED_RESULT;
+  Status GenerateAuthnToken(std::string username, SignedTokenPB* signed_token)
+      const WARN_UNUSED_RESULT;
 
   Status SignToken(SignedTokenPB* token) const WARN_UNUSED_RESULT;
 
-  const TokenVerifier& verifier() const { return *verifier_; }
+  const TokenVerifier& verifier() const {
+    return *verifier_;
+  }
 
   // Check if the current TSK is valid: return 'true' if current key is present
   // and it's not yet expired, return 'false' otherwise.
@@ -280,9 +283,10 @@ class TokenSigner {
  private:
   FRIEND_TEST(TokenTest, TestEndToEnd_InvalidCases);
 
-  static Status GenerateSigningKey(int64_t key_seq_num,
-                                   int64_t key_expiration,
-                                   std::unique_ptr<TokenSigningPrivateKey>* tsk) WARN_UNUSED_RESULT;
+  static Status GenerateSigningKey(
+      int64_t key_seq_num,
+      int64_t key_expiration,
+      std::unique_ptr<TokenSigningPrivateKey>* tsk) WARN_UNUSED_RESULT;
 
   std::shared_ptr<TokenVerifier> verifier_;
 

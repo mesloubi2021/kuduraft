@@ -17,14 +17,14 @@
 
 // The implementation of the Log Index.
 //
-// The log index is implemented by a set of on-disk files, each containing a fixed number
-// (kEntriesPerIndexChunk) of fixed size entries. Each index chunk is numbered such that,
-// for a given log index, we can determine which chunk contains its index entry by a
-// simple division operation. Because the entries are fixed size, we can compute the
-// index offset by a modulo.
+// The log index is implemented by a set of on-disk files, each containing a
+// fixed number (kEntriesPerIndexChunk) of fixed size entries. Each index chunk
+// is numbered such that, for a given log index, we can determine which chunk
+// contains its index entry by a simple division operation. Because the entries
+// are fixed size, we can compute the index offset by a modulo.
 //
-// When the log is GCed, we remove any index chunks which are no longer needed, and
-// unmap them.
+// When the log is GCed, we remove any index chunks which are no longer needed,
+// and unmap them.
 
 #include "kudu/consensus/log_index.h"
 
@@ -47,22 +47,23 @@
 #include "kudu/consensus/opid_util.h"
 #include "kudu/gutil/map-util.h"
 #include "kudu/gutil/port.h"
-#include "kudu/gutil/strings/split.h"
 #include "kudu/gutil/stringprintf.h"
+#include "kudu/gutil/strings/split.h"
 #include "kudu/gutil/strings/substitute.h"
 #include "kudu/util/env.h"
 #include "kudu/util/errno.h"
-#include "kudu/util/env.h"
 
 using std::string;
 using std::vector;
 using strings::Substitute;
 
-METRIC_DEFINE_counter(server, log_index_chunk_mmap_for_read,
-                      "Number of mmap calls for reading an index chunk",
-                      kudu::MetricUnit::kUnits,
-                      "Number of times an index chunk had to be mmapeed "
-                      "before a read operation.");
+METRIC_DEFINE_counter(
+    server,
+    log_index_chunk_mmap_for_read,
+    "Number of mmap calls for reading an index chunk",
+    kudu::MetricUnit::kUnits,
+    "Number of times an index chunk had to be mmapeed "
+    "before a read operation.");
 
 namespace kudu {
 namespace log {
@@ -120,7 +121,7 @@ class LogIndex::IndexChunk : public RefCountedThreadSafe<LogIndex::IndexChunk> {
   int64_t size_; // configured size for the chunk file
 };
 
-namespace  {
+namespace {
 Status CheckError(int rc, const char* operation) {
   if (PREDICT_FALSE(rc < 0)) {
     int err = errno;
@@ -168,8 +169,8 @@ Status LogIndex::IndexChunk::Mmap() {
     return Status::OK();
   }
 
-  mapping_ = static_cast<uint8_t*>(mmap(nullptr, size_, PROT_READ | PROT_WRITE,
-                                        MAP_SHARED, fd_, 0));
+  mapping_ = static_cast<uint8_t*>(
+      mmap(nullptr, size_, PROT_READ | PROT_WRITE, MAP_SHARED, fd_, 0));
   if (mapping_ == nullptr) {
     int err = errno;
     return Status::IOError("Unable to mmap()", ErrnoToString(err), err);
@@ -187,12 +188,20 @@ void LogIndex::IndexChunk::Munmap() {
 
 void LogIndex::IndexChunk::GetEntry(int entry_index, PhysicalEntry* ret) {
   DCHECK_GE(fd_, 0) << "Must Open() first";
-  memcpy(ret, mapping_ + sizeof(PhysicalEntry) * entry_index, sizeof(PhysicalEntry));
+  memcpy(
+      ret,
+      mapping_ + sizeof(PhysicalEntry) * entry_index,
+      sizeof(PhysicalEntry));
 }
 
-void LogIndex::IndexChunk::SetEntry(int entry_index, const PhysicalEntry& entry) {
+void LogIndex::IndexChunk::SetEntry(
+    int entry_index,
+    const PhysicalEntry& entry) {
   DCHECK_GE(fd_, 0) << "Must Open() first";
-  memcpy(mapping_ + sizeof(PhysicalEntry) * entry_index, &entry, sizeof(PhysicalEntry));
+  memcpy(
+      mapping_ + sizeof(PhysicalEntry) * entry_index,
+      &entry,
+      sizeof(PhysicalEntry));
 }
 
 bool LogIndex::IndexChunk::IsMmapped() const {
@@ -204,18 +213,16 @@ bool LogIndex::IndexChunk::IsMmapped() const {
 ////////////////////////////////////////////////////////////
 
 LogIndex::LogIndex(std::string base_dir)
-  : base_dir_(std::move(base_dir)),
-    mmap_for_reads_(nullptr) {}
+    : base_dir_(std::move(base_dir)), mmap_for_reads_(nullptr) {}
 
-LogIndex::~LogIndex() {
-}
+LogIndex::~LogIndex() {}
 
 string LogIndex::GetChunkPath(int64_t chunk_idx) {
   return StringPrintf("%s/index.%09" PRId64, base_dir_.c_str(), chunk_idx);
 }
 
 Status LogIndex::OpenAllChunksOnStartup(
-    Env *env,
+    Env* env,
     const scoped_refptr<MetricEntity>& metric_entity) {
   DCHECK(env);
   std::vector<std::string> children;
@@ -223,26 +230,31 @@ Status LogIndex::OpenAllChunksOnStartup(
 
   // Initialize metric counter
   mmap_for_reads_ =
-    metric_entity->FindOrCreateCounter(&METRIC_log_index_chunk_mmap_for_read);
+      metric_entity->FindOrCreateCounter(&METRIC_log_index_chunk_mmap_for_read);
 
-  for (const auto& fname: children) {
+  for (const auto& fname : children) {
     if (fname.find("index.") != 0) {
       continue;
     }
 
     vector<string> v = strings::Split(fname, ".");
     if (v.size() != 2) {
-      LOG(INFO) << "Improperly named file in wal directory skipped on recovery: " << fname;
+      LOG(INFO)
+          << "Improperly named file in wal directory skipped on recovery: "
+          << fname;
       continue;
     }
 
     int64_t chunk_idx;
     if (!safe_strto64(v[1], &chunk_idx)) {
-      LOG(INFO) << "Improperly named file in wal directory skipped on recovery: " << fname;
+      LOG(INFO)
+          << "Improperly named file in wal directory skipped on recovery: "
+          << fname;
       continue;
     }
 
-    VLOG(1) << "Opening index file on startup: " << fname << " for chunk idx " << chunk_idx;
+    VLOG(1) << "Opening index file on startup: " << fname << " for chunk idx "
+            << chunk_idx;
 
     scoped_refptr<IndexChunk> chunk;
     RETURN_NOT_OK(OpenAndInsertChunk(chunk_idx, &chunk, /*should_mmap=*/false));
@@ -285,8 +297,8 @@ void LogIndex::SetNumMmapChunks(int64_t num_chunks) {
 
   // unmap additional chunks (starting with the oldest chunks)
   for (auto it = open_chunks_.begin();
-      it != open_chunks_.end() && num_chunks_mmapped > kNumChunksToMmap;
-      ++it) {
+       it != open_chunks_.end() && num_chunks_mmapped > kNumChunksToMmap;
+       ++it) {
     if (it->second->IsMmapped()) {
       it->second->Munmap();
       num_chunks_mmapped--;
@@ -300,7 +312,7 @@ void LogIndex::SetNumEntriesPerChunkForTest(int64_t entries) {
   kEntriesPerIndexChunk = entries;
 }
 
-Status LogIndex::MmapChunk(scoped_refptr<IndexChunk> *chunk) {
+Status LogIndex::MmapChunk(scoped_refptr<IndexChunk>* chunk) {
   if (open_chunks_.size() < kNumChunksToMmap) {
     RETURN_NOT_OK((*chunk)->Mmap());
     return Status::OK();
@@ -354,8 +366,8 @@ Status LogIndex::OpenAndInsertChunk(
     int64_t chunk_idx,
     scoped_refptr<IndexChunk>* chunk,
     bool should_mmap) {
-  RETURN_NOT_OK_PREPEND(OpenChunk(chunk_idx, chunk),
-                        "Couldn't open index chunk");
+  RETURN_NOT_OK_PREPEND(
+      OpenChunk(chunk_idx, chunk), "Couldn't open index chunk");
   std::lock_guard<simple_spinlock> l(open_chunks_lock_);
   if (PREDICT_FALSE(ContainsKey(open_chunks_, chunk_idx))) {
     // Someone else opened the chunk in the meantime.
@@ -373,8 +385,10 @@ Status LogIndex::OpenAndInsertChunk(
   return Status::OK();
 }
 
-Status LogIndex::GetChunkForIndex(int64_t log_index, bool create,
-                                  scoped_refptr<IndexChunk>* chunk) {
+Status LogIndex::GetChunkForIndex(
+    int64_t log_index,
+    bool create,
+    scoped_refptr<IndexChunk>* chunk) {
   CHECK_GT(log_index, 0);
   int64_t chunk_idx = log_index / kEntriesPerIndexChunk;
 
@@ -394,9 +408,8 @@ Status LogIndex::GetChunkForIndex(int64_t log_index, bool create,
 
 Status LogIndex::AddEntry(const LogIndexEntry& entry) {
   scoped_refptr<IndexChunk> chunk;
-  RETURN_NOT_OK(GetChunkForIndex(entry.op_id.index(),
-                                 true /* create if not found */,
-                                 &chunk));
+  RETURN_NOT_OK(GetChunkForIndex(
+      entry.op_id.index(), true /* create if not found */, &chunk));
 
   int index_in_chunk = entry.op_id.index() % kEntriesPerIndexChunk;
   DCHECK_LT(index_in_chunk, kEntriesPerIndexChunk);
@@ -422,9 +435,7 @@ Status LogIndex::AddEntry(const LogIndexEntry& entry) {
 
 Status LogIndex::GetEntry(int64_t index, LogIndexEntry* entry) {
   scoped_refptr<IndexChunk> chunk;
-  RETURN_NOT_OK(GetChunkForIndex(index,
-                                 false /* do not create */,
-                                 &chunk));
+  RETURN_NOT_OK(GetChunkForIndex(index, false /* do not create */, &chunk));
   int index_in_chunk = index % kEntriesPerIndexChunk;
   DCHECK_LT(index_in_chunk, kEntriesPerIndexChunk);
   PhysicalEntry phys;
@@ -465,7 +476,8 @@ void LogIndex::GC(int64_t min_index_to_retain) {
   {
     std::lock_guard<simple_spinlock> l(open_chunks_lock_);
     for (auto it = open_chunks_.begin();
-         it != open_chunks_.lower_bound(min_chunk_to_retain); ++it) {
+         it != open_chunks_.lower_bound(min_chunk_to_retain);
+         ++it) {
       chunks_to_delete.push_back(it->first);
     }
   }
@@ -487,10 +499,12 @@ void LogIndex::GC(int64_t min_index_to_retain) {
 }
 
 string LogIndexEntry::ToString() const {
-  return Substitute("op_id=$0.$1 segment_sequence_number=$2 offset=$3",
-                    op_id.term(), op_id.index(),
-                    segment_sequence_number,
-                    offset_in_segment);
+  return Substitute(
+      "op_id=$0.$1 segment_sequence_number=$2 offset=$3",
+      op_id.term(),
+      op_id.index(),
+      segment_sequence_number,
+      offset_in_segment);
 }
 
 } // namespace log

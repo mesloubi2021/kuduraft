@@ -36,8 +36,8 @@
 
 #include <sys/time.h>
 
-#include "kudu/gutil/port.h"
 #include "kudu/gutil/arm_instruction_set_select.h"
+#include "kudu/gutil/port.h"
 
 // Please do not nest #if directives.  Keep one section, and one #if per
 // platform.
@@ -66,7 +66,7 @@ inline int64 CycleClock::Now() {
 #elif defined(__i386__)
 inline int64 CycleClock::Now() {
   int64 ret;
-  __asm__ volatile("rdtsc" : "=A" (ret));
+  __asm__ volatile("rdtsc" : "=A"(ret));
   return ret;
 }
 
@@ -74,7 +74,7 @@ inline int64 CycleClock::Now() {
 #elif defined(__x86_64__) || defined(__amd64__)
 inline int64 CycleClock::Now() {
   uint64 low, high;
-  __asm__ volatile("rdtsc" : "=a" (low), "=d" (high));
+  __asm__ volatile("rdtsc" : "=a"(low), "=d"(high));
   return (high << 32) | low;
 }
 
@@ -86,14 +86,15 @@ inline int64 CycleClock::Now() {
   uint64 time_base_value;
   if (sizeof(void*) == 8) {
     // On PowerPC64, time base can be read with one SPR read.
-    asm volatile("mfspr %0, %1" : "=r" (time_base_value) : "i"(SPR_TB));
+    asm volatile("mfspr %0, %1" : "=r"(time_base_value) : "i"(SPR_TB));
   } else {
     uint32 tbl, tbu0, tbu1;
-    asm volatile (" mfspr %0, %3\n"
-                  " mfspr %1, %4\n"
-                  " mfspr %2, %3\n" :
-                  "=r"(tbu0), "=r"(tbl), "=r"(tbu1) :
-                  "i"(SPR_TBU), "i"(SPR_TB));
+    asm volatile(
+        " mfspr %0, %3\n"
+        " mfspr %1, %4\n"
+        " mfspr %2, %3\n"
+        : "=r"(tbu0), "=r"(tbl), "=r"(tbu1)
+        : "i"(SPR_TBU), "i"(SPR_TB));
     // If there is a carry into the upper half, it is okay to return
     // (tbu1, 0) since it must be between the 2 TBU reads.
     tbl &= -static_cast<uint32>(tbu0 == tbu1);
@@ -109,7 +110,7 @@ inline int64 CycleClock::Now() {
 inline int64 CycleClock::Now() {
   int64 tick;
   asm(".byte 0x83, 0x41, 0x00, 0x00");
-  asm("mov   %%g1, %0" : "=r" (tick));
+  asm("mov   %%g1, %0" : "=r"(tick));
   return tick;
 }
 
@@ -117,7 +118,7 @@ inline int64 CycleClock::Now() {
 #elif defined(__ia64__)
 inline int64 CycleClock::Now() {
   int64 itc;
-  asm("mov %0 = ar.itc" : "=r" (itc));
+  asm("mov %0 = ar.itc" : "=r"(itc));
   return itc;
 }
 
@@ -160,36 +161,36 @@ inline int64 CycleClock::Now() {
 }
 
 // ----------------------------------------------------------------
-#elif defined(ARMV6)   // V6 is the earliest arm that has a standard cyclecount
+#elif defined(ARMV6) // V6 is the earliest arm that has a standard cyclecount
 #include "kudu/gutil/sysinfo.h"
 inline int64 CycleClock::Now() {
   uint32 pmccntr;
   uint32 pmuseren;
   uint32 pmcntenset;
   // Read the user mode perf monitor counter access permissions.
-  asm volatile("mrc p15, 0, %0, c9, c14, 0" : "=r" (pmuseren));
-  if (pmuseren & 1) {  // Allows reading perfmon counters for user mode code.
-    asm volatile("mrc p15, 0, %0, c9, c12, 1" : "=r" (pmcntenset));
-    if (pmcntenset & 0x80000000ul) {  // Is it counting?
-      asm volatile("mrc p15, 0, %0, c9, c13, 0" : "=r" (pmccntr));
+  asm volatile("mrc p15, 0, %0, c9, c14, 0" : "=r"(pmuseren));
+  if (pmuseren & 1) { // Allows reading perfmon counters for user mode code.
+    asm volatile("mrc p15, 0, %0, c9, c12, 1" : "=r"(pmcntenset));
+    if (pmcntenset & 0x80000000ul) { // Is it counting?
+      asm volatile("mrc p15, 0, %0, c9, c13, 0" : "=r"(pmccntr));
       // The counter is set up to count every 64th cycle
-      return static_cast<int64>(pmccntr) * 64;  // Should optimize to << 6
+      return static_cast<int64>(pmccntr) * 64; // Should optimize to << 6
     }
   }
   struct timeval tv;
   gettimeofday(&tv, NULL);
-  return static_cast<int64>((tv.tv_sec + tv.tv_usec * 0.000001)
-                            * CyclesPerSecond());
+  return static_cast<int64>(
+      (tv.tv_sec + tv.tv_usec * 0.000001) * CyclesPerSecond());
 }
 
 // ----------------------------------------------------------------
 #elif defined(ARMV3)
-#include "kudu/gutil/sysinfo.h"   // for CyclesPerSecond()
+#include "kudu/gutil/sysinfo.h" // for CyclesPerSecond()
 inline int64 CycleClock::Now() {
   struct timeval tv;
   gettimeofday(&tv, NULL);
-  return static_cast<int64>((tv.tv_sec + tv.tv_usec * 0.000001)
-                            * CyclesPerSecond());
+  return static_cast<int64>(
+      (tv.tv_sec + tv.tv_usec * 0.000001) * CyclesPerSecond());
 }
 
 // ----------------------------------------------------------------
@@ -200,8 +201,8 @@ inline int64 CycleClock::Now() {
   // back to gettimeofday.  It's possible clock_gettime would be better.
   struct timeval tv;
   gettimeofday(&tv, NULL);
-  return static_cast<int64>((tv.tv_sec + tv.tv_usec * 0.000001)
-                            * CyclesPerSecond());
+  return static_cast<int64>(
+      (tv.tv_sec + tv.tv_usec * 0.000001) * CyclesPerSecond());
 }
 
 // ----------------------------------------------------------------
@@ -225,4 +226,4 @@ inline int64 CycleClock::Now() {
 #error You need to define CycleTimer for your O/S and CPU
 #endif
 
-#endif  // GUTIL_CYCLECLOCK_INL_H_
+#endif // GUTIL_CYCLECLOCK_INL_H_

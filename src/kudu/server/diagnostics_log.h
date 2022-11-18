@@ -50,18 +50,16 @@ class DiagnosticsLog {
 #ifdef FB_DO_NOT_REMOVE
   // Dump the stacks of the whole process immediately.
   //
-  // NOTE: the actual stack-dumping is asynchronously performed on another thread. Thus,
-  // this is suitable for running in a performance-sensitive context.
+  // NOTE: the actual stack-dumping is asynchronously performed on another
+  // thread. Thus, this is suitable for running in a performance-sensitive
+  // context.
   void DumpStacksNow(std::string reason);
 #endif
 
  private:
   class SymbolSet;
 
-  enum class WakeupType {
-    METRICS,
-    STACKS
-  };
+  enum class WakeupType { METRICS, STACKS };
 
   void RunThread();
   Status LogMetrics();

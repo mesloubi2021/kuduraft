@@ -51,13 +51,11 @@ class FlagValidatorRegistry {
   DISALLOW_COPY_AND_ASSIGN(FlagValidatorRegistry);
 };
 
-
 Registrator::Registrator(const char* name, const FlagValidator& validator) {
   FlagValidatorRegistry::GetInstance()->Register(name, validator);
 }
 
 } // namespace flag_validation_internal
-
 
 const FlagValidatorsMap& GetFlagValidators() {
   using flag_validation_internal::FlagValidatorRegistry;

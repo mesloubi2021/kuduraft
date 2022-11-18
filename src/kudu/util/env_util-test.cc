@@ -19,8 +19,8 @@
 #include <unistd.h>
 
 #include <algorithm>
-#include <cstdint>
 #include <cerrno>
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <unordered_set>
@@ -51,8 +51,7 @@ using strings::Substitute;
 namespace kudu {
 namespace env_util {
 
-class EnvUtilTest: public KuduTest {
-};
+class EnvUtilTest : public KuduTest {};
 
 // Assert that Status 's' indicates there is not enough space left on the
 // device for the request.
@@ -66,7 +65,8 @@ TEST_F(EnvUtilTest, TestDiskSpaceCheck) {
   const int64_t kZeroRequestedBytes = 0;
   const int64_t kRequestOnePercentReservation = -1;
   int64_t reserved_bytes = 0;
-  ASSERT_OK(VerifySufficientDiskSpace(env_, test_dir_, kZeroRequestedBytes, reserved_bytes));
+  ASSERT_OK(VerifySufficientDiskSpace(
+      env_, test_dir_, kZeroRequestedBytes, reserved_bytes));
 
   // Check 1% reservation logic. We loop this in case there are other FS
   // operations happening concurrent with this test.
@@ -75,9 +75,10 @@ TEST_F(EnvUtilTest, TestDiskSpaceCheck) {
     ASSERT_OK(env_->GetSpaceInfo(test_dir_, &space_info));
     // Try for 1 less byte than 1% free. This request should be rejected.
     int64_t target_free_bytes = (space_info.capacity_bytes / 100) - 1;
-    int64_t bytes_to_request = std::max<int64_t>(0, space_info.free_bytes - target_free_bytes);
-    NO_FATALS(AssertNoSpace(VerifySufficientDiskSpace(env_, test_dir_, bytes_to_request,
-                                                      kRequestOnePercentReservation)));
+    int64_t bytes_to_request =
+        std::max<int64_t>(0, space_info.free_bytes - target_free_bytes);
+    NO_FATALS(AssertNoSpace(VerifySufficientDiskSpace(
+        env_, test_dir_, bytes_to_request, kRequestOnePercentReservation)));
   });
 
   // Make it seem as if the disk is full and specify that we should have
@@ -85,8 +86,8 @@ TEST_F(EnvUtilTest, TestDiskSpaceCheck) {
   // indicating we are out of space.
   FLAGS_disk_reserved_bytes_free_for_testing = 0;
   reserved_bytes = 200;
-  NO_FATALS(AssertNoSpace(VerifySufficientDiskSpace(env_, test_dir_, kZeroRequestedBytes,
-                                                    reserved_bytes)));
+  NO_FATALS(AssertNoSpace(VerifySufficientDiskSpace(
+      env_, test_dir_, kZeroRequestedBytes, reserved_bytes)));
 }
 
 // Ensure that we can recursively create directories using both absolute and
@@ -105,8 +106,10 @@ TEST_F(EnvUtilTest, TestCreateDirsRecursively) {
   ASSERT_TRUE(is_dir);
 
   // Relative path.
-  ASSERT_OK(env_->ChangeDir(test_dir_)); // Change to test dir to keep CWD clean.
-  string rel_base = Substitute("$0-$1", CURRENT_TEST_CASE_NAME(), CURRENT_TEST_NAME());
+  ASSERT_OK(
+      env_->ChangeDir(test_dir_)); // Change to test dir to keep CWD clean.
+  string rel_base =
+      Substitute("$0-$1", CURRENT_TEST_CASE_NAME(), CURRENT_TEST_NAME());
   ASSERT_FALSE(env_->FileExists(rel_base));
   path = JoinPathSegments(rel_base, "x/y/z");
   ASSERT_OK(CreateDirsRecursively(env_, path));
@@ -157,8 +160,10 @@ TEST_F(EnvUtilTest, TestDeleteExcessFilesByPattern) {
     ASSERT_OK(file->Close());
 
     // Set the last-modified time of the file.
-    struct timeval target_time { .tv_sec = now_sec + (i * 2), .tv_usec = 0 };
-    struct timeval times[2] = { target_time, target_time };
+    struct timeval target_time {
+      .tv_sec = now_sec + (i * 2), .tv_usec = 0
+    };
+    struct timeval times[2] = {target_time, target_time};
     ASSERT_EQ(0, utimes(path.c_str(), times)) << errno;
   }
   vector<string> children;

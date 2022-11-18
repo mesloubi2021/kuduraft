@@ -80,18 +80,21 @@ using strings::SubstituteAndAppend;
 const char* kTableName = "default.test_table";
 const int kMaxColumns = 30;
 const uint32_t kMaxRangePartitions = 32;
-const vector<KuduColumnStorageAttributes::CompressionType> kCompressionTypes =
-    { KuduColumnStorageAttributes::NO_COMPRESSION,
-      KuduColumnStorageAttributes::SNAPPY,
-      KuduColumnStorageAttributes::LZ4,
-      KuduColumnStorageAttributes::ZLIB };
-const vector <KuduColumnStorageAttributes::EncodingType> kInt32Encodings =
-    { KuduColumnStorageAttributes::PLAIN_ENCODING,
-      KuduColumnStorageAttributes::RLE,
-      KuduColumnStorageAttributes::BIT_SHUFFLE };
+const vector<KuduColumnStorageAttributes::CompressionType> kCompressionTypes = {
+    KuduColumnStorageAttributes::NO_COMPRESSION,
+    KuduColumnStorageAttributes::SNAPPY,
+    KuduColumnStorageAttributes::LZ4,
+    KuduColumnStorageAttributes::ZLIB};
+const vector<KuduColumnStorageAttributes::EncodingType> kInt32Encodings = {
+    KuduColumnStorageAttributes::PLAIN_ENCODING,
+    KuduColumnStorageAttributes::RLE,
+    KuduColumnStorageAttributes::BIT_SHUFFLE};
 // A block size of 0 applies the server-side default.
-const vector<int32_t> kBlockSizes = {0, 2 * 1024 * 1024,
-                                     4 * 1024 * 1024, 8 * 1024 * 1024};
+const vector<int32_t> kBlockSizes = {
+    0,
+    2 * 1024 * 1024,
+    4 * 1024 * 1024,
+    8 * 1024 * 1024};
 
 class AlterTableRandomized : public KuduTest,
                              public ::testing::WithParamInterface<HmsMode> {
@@ -102,9 +105,11 @@ class AlterTableRandomized : public KuduTest,
     ExternalMiniClusterOptions opts;
     opts.num_tablet_servers = 3;
     opts.hms_mode = GetParam();
-    // This test produces tables with lots of columns. With container preallocation,
-    // we end up using quite a bit of disk space. So, we disable it.
-    opts.extra_tserver_flags.emplace_back("--log_container_preallocate_bytes=0");
+    // This test produces tables with lots of columns. With container
+    // preallocation, we end up using quite a bit of disk space. So, we disable
+    // it.
+    opts.extra_tserver_flags.emplace_back(
+        "--log_container_preallocate_bytes=0");
     cluster_.reset(new ExternalMiniCluster(std::move(opts)));
     ASSERT_OK(cluster_->Start());
 
@@ -120,8 +125,8 @@ class AlterTableRandomized : public KuduTest,
     LOG(INFO) << "Restarting TS " << idx;
     cluster_->tablet_server(idx)->Shutdown();
     CHECK_OK(cluster_->tablet_server(idx)->Restart());
-    CHECK_OK(cluster_->WaitForTabletsRunning(cluster_->tablet_server(idx),
-                                             -1, MonoDelta::FromSeconds(60)));
+    CHECK_OK(cluster_->WaitForTabletsRunning(
+        cluster_->tablet_server(idx), -1, MonoDelta::FromSeconds(60)));
     LOG(INFO) << "TS " << idx << " Restarted";
   }
 
@@ -140,13 +145,15 @@ class AlterTableRandomized : public KuduTest,
 };
 
 // Run the test with the HMS integration enabled and disabled.
-INSTANTIATE_TEST_CASE_P(HmsConfigurations, AlterTableRandomized,
-                        ::testing::Values(HmsMode::NONE, HmsMode::ENABLE_METASTORE_INTEGRATION));
+INSTANTIATE_TEST_CASE_P(
+    HmsConfigurations,
+    AlterTableRandomized,
+    ::testing::Values(HmsMode::NONE, HmsMode::ENABLE_METASTORE_INTEGRATION));
 
 struct RowState {
   // We use this special value to denote NULL values.
-  // We ensure that we never insert or update to this value except in the case of
-  // NULLable columns.
+  // We ensure that we never insert or update to this value except in the case
+  // of NULLable columns.
   static const int32_t kNullValue = 0xdeadbeef;
   // We use this special value to denote default values.
   // We ensure that we never insert or update to this value except when the
@@ -174,8 +181,7 @@ struct RowState {
 };
 
 struct TableState {
-  TableState()
-      : rand_(SeedRandom()) {
+  TableState() : rand_(SeedRandom()) {
     col_names_.emplace_back("key");
     col_nullable_.push_back(false);
     col_defaults_.push_back(0);
@@ -188,7 +194,8 @@ struct TableState {
       auto partition = range_partitions_.begin();
       std::advance(partition, rand_.Uniform(range_partitions_.size()));
 
-      int32_t rowkey = partition->first + rand_.Uniform(partition->second - partition->first);
+      int32_t rowkey = partition->first +
+          rand_.Uniform(partition->second - partition->first);
       if (!ContainsKey(rows_, rowkey)) {
         return rowkey;
       }
@@ -198,7 +205,8 @@ struct TableState {
   string GetRandomNewColumnName() {
     while (true) {
       string name = strings::Substitute("c$0", rand_.Uniform(1000));
-      if (std::find(col_names_.begin(), col_names_.end(), name) == col_names_.end()) {
+      if (std::find(col_names_.begin(), col_names_.end(), name) ==
+          col_names_.end()) {
         return name;
       }
     }
@@ -245,7 +253,8 @@ struct TableState {
   bool Insert(const vector<pair<string, int32_t>>& data) {
     DCHECK_EQ(col_names_[0], data[0].first);
     int32_t key = data[0].second;
-    if (ContainsKey(rows_, key)) return false;
+    if (ContainsKey(rows_, key))
+      return false;
 
     auto r = new RowState;
     r->cols = data;
@@ -261,7 +270,8 @@ struct TableState {
   bool Update(const vector<pair<string, int32_t>>& data) {
     DCHECK_EQ(col_names_[0], data[0].first);
     int32_t key = data[0].second;
-    if (!ContainsKey(rows_, key)) return false;
+    if (!ContainsKey(rows_, key))
+      return false;
 
     rows_[key]->cols = data;
     return true;
@@ -316,7 +326,8 @@ struct TableState {
       int32_t upper_bound = lower_bound + width;
       CHECK(upper_bound > lower_bound);
 
-      if (InsertIfNotPresent(&range_partitions_, make_pair(lower_bound, upper_bound))) {
+      if (InsertIfNotPresent(
+              &range_partitions_, make_pair(lower_bound, upper_bound))) {
         return make_pair(lower_bound, upper_bound);
       }
     }
@@ -374,9 +385,9 @@ struct MirrorTable {
     CHECK_OK(b.Build(&schema));
     unique_ptr<KuduTableCreator> table_creator(client_->NewTableCreator());
     table_creator->table_name(kTableName)
-                  .schema(&schema)
-                  .set_range_partition_columns({ "key" })
-                  .num_replicas(3);
+        .schema(&schema)
+        .set_range_partition_columns({"key"})
+        .num_replicas(3);
 
     for (const auto& partition : ts_.range_partitions_) {
       unique_ptr<KuduPartialRow> lower(schema.NewRow());
@@ -394,7 +405,8 @@ struct MirrorTable {
     ts_.GenRandomRow(&row);
     Status s = DoRealOp(row, INSERT);
     if (s.IsAlreadyPresent()) {
-      CHECK(!ts_.Insert(row)) << "real table said already-present, fake table succeeded";
+      CHECK(!ts_.Insert(row))
+          << "real table said already-present, fake table succeeded";
     }
     CHECK_OK(s);
 
@@ -402,7 +414,8 @@ struct MirrorTable {
   }
 
   void DeleteRandomRow() {
-    if (ts_.rows_.empty()) return;
+    if (ts_.rows_.empty())
+      return;
     int32_t row_key = ts_.GetRandomExistingRowKey();
     vector<pair<string, int32_t>> del;
     del.push_back(make_pair(ts_.col_names_[0], row_key));
@@ -413,7 +426,8 @@ struct MirrorTable {
 
   ATTRIBUTE_NO_SANITIZE_INTEGER
   void UpdateRandomRow(uint32_t rand) {
-    if (ts_.rows_.empty()) return;
+    if (ts_.rows_.empty())
+      return;
     int32_t row_key = ts_.GetRandomExistingRowKey();
 
     vector<pair<string, int32_t>> update;
@@ -421,8 +435,10 @@ struct MirrorTable {
     for (int i = 1; i < num_columns(); i++) {
       // This is expected to overflow.
       int32_t val = rand * i;
-      if (val == RowState::kNullValue) val++;
-      if (val == RowState::kDefaultValue) val++;
+      if (val == RowState::kNullValue)
+        val++;
+      if (val == RowState::kDefaultValue)
+        val++;
       if (ts_.col_nullable_[i] && val % 2 == 1) {
         val = RowState::kNullValue;
       }
@@ -436,7 +452,8 @@ struct MirrorTable {
 
     Status s = DoRealOp(update, UPDATE);
     if (s.IsNotFound()) {
-      CHECK(!ts_.Update(update)) << "real table said not-found, fake table succeeded";
+      CHECK(!ts_.Update(update))
+          << "real table said not-found, fake table succeeded";
       return;
     }
     CHECK_OK(s);
@@ -451,7 +468,8 @@ struct MirrorTable {
     // range partition hold a pointer to it.
     KuduSchema schema;
     CHECK_OK(client_->GetTableSchema(kTableName, &schema));
-    unique_ptr<KuduTableAlterer> table_alterer(client_->NewTableAlterer(kTableName));
+    unique_ptr<KuduTableAlterer> table_alterer(
+        client_->NewTableAlterer(kTableName));
 
     int step_count = 1 + ts_.rand_.Uniform(10);
     for (int step = 0; step < step_count; step++) {
@@ -460,8 +478,9 @@ struct MirrorTable {
         AddAColumn(table_alterer.get());
       } else if (r < 2 && num_columns() > 1) {
         DropAColumn(table_alterer.get());
-      } else if (num_range_partitions() == 0 ||
-                 (r < 3 && num_range_partitions() < kMaxRangePartitions)) {
+      } else if (
+          num_range_partitions() == 0 ||
+          (r < 3 && num_range_partitions() < kMaxRangePartitions)) {
         AddARangePartition(schema, table_alterer.get());
       } else if (r < 4 && num_columns() > 1) {
         RenameAColumn(table_alterer.get());
@@ -483,8 +502,8 @@ struct MirrorTable {
 
   void AddAColumn(KuduTableAlterer* table_alterer) {
     string name = ts_.GetRandomNewColumnName();
-    LOG(INFO) << "Adding column " << name << ", existing columns: "
-              << JoinStrings(ts_.col_names_, ", ");
+    LOG(INFO) << "Adding column " << name
+              << ", existing columns: " << JoinStrings(ts_.col_names_, ", ");
 
     int32_t default_value = rand();
     bool nullable = rand() % 2 == 1;
@@ -494,8 +513,10 @@ struct MirrorTable {
       default_value = RowState::kNullValue;
       table_alterer->AddColumn(name)->Type(KuduColumnSchema::INT32);
     } else {
-      table_alterer->AddColumn(name)->Type(KuduColumnSchema::INT32)->NotNull()
-                   ->Default(KuduValue::FromInt(default_value));
+      table_alterer->AddColumn(name)
+          ->Type(KuduColumnSchema::INT32)
+          ->NotNull()
+          ->Default(KuduValue::FromInt(default_value));
     }
 
     // Add to the mirror state.
@@ -504,8 +525,8 @@ struct MirrorTable {
 
   void DropAColumn(KuduTableAlterer* table_alterer) {
     string name = ts_.GetRandomExistingColumnName();
-    LOG(INFO) << "Dropping column " << name << ", existing columns: "
-              << JoinStrings(ts_.col_names_, ", ");
+    LOG(INFO) << "Dropping column " << name
+              << ", existing columns: " << JoinStrings(ts_.col_names_, ", ");
     table_alterer->DropColumn(name);
     ts_.DropColumn(name);
   }
@@ -520,7 +541,8 @@ struct MirrorTable {
 
   void RenamePrimaryKeyColumn(KuduTableAlterer* table_alterer) {
     string new_name = ts_.GetRandomNewColumnName();
-    LOG(INFO) << "Renaming PrimaryKey column " << ts_.col_names_[0] << " to " << new_name;
+    LOG(INFO) << "Renaming PrimaryKey column " << ts_.col_names_[0] << " to "
+              << new_name;
     table_alterer->AlterColumn(ts_.col_names_[0])->RenameTo(new_name);
     ts_.RenameColumn(ts_.col_names_[0], new_name);
   }
@@ -541,32 +563,40 @@ struct MirrorTable {
     int type = ts_.rand_.Uniform(3);
     if (type == 0) {
       int i = ts_.rand_.Uniform(kCompressionTypes.size());
-      LOG(INFO) << "Changing compression of column " << name <<
-                " to " << kCompressionTypes[i];
+      LOG(INFO) << "Changing compression of column " << name << " to "
+                << kCompressionTypes[i];
       table_alterer->AlterColumn(name)->Compression(kCompressionTypes[i]);
     } else if (type == 1) {
       int i = ts_.rand_.Uniform(kInt32Encodings.size());
-      LOG(INFO) << "Changing encoding of column " << name <<
-                " to " << kInt32Encodings[i];
+      LOG(INFO) << "Changing encoding of column " << name << " to "
+                << kInt32Encodings[i];
       table_alterer->AlterColumn(name)->Encoding(kInt32Encodings[i]);
     } else {
       int i = ts_.rand_.Uniform(kBlockSizes.size());
-      LOG(INFO) << "Changing block size of column " << name <<
-                " to " << kBlockSizes[i];
+      LOG(INFO) << "Changing block size of column " << name << " to "
+                << kBlockSizes[i];
       table_alterer->AlterColumn(name)->BlockSize(kBlockSizes[i]);
     }
   }
 
-  void AddARangePartition(const KuduSchema& schema, KuduTableAlterer* table_alterer) {
+  void AddARangePartition(
+      const KuduSchema& schema,
+      KuduTableAlterer* table_alterer) {
     auto bounds = ts_.AddRangePartition();
-    LOG(INFO) << "Adding range partition: [" << bounds.first << ", " << bounds.second << ")"
+    LOG(INFO) << "Adding range partition: [" << bounds.first << ", "
+              << bounds.second << ")"
               << " resulting partitions: ("
-              << JoinKeysAndValuesIterator(ts_.range_partitions_.begin(),
-                                           ts_.range_partitions_.end(),
-                                           ", ", "], (") << ")";
+              << JoinKeysAndValuesIterator(
+                     ts_.range_partitions_.begin(),
+                     ts_.range_partitions_.end(),
+                     ", ",
+                     "], (")
+              << ")";
 
-    KuduTableCreator::RangePartitionBound lower_bound_type = KuduTableCreator::INCLUSIVE_BOUND;
-    KuduTableCreator::RangePartitionBound upper_bound_type = KuduTableCreator::EXCLUSIVE_BOUND;
+    KuduTableCreator::RangePartitionBound lower_bound_type =
+        KuduTableCreator::INCLUSIVE_BOUND;
+    KuduTableCreator::RangePartitionBound upper_bound_type =
+        KuduTableCreator::EXCLUSIVE_BOUND;
     int32_t lower_bound_value = bounds.first;
     int32_t upper_bound_value = bounds.second;
 
@@ -585,24 +615,34 @@ struct MirrorTable {
     unique_ptr<KuduPartialRow> upper_bound(schema.NewRow());
     CHECK_OK(upper_bound->SetInt32(schema.Column(0).name(), upper_bound_value));
 
-    table_alterer->AddRangePartition(lower_bound.release(), upper_bound.release(),
-                                     lower_bound_type, upper_bound_type);
+    table_alterer->AddRangePartition(
+        lower_bound.release(),
+        upper_bound.release(),
+        lower_bound_type,
+        upper_bound_type);
   }
 
-  void DropARangePartition(KuduSchema& schema, KuduTableAlterer* table_alterer) {
+  void DropARangePartition(
+      KuduSchema& schema,
+      KuduTableAlterer* table_alterer) {
     auto bounds = ts_.DropRangePartition();
-    LOG(INFO) << "Dropping range partition: [" << bounds.first << ", " << bounds.second << ")"
+    LOG(INFO) << "Dropping range partition: [" << bounds.first << ", "
+              << bounds.second << ")"
               << " resulting partitions: ("
-              << JoinKeysAndValuesIterator(ts_.range_partitions_.begin(),
-                                           ts_.range_partitions_.end(),
-                                           ", ", "], (") << ")";
+              << JoinKeysAndValuesIterator(
+                     ts_.range_partitions_.begin(),
+                     ts_.range_partitions_.end(),
+                     ", ",
+                     "], (")
+              << ")";
 
     unique_ptr<KuduPartialRow> lower_bound(schema.NewRow());
     CHECK_OK(lower_bound->SetInt32(schema.Column(0).name(), bounds.first));
     unique_ptr<KuduPartialRow> upper_bound(schema.NewRow());
     CHECK_OK(upper_bound->SetInt32(schema.Column(0).name(), bounds.second));
 
-    table_alterer->DropRangePartition(lower_bound.release(), upper_bound.release());
+    table_alterer->DropRangePartition(
+        lower_bound.release(), upper_bound.release());
   }
 
   int num_columns() const {
@@ -641,12 +681,11 @@ struct MirrorTable {
   }
 
  private:
-  enum OpType {
-    INSERT, UPDATE, DELETE
-  };
+  enum OpType { INSERT, UPDATE, DELETE };
 
   Status DoRealOp(const vector<pair<string, int32_t>>& data, OpType op_type) {
-    VLOG(1) << "Applying op " << op_type << " " << data[0].first << ": " << data[0].second;
+    VLOG(1) << "Applying op " << op_type << " " << data[0].first << ": "
+            << data[0].second;
     shared_ptr<KuduSession> session = client_->NewSession();
     shared_ptr<KuduTable> table;
     RETURN_NOT_OK(session->SetFlushMode(KuduSession::MANUAL_FLUSH));
@@ -654,9 +693,15 @@ struct MirrorTable {
     RETURN_NOT_OK(client_->OpenTable(kTableName, &table));
     unique_ptr<KuduWriteOperation> op;
     switch (op_type) {
-      case INSERT: op.reset(table->NewInsert()); break;
-      case UPDATE: op.reset(table->NewUpdate()); break;
-      case DELETE: op.reset(table->NewDelete()); break;
+      case INSERT:
+        op.reset(table->NewInsert());
+        break;
+      case UPDATE:
+        op.reset(table->NewUpdate());
+        break;
+      case DELETE:
+        op.reset(table->NewDelete());
+        break;
     }
     for (int i = 0; i < data.size(); i++) {
       const auto& d = data[i];
@@ -690,7 +735,8 @@ struct MirrorTable {
   TableState ts_;
 };
 
-// Stress test for various alter table scenarios. This performs a random sequence of:
+// Stress test for various alter table scenarios. This performs a random
+// sequence of:
 //   - insert a row (using the latest schema)
 //   - delete a random row
 //   - update a row (all columns with the latest schema)
@@ -698,9 +744,9 @@ struct MirrorTable {
 //   - drop a column
 //   - restart the tablet server
 //
-// During the sequence of operations, a "mirror" of the table in memory is kept up to
-// date. We periodically scan the actual table, and ensure that the data in Kudu
-// matches our in-memory "mirror".
+// During the sequence of operations, a "mirror" of the table in memory is kept
+// up to date. We periodically scan the actual table, and ensure that the data
+// in Kudu matches our in-memory "mirror".
 TEST_P(AlterTableRandomized, TestRandomSequence) {
   MirrorTable t(client_);
   ASSERT_OK(t.Create());

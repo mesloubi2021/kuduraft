@@ -55,10 +55,10 @@ METRIC_DECLARE_entity(tablet);
 METRIC_DECLARE_counter(leader_memory_pressure_rejections);
 METRIC_DECLARE_counter(follower_memory_pressure_rejections);
 
-using strings::Substitute;
 using std::set;
 using std::string;
 using std::vector;
+using strings::Substitute;
 
 namespace kudu {
 
@@ -89,7 +89,10 @@ class ClientStressTest : public KuduTest {
   }
 
  protected:
-  void ScannerThread(KuduClient* client, const CountDownLatch* go_latch, int32_t start_key) {
+  void ScannerThread(
+      KuduClient* client,
+      const CountDownLatch* go_latch,
+      int32_t start_key) {
     client::sp::shared_ptr<KuduTable> table;
     CHECK_OK(client->OpenTable(TestWorkload::kDefaultTableName, &table));
     vector<string> rows;
@@ -98,7 +101,8 @@ class ClientStressTest : public KuduTest {
 
     KuduScanner scanner(table.get());
     CHECK_OK(scanner.AddConjunctPredicate(table->NewComparisonPredicate(
-        "key", client::KuduPredicate::GREATER_EQUAL,
+        "key",
+        client::KuduPredicate::GREATER_EQUAL,
         client::KuduValue::FromInt(start_key))));
     CHECK_OK(ScanToStrings(&scanner, &rows));
   }
@@ -129,15 +133,16 @@ TEST_F(ClientStressTest, TestLookupTimeouts) {
   SleepFor(MonoDelta::FromMilliseconds(kSleepMillis));
 }
 
-// Regression test for KUDU-1104, a race in which multiple scanners racing to populate a
-// cold meta cache on a shared Client would crash.
+// Regression test for KUDU-1104, a race in which multiple scanners racing to
+// populate a cold meta cache on a shared Client would crash.
 //
-// This test creates a table with a lot of tablets (so that we require many round-trips to
-// the master to populate the meta cache) and then starts a bunch of parallel threads which
-// scan starting at random points in the key space.
+// This test creates a table with a lot of tablets (so that we require many
+// round-trips to the master to populate the meta cache) and then starts a bunch
+// of parallel threads which scan starting at random points in the key space.
 TEST_F(ClientStressTest, TestStartScans) {
   for (int i = 0; i < cluster_->num_tablet_servers(); i++) {
-    ASSERT_OK(cluster_->SetFlag(cluster_->tablet_server(i), "log_preallocate_segments", "0"));
+    ASSERT_OK(cluster_->SetFlag(
+        cluster_->tablet_server(i), "log_preallocate_segments", "0"));
   }
   TestWorkload work(cluster_.get());
   work.set_num_tablets(40);
@@ -153,16 +158,20 @@ TEST_F(ClientStressTest, TestStartScans) {
     CHECK_OK(cluster_->CreateClient(nullptr, &client));
 
     CountDownLatch go_latch(1);
-    vector<scoped_refptr<Thread> > threads;
+    vector<scoped_refptr<Thread>> threads;
     const int kNumThreads = 60;
     Random rng(run);
     for (int i = 0; i < kNumThreads; i++) {
       int32_t start_key = rng.Next32();
       scoped_refptr<kudu::Thread> new_thread;
       CHECK_OK(kudu::Thread::Create(
-          "test", strings::Substitute("test-scanner-$0", i),
-          &ClientStressTest_TestStartScans_Test::ScannerThread, this,
-          client.get(), &go_latch, start_key,
+          "test",
+          strings::Substitute("test-scanner-$0", i),
+          &ClientStressTest_TestStartScans_Test::ScannerThread,
+          this,
+          client.get(),
+          &go_latch,
+          start_key,
           &new_thread));
       threads.push_back(new_thread);
     }
@@ -224,7 +233,6 @@ TEST_F(ClientStressTest_MultiMaster, TestLeaderResolutionTimeout) {
   alarm(60);
 }
 
-
 // Override the base test to start a cluster with a low memory limit.
 class ClientStressTest_LowMemory : public ClientStressTest {
  protected:
@@ -234,8 +242,8 @@ class ClientStressTest_LowMemory : public ClientStressTest {
     // servers to make forward progress.
     const int kMemLimitBytes = 64 * 1024 * 1024;
     ExternalMiniClusterOptions opts;
-    opts.extra_tserver_flags.push_back(Substitute(
-        "--memory_limit_hard_bytes=$0", kMemLimitBytes));
+    opts.extra_tserver_flags.push_back(
+        Substitute("--memory_limit_hard_bytes=$0", kMemLimitBytes));
     opts.extra_tserver_flags.emplace_back("--memory_limit_soft_percentage=0");
     // Since --memory_limit_soft_percentage=0, any nonzero block cache usage
     // will cause memory pressure. Since that's part of the point of the test,
@@ -299,15 +307,16 @@ TEST_F(ClientStressTest_LowMemory, TestMemoryThrottling) {
     if (total_num_rejections >= kMinRejections) {
       break;
     } else if (MonoTime::Now() > deadline) {
-      FAIL() << "Ran for " << kMaxWaitTime.ToString() << ", deadline expired and only saw "
-             << total_num_rejections << " memory rejections";
+      FAIL() << "Ran for " << kMaxWaitTime.ToString()
+             << ", deadline expired and only saw " << total_num_rejections
+             << " memory rejections";
     }
     SleepFor(MonoDelta::FromMilliseconds(200));
   }
 }
 
-// This test just creates a bunch of clients and makes sure that the generated client ids
-// are unique among the created clients.
+// This test just creates a bunch of clients and makes sure that the generated
+// client ids are unique among the created clients.
 TEST_F(ClientStressTest, TestUniqueClientIds) {
   set<string> client_ids;
   for (int i = 0; i < 1000; i++) {
@@ -315,10 +324,10 @@ TEST_F(ClientStressTest, TestUniqueClientIds) {
     ASSERT_OK(cluster_->CreateClient(nullptr, &client));
     const string& client_id = client->data_->client_id_;
     auto result = client_ids.emplace(client_id);
-    EXPECT_TRUE(result.second) << "Unique id generation failed. New client id: "
-                               << client_id
-                               << " had already been used. Generated ids: "
-                               << JoinStrings(client_ids, ",");
+    EXPECT_TRUE(result.second)
+        << "Unique id generation failed. New client id: " << client_id
+        << " had already been used. Generated ids: "
+        << JoinStrings(client_ids, ",");
   }
 }
 

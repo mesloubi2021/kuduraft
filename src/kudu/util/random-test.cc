@@ -34,9 +34,7 @@ namespace kudu {
 
 class RandomTest : public KuduTest {
  public:
-  RandomTest()
-      : rng_(SeedRandom()) {
-  }
+  RandomTest() : rng_(SeedRandom()) {}
 
  protected:
   Random rng_;
@@ -65,8 +63,9 @@ TEST_F(RandomTest, TestNormalDist) {
 // in Next64().
 //
 // Note: Our RNG actually only generates 31 bits of randomness for 32 bit
-// integers. If all bits need to be randomized, callers must use Random::Next64().
-// This test reflects that, and if  we change the RNG algo this test should also change.
+// integers. If all bits need to be randomized, callers must use
+// Random::Next64(). This test reflects that, and if  we change the RNG algo
+// this test should also change.
 TEST_F(RandomTest, TestUseOfBits) {
   // For Next32():
   uint32_t ones32 = numeric_limits<uint32_t>::max();

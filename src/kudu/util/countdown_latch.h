@@ -27,18 +27,16 @@ namespace kudu {
 
 // This is a C++ implementation of the Java CountDownLatch
 // class.
-// See http://docs.oracle.com/javase/6/docs/api/java/util/concurrent/CountDownLatch.html
+// See
+// http://docs.oracle.com/javase/6/docs/api/java/util/concurrent/CountDownLatch.html
 class CountDownLatch {
  public:
   // Initialize the latch with the given initial count.
-  explicit CountDownLatch(int count)
-    : cond_(&lock_),
-      count_(count) {
-  }
+  explicit CountDownLatch(int count) : cond_(&lock_), count_(count) {}
 
   // Decrement the count of this latch by 'amount'
-  // If the new count is less than or equal to zero, then all waiting threads are woken up.
-  // If the count is already zero, this has no effect.
+  // If the new count is less than or equal to zero, then all waiting threads
+  // are woken up. If the count is already zero, this has no effect.
   void CountDown(int amount) {
     DCHECK_GE(amount, 0);
     MutexLock lock(lock_);
@@ -75,8 +73,8 @@ class CountDownLatch {
     }
   }
 
-  // Waits for the count on the latch to reach zero, or until 'until' time is reached.
-  // Returns true if the count became zero, false otherwise.
+  // Waits for the count on the latch to reach zero, or until 'until' time is
+  // reached. Returns true if the count became zero, false otherwise.
   bool WaitUntil(const MonoTime& when) const {
     ThreadRestrictions::AssertWaitAllowed();
     MutexLock lock(lock_);
@@ -88,8 +86,8 @@ class CountDownLatch {
     return true;
   }
 
-  // Waits for the count on the latch to reach zero, or until 'delta' time elapses.
-  // Returns true if the count became zero, false otherwise.
+  // Waits for the count on the latch to reach zero, or until 'delta' time
+  // elapses. Returns true if the count became zero, false otherwise.
   bool WaitFor(const MonoDelta& delta) const {
     return WaitUntil(MonoTime::Now() + delta);
   }
@@ -122,7 +120,7 @@ class CountDownLatch {
 // Utility class which calls latch->CountDown() in its destructor.
 class CountDownOnScopeExit {
  public:
-  explicit CountDownOnScopeExit(CountDownLatch *latch) : latch_(latch) {}
+  explicit CountDownOnScopeExit(CountDownLatch* latch) : latch_(latch) {}
   ~CountDownOnScopeExit() {
     latch_->CountDown();
   }
@@ -130,7 +128,7 @@ class CountDownOnScopeExit {
  private:
   DISALLOW_COPY_AND_ASSIGN(CountDownOnScopeExit);
 
-  CountDownLatch *latch_;
+  CountDownLatch* latch_;
 };
 
 } // namespace kudu

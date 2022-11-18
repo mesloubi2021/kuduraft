@@ -33,9 +33,7 @@ class BlockIdPB;
 
 class BlockId {
  public:
-  BlockId()
-    : id_(kInvalidId) {
-  }
+  BlockId() : id_(kInvalidId) {}
 
   explicit BlockId(uint64_t id) {
     SetId(id);
@@ -45,7 +43,9 @@ class BlockId {
     id_ = id;
   }
 
-  bool IsNull() const { return id_ == kInvalidId; }
+  bool IsNull() const {
+    return id_ == kInvalidId;
+  }
 
   std::string ToString() const {
     return StringPrintf("%016" PRIu64, id_);
@@ -65,7 +65,9 @@ class BlockId {
 
   // Returns the raw ID. Use with care; in most cases the BlockId should be
   // treated as a completely opaque value.
-  uint64_t id() const { return id_; }
+  uint64_t id() const {
+    return id_;
+  }
 
   // Join the given block IDs with ','. Useful for debug printouts.
   static std::string JoinStrings(const std::vector<BlockId>& blocks);

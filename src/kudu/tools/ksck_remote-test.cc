@@ -64,9 +64,11 @@ DECLARE_int32(tablet_history_max_age_sec);
 DECLARE_int32(timestamp_update_period_ms);
 DECLARE_int32(wait_before_setting_snapshot_timestamp_ms);
 
-DEFINE_int32(experimental_flag_for_ksck_test, 0,
-             "A flag marked experimental so it can be used to test ksck's "
-             "unusual flag detection features");
+DEFINE_int32(
+    experimental_flag_for_ksck_test,
+    0,
+    "A flag marked experimental so it can be used to test ksck's "
+    "unusual flag detection features");
 TAG_FLAG(experimental_flag_for_ksck_test, experimental);
 
 namespace kudu {
@@ -85,12 +87,11 @@ using std::string;
 using std::unique_ptr;
 using std::vector;
 
-static const char *kTableName = "ksck-test-table";
+static const char* kTableName = "ksck-test-table";
 
 class RemoteKsckTest : public KuduTest {
  public:
-  RemoteKsckTest()
-    : random_(SeedRandom()) {
+  RemoteKsckTest() : random_(SeedRandom()) {
     KuduSchemaBuilder b;
     b.AddColumn("key")->Type(KuduColumnSchema::INT32)->NotNull()->PrimaryKey();
     b.AddColumn("int_val")->Type(KuduColumnSchema::INT32)->NotNull();
@@ -116,19 +117,19 @@ class RemoteKsckTest : public KuduTest {
     // Create one table.
     gscoped_ptr<KuduTableCreator> table_creator(client_->NewTableCreator());
     ASSERT_OK(table_creator->table_name(kTableName)
-                     .schema(&schema_)
-                     .num_replicas(3)
-                     .set_range_partition_columns({ "key" })
-                     .split_rows(GenerateSplitRows())
-                     .Create());
+                  .schema(&schema_)
+                  .num_replicas(3)
+                  .set_range_partition_columns({"key"})
+                  .split_rows(GenerateSplitRows())
+                  .Create());
     // Make sure we can open the table.
     shared_ptr<KuduTable> client_table;
     ASSERT_OK(client_->OpenTable(kTableName, &client_table));
 
     vector<string> master_addresses;
     for (int i = 0; i < mini_cluster_->num_masters(); i++) {
-        master_addresses.push_back(
-            mini_cluster_->mini_master(i)->bound_rpc_addr_str());
+      master_addresses.push_back(
+          mini_cluster_->mini_master(i)->bound_rpc_addr_str());
     }
     std::shared_ptr<KsckCluster> cluster;
     ASSERT_OK(RemoteKsckCluster::Build(master_addresses, &cluster));
@@ -146,9 +147,10 @@ class RemoteKsckTest : public KuduTest {
   // Writes rows to the table until the continue_writing flag is set to false.
   //
   // Public for use with boost::bind.
-  void GenerateRowWritesLoop(CountDownLatch* started_writing,
-                             const AtomicBool& continue_writing,
-                             Promise<Status>* promise) {
+  void GenerateRowWritesLoop(
+      CountDownLatch* started_writing,
+      const AtomicBool& continue_writing,
+      Promise<Status>* promise) {
     shared_ptr<KuduTable> table;
     Status status;
     status = client_->OpenTable(kTableName, &table);
@@ -173,9 +175,10 @@ class RemoteKsckTest : public KuduTest {
       if (!status.ok()) {
         promise->Set(status);
       }
-      // Wait for the first 100 writes so that it's very likely all replicas have committed a
-      // message in each tablet; otherwise, safe time might not have been updated on all replicas
-      // and some might refuse snapshot scans because of lag.
+      // Wait for the first 100 writes so that it's very likely all replicas
+      // have committed a message in each tablet; otherwise, safe time might not
+      // have been updated on all replicas and some might refuse snapshot scans
+      // because of lag.
       if (i > 100) {
         started_writing->CountDown(1);
       }
@@ -246,9 +249,11 @@ TEST_F(RemoteKsckTest, TestCheckUnusualFlags) {
   ASSERT_OK(ksck_->PrintResults());
 
   const string& err_string = err_stream_.str();
-  ASSERT_STR_CONTAINS(err_string,
+  ASSERT_STR_CONTAINS(
+      err_string,
       "Some masters have unsafe, experimental, or hidden flags set");
-  ASSERT_STR_CONTAINS(err_string,
+  ASSERT_STR_CONTAINS(
+      err_string,
       "Some tablet servers have unsafe, experimental, or hidden flags set");
   ASSERT_STR_CONTAINS(err_string, "experimental_flag_for_ksck_test");
 }
@@ -260,7 +265,8 @@ TEST_F(RemoteKsckTest, TestTabletServerMismatchedUUID) {
   ASSERT_OK(ksck_->CheckClusterRunning());
   ASSERT_OK(ksck_->FetchTableAndTabletInfo());
 
-  tserver::MiniTabletServer* tablet_server = mini_cluster_->mini_tablet_server(0);
+  tserver::MiniTabletServer* tablet_server =
+      mini_cluster_->mini_tablet_server(0);
   string old_uuid = tablet_server->uuid();
   string root_dir = mini_cluster_->GetTabletServerFsRoot(0) + "2";
   HostPort address = HostPort(tablet_server->bound_rpc_addr());
@@ -275,16 +281,23 @@ TEST_F(RemoteKsckTest, TestTabletServerMismatchedUUID) {
   ASSERT_TRUE(ksck_->FetchInfoFromTabletServers().IsNetworkError());
   ASSERT_OK(ksck_->PrintResults());
 
-  string match_string = "Error from $0: Remote error: ID reported by tablet server "
-                        "($1) doesn't match the expected ID: $2 (WRONG_SERVER_UUID)";
-  ASSERT_STR_CONTAINS(err_stream_.str(), strings::Substitute(match_string, address.ToString(),
-                                                             new_uuid, old_uuid));
+  string match_string =
+      "Error from $0: Remote error: ID reported by tablet server "
+      "($1) doesn't match the expected ID: $2 (WRONG_SERVER_UUID)";
+  ASSERT_STR_CONTAINS(
+      err_stream_.str(),
+      strings::Substitute(
+          match_string, address.ToString(), new_uuid, old_uuid));
   tserver::MiniTabletServer* ts = mini_cluster_->mini_tablet_server(1);
-  ASSERT_STR_CONTAINS(err_stream_.str(), strings::Substitute("$0 | $1 | HEALTHY", ts->uuid(),
-                                                             ts->bound_rpc_addr().ToString()));
+  ASSERT_STR_CONTAINS(
+      err_stream_.str(),
+      strings::Substitute(
+          "$0 | $1 | HEALTHY", ts->uuid(), ts->bound_rpc_addr().ToString()));
   ts = mini_cluster_->mini_tablet_server(2);
-  ASSERT_STR_CONTAINS(err_stream_.str(), strings::Substitute("$0 | $1 | HEALTHY", ts->uuid(),
-                                                             ts->bound_rpc_addr().ToString()));
+  ASSERT_STR_CONTAINS(
+      err_stream_.str(),
+      strings::Substitute(
+          "$0 | $1 | HEALTHY", ts->uuid(), ts->bound_rpc_addr().ToString()));
 }
 
 TEST_F(RemoteKsckTest, TestTableConsistency) {
@@ -322,17 +335,17 @@ TEST_F(RemoteKsckTest, TestChecksum) {
     ASSERT_OK(ksck_->FetchInfoFromTabletServers());
 
     err_stream_.str("");
-    s = ksck_->ChecksumData(KsckChecksumOptions(MonoDelta::FromSeconds(1),
-                                                MonoDelta::FromSeconds(1),
-                                                16, false, 0));
+    s = ksck_->ChecksumData(KsckChecksumOptions(
+        MonoDelta::FromSeconds(1), MonoDelta::FromSeconds(1), 16, false, 0));
     if (s.ok()) {
       // Check the status message at the end of the checksum.
-      // We expect '0B from disk' because we didn't write enough data to trigger a flush
-      // in this short-running test.
-      ASSERT_STR_CONTAINS(err_stream_.str(),
-                          AllowSlowTests() ?
-                          "0/30 replicas remaining (0B from disk, 300 rows summed)" :
-                          "0/9 replicas remaining (0B from disk, 300 rows summed)");
+      // We expect '0B from disk' because we didn't write enough data to trigger
+      // a flush in this short-running test.
+      ASSERT_STR_CONTAINS(
+          err_stream_.str(),
+          AllowSlowTests()
+              ? "0/30 replicas remaining (0B from disk, 300 rows summed)"
+              : "0/9 replicas remaining (0B from disk, 300 rows summed)");
       break;
     }
     SleepFor(MonoDelta::FromMilliseconds(10));
@@ -348,10 +361,10 @@ TEST_F(RemoteKsckTest, TestChecksumTimeout) {
   ASSERT_OK(ksck_->FetchTableAndTabletInfo());
   ASSERT_OK(ksck_->FetchInfoFromTabletServers());
   // Use an impossibly low timeout value of zero!
-  Status s = ksck_->ChecksumData(KsckChecksumOptions(MonoDelta::FromNanoseconds(0),
-                                                     MonoDelta::FromSeconds(5),
-                                                     16, false, 0));
-  ASSERT_TRUE(s.IsTimedOut()) << "Expected TimedOut Status, got: " << s.ToString();
+  Status s = ksck_->ChecksumData(KsckChecksumOptions(
+      MonoDelta::FromNanoseconds(0), MonoDelta::FromSeconds(5), 16, false, 0));
+  ASSERT_TRUE(s.IsTimedOut())
+      << "Expected TimedOut Status, got: " << s.ToString();
 }
 
 TEST_F(RemoteKsckTest, TestChecksumSnapshot) {
@@ -360,10 +373,15 @@ TEST_F(RemoteKsckTest, TestChecksumSnapshot) {
   Promise<Status> promise;
   scoped_refptr<Thread> writer_thread;
 
-  Thread::Create("RemoteKsckTest", "TestChecksumSnapshot",
-                 &RemoteKsckTest::GenerateRowWritesLoop, this,
-                 &started_writing, boost::cref(continue_writing), &promise,
-                 &writer_thread);
+  Thread::Create(
+      "RemoteKsckTest",
+      "TestChecksumSnapshot",
+      &RemoteKsckTest::GenerateRowWritesLoop,
+      this,
+      &started_writing,
+      boost::cref(continue_writing),
+      &promise,
+      &writer_thread);
   CHECK(started_writing.WaitFor(MonoDelta::FromSeconds(30)));
 
   uint64_t ts = client_->GetLatestObservedTimestamp();
@@ -373,9 +391,8 @@ TEST_F(RemoteKsckTest, TestChecksumSnapshot) {
   ASSERT_OK(ksck_->CheckClusterRunning());
   ASSERT_OK(ksck_->FetchTableAndTabletInfo());
   ASSERT_OK(ksck_->FetchInfoFromTabletServers());
-  ASSERT_OK(ksck_->ChecksumData(KsckChecksumOptions(MonoDelta::FromSeconds(10),
-                                                    MonoDelta::FromSeconds(10),
-                                                    16, true, ts)));
+  ASSERT_OK(ksck_->ChecksumData(KsckChecksumOptions(
+      MonoDelta::FromSeconds(10), MonoDelta::FromSeconds(10), 16, true, ts)));
   continue_writing.Store(false);
   ASSERT_OK(promise.Get());
   writer_thread->Join();
@@ -389,10 +406,15 @@ TEST_F(RemoteKsckTest, TestChecksumSnapshotCurrentTimestamp) {
   Promise<Status> promise;
   scoped_refptr<Thread> writer_thread;
 
-  Thread::Create("RemoteKsckTest", "TestChecksumSnapshotCurrentTimestamp",
-                 &RemoteKsckTest::GenerateRowWritesLoop, this,
-                 &started_writing, boost::cref(continue_writing), &promise,
-                 &writer_thread);
+  Thread::Create(
+      "RemoteKsckTest",
+      "TestChecksumSnapshotCurrentTimestamp",
+      &RemoteKsckTest::GenerateRowWritesLoop,
+      this,
+      &started_writing,
+      boost::cref(continue_writing),
+      &promise,
+      &writer_thread);
   CHECK(started_writing.WaitFor(MonoDelta::FromSeconds(30)));
 
   ASSERT_OK(ksck_->CheckMasterHealth());
@@ -401,10 +423,12 @@ TEST_F(RemoteKsckTest, TestChecksumSnapshotCurrentTimestamp) {
   ASSERT_OK(ksck_->CheckClusterRunning());
   ASSERT_OK(ksck_->FetchTableAndTabletInfo());
   ASSERT_OK(ksck_->FetchInfoFromTabletServers());
-  ASSERT_OK(ksck_->ChecksumData(KsckChecksumOptions(MonoDelta::FromSeconds(10),
-                                                    MonoDelta::FromSeconds(10),
-                                                    16, true,
-                                                    KsckChecksumOptions::kCurrentTimestamp)));
+  ASSERT_OK(ksck_->ChecksumData(KsckChecksumOptions(
+      MonoDelta::FromSeconds(10),
+      MonoDelta::FromSeconds(10),
+      16,
+      true,
+      KsckChecksumOptions::kCurrentTimestamp)));
   continue_writing.Store(false);
   ASSERT_OK(promise.Get());
   writer_thread->Join();
@@ -421,14 +445,14 @@ TEST_F(RemoteKsckTest, TestChecksumSnapshotLastingLongerThanAHM) {
     return;
   }
 
-  // This test relies on somewhat precise timing: the timestamp update must
-  // happen during the wait to start the checksum, for each tablet. It's likely
-  // this sometimes won't happen in builds that are slower, so we'll just
-  // disable the test for those builds.
-  #if defined(THREAD_SANITIZER) || defined(ADDRESS_SANITIZER)
-    LOG(WARNING) << "test is skipped in TSAN and ASAN builds";
-    return;
-  #endif
+// This test relies on somewhat precise timing: the timestamp update must
+// happen during the wait to start the checksum, for each tablet. It's likely
+// this sometimes won't happen in builds that are slower, so we'll just
+// disable the test for those builds.
+#if defined(THREAD_SANITIZER) || defined(ADDRESS_SANITIZER)
+  LOG(WARNING) << "test is skipped in TSAN and ASAN builds";
+  return;
+#endif
 
   // Write something so we have rows to checksum, and because we need a valid
   // timestamp from the client to use for a checksum scan.
@@ -459,16 +483,17 @@ TEST_F(RemoteKsckTest, TestChecksumSnapshotLastingLongerThanAHM) {
   constexpr bool use_snapshot = true;
   uint64_t ts = client_->GetLatestObservedTimestamp();
   Status s = ksck_->ChecksumData(KsckChecksumOptions(
-        MonoDelta::FromSeconds(timeout_sec),
-        MonoDelta::FromSeconds(timeout_sec),
-        scan_concurrency,
-        use_snapshot,
-        ts));
+      MonoDelta::FromSeconds(timeout_sec),
+      MonoDelta::FromSeconds(timeout_sec),
+      scan_concurrency,
+      use_snapshot,
+      ts));
   ASSERT_TRUE(s.IsAborted()) << s.ToString();
   ASSERT_OK(ksck_->PrintResults());
-  ASSERT_STR_CONTAINS(err_stream_.str(),
-                      "Invalid argument: Snapshot timestamp is earlier than "
-                      "the ancient history mark.");
+  ASSERT_STR_CONTAINS(
+      err_stream_.str(),
+      "Invalid argument: Snapshot timestamp is earlier than "
+      "the ancient history mark.");
 
   // Now let's try again using the special current timestamp, which will run
   // checksums using timestamps updated from the servers, and should succeed.

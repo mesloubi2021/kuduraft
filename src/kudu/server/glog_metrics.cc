@@ -16,23 +16,32 @@
 // under the License.
 #include "kudu/server/glog_metrics.h"
 
-#include <cstddef>
 #include <glog/logging.h>
+#include <cstddef>
 
 #include "kudu/gutil/port.h"
 #include "kudu/util/metrics.h"
 
-METRIC_DEFINE_counter(server, glog_info_messages,
-                      "INFO-level Log Messages", kudu::MetricUnit::kMessages,
-                      "Number of INFO-level log messages emitted by the application.");
+METRIC_DEFINE_counter(
+    server,
+    glog_info_messages,
+    "INFO-level Log Messages",
+    kudu::MetricUnit::kMessages,
+    "Number of INFO-level log messages emitted by the application.");
 
-METRIC_DEFINE_counter(server, glog_warning_messages,
-                      "WARNING-level Log Messages", kudu::MetricUnit::kMessages,
-                      "Number of WARNING-level log messages emitted by the application.");
+METRIC_DEFINE_counter(
+    server,
+    glog_warning_messages,
+    "WARNING-level Log Messages",
+    kudu::MetricUnit::kMessages,
+    "Number of WARNING-level log messages emitted by the application.");
 
-METRIC_DEFINE_counter(server, glog_error_messages,
-                      "ERROR-level Log Messages", kudu::MetricUnit::kMessages,
-                      "Number of ERROR-level log messages emitted by the application.");
+METRIC_DEFINE_counter(
+    server,
+    glog_error_messages,
+    "ERROR-level Log Messages",
+    kudu::MetricUnit::kMessages,
+    "Number of ERROR-level log messages emitted by the application.");
 
 struct tm;
 
@@ -40,17 +49,19 @@ namespace kudu {
 
 class MetricsSink : public google::LogSink {
  public:
-  explicit MetricsSink(const scoped_refptr<MetricEntity>& entity) :
-    info_counter_(METRIC_glog_info_messages.Instantiate(entity)),
-    warning_counter_(METRIC_glog_warning_messages.Instantiate(entity)),
-    error_counter_(METRIC_glog_error_messages.Instantiate(entity)) {
-  }
+  explicit MetricsSink(const scoped_refptr<MetricEntity>& entity)
+      : info_counter_(METRIC_glog_info_messages.Instantiate(entity)),
+        warning_counter_(METRIC_glog_warning_messages.Instantiate(entity)),
+        error_counter_(METRIC_glog_error_messages.Instantiate(entity)) {}
 
-  virtual void send(google::LogSeverity severity, const char* full_filename,
-                    const char* base_filename, int line,
-                    const struct ::tm* tm_time,
-                    const char* message, size_t message_len) override {
-
+  virtual void send(
+      google::LogSeverity severity,
+      const char* full_filename,
+      const char* base_filename,
+      int line,
+      const struct ::tm* tm_time,
+      const char* message,
+      size_t message_len) override {
     Counter* c;
     switch (severity) {
       case google::INFO:
@@ -76,14 +87,12 @@ class MetricsSink : public google::LogSink {
 };
 
 ScopedGLogMetrics::ScopedGLogMetrics(const scoped_refptr<MetricEntity>& entity)
-  : sink_(new MetricsSink(entity)) {
+    : sink_(new MetricsSink(entity)) {
   google::AddLogSink(sink_.get());
 }
 
 ScopedGLogMetrics::~ScopedGLogMetrics() {
   google::RemoveLogSink(sink_.get());
 }
-
-
 
 } // namespace kudu

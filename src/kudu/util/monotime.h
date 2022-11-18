@@ -42,7 +42,7 @@ namespace kudu {
 /// The MonoDelta class represents an elapsed duration of time -- i.e.
 /// the delta between two MonoTime instances.
 class KUDU_EXPORT MonoDelta {
-public:
+ public:
   /// @name Converters from seconds representation (and ubiquitous SI prefixes).
   ///
   /// @param [in] seconds/ms/us/ns
@@ -72,7 +72,7 @@ public:
   ///   A time interval for comparison.
   /// @return @c true iff this time interval is strictly shorter
   ///   than the specified one.
-  bool LessThan(const MonoDelta &rhs) const;
+  bool LessThan(const MonoDelta& rhs) const;
 
   /// Check whether this time interval is longer than the specified one.
   ///
@@ -80,7 +80,7 @@ public:
   ///   A time interval for comparison.
   /// @return @c true iff this time interval is strictly longer
   ///   than the specified one.
-  bool MoreThan(const MonoDelta &rhs) const;
+  bool MoreThan(const MonoDelta& rhs) const;
 
   /// Check whether this time interval has the same duration
   ///  as the specified one.
@@ -89,7 +89,7 @@ public:
   ///   A time interval for comparison.
   /// @return @c true iff this time interval has the same duration as the
   ///   the specified one.
-  bool Equals(const MonoDelta &rhs) const;
+  bool Equals(const MonoDelta& rhs) const;
 
   /// @return String representation of this interval's duration (in seconds).
   std::string ToString() const;
@@ -110,14 +110,14 @@ public:
   ///
   /// @param [out] tv
   ///   Placeholder for the result value.
-  void ToTimeVal(struct timeval *tv) const;
+  void ToTimeVal(struct timeval* tv) const;
 
   /// Represent this time interval as a timespec structure, with nanosecond
   /// accuracy.
   ///
   /// @param [out] ts
   ///   Placeholder for the result value.
-  void ToTimeSpec(struct timespec *ts) const;
+  void ToTimeSpec(struct timespec* ts) const;
 
   /// Convert a nanosecond value to a timespec.
   ///
@@ -125,9 +125,9 @@ public:
   ///   Representation of a relative point in time in nanoseconds.
   /// @param [out] ts
   ///   Placeholder for the resulting timespec representation.
-  static void NanosToTimeSpec(int64_t nanos, struct timespec *ts);
+  static void NanosToTimeSpec(int64_t nanos, struct timespec* ts);
 
-private:
+ private:
   static const int64_t kUninitialized;
 
   friend class MonoTime;
@@ -145,7 +145,7 @@ private:
 /// This time is monotonic, meaning that if the user changes his or her system
 /// clock, the monotime does not change.
 class KUDU_EXPORT MonoTime {
-public:
+ public:
   /// @name Conversion constants for ubiquitous time units.
   ///
   ///@{
@@ -174,7 +174,7 @@ public:
   /// @param [in] b
   ///   The second MonoTime object to select from.
   /// @return The earliest (minimum) of the two monotimes.
-  static const MonoTime &Earliest(const MonoTime &a, const MonoTime &b)
+  static const MonoTime& Earliest(const MonoTime& a, const MonoTime& b)
       ATTRIBUTE_DEPRECATED("use std::min() instead");
 
   /// Build a MonoTime object. The resulting object is not initialized
@@ -191,13 +191,13 @@ public:
   ///   The object that corresponds to the left boundary of the time interval,
   ///   where this object corresponds to the right boundary of the interval.
   /// @return The resulting time interval represented as a MonoDelta object.
-  MonoDelta GetDeltaSince(const MonoTime &rhs) const;
+  MonoDelta GetDeltaSince(const MonoTime& rhs) const;
 
   /// Advance this object's time specification by the specified interval.
   ///
   /// @param [in] delta
   ///   The time interval to add.
-  void AddDelta(const MonoDelta &delta);
+  void AddDelta(const MonoDelta& delta);
 
   /// Check whether the point in time specified by this object is earlier
   /// than the specified one.
@@ -206,7 +206,7 @@ public:
   ///   The other MonoTime object to compare with.
   /// @return @c true iff the point in time represented by this MonoTime object
   ///   is earlier then the point in time represented by the parameter.
-  bool ComesBefore(const MonoTime &rhs) const;
+  bool ComesBefore(const MonoTime& rhs) const;
 
   /// @return String representation of the object (in seconds).
   std::string ToString() const;
@@ -216,7 +216,7 @@ public:
   ///
   /// @param [out] ts
   ///   Placeholder for the result value.
-  void ToTimeSpec(struct timespec *ts) const;
+  void ToTimeSpec(struct timespec* ts) const;
 
   /// Check whether this object represents the same point in time as the other.
   ///
@@ -224,7 +224,7 @@ public:
   ///   The other MonoTime object to compare.
   /// @return @c true iff the point in time represented by this MonoTime object
   ///   is the same as the one represented by the other.
-  bool Equals(const MonoTime &other) const;
+  bool Equals(const MonoTime& other) const;
 
   /// @name Syntactic sugar: increment/decrement operators for MonoTime.
   ///@{
@@ -234,22 +234,22 @@ public:
   /// @param [in] delta
   ///   The delta to add.
   /// @return Reference to the modified object.
-  MonoTime &operator+=(const MonoDelta &delta);
+  MonoTime& operator+=(const MonoDelta& delta);
 
   /// Substract a delta from the point in time represented by the object.
   ///
   /// @param [in] delta
   ///   The delta to substract.
   /// @return Reference to the modified object.
-  MonoTime &operator-=(const MonoDelta &delta);
+  MonoTime& operator-=(const MonoDelta& delta);
   ///@}
 
-private:
+ private:
   friend class MonoDelta;
   FRIEND_TEST(TestMonoTime, TestTimeSpec);
   FRIEND_TEST(TestMonoTime, TestDeltaConversions);
 
-  explicit MonoTime(const struct timespec &ts);
+  explicit MonoTime(const struct timespec& ts);
   explicit MonoTime(int64_t nanos);
   double ToSeconds() const;
   int64_t nanos_;
@@ -265,7 +265,7 @@ private:
 ///
 /// @param [in] delta
 ///   The time interval to sleep for.
-void KUDU_EXPORT SleepFor(const MonoDelta &delta);
+void KUDU_EXPORT SleepFor(const MonoDelta& delta);
 
 /// @name Syntactic sugar: binary operators for MonoDelta.
 ///@{
@@ -276,7 +276,7 @@ void KUDU_EXPORT SleepFor(const MonoDelta &delta);
 ///   A time interval for comparison: the right-hand operand.
 /// @return @c true iff the time interval represented by @c lhs is equal
 ///   to the time interval represented by @c rhs.
-bool KUDU_EXPORT operator==(const MonoDelta &lhs, const MonoDelta &rhs);
+bool KUDU_EXPORT operator==(const MonoDelta& lhs, const MonoDelta& rhs);
 
 /// @param [in] lhs
 ///   A time interval for comparison: the left-hand operand.
@@ -284,7 +284,7 @@ bool KUDU_EXPORT operator==(const MonoDelta &lhs, const MonoDelta &rhs);
 ///   A time interval for comparison: the right-hand operand.
 /// @return @c true iff the time interval represented by @c lhs is not equal
 ///   to the time interval represented by @c rhs.
-bool KUDU_EXPORT operator!=(const MonoDelta &lhs, const MonoDelta &rhs);
+bool KUDU_EXPORT operator!=(const MonoDelta& lhs, const MonoDelta& rhs);
 
 /// @param [in] lhs
 ///   A time interval for comparison: the left-hand operand.
@@ -292,7 +292,7 @@ bool KUDU_EXPORT operator!=(const MonoDelta &lhs, const MonoDelta &rhs);
 ///   A time interval for comparison: the right-hand operand.
 /// @return @c true iff the time interval represented by @c lhs is shorter
 ///   than the time interval represented by @c rhs.
-bool KUDU_EXPORT operator<(const MonoDelta &lhs, const MonoDelta &rhs);
+bool KUDU_EXPORT operator<(const MonoDelta& lhs, const MonoDelta& rhs);
 
 /// @param [in] lhs
 ///   A time interval for comparison: the left-hand operand.
@@ -300,7 +300,7 @@ bool KUDU_EXPORT operator<(const MonoDelta &lhs, const MonoDelta &rhs);
 ///   A time interval for comparison: the right-hand operand.
 /// @return @c true iff the time interval represented by @c lhs is shorter
 ///   than or equal to the time interval represented by @c rhs.
-bool KUDU_EXPORT operator<=(const MonoDelta &lhs, const MonoDelta &rhs);
+bool KUDU_EXPORT operator<=(const MonoDelta& lhs, const MonoDelta& rhs);
 
 /// @param [in] lhs
 ///   A time interval for comparison: the left-hand operand.
@@ -308,7 +308,7 @@ bool KUDU_EXPORT operator<=(const MonoDelta &lhs, const MonoDelta &rhs);
 ///   A time interval for comparison: the right-hand operand.
 /// @return @c true iff the time interval represented by @c lhs is longer
 ///   than the time interval represented by @c rhs.
-bool KUDU_EXPORT operator>(const MonoDelta &lhs, const MonoDelta &rhs);
+bool KUDU_EXPORT operator>(const MonoDelta& lhs, const MonoDelta& rhs);
 
 /// @param [in] lhs
 ///   A time interval for comparison: the left-hand operand.
@@ -316,7 +316,7 @@ bool KUDU_EXPORT operator>(const MonoDelta &lhs, const MonoDelta &rhs);
 ///   A time interval for comparison: the right-hand operand.
 /// @return @c true iff the time interval represented by @c lhs is longer
 ///   than or equal to the time interval represented by @c rhs.
-bool KUDU_EXPORT operator>=(const MonoDelta &lhs, const MonoDelta &rhs);
+bool KUDU_EXPORT operator>=(const MonoDelta& lhs, const MonoDelta& rhs);
 ///@}
 
 /// @name Syntactic sugar: binary operators for MonoTime.
@@ -332,7 +332,7 @@ bool KUDU_EXPORT operator>=(const MonoDelta &lhs, const MonoDelta &rhs);
 /// @param [in] rhs
 ///   The right-hand operand.
 /// @return @c true iff the given objects represent the same point in time.
-bool KUDU_EXPORT operator==(const MonoTime &lhs, const MonoTime &rhs);
+bool KUDU_EXPORT operator==(const MonoTime& lhs, const MonoTime& rhs);
 
 /// Check if the specified objects represent different points in time.
 ///
@@ -345,7 +345,7 @@ bool KUDU_EXPORT operator==(const MonoTime &lhs, const MonoTime &rhs);
 ///   The right-hand operand.
 /// @return @c true iff the given object represents a different point in time
 ///   than the specified one.
-bool KUDU_EXPORT operator!=(const MonoTime &lhs, const MonoTime &rhs);
+bool KUDU_EXPORT operator!=(const MonoTime& lhs, const MonoTime& rhs);
 
 /// @param [in] lhs
 ///   The left-hand operand.
@@ -353,7 +353,7 @@ bool KUDU_EXPORT operator!=(const MonoTime &lhs, const MonoTime &rhs);
 ///   The right-hand operand.
 /// @return @c true iff the @c lhs object represents an earlier point in time
 ///   than the @c rhs object.
-bool KUDU_EXPORT operator<(const MonoTime &lhs, const MonoTime &rhs);
+bool KUDU_EXPORT operator<(const MonoTime& lhs, const MonoTime& rhs);
 
 /// @param [in] lhs
 ///   The left-hand operand.
@@ -361,7 +361,7 @@ bool KUDU_EXPORT operator<(const MonoTime &lhs, const MonoTime &rhs);
 ///   The right-hand operand.
 /// @return @c true iff the @c lhs object represents an earlier than or
 ///   the same point in time as the @c rhs object.
-bool KUDU_EXPORT operator<=(const MonoTime &lhs, const MonoTime &rhs);
+bool KUDU_EXPORT operator<=(const MonoTime& lhs, const MonoTime& rhs);
 
 /// @param [in] lhs
 ///   The left-hand operand.
@@ -369,7 +369,7 @@ bool KUDU_EXPORT operator<=(const MonoTime &lhs, const MonoTime &rhs);
 ///   The right-hand operand.
 /// @return @c true iff the @c lhs object represents a later point in time
 ///   than the @c rhs object.
-bool KUDU_EXPORT operator>(const MonoTime &lhs, const MonoTime &rhs);
+bool KUDU_EXPORT operator>(const MonoTime& lhs, const MonoTime& rhs);
 
 /// @param [in] lhs
 ///   The left-hand operand.
@@ -377,7 +377,7 @@ bool KUDU_EXPORT operator>(const MonoTime &lhs, const MonoTime &rhs);
 ///   The right-hand operand.
 /// @return @c true iff the @c lhs object represents a later than or
 ///   the same point in time as the @c rhs object.
-bool KUDU_EXPORT operator>=(const MonoTime &lhs, const MonoTime &rhs);
+bool KUDU_EXPORT operator>=(const MonoTime& lhs, const MonoTime& rhs);
 ///@}
 
 /// @name Syntactic sugar: mixed binary operators for MonoTime/MonoDelta.
@@ -390,7 +390,7 @@ bool KUDU_EXPORT operator>=(const MonoTime &lhs, const MonoTime &rhs);
 /// @param [in] delta
 ///   A MonoDelta object representing the specified time interval.
 /// @return A MonoTime object representing the resulting point in time.
-MonoTime KUDU_EXPORT operator+(const MonoTime &t, const MonoDelta &delta);
+MonoTime KUDU_EXPORT operator+(const MonoTime& t, const MonoDelta& delta);
 
 /// Subtract the specified time interval from the given point in time.
 ///
@@ -399,7 +399,7 @@ MonoTime KUDU_EXPORT operator+(const MonoTime &t, const MonoDelta &delta);
 /// @param [in] delta
 ///   A MonoDelta object representing the specified time interval.
 /// @return A MonoTime object representing the resulting point in time.
-MonoTime KUDU_EXPORT operator-(const MonoTime &t, const MonoDelta &delta);
+MonoTime KUDU_EXPORT operator-(const MonoTime& t, const MonoDelta& delta);
 
 /// Compute the time interval between the specified points in time.
 ///
@@ -413,7 +413,7 @@ MonoTime KUDU_EXPORT operator-(const MonoTime &t, const MonoDelta &delta);
 ///   of the resulting time interval.
 /// @return A MonoDelta object representing the time interval between the
 ///   specified points in time.
-MonoDelta KUDU_EXPORT operator-(const MonoTime &t_end, const MonoTime &t_begin);
+MonoDelta KUDU_EXPORT operator-(const MonoTime& t_end, const MonoTime& t_begin);
 ///@}
 
 } // namespace kudu

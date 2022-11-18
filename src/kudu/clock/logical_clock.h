@@ -47,8 +47,9 @@ namespace clock {
 // NOTE: this class is thread safe.
 class LogicalClock : public Clock {
  public:
-
-  virtual Status Init() override { return Status::OK(); }
+  virtual Status Init() override {
+    return Status::OK();
+  }
 
   virtual Timestamp Now() override;
 
@@ -58,14 +59,16 @@ class LogicalClock : public Clock {
   virtual Status Update(const Timestamp& to_update) override;
 
   // The Wait*() functions are not available for this clock.
-  virtual Status WaitUntilAfter(const Timestamp& then,
-                                const MonoTime& deadline) override;
-  virtual Status WaitUntilAfterLocally(const Timestamp& then,
-                                       const MonoTime& deadline) override;
+  virtual Status WaitUntilAfter(const Timestamp& then, const MonoTime& deadline)
+      override;
+  virtual Status WaitUntilAfterLocally(
+      const Timestamp& then,
+      const MonoTime& deadline) override;
 
   virtual bool IsAfter(Timestamp t) override;
 
-  virtual void RegisterMetrics(const scoped_refptr<MetricEntity>& metric_entity) override;
+  virtual void RegisterMetrics(
+      const scoped_refptr<MetricEntity>& metric_entity) override;
 
   virtual std::string Stringify(Timestamp timestamp) override;
 
@@ -74,21 +77,24 @@ class LogicalClock : public Clock {
   uint64_t GetCurrentTime();
 
   // Logical clock doesn't support COMMIT_WAIT.
-  virtual bool SupportsExternalConsistencyMode(ExternalConsistencyMode mode) override {
+  virtual bool SupportsExternalConsistencyMode(
+      ExternalConsistencyMode mode) override {
     return mode != COMMIT_WAIT;
   }
 
-  // Creates a logical clock whose first output value on a Now() call is 'timestamp'.
+  // Creates a logical clock whose first output value on a Now() call is
+  // 'timestamp'.
   static LogicalClock* CreateStartingAt(const Timestamp& timestamp);
 
  private:
   // Should use LogicalClock::CreatingStartingAt()
-  explicit LogicalClock(Timestamp::val_type initial_time) : now_(initial_time) {}
+  explicit LogicalClock(Timestamp::val_type initial_time)
+      : now_(initial_time) {}
 
   base::subtle::Atomic64 now_;
 
   FunctionGaugeDetacher metric_detacher_;
 };
 
-}  // namespace clock
-}  // namespace kudu
+} // namespace clock
+} // namespace kudu

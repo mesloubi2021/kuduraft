@@ -19,7 +19,7 @@
 
 #include <sched.h>
 
-#include <algorithm>  // IWYU pragma: keep
+#include <algorithm> // IWYU pragma: keep
 #include <atomic>
 #include <cstddef>
 #include <mutex>
@@ -75,10 +75,11 @@ struct padded_spinlock : public simple_spinlock {
 };
 
 // Reader-writer lock.
-// This is functionally equivalent to rw_semaphore in rw_semaphore.h, but should be
-// used whenever the lock is expected to only be acquired on a single thread.
+// This is functionally equivalent to rw_semaphore in rw_semaphore.h, but should
+// be used whenever the lock is expected to only be acquired on a single thread.
 // It adds TSAN annotations which will detect misuse of the lock, but those
-// annotations also assume that the same thread the takes the lock will unlock it.
+// annotations also assume that the same thread the takes the lock will unlock
+// it.
 //
 // See rw_semaphore.h for documentation on the individual methods where unclear.
 class rw_spinlock {
@@ -133,12 +134,13 @@ class rw_spinlock {
 // A reader-writer lock implementation which is biased for use cases where
 // the write lock is taken infrequently, but the read lock is used often.
 //
-// Internally, this creates N underlying reader-writer locks, one per CPU. When a thread
-// wants to lock in read (shared) mode, it locks only its own CPU's lock in read
-// mode. When it wants to lock in write (exclusive) mode, it locks all CPUs' rwlocks in
-// write mode. The use of reader-writer locks ensures that, even if a thread gets
-// preempted when holding one of the per-CPU locks in read mode, the next thread
-// scheduled onto that CPU will not need to block on the first thread.
+// Internally, this creates N underlying reader-writer locks, one per CPU. When
+// a thread wants to lock in read (shared) mode, it locks only its own CPU's
+// lock in read mode. When it wants to lock in write (exclusive) mode, it locks
+// all CPUs' rwlocks in write mode. The use of reader-writer locks ensures that,
+// even if a thread gets preempted when holding one of the per-CPU locks in read
+// mode, the next thread scheduled onto that CPU will not need to block on the
+// first thread.
 //
 // This means that in the read-mostly case, different readers will not cause any
 // cacheline contention.
@@ -162,8 +164,8 @@ class percpu_rwlock {
  public:
   percpu_rwlock() {
 #if defined(__APPLE__) || defined(THREAD_SANITIZER)
-    // OSX doesn't have a way to get the index of the CPU running this thread, so
-    // we'll just use a single lock.
+    // OSX doesn't have a way to get the index of the CPU running this thread,
+    // so we'll just use a single lock.
     //
     // TSAN limits the number of simultaneous lock acquisitions to 64, so we
     // can't create one lock per core on machines with lots of cores. So, we'll
@@ -177,16 +179,16 @@ class percpu_rwlock {
   }
 
   ~percpu_rwlock() {
-    delete [] locks_;
+    delete[] locks_;
   }
 
-  rw_spinlock &get_lock() {
+  rw_spinlock& get_lock() {
 #if defined(__APPLE__) || defined(THREAD_SANITIZER)
     int cpu = 0;
 #else
     int cpu = sched_getcpu();
     CHECK_LT(cpu, n_cpus_);
-#endif  // defined(__APPLE__)
+#endif // defined(__APPLE__)
     return locks_[cpu].lock;
   }
 
@@ -206,14 +208,16 @@ class percpu_rwlock {
   // See simple_spinlock::is_locked() for details about where this is useful.
   bool is_locked() const {
     for (int i = 0; i < n_cpus_; i++) {
-      if (locks_[i].lock.is_locked()) return true;
+      if (locks_[i].lock.is_locked())
+        return true;
     }
     return false;
   }
 
   bool is_write_locked() const {
     for (int i = 0; i < n_cpus_; i++) {
-      if (!locks_[i].lock.is_write_locked()) return false;
+      if (!locks_[i].lock.is_write_locked())
+        return false;
     }
     return true;
   }
@@ -245,7 +249,7 @@ class percpu_rwlock {
   };
 
   int n_cpus_;
-  padded_lock *locks_;
+  padded_lock* locks_;
 };
 
 // Simple implementation of the std::shared_lock API, which is not available in
@@ -255,17 +259,13 @@ class percpu_rwlock {
 template <typename Mutex>
 class shared_lock {
  public:
-  shared_lock()
-      : m_(nullptr) {
-  }
+  shared_lock() : m_(nullptr) {}
 
-  explicit shared_lock(Mutex& m)
-      : m_(&m) {
+  explicit shared_lock(Mutex& m) : m_(&m) {
     m_->lock_shared();
   }
 
-  shared_lock(Mutex& m, std::try_to_lock_t t)
-      : m_(nullptr) {
+  shared_lock(Mutex& m, std::try_to_lock_t t) : m_(nullptr) {
     if (m.try_lock_shared()) {
       m_ = &m;
     }
@@ -276,7 +276,7 @@ class shared_lock {
   }
 
   void swap(shared_lock& other) {
-    std::swap(m_,other.m_);
+    std::swap(m_, other.m_);
   }
 
   ~shared_lock() {

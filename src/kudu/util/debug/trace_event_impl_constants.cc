@@ -10,5 +10,5 @@ namespace debug {
 // Enable everything but debug and test categories by default.
 const char* CategoryFilter::kDefaultCategoryFilterString = "-*Debug,-*Test";
 
-}  // namespace debug
-}  // namespace kudu
+} // namespace debug
+} // namespace kudu

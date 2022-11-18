@@ -31,9 +31,13 @@
 #include "kudu/util/test_util.h"
 #include "kudu/util/thread.h"
 
-DEFINE_int32(histogram_test_num_threads, 16,
+DEFINE_int32(
+    histogram_test_num_threads,
+    16,
     "Number of threads to spawn for mt-hdr_histogram test");
-DEFINE_uint64(histogram_test_num_increments_per_thread, 100000LU,
+DEFINE_uint64(
+    histogram_test_num_increments_per_thread,
+    100000LU,
     "Number of times to call Increment() per thread in mt-hdr_histogram test");
 
 using std::vector;
@@ -53,7 +57,8 @@ class MtHdrHistogramTest : public KuduTest {
 };
 
 // Increment a counter a bunch of times in the same bucket
-static void IncrementSameHistValue(HdrHistogram* hist, uint64_t value, uint64_t times) {
+static void
+IncrementSameHistValue(HdrHistogram* hist, uint64_t value, uint64_t times) {
   for (uint64_t i = 0; i < times; i++) {
     hist->Increment(value);
   }
@@ -66,8 +71,14 @@ TEST_F(MtHdrHistogramTest, ConcurrentWriteTest) {
 
   auto threads = new scoped_refptr<kudu::Thread>[num_threads_];
   for (int i = 0; i < num_threads_; i++) {
-    CHECK_OK(kudu::Thread::Create("test", strings::Substitute("thread-$0", i),
-        IncrementSameHistValue, &hist, kValue, num_times_, &threads[i]));
+    CHECK_OK(kudu::Thread::Create(
+        "test",
+        strings::Substitute("thread-$0", i),
+        IncrementSameHistValue,
+        &hist,
+        kValue,
+        num_times_,
+        &threads[i]));
   }
   for (int i = 0; i < num_threads_; i++) {
     CHECK_OK(ThreadJoiner(threads[i].get()).Join());
@@ -88,22 +99,29 @@ TEST_F(MtHdrHistogramTest, ConcurrentCopyWhileWritingTest) {
 
   auto threads = new scoped_refptr<kudu::Thread>[num_threads_];
   for (int i = 0; i < num_threads_; i++) {
-    CHECK_OK(kudu::Thread::Create("test", strings::Substitute("thread-$0", i),
-        IncrementSameHistValue, &hist, kValue, num_times_, &threads[i]));
+    CHECK_OK(kudu::Thread::Create(
+        "test",
+        strings::Substitute("thread-$0", i),
+        IncrementSameHistValue,
+        &hist,
+        kValue,
+        num_times_,
+        &threads[i]));
   }
 
   // This is somewhat racy but the goal is to catch this issue at least
   // most of the time. At the time of this writing, before fixing a bug where
   // the total count stored in a copied histogram may not match its internal
   // counts (under concurrent writes), this test fails for me on 100/100 runs.
-  vector<HdrHistogram *> snapshots;
+  vector<HdrHistogram*> snapshots;
   ElementDeleter deleter(&snapshots);
   for (int i = 0; i < kNumCopies; i++) {
     snapshots.push_back(new HdrHistogram(hist));
     SleepFor(MonoDelta::FromMicroseconds(100));
   }
   for (int i = 0; i < kNumCopies; i++) {
-    snapshots[i]->MeanValue(); // Will crash if underlying iterator is inconsistent.
+    snapshots[i]
+        ->MeanValue(); // Will crash if underlying iterator is inconsistent.
   }
 
   for (int i = 0; i < num_threads_; i++) {

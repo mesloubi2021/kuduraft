@@ -47,10 +47,10 @@
 
 DECLARE_int64(fs_wal_dir_reserved_bytes);
 
+using kudu::itest::DeleteTablet;
 using kudu::tablet::TABLET_DATA_DELETED;
 using kudu::tablet::TABLET_DATA_TOMBSTONED;
 using kudu::tablet::TabletReplica;
-using kudu::itest::DeleteTablet;
 using std::atomic;
 using std::string;
 using std::thread;
@@ -58,12 +58,11 @@ using std::vector;
 
 namespace kudu {
 
-class DeleteTabletITest : public MiniClusterITestBase {
-};
+class DeleteTabletITest : public MiniClusterITestBase {};
 
 // Test deleting a failed replica. Regression test for KUDU-1607.
 TEST_F(DeleteTabletITest, TestDeleteFailedReplica) {
-  NO_FATALS(StartCluster(/*num_tablet_servers=*/ 1));
+  NO_FATALS(StartCluster(/*num_tablet_servers=*/1));
   TestWorkload workload(cluster_.get());
   workload.set_num_replicas(1);
   workload.Setup();
@@ -112,8 +111,11 @@ TEST_F(DeleteTabletITest, TestDeleteFailedReplica) {
   }
 
   // We should still be able to delete the failed tablet.
-  ASSERT_OK(DeleteTablet(ts, tablet_replica->tablet_id(), tablet::TABLET_DATA_DELETED,
-                         MonoDelta::FromSeconds(30)));
+  ASSERT_OK(DeleteTablet(
+      ts,
+      tablet_replica->tablet_id(),
+      tablet::TABLET_DATA_DELETED,
+      MonoDelta::FromSeconds(30)));
   ASSERT_EVENTUALLY([&] {
     vector<scoped_refptr<TabletReplica>> tablet_replicas;
     mts->server()->tablet_manager()->GetTabletReplicas(&tablet_replicas);
@@ -170,7 +172,7 @@ TEST_F(DeleteTabletITest, TestLeaderElectionDuringDeleteTablet) {
 // on a tombstoned tablet does not cause any fsyncs.
 TEST_F(DeleteTabletITest, TestNoOpDeleteTabletRPC) {
   // Setup the Mini Cluster
-  NO_FATALS(StartCluster(/*num_tablet_servers=*/ 1));
+  NO_FATALS(StartCluster(/*num_tablet_servers=*/1));
 
   // Determine the Mini Cluster Cluster workload
   TestWorkload workload(cluster_.get());

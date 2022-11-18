@@ -49,8 +49,10 @@
 #include "kudu/util/test_macros.h"
 #include "kudu/util/test_util.h"
 
-DEFINE_int32(test_num_iterations, 5,
-             "Number of tombstoned voting stress test iterations");
+DEFINE_int32(
+    test_num_iterations,
+    5,
+    "Number of tombstoned voting stress test iterations");
 
 using kudu::consensus::COMMITTED_OPID;
 using kudu::consensus::OpId;
@@ -74,16 +76,15 @@ class TombstonedVotingStressTest : public ExternalMiniClusterITestBase {
       : num_workers_(1),
         cond_all_workers_blocked_(&lock_),
         cond_workers_unblocked_(&lock_),
-        current_term_(1) {
-  }
+        current_term_(1) {}
 
  protected:
   enum State {
-    kRunning,       // The tablet is running normally.
-    kTombstoning,   // We are tombstoning the tablet.
-    kTombstoned,    // The tombstoning is complete.
-    kCopying,       // We are copying the tablet.
-    kTestComplete,  // The test is complete and about to exit.
+    kRunning, // The tablet is running normally.
+    kTombstoning, // We are tombstoning the tablet.
+    kTombstoned, // The tombstoning is complete.
+    kCopying, // We are copying the tablet.
+    kTestComplete, // The test is complete and about to exit.
   };
 
   string State_Name(State state);
@@ -109,8 +110,10 @@ class TombstonedVotingStressTest : public ExternalMiniClusterITestBase {
   const int num_workers_;
   int num_workers_blocked_ = 0;
   bool block_workers_ = false;
-  ConditionVariable cond_all_workers_blocked_;  // Triggers once all worker threads are blocked.
-  ConditionVariable cond_workers_unblocked_;    // Triggers when the workers become unblocked.
+  ConditionVariable cond_all_workers_blocked_; // Triggers once all worker
+                                               // threads are blocked.
+  ConditionVariable
+      cond_workers_unblocked_; // Triggers when the workers become unblocked.
 
   // Protected by lock_.
   State state_ = kRunning;
@@ -150,7 +153,8 @@ TombstonedVotingStressTest::State TombstonedVotingStressTest::GetState() {
   while (block_workers_) {
     cond_workers_unblocked_.Wait();
   }
-  if (blocked) num_workers_blocked_--;
+  if (blocked)
+    num_workers_blocked_--;
   return state_;
 }
 
@@ -174,19 +178,28 @@ void TombstonedVotingStressTest::RunVoteRequestLoop() {
   TServerDetails* ts1_ets = ts_map_[cluster_->tablet_server(1)->uuid()];
   while (true) {
     State state = GetState();
-    if (state == kTestComplete) break;
+    if (state == kTestComplete)
+      break;
     ++current_term_;
-    Status s = itest::RequestVote(ts1_ets, tablet_id_, "A", current_term_, last_logged_opid_,
-                                  /*ignore_live_leader=*/ true, /*is_pre_election=*/ false,
-                                  kTimeout);
+    Status s = itest::RequestVote(
+        ts1_ets,
+        tablet_id_,
+        "A",
+        current_term_,
+        last_logged_opid_,
+        /*ignore_live_leader=*/true,
+        /*is_pre_election=*/false,
+        kTimeout);
     switch (state) {
-      case kRunning: FALLTHROUGH_INTENDED;
+      case kRunning:
+        FALLTHROUGH_INTENDED;
       case kTombstoned:
         // We should always be able to vote in this case.
         if (s.ok()) {
           LOG(INFO) << "Vote OK: state = " << state;
         } else {
-          LOG(FATAL) << s.ToString() << ": tablet = " << tablet_id_ << ": state = " << state;
+          LOG(FATAL) << s.ToString() << ": tablet = " << tablet_id_
+                     << ": state = " << state;
         }
         break;
 
@@ -194,13 +207,14 @@ void TombstonedVotingStressTest::RunVoteRequestLoop() {
       // because there is a small window of time where we have stopped
       // RaftConsensus but we haven't yet recorded the last-logged opid in the
       // tablet metadata.
-      case kTombstoning: FALLTHROUGH_INTENDED;
+      case kTombstoning:
+        FALLTHROUGH_INTENDED;
       case kCopying:
         if (s.ok()) {
           LOG(INFO) << "Vote OK: state = " << state;
         } else {
-          LOG(WARNING) << "Got bad vote while copying or tombstoning: " << s.ToString()
-                       << ": state = " << state;
+          LOG(WARNING) << "Got bad vote while copying or tombstoning: "
+                       << s.ToString() << ": state = " << state;
         }
         break;
 
@@ -216,17 +230,20 @@ void TombstonedVotingStressTest::RunVoteRequestLoop() {
 // copying replicas.
 TEST_F(TombstonedVotingStressTest, TestTombstonedVotingUnderStress) {
   // This test waits for several seconds, so only run it in slow mode.
-  if (!AllowSlowTests()) return;
+  if (!AllowSlowTests())
+    return;
 
   const MonoDelta kTimeout = MonoDelta::FromSeconds(30);
 
   // We want to control leader election manually and we only want 2 replicas.
-  NO_FATALS(StartCluster({ "--enable_leader_failure_detection=false" },
-                         { "--catalog_manager_wait_for_new_tablets_to_elect_leader=false",
-                           "--allow_unsafe_replication_factor=true" },
-                         /*num_tablet_servers=*/ 2));
+  NO_FATALS(StartCluster(
+      {"--enable_leader_failure_detection=false"},
+      {"--catalog_manager_wait_for_new_tablets_to_elect_leader=false",
+       "--allow_unsafe_replication_factor=true"},
+      /*num_tablet_servers=*/2));
   TestWorkload workload(cluster_.get());
-  workload.set_num_replicas(2); // Two servers and replicas makes the test easy to debug.
+  workload.set_num_replicas(
+      2); // Two servers and replicas makes the test easy to debug.
   workload.Setup();
   ASSERT_OK(inspect_->WaitForReplicaCount(2));
 
@@ -236,10 +253,10 @@ TEST_F(TombstonedVotingStressTest, TestTombstonedVotingUnderStress) {
   tablet_id_ = tablets[0];
 
   for (int i = 1; i < cluster_->num_tablet_servers(); i++) {
-    ASSERT_OK(itest::WaitUntilTabletRunning(ts_map_[cluster_->tablet_server(i)->uuid()],
-                                            tablet_id_, kTimeout));
-    LOG(INFO) << "TabletReplica is RUNNING: T " << tablet_id_
-              << " P " << cluster_->tablet_server(i)->uuid();
+    ASSERT_OK(itest::WaitUntilTabletRunning(
+        ts_map_[cluster_->tablet_server(i)->uuid()], tablet_id_, kTimeout));
+    LOG(INFO) << "TabletReplica is RUNNING: T " << tablet_id_ << " P "
+              << cluster_->tablet_server(i)->uuid();
   }
 
   // Elect a leader and run some data through the cluster.
@@ -258,9 +275,10 @@ TEST_F(TombstonedVotingStressTest, TestTombstonedVotingUnderStress) {
     SleepFor(MonoDelta::FromMilliseconds(10));
   }
   workload.StopAndJoin();
-  ASSERT_OK(WaitForServersToAgree(kTimeout, ts_map_, tablet_id_, workload.batches_completed()));
-  ASSERT_OK(itest::GetLastOpIdForReplica(tablet_id_, ts0_ets, COMMITTED_OPID, kTimeout,
-                                         &last_logged_opid_));
+  ASSERT_OK(WaitForServersToAgree(
+      kTimeout, ts_map_, tablet_id_, workload.batches_completed()));
+  ASSERT_OK(itest::GetLastOpIdForReplica(
+      tablet_id_, ts0_ets, COMMITTED_OPID, kTimeout, &last_logged_opid_));
 
   // Have the leader step down so we can test voting on the other replica.
   // We don't shut this node down because it will serve as the tablet copy
@@ -279,7 +297,8 @@ TEST_F(TombstonedVotingStressTest, TestTombstonedVotingUnderStress) {
 
   int iter = 0;
   while (iter++ < FLAGS_test_num_iterations) {
-    LOG(INFO) << "iteration " << (iter + 1) << " of " << FLAGS_test_num_iterations;
+    LOG(INFO) << "iteration " << (iter + 1) << " of "
+              << FLAGS_test_num_iterations;
     // Loop on voting for a while in running state. We want to give an
     // opportunity for many votes during this time, and since voting involves
     // fsyncing to disk, we wait for plenty of time here (and below).
@@ -288,7 +307,8 @@ TEST_F(TombstonedVotingStressTest, TestTombstonedVotingUnderStress) {
     // 1. Tombstone tablet.
     LOG(INFO) << "tombstoning tablet...";
     SetState(kTombstoning);
-    ASSERT_OK(DeleteTablet(ts1_ets, tablet_id_, TABLET_DATA_TOMBSTONED, kTimeout));
+    ASSERT_OK(
+        DeleteTablet(ts1_ets, tablet_id_, TABLET_DATA_TOMBSTONED, kTimeout));
     SetState(kTombstoned);
 
     // Loop on voting for a while in tombstoned state.
@@ -297,12 +317,19 @@ TEST_F(TombstonedVotingStressTest, TestTombstonedVotingUnderStress) {
     // 2. Copy tablet.
     LOG(INFO) << "copying tablet...";
     HostPort source_hp;
-    ASSERT_OK(HostPortFromPB(ts0_ets->registration.rpc_addresses(0), &source_hp));
+    ASSERT_OK(
+        HostPortFromPB(ts0_ets->registration.rpc_addresses(0), &source_hp));
     SetState(kCopying);
-    ASSERT_OK(itest::StartTabletCopy(ts1_ets, tablet_id_, ts0_ets->uuid(), source_hp, current_term_,
-                                     kTimeout));
+    ASSERT_OK(itest::StartTabletCopy(
+        ts1_ets,
+        tablet_id_,
+        ts0_ets->uuid(),
+        source_hp,
+        current_term_,
+        kTimeout));
     LOG(INFO) << "waiting for servers to agree...";
-    ASSERT_OK(WaitForServersToAgree(kTimeout, ts_map_, tablet_id_, workload.batches_completed()));
+    ASSERT_OK(WaitForServersToAgree(
+        kTimeout, ts_map_, tablet_id_, workload.batches_completed()));
 
     SetState(kRunning);
   }

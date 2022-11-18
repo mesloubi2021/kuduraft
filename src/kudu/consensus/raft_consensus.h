@@ -37,13 +37,13 @@
 #include <gtest/gtest_prod.h>
 
 #include "kudu/consensus/consensus.pb.h"
-#include "kudu/consensus/consensus_meta.h"  // IWYU pragma: keep
+#include "kudu/consensus/consensus_meta.h" // IWYU pragma: keep
 #include "kudu/consensus/consensus_queue.h"
 #include "kudu/consensus/log.h"
 #include "kudu/consensus/metadata.pb.h"
 #include "kudu/consensus/opid.pb.h"
-#include "kudu/consensus/persistent_vars.pb.h"
 #include "kudu/consensus/persistent_vars.h"
+#include "kudu/consensus/persistent_vars.pb.h"
 #include "kudu/consensus/proxy_policy.h"
 #include "kudu/consensus/ref_counted_replicate.h"
 #include "kudu/consensus/routing.h"
@@ -84,7 +84,7 @@ class Callback;
 namespace rpc {
 class PeriodicTimer;
 class RpcContext;
-}
+} // namespace rpc
 
 namespace tserver {
 class TSTabletManager;
@@ -117,14 +117,15 @@ struct TabletVotingState {
 #endif
   TabletVotingState(boost::optional<OpId> tombstone_last_logged_opid
 #ifdef FB_DO_NOT_REMOVE
-                    //, tablet::TabletDataState data_state
+  //, tablet::TabletDataState data_state
 #endif
-                   )
-          : tombstone_last_logged_opid_(std::move(tombstone_last_logged_opid))
+                    )
+      : tombstone_last_logged_opid_(std::move(tombstone_last_logged_opid))
 #ifdef FB_DO_NOT_REMOVE
-            //, data_state_(data_state)
+  //, data_state_(data_state)
 #endif
-            {}
+  {
+  }
 };
 
 typedef int64_t ConsensusTerm;
@@ -164,12 +165,13 @@ struct ElectionContext {
       Timepoint chained_start_time,
       std::optional<OpId> mock_election_snapshot_op_id,
       std::string source_uuid,
-      bool is_origin_dead_promotion) :
-    reason_(reason),
-    chained_start_time_(chained_start_time),
-    source_uuid_(std::move(source_uuid)),
-    is_origin_dead_promotion_(is_origin_dead_promotion),
-    mock_election_snapshot_op_id_(std::move(mock_election_snapshot_op_id)) {}
+      bool is_origin_dead_promotion)
+      : reason_(reason),
+        chained_start_time_(chained_start_time),
+        source_uuid_(std::move(source_uuid)),
+        is_origin_dead_promotion_(is_origin_dead_promotion),
+        mock_election_snapshot_op_id_(std::move(mock_election_snapshot_op_id)) {
+  }
 
   PeerMessageQueue::TransferContext TransferContext() const;
 
@@ -203,33 +205,39 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
                       public PeerMessageQueueObserver {
  public:
   typedef std::function<void(const ElectionResult&, const ElectionContext&)>
-    ElectionDecisionCallback;
+      ElectionDecisionCallback;
   typedef std::function<void(int64_t)> TermAdvancementCallback;
-  typedef std::function<void(const OpId opId, const RaftPeerPB&)> NoOpReceivedCallback;
-  typedef std::function<void(int64_t, const RaftPeerPB&)> LeaderDetectedCallback;
+  typedef std::function<void(const OpId opId, const RaftPeerPB&)>
+      NoOpReceivedCallback;
+  typedef std::function<void(int64_t, const RaftPeerPB&)>
+      LeaderDetectedCallback;
 
   ~RaftConsensus();
 
   // Factory method to construct and initialize a RaftConsensus instance.
-  static Status Create(ConsensusOptions options,
-                       RaftPeerPB local_peer_pb,
-                       scoped_refptr<ConsensusMetadataManager> cmeta_manager,
-                       scoped_refptr<PersistentVarsManager> persistent_vars_manager,
-                       ThreadPool* raft_pool,
-                       std::shared_ptr<RaftConsensus>* consensus_out);
+  static Status Create(
+      ConsensusOptions options,
+      RaftPeerPB local_peer_pb,
+      scoped_refptr<ConsensusMetadataManager> cmeta_manager,
+      scoped_refptr<PersistentVarsManager> persistent_vars_manager,
+      ThreadPool* raft_pool,
+      std::shared_ptr<RaftConsensus>* consensus_out);
 
-  void DisableNoOpEntries() { disable_noop_ = true; }
+  void DisableNoOpEntries() {
+    disable_noop_ = true;
+  }
 
   // Starts running the Raft consensus algorithm.
   // Start() is not thread-safe. Calls to Start() should be externally
   // synchronized with calls accessing non-const members of this class.
-  Status Start(const ConsensusBootstrapInfo& info,
-               gscoped_ptr<PeerProxyFactory> peer_proxy_factory,
-               scoped_refptr<log::Log> log,
-               scoped_refptr<ITimeManager> time_manager,
-               ConsensusRoundHandler* round_handler,
-               const scoped_refptr<MetricEntity>& metric_entity,
-               Callback<void(const std::string& reason)> mark_dirty_clbk);
+  Status Start(
+      const ConsensusBootstrapInfo& info,
+      gscoped_ptr<PeerProxyFactory> peer_proxy_factory,
+      scoped_refptr<log::Log> log,
+      scoped_refptr<ITimeManager> time_manager,
+      ConsensusRoundHandler* round_handler,
+      const scoped_refptr<MetricEntity>& metric_entity,
+      Callback<void(const std::string& reason)> mark_dirty_clbk);
 
   // Returns true if RaftConsensus is running.
   bool IsRunning() const;
@@ -298,8 +306,8 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
 
   // Emulates an election by increasing the term number and asserting leadership
   // in the configuration by sending a NO_OP to other peers.
-  // This is NOT safe to use in a distributed configuration with failure detection
-  // enabled, as it could result in a split-brain scenario.
+  // This is NOT safe to use in a distributed configuration with failure
+  // detection enabled, as it could result in a split-brain scenario.
   Status EmulateElection();
 
   // Triggers a leader election.
@@ -332,10 +340,11 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // asynchronous: once the transfer period is started the method returns
   // success.
   // Additional calls to this method during the transfer period prolong it.
-  Status TransferLeadership(const boost::optional<std::string>& new_leader_uuid,
-                            const std::function<bool(const kudu::consensus::RaftPeerPB&)>& filter_fn,
-                            const ElectionContext& election_ctx,
-                            LeaderStepDownResponsePB* resp);
+  Status TransferLeadership(
+      const boost::optional<std::string>& new_leader_uuid,
+      const std::function<bool(const kudu::consensus::RaftPeerPB&)>& filter_fn,
+      const ElectionContext& election_ctx,
+      LeaderStepDownResponsePB* resp);
 
   // Runs a mock version of TransferLeadership to see if the operation can be
   // successfuly or not. It is mock in the sense that election votes are not
@@ -437,7 +446,8 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   //    algorithm, proceeds as soon as a majority of voters acknowledges the
   //    entry.
   //
-  // 3) Leader defers to the caller by calling ConsensusRound::NotifyReplicationFinished,
+  // 3) Leader defers to the caller by calling
+  // ConsensusRound::NotifyReplicationFinished,
   //    which calls the ConsensusReplicatedCallback.
   //
   // 3a) The leader asynchronously notifies other peers of the new
@@ -450,8 +460,8 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // and thus is allowed to submit operations to be prepared before they are
   // replicated. To avoid a time-of-check-to-time-of-use (TOCTOU) race, the
   // implementation also stores the current term inside the round's "bound_term"
-  // member. When we eventually are about to replicate the transaction, we verify
-  // that the term has not changed in the meantime.
+  // member. When we eventually are about to replicate the transaction, we
+  // verify that the term has not changed in the meantime.
   Status CheckLeadershipAndBindTerm(const scoped_refptr<ConsensusRound>& round);
 
   // Messages sent from LEADER to FOLLOWERS and LEARNERS to update their
@@ -470,16 +480,17 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   //
   // The leader also provides information on the index of the latest
   // operation considered committed by consensus. The replica uses this
-  // information to update the state of any pending (previously replicated/prepared)
-  // transactions.
+  // information to update the state of any pending (previously
+  // replicated/prepared) transactions.
   //
   // Returns Status::OK if the response has been filled (regardless of accepting
   // or rejecting the specific request). Returns non-OK Status if a specific
   // error response could not be formed, which will result in the service
   // returning an UNKNOWN_ERROR RPC error code to the caller and including the
   // stringified Status message.
-  Status Update(const ConsensusRequestPB* request,
-                ConsensusResponsePB* response);
+  Status Update(
+      const ConsensusRequestPB* request,
+      ConsensusResponsePB* response);
 
   // Messages sent from CANDIDATEs to voting peers to request their vote
   // in leader election.
@@ -487,15 +498,16 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // If 'tombstone_last_logged_opid' is set, this replica will attempt to vote
   // in kInitialized and kStopped states, instead of just in the kRunning
   // state.
-  Status RequestVote(const VoteRequestPB* request,
-                     TabletVotingState tablet_voting_state,
-                     VoteResponsePB* response);
+  Status RequestVote(
+      const VoteRequestPB* request,
+      TabletVotingState tablet_voting_state,
+      VoteResponsePB* response);
 
   // Utility Function:
   // From a simple ChangeConfigRequest, create a BulkChangeConfigRequest
   static void GetBulkConfigChangeRequest(
       const ChangeConfigRequestPB& req,
-      BulkChangeConfigRequestPB *bulk_req);
+      BulkChangeConfigRequestPB* bulk_req);
 
   // Utility function:
   // Takes a bulk change config request and returns a new config by
@@ -506,7 +518,7 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   Status CheckBulkConfigChangeAndGetNewConfigUnlocked(
       const BulkChangeConfigRequestPB& req,
       boost::optional<ServerErrorPB::Code>* error_code,
-      RaftConfigPB *new_config);
+      RaftConfigPB* new_config);
 
   // This returns a ReplicateMsg to the caller, without actually running
   // consensus. The term and index can shift after the return and therefore
@@ -516,31 +528,35 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   Status CheckAndPopulateChangeConfigMessage(
       const ChangeConfigRequestPB& req,
       boost::optional<ServerErrorPB::Code>* error_code,
-      ReplicateMsg *replicate_msg);
+      ReplicateMsg* replicate_msg);
 
   // Implement a ChangeConfig() request.
-  Status ChangeConfig(const ChangeConfigRequestPB& req,
-                      StdStatusCallback client_cb,
-                      boost::optional<ServerErrorPB::Code>* error_code);
+  Status ChangeConfig(
+      const ChangeConfigRequestPB& req,
+      StdStatusCallback client_cb,
+      boost::optional<ServerErrorPB::Code>* error_code);
 
   // Implement a BulkChangeConfig() request.
-  Status BulkChangeConfig(const BulkChangeConfigRequestPB& req,
-                          StdStatusCallback client_cb,
-                          boost::optional<ServerErrorPB::Code>* error_code);
+  Status BulkChangeConfig(
+      const BulkChangeConfigRequestPB& req,
+      StdStatusCallback client_cb,
+      boost::optional<ServerErrorPB::Code>* error_code);
 
   // Implement an UnsafeChangeConfig() request.
-  Status UnsafeChangeConfig(const UnsafeChangeConfigRequestPB& req,
-                            boost::optional<ServerErrorPB::Code>* error_code);
+  Status UnsafeChangeConfig(
+      const UnsafeChangeConfigRequestPB& req,
+      boost::optional<ServerErrorPB::Code>* error_code);
 
   // Change the proxy topology.
   Status ChangeProxyTopology(const ProxyTopologyPB& proxy_topology);
 
   // On a live Raft Instance allow for changes to voter_distribution map
-  Status ChangeVoterDistribution(const TopologyConfigPB &topology_config,
-                                 bool force = false);
+  Status ChangeVoterDistribution(
+      const TopologyConfigPB& topology_config,
+      bool force = false);
 
   // Get the voter distribution from the committed config
-  Status GetVoterDistribution(std::map<std::string, int32> *vd) const;
+  Status GetVoterDistribution(std::map<std::string, int32>* vd) const;
 
   // Return the proxy topology.
   ProxyTopologyPB GetProxyTopology() const;
@@ -559,8 +575,9 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // When force = false, reject update when use_quorum_id is true or one or more
   // peers in active config does not exist in the map. Set force = true to
   // bypass the check.
-  Status SetPeerQuorumIds(std::map<std::string, std::string> uuid2quorum_ids,
-                          bool force = false);
+  Status SetPeerQuorumIds(
+      std::map<std::string, std::string> uuid2quorum_ids,
+      bool force = false);
 
   // Only relevant for abstracted logs.
   // Callback the log abstraction's TruncateOpsAfter function
@@ -569,7 +586,7 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // pattern that is used by UpdateReplica while invoking TruncateOpsAfter
   // @param index_if_truncated - the log specialization will return the
   // truncated index if truncation happened.
-  Status TruncateCallbackWithRaftLock(int64_t *index_if_truncated);
+  Status TruncateCallbackWithRaftLock(int64_t* index_if_truncated);
 
   // Returns the last OpId (either received or committed, depending on the
   // 'type' argument) that the Consensus implementation knows about.
@@ -603,11 +620,13 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // It is own peer region or quorum_id
   std::string peer_quorum_id(bool need_lock = true) const;
 
-  // Returns the id of the tablet whose updates this consensus instance helps coordinate.
-  // Thread-safe.
+  // Returns the id of the tablet whose updates this consensus instance helps
+  // coordinate. Thread-safe.
   const std::string& tablet_id() const;
 
-  scoped_refptr<ITimeManager> time_manager() const { return time_manager_; }
+  scoped_refptr<ITimeManager> time_manager() const {
+    return time_manager_;
+  }
 
   // Return the minimum election timeout. Due to backoff and random
   // jitter, election timeouts may be longer than this.
@@ -622,14 +641,15 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // health report about each active peer in the committed config.
   // If RaftConsensus has been shut down, returns Status::IllegalState.
   // Does not modify the out-param 'cstate' unless an OK status is returned.
-  Status ConsensusState(ConsensusStatePB* cstate,
-                        IncludeHealthReport report_health = EXCLUDE_HEALTH_REPORT) const;
+  Status ConsensusState(
+      ConsensusStatePB* cstate,
+      IncludeHealthReport report_health = EXCLUDE_HEALTH_REPORT) const;
 
   // Returns a copy of the current committed Raft configuration.
   RaftConfigPB CommittedConfig() const;
 
   // Returns a copy of the current pending Raft configuration.
-  Status PendingConfig(RaftConfigPB *pendingConfig) const;
+  Status PendingConfig(RaftConfigPB* pendingConfig) const;
 
   void DumpStatusHtml(std::ostream& out) const;
 
@@ -661,9 +681,10 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
 
   void NotifyTermChange(int64_t term) override;
 
-  void NotifyFailedFollower(const std::string& uuid,
-                            int64_t term,
-                            const std::string& reason) override;
+  void NotifyFailedFollower(
+      const std::string& uuid,
+      int64_t term,
+      const std::string& reason) override;
 
   void NotifyPeerToPromote(const std::string& peer_uuid) override;
 
@@ -675,7 +696,8 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
 
   void NotifyPeerHealthChange() override;
 
-  // Return the log indexes which the consensus implementation would like to retain.
+  // Return the log indexes which the consensus implementation would like to
+  // retain.
   //
   // The returned 'for_durability' index ensures that no logs are GCed before
   // the operation is fully committed. The returned 'for_peers' index indicates
@@ -693,9 +715,10 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
 
   // Handle proxy RPC request.
   // This method is intended to be executed on an RPC worker thread.
-  void HandleProxyRequest(const ConsensusRequestPB* request,
-                          ConsensusResponsePB* response,
-                          rpc::RpcContext* context);
+  void HandleProxyRequest(
+      const ConsensusRequestPB* request,
+      ConsensusResponsePB* response,
+      rpc::RpcContext* context);
 
   // Trigger that a non-Transaction ConsensusRound has finished replication.
   // If the replication was successful, an status will be OK. Otherwise, it
@@ -705,9 +728,10 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // The 'client_cb' will be invoked at the end of this execution.
   //
   // NOTE: Must be called while holding 'lock_'.
-  void NonTxRoundReplicationFinished(ConsensusRound* round,
-                                     const StdStatusCallback& client_cb,
-                                     const Status& status);
+  void NonTxRoundReplicationFinished(
+      ConsensusRound* round,
+      const StdStatusCallback& client_cb,
+      const Status& status);
 
   // Set the compression codec to be used to compress ReplicateMsg payload
   Status SetCompressionCodec(const std::string& codec);
@@ -723,20 +747,28 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
 
   // Returns the 'removed_peers_' list managed by consensus-meta
   std::vector<std::string> RemovedPeersList();
+
  protected:
-  RaftConsensus(ConsensusOptions options,
-                RaftPeerPB local_peer_pb,
-                scoped_refptr<ConsensusMetadataManager> cmeta_manager,
-                scoped_refptr<PersistentVarsManager> persistent_vars_manager,
-                ThreadPool* raft_pool);
+  RaftConsensus(
+      ConsensusOptions options,
+      RaftPeerPB local_peer_pb,
+      scoped_refptr<ConsensusMetadataManager> cmeta_manager,
+      scoped_refptr<PersistentVarsManager> persistent_vars_manager,
+      ThreadPool* raft_pool);
 
  private:
   friend class RaftConsensusQuorumTest;
   friend class tserver::TSTabletManager;
-  FRIEND_TEST(RaftConsensusQuorumTest, TestConsensusContinuesIfAMinorityFallsBehind);
-  FRIEND_TEST(RaftConsensusQuorumTest, TestConsensusStopsIfAMajorityFallsBehind);
+  FRIEND_TEST(
+      RaftConsensusQuorumTest,
+      TestConsensusContinuesIfAMinorityFallsBehind);
+  FRIEND_TEST(
+      RaftConsensusQuorumTest,
+      TestConsensusStopsIfAMajorityFallsBehind);
   FRIEND_TEST(RaftConsensusQuorumTest, TestLeaderElectionWithQuiescedQuorum);
-  FRIEND_TEST(RaftConsensusQuorumTest, TestReplicasEnforceTheLogMatchingProperty);
+  FRIEND_TEST(
+      RaftConsensusQuorumTest,
+      TestReplicasEnforceTheLogMatchingProperty);
   FRIEND_TEST(RaftConsensusQuorumTest, TestRequestVote);
 
   // RaftConsensus lifecycle states.
@@ -817,8 +849,8 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // Returns string description for State enum value.
   static const char* State_Name(State state);
 
-  // Set the leader UUID of the configuration and mark the tablet config dirty for
-  // reporting to the master.
+  // Set the leader UUID of the configuration and mark the tablet config dirty
+  // for reporting to the master.
   Status SetLeaderUuidUnlocked(const std::string& uuid);
 
   // Utility function to get a replicated message
@@ -826,7 +858,7 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   Status CreateReplicateMsgFromConfigsUnlocked(
       RaftConfigPB old_config,
       RaftConfigPB new_config,
-      ReplicateMsg *cc_replicate);
+      ReplicateMsg* cc_replicate);
 
   // Replicate (as leader) a config change. This includes validating the new
   // config and updating the peers and setting the new_configuration as pending.
@@ -836,8 +868,8 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
       RaftConfigPB new_config,
       StdStatusCallback client_cb);
 
-  // Update the peers and queue to be consistent with a new active configuration.
-  // Should only be called by the leader.
+  // Update the peers and queue to be consistent with a new active
+  // configuration. Should only be called by the leader.
   Status RefreshConsensusQueueAndPeersUnlocked();
 
   // Makes the peer become leader.
@@ -851,47 +883,56 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // See EnableFailureDetector() for description of the 'fd_delta' parameter.
   //
   // 'lock_' must be held for configuration change before calling.
-  Status BecomeReplicaUnlocked(boost::optional<MonoDelta> fd_delta = boost::none);
+  Status BecomeReplicaUnlocked(
+      boost::optional<MonoDelta> fd_delta = boost::none);
 
-  // Updates the state in a replica by storing the received operations in the log
-  // and triggering the required transactions. This method won't return until all
-  // operations have been stored in the log and all Prepares() have been completed,
-  // and a replica cannot accept any more Update() requests until this is done.
-  Status UpdateReplica(const ConsensusRequestPB* request,
-                       ConsensusResponsePB* response);
+  // Updates the state in a replica by storing the received operations in the
+  // log and triggering the required transactions. This method won't return
+  // until all operations have been stored in the log and all Prepares() have
+  // been completed, and a replica cannot accept any more Update() requests
+  // until this is done.
+  Status UpdateReplica(
+      const ConsensusRequestPB* request,
+      ConsensusResponsePB* response);
 
   // Deduplicates an RPC request making sure that we get only messages that we
   // haven't appended to our log yet.
   // On return 'deduplicated_req' is instantiated with only the new messages
   // and the correct preceding id.
-  void DeduplicateLeaderRequestUnlocked(ConsensusRequestPB* rpc_req,
-                                        LeaderRequest* deduplicated_req);
+  void DeduplicateLeaderRequestUnlocked(
+      ConsensusRequestPB* rpc_req,
+      LeaderRequest* deduplicated_req);
 
-  // Handles a request from a leader, refusing the request if the term is lower than
-  // ours or stepping down if it's higher.
-  Status HandleLeaderRequestTermUnlocked(const ConsensusRequestPB* request,
-                                         ConsensusResponsePB* response);
+  // Handles a request from a leader, refusing the request if the term is lower
+  // than ours or stepping down if it's higher.
+  Status HandleLeaderRequestTermUnlocked(
+      const ConsensusRequestPB* request,
+      ConsensusResponsePB* response);
 
-  // Checks that the preceding op in 'req' is locally committed or pending and sets an
-  // appropriate error message in 'response' if not.
-  // If there is term mismatch between the preceding op id in 'req' and the local log's
-  // pending operations, we proactively abort those pending operations after and including
-  // the preceding op in 'req' to avoid a pointless cache miss in the leader's log cache.
-  Status EnforceLogMatchingPropertyMatchesUnlocked(const LeaderRequest& req,
-                                                   ConsensusResponsePB* response)
-         WARN_UNUSED_RESULT;
+  // Checks that the preceding op in 'req' is locally committed or pending and
+  // sets an appropriate error message in 'response' if not. If there is term
+  // mismatch between the preceding op id in 'req' and the local log's pending
+  // operations, we proactively abort those pending operations after and
+  // including the preceding op in 'req' to avoid a pointless cache miss in the
+  // leader's log cache.
+  Status EnforceLogMatchingPropertyMatchesUnlocked(
+      const LeaderRequest& req,
+      ConsensusResponsePB* response) WARN_UNUSED_RESULT;
 
   // Check a request received from a leader, making sure:
   // - The request is in the right term
   // - The log matching property holds
-  // - Messages are de-duplicated so that we only process previously unprocessed requests.
-  // - We abort transactions if the leader sends transactions that have the same index as
+  // - Messages are de-duplicated so that we only process previously unprocessed
+  // requests.
+  // - We abort transactions if the leader sends transactions that have the same
+  // index as
   //   transactions currently on the pendings set, but different terms.
-  // If this returns ok and the response has no errors, 'deduped_req' is set with only
-  // the messages to add to our state machine.
-  Status CheckLeaderRequestUnlocked(const ConsensusRequestPB* request,
-                                    ConsensusResponsePB* response,
-                                    LeaderRequest* deduped_req) WARN_UNUSED_RESULT;
+  // If this returns ok and the response has no errors, 'deduped_req' is set
+  // with only the messages to add to our state machine.
+  Status CheckLeaderRequestUnlocked(
+      const ConsensusRequestPB* request,
+      ConsensusResponsePB* response,
+      LeaderRequest* deduped_req) WARN_UNUSED_RESULT;
 
   // Abort any pending operations after the given op index,
   // and also truncate the LogCache accordingly.
@@ -903,13 +944,15 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
 
   // Just like StartFollowerTransactionUnlocked() above but with msg wrapper as
   // input
-  Status StartFollowerTransactionUnlocked(const ReplicateMsgWrapper& msg_wrapper);
+  Status StartFollowerTransactionUnlocked(
+      const ReplicateMsgWrapper& msg_wrapper);
 
   // Returns true if this node is the only voter in the Raft configuration.
   bool IsSingleVoterConfig() const;
 
   // Return header string for RequestVote log messages. 'lock_' must be held.
-  std::string GetRequestVoteLogPrefixUnlocked(const VoteRequestPB& request) const;
+  std::string GetRequestVoteLogPrefixUnlocked(
+      const VoteRequestPB& request) const;
 
   // Helper function to fill in the previous vote history and last pruned term
   // from the vote history.
@@ -923,9 +966,10 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   void FillConsensusResponseOKUnlocked(ConsensusResponsePB* response);
 
   // Fills the response with an error code and error message.
-  void FillConsensusResponseError(ConsensusResponsePB* response,
-                                  ConsensusErrorPB::Code error_code,
-                                  const Status& status);
+  void FillConsensusResponseError(
+      ConsensusResponsePB* response,
+      ConsensusErrorPB::Code error_code,
+      const Status& status);
 
   // Fill VoteResponsePB with the following information:
   // - Update responder_term to current local term.
@@ -936,51 +980,61 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // - Update responder_term to current local term.
   // - Set vote_granted to false.
   // - Set consensus_error.code to the given code.
-  void FillVoteResponseVoteDenied(ConsensusErrorPB::Code error_code, VoteResponsePB* response);
+  void FillVoteResponseVoteDenied(
+      ConsensusErrorPB::Code error_code,
+      VoteResponsePB* response);
 
   // Respond to VoteRequest that the candidate has an old term.
-  Status RequestVoteRespondInvalidTerm(const VoteRequestPB* request,
-                                       const std::string& hostname_port,
-                                       VoteResponsePB* response);
+  Status RequestVoteRespondInvalidTerm(
+      const VoteRequestPB* request,
+      const std::string& hostname_port,
+      VoteResponsePB* response);
 
   // Respond to VoteRequest that we already granted our vote to the candidate.
-  Status RequestVoteRespondVoteAlreadyGranted(const VoteRequestPB* request,
-                                              const std::string& hostname_port,
-                                              VoteResponsePB* response);
+  Status RequestVoteRespondVoteAlreadyGranted(
+      const VoteRequestPB* request,
+      const std::string& hostname_port,
+      VoteResponsePB* response);
 
   // Respond to VoteRequest that we already granted our vote to someone else.
-  Status RequestVoteRespondAlreadyVotedForOther(const VoteRequestPB* request,
-                                                const std::string& hostname_port,
-                                                VoteResponsePB* response);
+  Status RequestVoteRespondAlreadyVotedForOther(
+      const VoteRequestPB* request,
+      const std::string& hostname_port,
+      VoteResponsePB* response);
 
   // Respond to VoteRequest that the candidate's last-logged OpId is too old.
-  Status RequestVoteRespondLastOpIdTooOld(const OpId& local_last_logged_opid,
-                                          const VoteRequestPB* request,
-                                          const std::string& hostname_port,
-                                          VoteResponsePB* response);
+  Status RequestVoteRespondLastOpIdTooOld(
+      const OpId& local_last_logged_opid,
+      const VoteRequestPB* request,
+      const std::string& hostname_port,
+      VoteResponsePB* response);
 
   // Respond to VoteRequest with a denial because votes are being witheld
   // for testing.
-  Status RequestVoteRespondVoteWitheld(const VoteRequestPB* request,
-                                       const std::string& hostname_port,
-                                       const std::string& withhold_reason,
-                                       VoteResponsePB* response);
+  Status RequestVoteRespondVoteWitheld(
+      const VoteRequestPB* request,
+      const std::string& hostname_port,
+      const std::string& withhold_reason,
+      VoteResponsePB* response);
 
   // Respond to VoteRequest that the vote was not granted because we believe
   // the leader to be alive.
-  Status RequestVoteRespondLeaderIsAlive(const VoteRequestPB* request,
-                                         const std::string& hostname_port,
-                                         VoteResponsePB* response);
+  Status RequestVoteRespondLeaderIsAlive(
+      const VoteRequestPB* request,
+      const std::string& hostname_port,
+      VoteResponsePB* response);
 
-  // Respond to VoteRequest that the replica is already in the middle of servicing
-  // another vote request or an update from a valid leader.
-  Status RequestVoteRespondIsBusy(const VoteRequestPB* request,
-                                  VoteResponsePB* response);
+  // Respond to VoteRequest that the replica is already in the middle of
+  // servicing another vote request or an update from a valid leader.
+  Status RequestVoteRespondIsBusy(
+      const VoteRequestPB* request,
+      VoteResponsePB* response);
 
   // Respond to VoteRequest that the vote is granted for candidate.
-  Status RequestVoteRespondVoteGranted(const VoteRequestPB* request,
-                                       const std::string& hostname_port,
-                                       VoteResponsePB* response);
+  Status RequestVoteRespondVoteGranted(
+      const VoteRequestPB* request,
+      const std::string& hostname_port,
+      VoteResponsePB* response);
 
   // Respond to VoteRequest that the request is invalid.
   Status RequestVoteRespondInvalidClientRequest(
@@ -997,9 +1051,12 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
       ElectionContext context,
       const ElectionResult& result,
       std::function<void(const ElectionResult&)> callback);
-  void DoElectionCallback(const ElectionContext& context, const ElectionResult& result);
+  void DoElectionCallback(
+      const ElectionContext& context,
+      const ElectionResult& result);
   void NestedElectionDecisionCallback(
-      ElectionContext context, const ElectionResult& result);
+      ElectionContext context,
+      const ElectionResult& result);
 
   // Enables or disables the failure detector based on the role of the local
   // peer in the active config. If the local peer a VOTER, but not the leader,
@@ -1009,7 +1066,8 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // See EnableFailureDetector() for an explanation of the 'delta' parameter,
   // which is used if it is determined that the failure detector should be
   // enabled.
-  void UpdateFailureDetectorState(boost::optional<MonoDelta> delta = boost::none);
+  void UpdateFailureDetectorState(
+      boost::optional<MonoDelta> delta = boost::none);
 
   // "Reset" the failure detector to indicate leader activity.
   //
@@ -1018,18 +1076,21 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // 'FLAGS_raft_heartbeat_interval_ms' has elapsed, unless 'delta' is set, in
   // which case its value is used as the next failure period.
   //
-  // If 'reason_for_log' is set, then this method will print a log message when called.
+  // If 'reason_for_log' is set, then this method will print a log message when
+  // called.
   //
   // If the failure detector is unregistered, has no effect.
-  void SnoozeFailureDetector(boost::optional<std::string> reason_for_log = boost::none,
-                             boost::optional<MonoDelta> delta = boost::none);
+  void SnoozeFailureDetector(
+      boost::optional<std::string> reason_for_log = boost::none,
+      boost::optional<MonoDelta> delta = boost::none);
 
   // Calculates a snooze delta for leader election.
   //
   // The delta increases exponentially with the difference between the current
   // term and the term of the last committed operation.
   //
-  // The maximum delta is capped by 'FLAGS_leader_failure_exp_backoff_max_delta_ms'.
+  // The maximum delta is capped by
+  // 'FLAGS_leader_failure_exp_backoff_max_delta_ms'.
   MonoDelta LeaderElectionExpBackoffDeltaUnlocked();
   MonoDelta LeaderElectionExpBackoffNotInConfig();
 
@@ -1038,21 +1099,23 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // Handle when the term has advanced beyond the current term.
   //
   // 'flush' may be used to control whether the term change is flushed to disk.
-  Status HandleTermAdvanceUnlocked(ConsensusTerm new_term,
-                                   FlushToDisk flush = FLUSH_TO_DISK);
+  Status HandleTermAdvanceUnlocked(
+      ConsensusTerm new_term,
+      FlushToDisk flush = FLUSH_TO_DISK);
 
   // Handle when a op id with a new term has been appended
   void HandleNewTermAppendedUnlocked(int64_t new_term);
 
-  // Asynchronously (on thread_pool_) notify the TabletReplica that the consensus configuration
-  // has changed, thus reporting it back to the master.
+  // Asynchronously (on thread_pool_) notify the TabletReplica that the
+  // consensus configuration has changed, thus reporting it back to the master.
   void MarkDirty(const std::string& reason);
 
   // Calls MarkDirty() if 'status' == OK. Then, always calls 'client_cb' with
   // 'status' as its argument.
-  void MarkDirtyOnSuccess(const std::string& reason,
-                          const StdStatusCallback& client_cb,
-                          const Status& status);
+  void MarkDirtyOnSuccess(
+      const std::string& reason,
+      const StdStatusCallback& client_cb,
+      const Status& status);
 
   // Attempt to remove the follower with the specified 'uuid' from the config,
   // if the 'committed_config' is still the committed config and if the current
@@ -1062,9 +1125,10 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // it may fail due to the configuration changing, the local node losing
   // leadership, or the tablet shutting down.
   // Logs a warning on failure.
-  void TryRemoveFollowerTask(const std::string& uuid,
-                             const RaftConfigPB& committed_config,
-                             const std::string& reason);
+  void TryRemoveFollowerTask(
+      const std::string& uuid,
+      const RaftConfigPB& committed_config,
+      const std::string& reason);
 
   // Attempt to promote the given non-voter to a voter.
   void TryPromoteNonVoterTask(const std::string& peer_uuid);
@@ -1089,25 +1153,29 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // to disk as the committed configuration. A non-OK status indicates that
   // the replication failed, in which case the pending configuration needs
   // to be cleared such that we revert back to the old configuration.
-  void CompleteConfigChangeRoundUnlocked(ConsensusRound* round,
-                                         const Status& status);
+  void CompleteConfigChangeRoundUnlocked(
+      ConsensusRound* round,
+      const Status& status);
 
   // As a leader, append a new ConsensusRound to the queue.
-  Status AppendNewRoundToQueueUnlocked(const scoped_refptr<ConsensusRound>& round);
+  Status AppendNewRoundToQueueUnlocked(
+      const scoped_refptr<ConsensusRound>& round);
 
   // As a follower, start a consensus round not associated with a Transaction.
   Status StartConsensusOnlyRoundUnlocked(const ReplicateRefPtr& msg);
 
-  // Add a new pending operation to PendingRounds, including the special handling
-  // necessary if this round contains a configuration change. These rounds must
-  // take effect as soon as they are received, rather than waiting for commitment
-  // (see Diego Ongaro's thesis section 4.1).
-  Status AddPendingOperationUnlocked(const scoped_refptr<ConsensusRound>& round);
+  // Add a new pending operation to PendingRounds, including the special
+  // handling necessary if this round contains a configuration change. These
+  // rounds must take effect as soon as they are received, rather than waiting
+  // for commitment (see Diego Ongaro's thesis section 4.1).
+  Status AddPendingOperationUnlocked(
+      const scoped_refptr<ConsensusRound>& round);
 
   // Checks that the replica is in the appropriate state and role to replicate
   // the provided operation and that the replicate message does not yet have an
   // OpId assigned.
-  Status CheckSafeToReplicateUnlocked(const ReplicateMsg& msg) const WARN_UNUSED_RESULT;
+  Status CheckSafeToReplicateUnlocked(const ReplicateMsg& msg) const
+      WARN_UNUSED_RESULT;
 
   // Return Status::IllegalState if 'state_' != kRunning, OK otherwise.
   Status CheckRunningUnlocked() const WARN_UNUSED_RESULT;
@@ -1120,20 +1188,24 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // IllegalState is there *is* a configuration change pending.
   Status CheckNoConfigChangePendingUnlocked() const WARN_UNUSED_RESULT;
 
-  // Sets the given configuration as pending commit. Does not persist into the peers
-  // metadata. In order to be persisted, SetCommittedConfigUnlocked() must be called.
-  Status SetPendingConfigUnlocked(const RaftConfigPB& new_config) WARN_UNUSED_RESULT;
+  // Sets the given configuration as pending commit. Does not persist into the
+  // peers metadata. In order to be persisted, SetCommittedConfigUnlocked() must
+  // be called.
+  Status SetPendingConfigUnlocked(const RaftConfigPB& new_config)
+      WARN_UNUSED_RESULT;
 
   // Changes the committed config for this replica. Checks that there is a
-  // pending configuration and that it is equal to this one. Persists changes to disk.
-  // Resets the pending configuration to null.
+  // pending configuration and that it is equal to this one. Persists changes to
+  // disk. Resets the pending configuration to null.
   Status SetCommittedConfigUnlocked(const RaftConfigPB& config_to_commit);
 
   void ScheduleTermAdvancementCallback(int64_t term);
   void DoTermAdvancmentCallback(int64_t term);
 
   void ScheduleNoOpReceivedCallback(const ReplicateRefPtr& msg);
-  void DoNoOpReceivedCallback(const OpId opid, const RaftPeerPB& leader_details);
+  void DoNoOpReceivedCallback(
+      const OpId opid,
+      const RaftPeerPB& leader_details);
 
   void ScheduleLeaderDetectedCallback(int64_t term);
   void DoLeaderDetectedCallback(int64_t term, const RaftPeerPB& leader_details);
@@ -1143,8 +1215,8 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   //
   // If the caller knows that it will call another method soon after
   // to flush the change to disk, it may set 'flush' to 'SKIP_FLUSH_TO_DISK'.
-  Status SetCurrentTermUnlocked(int64_t new_term,
-                                FlushToDisk flush) WARN_UNUSED_RESULT;
+  Status SetCurrentTermUnlocked(int64_t new_term, FlushToDisk flush)
+      WARN_UNUSED_RESULT;
 
   // Returns the term set in the last config change round.
   const int64_t CurrentTermUnlocked() const;
@@ -1159,7 +1231,8 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
 
   // Record replica's vote for the current term, then flush the consensus
   // metadata to disk.
-  Status SetVotedForCurrentTermUnlocked(const std::string& uuid) WARN_UNUSED_RESULT;
+  Status SetVotedForCurrentTermUnlocked(const std::string& uuid)
+      WARN_UNUSED_RESULT;
 
   // Return replica's vote for the current term.
   // The vote must be set; use HasVotedCurrentTermUnlocked() to check.
@@ -1206,8 +1279,8 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
 
   ThreadPool* const raft_pool_;
 
-  // TODO(dralves) hack to serialize updates due to repeated/out-of-order messages
-  // should probably be refactored out.
+  // TODO(dralves) hack to serialize updates due to repeated/out-of-order
+  // messages should probably be refactored out.
   //
   // Lock ordering note: If both 'update_lock_' and 'lock_' are to be taken,
   // 'update_lock_' lock must be taken first.
@@ -1231,7 +1304,8 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // Proxy routing table object. The right table is built based on proxy_policy
   std::shared_ptr<RoutingTableContainer> routing_table_container_;
 
-  // Threadpool token for constructing requests to peers, handling RPC callbacks, etc.
+  // Threadpool token for constructing requests to peers, handling RPC
+  // callbacks, etc.
   std::unique_ptr<ThreadPoolToken> raft_pool_token_;
 
   scoped_refptr<log::Log> log_;
@@ -1292,9 +1366,9 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // This is used in tests to reject RequestVote RPC requests.
   bool withhold_votes_;
 
-  // The last OpId received from the current leader. This is updated whenever the follower
-  // accepts operations from a leader, and passed back so that the leader knows from what
-  // point to continue sending operations.
+  // The last OpId received from the current leader. This is updated whenever
+  // the follower accepts operations from a leader, and passed back so that the
+  // leader knows from what point to continue sending operations.
   OpId last_received_cur_leader_;
 
   // The number of times this node has called and lost a leader election since
@@ -1327,7 +1401,8 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // TODO(mpercy): Try to get rid of this extra flag.
   AtomicBool shutdown_;
 
-  // The number of times Update() has been called, used for some test assertions.
+  // The number of times Update() has been called, used for some test
+  // assertions.
   AtomicInt<int32_t> update_calls_for_tests_;
 
   FunctionGaugeDetacher metric_detacher_;
@@ -1382,15 +1457,17 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
 //   completed yet) and then proceeds to trigger the Apply().
 //
 // - Once Apply() completes the ConsensusRoundHandler is responsible for logging
-//   a CommitMsg to the log to ensure that the operation can be properly restored
-//   on a restart.
+//   a CommitMsg to the log to ensure that the operation can be properly
+//   restored on a restart.
 class ConsensusRoundHandler {
  public:
   virtual ~ConsensusRoundHandler() {}
 
-  virtual Status StartFollowerTransaction(const scoped_refptr<ConsensusRound>& context) = 0;
+  virtual Status StartFollowerTransaction(
+      const scoped_refptr<ConsensusRound>& context) = 0;
 
-  virtual Status StartConsensusOnlyRound(const scoped_refptr<ConsensusRound>& context) = 0;
+  virtual Status StartConsensusOnlyRound(
+      const scoped_refptr<ConsensusRound>& context) = 0;
 
   // Consensus-only rounds complete when non-transaction ops finish
   // replication. This can be used to trigger callbacks, akin to an Apply() for
@@ -1405,18 +1482,17 @@ class ConsensusRoundHandler {
 // we also want to ensure it has a proper lifecycle when a ConsensusRound is
 // pushed that is not associated with a Tablet transaction.
 class ConsensusRound : public RefCountedThreadSafe<ConsensusRound> {
-
  public:
-  // Ctor used for leader transactions. Leader transactions can and must specify the
-  // callbacks prior to initiating the consensus round.
-  ConsensusRound(RaftConsensus* consensus,
-                 gscoped_ptr<ReplicateMsg> replicate_msg,
-                 ConsensusReplicatedCallback replicated_cb);
+  // Ctor used for leader transactions. Leader transactions can and must specify
+  // the callbacks prior to initiating the consensus round.
+  ConsensusRound(
+      RaftConsensus* consensus,
+      gscoped_ptr<ReplicateMsg> replicate_msg,
+      ConsensusReplicatedCallback replicated_cb);
 
   // Ctor used when the ConsensusReplicatedCallback will be set after the round
   // is created.
-  ConsensusRound(RaftConsensus* consensus,
-                 ReplicateRefPtr replicate_msg);
+  ConsensusRound(RaftConsensus* consensus, ReplicateRefPtr replicate_msg);
 
   ReplicateMsg* replicate_msg() {
     return replicate_msg_->get();
@@ -1432,12 +1508,13 @@ class ConsensusRound : public RefCountedThreadSafe<ConsensusRound> {
     return replicate_msg_->get()->id();
   }
 
-  // Register a callback that is called by RaftConsensus to notify that the round
-  // is considered either replicated, if 'status' is OK(), or that it has
+  // Register a callback that is called by RaftConsensus to notify that the
+  // round is considered either replicated, if 'status' is OK(), or that it has
   // permanently failed to replicate if 'status' is anything else. If 'status'
   // is OK() then the operation can be applied to the state machine, otherwise
   // the operation should be aborted.
-  void SetConsensusReplicatedCallback(ConsensusReplicatedCallback replicated_cb) {
+  void SetConsensusReplicatedCallback(
+      ConsensusReplicatedCallback replicated_cb) {
     replicated_cb_ = std::move(replicated_cb);
   }
 
@@ -1452,12 +1529,13 @@ class ConsensusRound : public RefCountedThreadSafe<ConsensusRound> {
     bound_term_ = term;
   }
 
-  // Check for a rare race in which an operation is submitted to the LEADER in some term,
-  // then before the operation is prepared, the replica loses its leadership, receives
-  // more operations as a FOLLOWER, and then regains its leadership. We detect this case
-  // by setting the ConsensusRound's "bound term" when it is first submitted to the
-  // PREPARE queue, and validate that the term is still the same when we have finished
-  // preparing it. See KUDU-597 for details.
+  // Check for a rare race in which an operation is submitted to the LEADER in
+  // some term, then before the operation is prepared, the replica loses its
+  // leadership, receives more operations as a FOLLOWER, and then regains its
+  // leadership. We detect this case by setting the ConsensusRound's "bound
+  // term" when it is first submitted to the PREPARE queue, and validate that
+  // the term is still the same when we have finished preparing it. See KUDU-597
+  // for details.
   //
   // If this round has not been bound to any term, this is a no-op.
   Status CheckBoundTerm(int64_t current_term) const;
@@ -1484,5 +1562,5 @@ class ConsensusRound : public RefCountedThreadSafe<ConsensusRound> {
   int64_t bound_term_;
 };
 
-}  // namespace consensus
-}  // namespace kudu
+} // namespace consensus
+} // namespace kudu

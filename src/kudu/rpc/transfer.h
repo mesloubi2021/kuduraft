@@ -18,10 +18,10 @@
 #ifndef KUDU_RPC_TRANSFER_H
 #define KUDU_RPC_TRANSFER_H
 
+#include <limits.h>
 #include <array>
 #include <cstddef>
 #include <cstdint>
-#include <limits.h>
 #include <string>
 
 #include <boost/intrusive/list_hook.hpp>
@@ -65,11 +65,10 @@ typedef std::array<Slice, TransferLimits::kMaxPayloadSlices> TransferPayload;
 // and the InboundTransfer object itself is handed off.
 class InboundTransfer {
  public:
-
   InboundTransfer();
 
   // read from the socket into our buffer
-  Status ReceiveBuffer(Socket &socket);
+  Status ReceiveBuffer(Socket& socket);
 
   // Return true if any bytes have yet been sent.
   bool TransferStarted() const;
@@ -81,12 +80,11 @@ class InboundTransfer {
     return Slice(buf_);
   }
 
-  // Return a string indicating the status of this transfer (number of bytes received, etc)
-  // suitable for logging.
+  // Return a string indicating the status of this transfer (number of bytes
+  // received, etc) suitable for logging.
   std::string StatusAsString() const;
 
  private:
-
   Status ProcessInboundHeader();
 
   faststring buf_;
@@ -98,9 +96,9 @@ class InboundTransfer {
 };
 
 // When the connection wants to send data, it creates an OutboundTransfer object
-// to encompass it. This sits on a queue within the Connection, so that each time
-// the Connection wakes up with a writable socket, it consumes more bytes off
-// the next pending transfer in the queue.
+// to encompass it. This sits on a queue within the Connection, so that each
+// time the Connection wakes up with a writable socket, it consumes more bytes
+// off the next pending transfer in the queue.
 //
 // Upon completion of the transfer, a callback is triggered.
 class OutboundTransfer : public boost::intrusive::list_base_hook<> {
@@ -119,16 +117,18 @@ class OutboundTransfer : public boost::intrusive::list_base_hook<> {
   // ------------------------------------------------------------
 
   // Create an outbound transfer for a call request.
-  static OutboundTransfer* CreateForCallRequest(int32_t call_id,
-                                                const TransferPayload &payload,
-                                                size_t n_payload_slices,
-                                                TransferCallbacks *callbacks);
+  static OutboundTransfer* CreateForCallRequest(
+      int32_t call_id,
+      const TransferPayload& payload,
+      size_t n_payload_slices,
+      TransferCallbacks* callbacks);
 
   // Create an outbound transfer for a call response.
   // See above for details.
-  static OutboundTransfer* CreateForCallResponse(const TransferPayload &payload,
-                                                 size_t n_payload_slices,
-                                                 TransferCallbacks *callbacks);
+  static OutboundTransfer* CreateForCallResponse(
+      const TransferPayload& payload,
+      size_t n_payload_slices,
+      TransferCallbacks* callbacks);
 
   // Destruct the transfer. A transfer object should never be deallocated
   // before it has either (a) finished transferring, or (b) been Abort()ed.
@@ -136,10 +136,10 @@ class OutboundTransfer : public boost::intrusive::list_base_hook<> {
 
   // Abort the current transfer, with the given status.
   // This triggers TransferCallbacks::NotifyTransferAborted.
-  void Abort(const Status &status);
+  void Abort(const Status& status);
 
   // send from our buffers into the sock
-  Status SendBuffer(Socket &socket);
+  Status SendBuffer(Socket& socket);
 
   // Return true if any bytes have yet been sent.
   bool TransferStarted() const;
@@ -164,13 +164,14 @@ class OutboundTransfer : public boost::intrusive::list_base_hook<> {
   }
 
  private:
-  OutboundTransfer(int32_t call_id,
-                   const TransferPayload& payload,
-                   size_t n_payload_slices,
-                   TransferCallbacks *callbacks);
+  OutboundTransfer(
+      int32_t call_id,
+      const TransferPayload& payload,
+      size_t n_payload_slices,
+      TransferCallbacks* callbacks);
 
-  // Slices to send. Uses an array here instead of a vector to avoid an expensive
-  // vector construction (improved performance a couple percent).
+  // Slices to send. Uses an array here instead of a vector to avoid an
+  // expensive vector construction (improved performance a couple percent).
   TransferPayload payload_slices_;
   size_t n_payload_slices_;
 
@@ -179,15 +180,15 @@ class OutboundTransfer : public boost::intrusive::list_base_hook<> {
   // The number of bytes in the above slice which has already been sent.
   int32_t cur_offset_in_slice_;
 
-  TransferCallbacks *callbacks_;
+  TransferCallbacks* callbacks_;
 
   // In the case of outbound calls, the associated call ID.
   // In the case of call responses, kInvalidCallId
   int32_t call_id_;
 
-  // True if SendBuffer() has been called at least once. This can be true even if
-  // no bytes were sent successfully. This is needed as SSL_write() is stateful.
-  // Please see KUDU-2334 for details.
+  // True if SendBuffer() has been called at least once. This can be true even
+  // if no bytes were sent successfully. This is needed as SSL_write() is
+  // stateful. Please see KUDU-2334 for details.
   bool started_;
 
   bool aborted_;
@@ -203,8 +204,9 @@ struct TransferCallbacks {
   // The transfer finished successfully.
   virtual void NotifyTransferFinished() = 0;
 
-  // The transfer was aborted (e.g because the connection died or an error occurred).
-  virtual void NotifyTransferAborted(const Status &status) = 0;
+  // The transfer was aborted (e.g because the connection died or an error
+  // occurred).
+  virtual void NotifyTransferAborted(const Status& status) = 0;
 };
 
 } // namespace rpc

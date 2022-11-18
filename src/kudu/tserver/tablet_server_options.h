@@ -17,12 +17,12 @@
 #ifndef KUDU_TSERVER_TABLET_SERVER_OPTIONS_H
 #define KUDU_TSERVER_TABLET_SERVER_OPTIONS_H
 
-#include <vector>
 #include <memory>
+#include <vector>
 
+#include "kudu/consensus/leader_election.h"
 #include "kudu/consensus/metadata.pb.h"
 #include "kudu/consensus/proxy_policy.h"
-#include "kudu/consensus/leader_election.h"
 #include "kudu/server/server_base_options.h"
 #include "kudu/util/net/net_util.h"
 
@@ -35,7 +35,7 @@ class ConsensusRoundHandler;
 class OpId;
 struct ElectionResult;
 struct ElectionContext;
-}
+} // namespace consensus
 
 namespace KC = kudu::consensus;
 
@@ -62,20 +62,23 @@ struct TabletServerOptions : public kudu::server::ServerBaseOptions {
 
   std::shared_ptr<kudu::consensus::VoteLoggerInterface> vote_logger;
 
-  kudu::consensus::ConsensusRoundHandler *round_handler = nullptr;
+  kudu::consensus::ConsensusRoundHandler* round_handler = nullptr;
 
   kudu::consensus::ProxyPolicy proxy_policy =
-    kudu::consensus::ProxyPolicy::DURABLE_ROUTING_POLICY;
+      kudu::consensus::ProxyPolicy::DURABLE_ROUTING_POLICY;
 
   // Election Decision Callback
-  std::function<void(const consensus::ElectionResult&,
-      const consensus::ElectionContext&)> edcb;
+  std::function<
+      void(const consensus::ElectionResult&, const consensus::ElectionContext&)>
+      edcb;
 
   // Term Advancement Callback
   std::function<void(int64_t)> tacb;
 
   // No-OP received Callback
-  std::function<void(const consensus::OpId id, const kudu::consensus::RaftPeerPB&)> norcb;
+  std::function<
+      void(const consensus::OpId id, const kudu::consensus::RaftPeerPB&)>
+      norcb;
 
   // Leader Detected Callback. This should eventually be reconciled
   // with NORCB.

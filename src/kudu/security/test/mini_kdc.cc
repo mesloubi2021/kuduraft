@@ -46,17 +46,19 @@ using strings::Substitute;
 namespace kudu {
 
 string MiniKdcOptions::ToString() const {
-  return strings::Substitute("{ realm: $0, data_root: $1, port: $2, "
+  return strings::Substitute(
+      "{ realm: $0, data_root: $1, port: $2, "
       "ticket_lifetime: $3, renew_lifetime: $4 }",
-      realm, data_root, port, ticket_lifetime, renew_lifetime);
+      realm,
+      data_root,
+      port,
+      ticket_lifetime,
+      renew_lifetime);
 }
 
-MiniKdc::MiniKdc()
-    : MiniKdc(MiniKdcOptions()) {
-}
+MiniKdc::MiniKdc() : MiniKdc(MiniKdcOptions()) {}
 
-MiniKdc::MiniKdc(MiniKdcOptions options)
-    : options_(std::move(options)) {
+MiniKdc::MiniKdc(MiniKdcOptions options) : options_(std::move(options)) {
   if (options_.realm.empty()) {
     options_.realm = "KRBTEST.COM";
   }
@@ -79,16 +81,16 @@ MiniKdc::~MiniKdc() {
 
 map<string, string> MiniKdc::GetEnvVars() const {
   return {
-    {"KRB5_CONFIG", JoinPathSegments(options_.data_root, "krb5.conf")},
-    {"KRB5_KDC_PROFILE", JoinPathSegments(options_.data_root, "kdc.conf")},
-    {"KRB5CCNAME", JoinPathSegments(options_.data_root, "krb5cc")},
-    // Enable the workaround for MIT krb5 1.10 bugs from krb5_realm_override.cc.
-    {"KUDU_ENABLE_KRB5_REALM_FIX", "yes"}
-  };
+      {"KRB5_CONFIG", JoinPathSegments(options_.data_root, "krb5.conf")},
+      {"KRB5_KDC_PROFILE", JoinPathSegments(options_.data_root, "kdc.conf")},
+      {"KRB5CCNAME", JoinPathSegments(options_.data_root, "krb5cc")},
+      // Enable the workaround for MIT krb5 1.10 bugs from
+      // krb5_realm_override.cc.
+      {"KUDU_ENABLE_KRB5_REALM_FIX", "yes"}};
 }
 
 vector<string> MiniKdc::MakeArgv(const vector<string>& in_argv) {
-  vector<string> real_argv = { "env" };
+  vector<string> real_argv = {"env"};
   for (const auto& p : GetEnvVars()) {
     real_argv.push_back(Substitute("$0=$1", p.first, p.second));
   }
@@ -99,15 +101,16 @@ vector<string> MiniKdc::MakeArgv(const vector<string>& in_argv) {
 }
 
 namespace {
-// Attempts to find the path to the specified Kerberos binary, storing it in 'path'.
+// Attempts to find the path to the specified Kerberos binary, storing it in
+// 'path'.
 Status GetBinaryPath(const string& binary, string* path) {
   static const vector<string> kCommonLocations = {
-    "/usr/local/opt/krb5/sbin", // Homebrew
-    "/usr/local/opt/krb5/bin", // Homebrew
-    "/opt/local/sbin", // Macports
-    "/opt/local/bin", // Macports
-    "/usr/lib/mit/sbin", // SLES
-    "/usr/sbin", // Linux
+      "/usr/local/opt/krb5/sbin", // Homebrew
+      "/usr/local/opt/krb5/bin", // Homebrew
+      "/opt/local/sbin", // Macports
+      "/opt/local/bin", // Macports
+      "/usr/lib/mit/sbin", // SLES
+      "/usr/sbin", // Linux
   };
   return FindExecutable(binary, kCommonLocations, path);
 }
@@ -130,9 +133,11 @@ Status MiniKdc::Start() {
     RETURN_NOT_OK(GetBinaryPath("kdb5_util", &kdb5_util_bin));
 
     RETURN_NOT_OK(Subprocess::Call(MakeArgv({
-        kdb5_util_bin, "create",
+        kdb5_util_bin,
+        "create",
         "-s", // Stash the master password.
-        "-P", "masterpw", // Set a password.
+        "-P",
+        "masterpw", // Set a password.
         "-W", // Use weak entropy (since we don't need real security).
     })));
   }
@@ -141,8 +146,7 @@ Status MiniKdc::Start() {
   string krb5kdc_bin;
   RETURN_NOT_OK(GetBinaryPath("krb5kdc", &krb5kdc_bin));
 
-  kdc_process_.reset(new Subprocess(
-      MakeArgv({
+  kdc_process_.reset(new Subprocess(MakeArgv({
       krb5kdc_bin,
       "-n", // Do not daemonize.
   })));
@@ -151,7 +155,8 @@ Status MiniKdc::Start() {
 
   const bool need_config_update = (options_.port == 0);
   // Wait for KDC to start listening on its ports and commencing operation.
-  RETURN_NOT_OK(WaitForUdpBind(kdc_process_->pid(), &options_.port, MonoDelta::FromSeconds(1)));
+  RETURN_NOT_OK(WaitForUdpBind(
+      kdc_process_->pid(), &options_.port, MonoDelta::FromSeconds(1)));
 
   if (need_config_update) {
     // If we asked for an ephemeral port, grab the actual ports and
@@ -191,10 +196,12 @@ $1 = {
         max_renewable_life = 7d 0h 0m 0s
 }
   )";
-  string file_contents = strings::Substitute(kFileTemplate, options_.data_root,
-                                             options_.realm, options_.port);
-  return WriteStringToFile(Env::Default(), file_contents,
-                           JoinPathSegments(options_.data_root, "kdc.conf"));
+  string file_contents = strings::Substitute(
+      kFileTemplate, options_.data_root, options_.realm, options_.port);
+  return WriteStringToFile(
+      Env::Default(),
+      file_contents,
+      JoinPathSegments(options_.data_root, "kdc.conf"));
 }
 
 // Creates a krb5.conf file according to the provided options.
@@ -240,48 +247,56 @@ Status MiniKdc::CreateKrb5Conf() const {
         auth_to_local = RULE:[1:other-$$1@$$0](.*@OTHERREALM.COM$$)s/@.*//
     }
   )";
-  string file_contents = strings::Substitute(kFileTemplate, options_.port, options_.realm,
-                                             options_.renew_lifetime, options_.ticket_lifetime);
-  return WriteStringToFile(Env::Default(), file_contents,
-                           JoinPathSegments(options_.data_root, "krb5.conf"));
+  string file_contents = strings::Substitute(
+      kFileTemplate,
+      options_.port,
+      options_.realm,
+      options_.renew_lifetime,
+      options_.ticket_lifetime);
+  return WriteStringToFile(
+      Env::Default(),
+      file_contents,
+      JoinPathSegments(options_.data_root, "krb5.conf"));
 }
 
 Status MiniKdc::CreateUserPrincipal(const string& username) {
-  SCOPED_LOG_SLOW_EXECUTION(WARNING, 100, Substitute("creating user principal $0", username));
+  SCOPED_LOG_SLOW_EXECUTION(
+      WARNING, 100, Substitute("creating user principal $0", username));
   string kadmin;
   RETURN_NOT_OK(GetBinaryPath("kadmin.local", &kadmin));
-  RETURN_NOT_OK(Subprocess::Call(MakeArgv({
-          kadmin, "-q", Substitute("add_principal -pw $0 $0", username)})));
+  RETURN_NOT_OK(Subprocess::Call(MakeArgv(
+      {kadmin, "-q", Substitute("add_principal -pw $0 $0", username)})));
   return Status::OK();
 }
 
-Status MiniKdc::CreateServiceKeytab(const string& spn,
-                                    string* path) {
-  SCOPED_LOG_SLOW_EXECUTION(WARNING, 100, Substitute("creating service keytab for $0", spn));
+Status MiniKdc::CreateServiceKeytab(const string& spn, string* path) {
+  SCOPED_LOG_SLOW_EXECUTION(
+      WARNING, 100, Substitute("creating service keytab for $0", spn));
   string kt_path = spn;
   StripString(&kt_path, "/", '_');
   kt_path = JoinPathSegments(options_.data_root, kt_path) + ".keytab";
 
   string kadmin;
   RETURN_NOT_OK(GetBinaryPath("kadmin.local", &kadmin));
-  RETURN_NOT_OK(Subprocess::Call(MakeArgv({
-          kadmin, "-q", Substitute("add_principal -randkey $0", spn)})));
-  RETURN_NOT_OK(Subprocess::Call(MakeArgv({
-          kadmin, "-q", Substitute("ktadd -k $0 $1", kt_path, spn)})));
+  RETURN_NOT_OK(Subprocess::Call(
+      MakeArgv({kadmin, "-q", Substitute("add_principal -randkey $0", spn)})));
+  RETURN_NOT_OK(Subprocess::Call(
+      MakeArgv({kadmin, "-q", Substitute("ktadd -k $0 $1", kt_path, spn)})));
   *path = kt_path;
   return Status::OK();
 }
 
 Status MiniKdc::CreateKeytabForExistingPrincipal(const string& spn) {
-  SCOPED_LOG_SLOW_EXECUTION(WARNING, 100, Substitute("creating keytab for $0", spn));
+  SCOPED_LOG_SLOW_EXECUTION(
+      WARNING, 100, Substitute("creating keytab for $0", spn));
   string kt_path = spn;
   StripString(&kt_path, "/", '_');
   kt_path = JoinPathSegments(options_.data_root, kt_path) + ".keytab";
 
   string kadmin;
   RETURN_NOT_OK(GetBinaryPath("kadmin.local", &kadmin));
-  RETURN_NOT_OK(Subprocess::Call(MakeArgv({
-          kadmin, "-q", Substitute("xst -norandkey -k $0 $1", kt_path, spn)})));
+  RETURN_NOT_OK(Subprocess::Call(MakeArgv(
+      {kadmin, "-q", Substitute("xst -norandkey -k $0 $1", kt_path, spn)})));
   return Status::OK();
 }
 
@@ -289,7 +304,7 @@ Status MiniKdc::Kinit(const string& username) {
   SCOPED_LOG_SLOW_EXECUTION(WARNING, 100, Substitute("kinit for $0", username));
   string kinit;
   RETURN_NOT_OK(GetBinaryPath("kinit", &kinit));
-  RETURN_NOT_OK(Subprocess::Call(MakeArgv({ kinit, username }), username));
+  RETURN_NOT_OK(Subprocess::Call(MakeArgv({kinit, username}), username));
   return Status::OK();
 }
 
@@ -297,20 +312,21 @@ Status MiniKdc::Kdestroy() {
   SCOPED_LOG_SLOW_EXECUTION(WARNING, 100, "kdestroy");
   string kdestroy;
   RETURN_NOT_OK(GetBinaryPath("kdestroy", &kdestroy));
-  return Subprocess::Call(MakeArgv({ kdestroy, "-A" }));
+  return Subprocess::Call(MakeArgv({kdestroy, "-A"}));
 }
 
 Status MiniKdc::Klist(string* output) {
   string klist;
   RETURN_NOT_OK(GetBinaryPath("klist", &klist));
-  RETURN_NOT_OK(Subprocess::Call(MakeArgv({ klist, "-A" }), "", output));
+  RETURN_NOT_OK(Subprocess::Call(MakeArgv({klist, "-A"}), "", output));
   return Status::OK();
 }
 
 Status MiniKdc::KlistKeytab(const string& keytab_path, string* output) {
   string klist;
   RETURN_NOT_OK(GetBinaryPath("klist", &klist));
-  RETURN_NOT_OK(Subprocess::Call(MakeArgv({ klist, "-k", keytab_path }), "", output));
+  RETURN_NOT_OK(
+      Subprocess::Call(MakeArgv({klist, "-k", keytab_path}), "", output));
   return Status::OK();
 }
 

@@ -24,5 +24,5 @@ int RunTool(int argc, char** argv, bool show_help);
 bool ParseCommandLineFlags(const char* prog_name);
 int ToolMain(int argc, char** argv);
 
-} // tools
-} // kudu
+} // namespace tools
+} // namespace kudu

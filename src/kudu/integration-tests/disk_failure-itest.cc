@@ -55,17 +55,23 @@ namespace kudu {
 
 const MonoDelta kAgreementTimeout = MonoDelta::FromSeconds(30);
 
-class DiskFailureITest : public ExternalMiniClusterITestBase,
-                         public ::testing::WithParamInterface<std::tuple<string, bool>> {
+class DiskFailureITest
+    : public ExternalMiniClusterITestBase,
+      public ::testing::WithParamInterface<std::tuple<string, bool>> {
  public:
-
   // Waits for 'ext_tserver' to experience 'target_failed_disks' disk failures.
-  void WaitForDiskFailures(const ExternalTabletServer* ext_tserver,
-                           int64_t target_failed_disks = 1) const {
+  void WaitForDiskFailures(
+      const ExternalTabletServer* ext_tserver,
+      int64_t target_failed_disks = 1) const {
     ASSERT_EVENTUALLY([&] {
       int64_t failed_on_ts;
-      ASSERT_OK(itest::GetInt64Metric(ext_tserver->bound_http_hostport(),
-          &METRIC_ENTITY_server, nullptr, &METRIC_data_dirs_failed, "value", &failed_on_ts));
+      ASSERT_OK(itest::GetInt64Metric(
+          ext_tserver->bound_http_hostport(),
+          &METRIC_ENTITY_server,
+          nullptr,
+          &METRIC_data_dirs_failed,
+          "value",
+          &failed_on_ts));
       ASSERT_EQ(target_failed_disks, failed_on_ts);
     });
   }
@@ -89,10 +95,10 @@ TEST_P(DiskFailureITest, TestFailDuringServerStartup) {
   opts.num_tablet_servers = kNumTabletServers;
   opts.num_data_dirs = 5;
   opts.block_manager_type = block_manager_type;
-  opts.extra_master_flags.push_back(
-      Substitute("--raft_prepare_replacement_before_eviction=$0", is_3_4_3_mode));
-  opts.extra_tserver_flags.push_back(
-      Substitute("--raft_prepare_replacement_before_eviction=$0", is_3_4_3_mode));
+  opts.extra_master_flags.push_back(Substitute(
+      "--raft_prepare_replacement_before_eviction=$0", is_3_4_3_mode));
+  opts.extra_tserver_flags.push_back(Substitute(
+      "--raft_prepare_replacement_before_eviction=$0", is_3_4_3_mode));
   NO_FATALS(StartClusterWithOpts(opts));
 
   // Write some data to a tablet. This will spread blocks across all
@@ -101,9 +107,8 @@ TEST_P(DiskFailureITest, TestFailDuringServerStartup) {
   write_workload.set_num_tablets(kNumTablets);
   write_workload.Setup();
   write_workload.Start();
-  ASSERT_EVENTUALLY([&] {
-    ASSERT_GT(kNumRows, write_workload.rows_inserted());
-  });
+  ASSERT_EVENTUALLY(
+      [&] { ASSERT_GT(kNumRows, write_workload.rows_inserted()); });
   write_workload.StopAndJoin();
 
   // Arbitrarily select one tablet server which hosts a replica of the tablet.
@@ -118,18 +123,21 @@ TEST_P(DiskFailureITest, TestFailDuringServerStartup) {
   }
   ASSERT_NE(nullptr, ts);
 
-  // Ensure at least one tablet get to a running state at one of the tablet servers.
+  // Ensure at least one tablet get to a running state at one of the tablet
+  // servers.
   ASSERT_OK(cluster_->WaitForTabletsRunning(ts, 1, kAgreementTimeout));
 
   // Introduce flags to fail one of the directories, avoiding the metadata
   // directory, the next time the tablet server starts.
   const string& failed_dir = ts->data_dirs()[1];
   const vector<string> extra_flags = {
-      Substitute("--env_inject_eio_globs=$0", JoinPathSegments(failed_dir, "**")),
+      Substitute(
+          "--env_inject_eio_globs=$0", JoinPathSegments(failed_dir, "**")),
       "--env_inject_eio=1.0",
       "--crash_on_eio=false",
   };
-  ts->mutable_flags()->insert(ts->mutable_flags()->begin(), extra_flags.begin(), extra_flags.end());
+  ts->mutable_flags()->insert(
+      ts->mutable_flags()->begin(), extra_flags.begin(), extra_flags.end());
   ts->Shutdown();
 
   // Restart the tablet server with disk failures and ensure it can startup.
@@ -139,11 +147,15 @@ TEST_P(DiskFailureITest, TestFailDuringServerStartup) {
   // Ensure that the tablets are successfully evicted and copied.
   ClusterVerifier v(cluster_.get());
   NO_FATALS(v.CheckCluster());
-  NO_FATALS(v.CheckRowCount(write_workload.table_name(), ClusterVerifier::AT_LEAST,
-                            write_workload.batches_completed()));
+  NO_FATALS(v.CheckRowCount(
+      write_workload.table_name(),
+      ClusterVerifier::AT_LEAST,
+      write_workload.batches_completed()));
 }
 
-INSTANTIATE_TEST_CASE_P(DiskFailure, DiskFailureITest,
+INSTANTIATE_TEST_CASE_P(
+    DiskFailure,
+    DiskFailureITest,
     ::testing::Combine(
         ::testing::ValuesIn(BlockManager::block_manager_types()),
         ::testing::Bool()));
@@ -173,16 +185,15 @@ class DiskErrorITest : public ExternalMiniClusterITestBase,
     opts.num_tablet_servers = 3;
     opts.num_data_dirs = 3;
     opts.extra_tserver_flags = {
-      // Flush frequently so we actually get some data blocks.
-      "--flush_threshold_secs=1",
-      "--flush_threshold_mb=1",
+        // Flush frequently so we actually get some data blocks.
+        "--flush_threshold_secs=1",
+        "--flush_threshold_mb=1",
     };
     opts.extra_master_flags = {
-      // Prevent the master from tombstoning replicas that may not be part of
-      // the config (e.g. if a leader fails, it can be "evicted", despite
-      // setting `--evict_failed_follower=false`)
-      "--master_tombstone_evicted_tablet_replicas=false"
-    };
+        // Prevent the master from tombstoning replicas that may not be part of
+        // the config (e.g. if a leader fails, it can be "evicted", despite
+        // setting `--evict_failed_follower=false`)
+        "--master_tombstone_evicted_tablet_replicas=false"};
     NO_FATALS(StartClusterWithOpts(std::move(opts)));
 
     // Write some rows to the three servers.
@@ -200,17 +211,20 @@ class DiskErrorITest : public ExternalMiniClusterITestBase,
     for (int i = 0; i < cluster_->num_tablet_servers(); i++) {
       // Prevent attempts to copy over replicas, e.g. ones that don't get to a
       // running state due to an error.
-      ASSERT_OK(cluster_->SetFlag(cluster_->tablet_server(i), "enable_tablet_copy", "false"));
+      ASSERT_OK(cluster_->SetFlag(
+          cluster_->tablet_server(i), "enable_tablet_copy", "false"));
     }
   }
 
   // Returns the appropriate injection flags for the given error and node.
-  FlagList InjectionFlags(ErrorType error, ExternalTabletServer* error_ts) const {
+  FlagList InjectionFlags(ErrorType error, ExternalTabletServer* error_ts)
+      const {
     FlagList injection_flags;
     switch (error) {
       case ErrorType::DISK_FAILURE:
         // Avoid injecting errors to the first data directory.
-        injection_flags.emplace_back("env_inject_eio_globs",
+        injection_flags.emplace_back(
+            "env_inject_eio_globs",
             JoinPathSegments(error_ts->data_dirs()[1], "**"));
         injection_flags.emplace_back("env_inject_eio", "1.0");
         break;
@@ -234,12 +248,12 @@ class DiskErrorITest : public ExternalMiniClusterITestBase,
     LOG(INFO) << "Resetting error injection flags";
     for (int i = 0; i < cluster_->num_tablet_servers(); i++) {
       const FlagList recovery_flags = {
-        // First, stop injecting errors.
-        { "env_inject_eio", "0.0" },
-        { "cfile_inject_corruption", "0.0" },
+          // First, stop injecting errors.
+          {"env_inject_eio", "0.0"},
+          {"cfile_inject_corruption", "0.0"},
 
-        // Then allow for recovery.
-        { "enable_tablet_copy", "true" },
+          // Then allow for recovery.
+          {"enable_tablet_copy", "true"},
       };
       return SetFlags(cluster_->tablet_server(i), recovery_flags);
     }
@@ -251,15 +265,22 @@ class DiskErrorITest : public ExternalMiniClusterITestBase,
   void WaitForFailedTablets(ExternalTabletServer* ts, int num_failed) const {
     ASSERT_EVENTUALLY([&] {
       int64_t failed_on_ts;
-      ASSERT_OK(itest::GetInt64Metric(ts->bound_http_hostport(),
-          &METRIC_ENTITY_server, nullptr, &METRIC_tablets_num_failed, "value", &failed_on_ts));
+      ASSERT_OK(itest::GetInt64Metric(
+          ts->bound_http_hostport(),
+          &METRIC_ENTITY_server,
+          nullptr,
+          &METRIC_tablets_num_failed,
+          "value",
+          &failed_on_ts));
       LOG(INFO) << "Currently has " << failed_on_ts << " failed tablets";
       ASSERT_EQ(num_failed, failed_on_ts);
     });
   }
 };
 
-INSTANTIATE_TEST_CASE_P(DiskError, DiskErrorITest,
+INSTANTIATE_TEST_CASE_P(
+    DiskError,
+    DiskErrorITest,
     ::testing::Values(ErrorType::CFILE_CORRUPTION, ErrorType::DISK_FAILURE));
 
 TEST_P(DiskErrorITest, TestFailOnBootstrap) {
@@ -304,4 +325,4 @@ TEST_P(DiskErrorITest, TestFailDuringScanWorkload) {
   NO_FATALS(v.CheckCluster());
 }
 
-}  // namespace kudu
+} // namespace kudu

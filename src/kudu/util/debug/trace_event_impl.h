@@ -29,19 +29,19 @@
 // Older style trace macros with explicit id and extra data
 // Only these macros result in publishing data to ETW as currently implemented.
 #define TRACE_EVENT_BEGIN_ETW(name, id, extra) \
-    base::debug::TraceLog::AddTraceEventEtw( \
-        TRACE_EVENT_PHASE_BEGIN, \
-        name, reinterpret_cast<const void*>(id), extra)
+  base::debug::TraceLog::AddTraceEventEtw(     \
+      TRACE_EVENT_PHASE_BEGIN, name, reinterpret_cast<const void*>(id), extra)
 
 #define TRACE_EVENT_END_ETW(name, id, extra) \
-    base::debug::TraceLog::AddTraceEventEtw( \
-        TRACE_EVENT_PHASE_END, \
-        name, reinterpret_cast<const void*>(id), extra)
+  base::debug::TraceLog::AddTraceEventEtw(   \
+      TRACE_EVENT_PHASE_END, name, reinterpret_cast<const void*>(id), extra)
 
 #define TRACE_EVENT_INSTANT_ETW(name, id, extra) \
-    base::debug::TraceLog::AddTraceEventEtw( \
-        TRACE_EVENT_PHASE_INSTANT, \
-        name, reinterpret_cast<const void*>(id), extra)
+  base::debug::TraceLog::AddTraceEventEtw(       \
+      TRACE_EVENT_PHASE_INSTANT,                 \
+      name,                                      \
+      reinterpret_cast<const void*>(id),         \
+      extra)
 
 template <typename Type>
 class Singleton;
@@ -54,7 +54,7 @@ struct hash<kudu::Thread*> {
     return reinterpret_cast<std::size_t>(value);
   }
 };
-}  // BASE_HASH_NAMESPACE
+} // namespace BASE_HASH_NAMESPACE
 #endif
 
 namespace kudu {
@@ -66,7 +66,8 @@ namespace debug {
 
 // For any argument of type TRACE_VALUE_TYPE_CONVERTABLE the provided
 // class must implement this interface.
-class ConvertableToTraceFormat : public kudu::RefCountedThreadSafe<ConvertableToTraceFormat> {
+class ConvertableToTraceFormat
+    : public kudu::RefCountedThreadSafe<ConvertableToTraceFormat> {
  public:
   // Append the class info to the provided |out| string. The appended
   // data must be a valid JSON object. Strings must be properly quoted, and
@@ -124,24 +125,41 @@ class BASE_EXPORT TraceEvent {
 
   void Reset();
 
-  void UpdateDuration(const MicrosecondsInt64& now, const MicrosecondsInt64& thread_now);
+  void UpdateDuration(
+      const MicrosecondsInt64& now,
+      const MicrosecondsInt64& thread_now);
 
   // Serialize event data to JSON
   void AppendAsJSON(std::string* out) const;
   void AppendPrettyPrinted(std::ostringstream* out) const;
 
-  static void AppendValueAsJSON(unsigned char type,
-                                TraceValue value,
-                                std::string* out);
+  static void
+  AppendValueAsJSON(unsigned char type, TraceValue value, std::string* out);
 
-  MicrosecondsInt64 timestamp() const { return timestamp_; }
-  MicrosecondsInt64 thread_timestamp() const { return thread_timestamp_; }
-  char phase() const { return phase_; }
-  int thread_id() const { return thread_id_; }
-  MicrosecondsInt64 duration() const { return duration_; }
-  MicrosecondsInt64 thread_duration() const { return thread_duration_; }
-  uint64_t id() const { return id_; }
-  unsigned char flags() const { return flags_; }
+  MicrosecondsInt64 timestamp() const {
+    return timestamp_;
+  }
+  MicrosecondsInt64 thread_timestamp() const {
+    return thread_timestamp_;
+  }
+  char phase() const {
+    return phase_;
+  }
+  int thread_id() const {
+    return thread_id_;
+  }
+  MicrosecondsInt64 duration() const {
+    return duration_;
+  }
+  MicrosecondsInt64 thread_duration() const {
+    return thread_duration_;
+  }
+  uint64_t id() const {
+    return id_;
+  }
+  unsigned char flags() const {
+    return flags_;
+  }
 
   // Exposed for unittesting:
 
@@ -153,7 +171,9 @@ class BASE_EXPORT TraceEvent {
     return category_group_enabled_;
   }
 
-  const char* name() const { return name_; }
+  const char* name() const {
+    return name_;
+  }
 
 #if defined(OS_ANDROID)
   void SendToATrace();
@@ -184,18 +204,23 @@ class BASE_EXPORT TraceEvent {
 // TraceBufferChunk is the basic unit of TraceBuffer.
 class BASE_EXPORT TraceBufferChunk {
  public:
-  explicit TraceBufferChunk(uint32_t seq)
-      : next_free_(0),
-        seq_(seq) {
-  }
+  explicit TraceBufferChunk(uint32_t seq) : next_free_(0), seq_(seq) {}
 
   void Reset(uint32_t new_seq);
   TraceEvent* AddTraceEvent(size_t* event_index);
-  bool IsFull() const { return next_free_ == kTraceBufferChunkSize; }
+  bool IsFull() const {
+    return next_free_ == kTraceBufferChunkSize;
+  }
 
-  uint32_t seq() const { return seq_; }
-  size_t capacity() const { return kTraceBufferChunkSize; }
-  size_t size() const { return next_free_; }
+  uint32_t seq() const {
+    return seq_;
+  }
+  size_t capacity() const {
+    return kTraceBufferChunkSize;
+  }
+  size_t size() const {
+    return next_free_;
+  }
 
   TraceEvent* GetEventAt(size_t index) {
     DCHECK(index < size());
@@ -221,9 +246,10 @@ class BASE_EXPORT TraceBuffer {
  public:
   virtual ~TraceBuffer() {}
 
-  virtual gscoped_ptr<TraceBufferChunk> GetChunk(size_t *index) = 0;
-  virtual void ReturnChunk(size_t index,
-                           gscoped_ptr<TraceBufferChunk> chunk) = 0;
+  virtual gscoped_ptr<TraceBufferChunk> GetChunk(size_t* index) = 0;
+  virtual void ReturnChunk(
+      size_t index,
+      gscoped_ptr<TraceBufferChunk> chunk) = 0;
 
   virtual bool IsFull() const = 0;
   virtual size_t Size() const = 0;
@@ -250,8 +276,7 @@ class TraceResultBuffer {
   static std::string DoFlush(bool leave_intact);
 
   // Callback for TraceLog::Flush
-  void Collect(const scoped_refptr<RefCountedString>& s,
-               bool has_more_events);
+  void Collect(const scoped_refptr<RefCountedString>& s, bool has_more_events);
 
   bool first_;
   std::string json_;
@@ -327,14 +352,14 @@ class BASE_EXPORT CategoryFilter {
       const std::string& str);
 
   void Initialize(const std::string& filter_string);
-  void WriteString(const StringList& values,
-                   std::string* out,
-                   bool included) const;
+  void WriteString(const StringList& values, std::string* out, bool included)
+      const;
   void WriteString(const StringList& delays, std::string* out) const;
   bool HasIncludedPatterns() const;
 
-  bool DoesCategoryGroupContainCategory(const char* category_group,
-                                        const char* category) const;
+  bool DoesCategoryGroupContainCategory(
+      const char* category_group,
+      const char* category) const;
 
   StringList included_;
   StringList disabled_;
@@ -398,13 +423,15 @@ class BASE_EXPORT TraceLog {
   // See CategoryFilter comments for details on how to control what categories
   // will be traced. If tracing has already been enabled, |category_filter| will
   // be merged into the current category filter.
-  void SetEnabled(const CategoryFilter& category_filter,
-                  Mode mode, Options options);
+  void
+  SetEnabled(const CategoryFilter& category_filter, Mode mode, Options options);
 
   // Disables normal tracing for all categories.
   void SetDisabled();
 
-  bool IsEnabled() { return mode_ != DISABLED; }
+  bool IsEnabled() {
+    return mode_ != DISABLED;
+  }
 
   // The number of times we have begun recording traces. If tracing is off,
   // returns -1. If tracing is on, then it returns the number of times we have
@@ -450,20 +477,22 @@ class BASE_EXPORT TraceLog {
   // For TRACE_EVENT_PHASE_COMPLETE events, the client will still receive pairs
   // of TRACE_EVENT_PHASE_BEGIN and TRACE_EVENT_PHASE_END events to keep the
   // interface simple.
-  typedef void (*EventCallback)(MicrosecondsInt64 timestamp,
-                                char phase,
-                                const unsigned char* category_group_enabled,
-                                const char* name,
-                                uint64_t id,
-                                int num_args,
-                                const char* const arg_names[],
-                                const unsigned char arg_types[],
-                                const uint64_t arg_values[],
-                                unsigned char flags);
+  typedef void (*EventCallback)(
+      MicrosecondsInt64 timestamp,
+      char phase,
+      const unsigned char* category_group_enabled,
+      const char* name,
+      uint64_t id,
+      int num_args,
+      const char* const arg_names[],
+      const unsigned char arg_types[],
+      const uint64_t arg_values[],
+      unsigned char flags);
 
   // Enable tracing for EventCallback.
-  void SetEventCallbackEnabled(const CategoryFilter& category_filter,
-                               EventCallback cb);
+  void SetEventCallbackEnabled(
+      const CategoryFilter& category_filter,
+      EventCallback cb);
   void SetEventCallbackDisabled();
 
   // Flush all collected events to the given output callback. The callback will
@@ -475,8 +504,9 @@ class BASE_EXPORT TraceLog {
   // done when tracing is enabled. If called when tracing is enabled, the
   // callback will be called directly with (empty_string, false) to indicate
   // the end of this unsuccessful flush.
-  typedef kudu::Callback<void(const scoped_refptr<kudu::RefCountedString>&,
-                              bool has_more_events)> OutputCallback;
+  typedef kudu::Callback<
+      void(const scoped_refptr<kudu::RefCountedString>&, bool has_more_events)>
+      OutputCallback;
   void Flush(const OutputCallback& cb);
   void FlushButLeaveBufferIntact(const OutputCallback& flush_output_callback);
 
@@ -514,32 +544,40 @@ class BASE_EXPORT TraceLog {
       const uint64_t* arg_values,
       const scoped_refptr<ConvertableToTraceFormat>* convertable_values,
       unsigned char flags);
-  static void AddTraceEventEtw(char phase,
-                               const char* category_group,
-                               const void* id,
-                               const char* extra);
-  static void AddTraceEventEtw(char phase,
-                               const char* category_group,
-                               const void* id,
-                               const std::string& extra);
+  static void AddTraceEventEtw(
+      char phase,
+      const char* category_group,
+      const void* id,
+      const char* extra);
+  static void AddTraceEventEtw(
+      char phase,
+      const char* category_group,
+      const void* id,
+      const std::string& extra);
 
-  void UpdateTraceEventDuration(const unsigned char* category_group_enabled,
-                                const char* name,
-                                TraceEventHandle handle);
+  void UpdateTraceEventDuration(
+      const unsigned char* category_group_enabled,
+      const char* name,
+      TraceEventHandle handle);
 
   // For every matching event, the callback will be called.
   typedef kudu::Callback<void()> WatchEventCallback;
-  void SetWatchEvent(const std::string& category_name,
-                     const std::string& event_name,
-                     const WatchEventCallback& callback);
+  void SetWatchEvent(
+      const std::string& category_name,
+      const std::string& event_name,
+      const WatchEventCallback& callback);
   // Cancel the watch event. If tracing is enabled, this may race with the
   // watch event notification firing.
   void CancelWatchEvent();
 
-  int process_id() const { return process_id_; }
+  int process_id() const {
+    return process_id_;
+  }
 
   // Allow tests to inspect TraceEvents.
-  size_t GetEventsSize() const { return logged_events_->Size(); }
+  size_t GetEventsSize() const {
+    return logged_events_->Size();
+  }
   TraceEvent* GetEventByHandle(TraceEventHandle handle);
 
   void SetProcessID(int process_id);
@@ -560,22 +598,18 @@ class BASE_EXPORT TraceLog {
   // Thread sort indices, if set, override the order of a thread will appear
   // within its process in the trace viewer. Threads are sorted first on their
   // sort index, ascending, then by their name, and then tid.
-  void SetThreadSortIndex(int64_t tid , int sort_index);
+  void SetThreadSortIndex(int64_t tid, int sort_index);
 
-  // Allow setting an offset between the current MicrosecondsInt64 time and the time
-  // that should be reported.
+  // Allow setting an offset between the current MicrosecondsInt64 time and the
+  // time that should be reported.
   void SetTimeOffset(MicrosecondsInt64 offset);
 
   size_t GetObserverCountForTest() const;
 
-
  private:
-  FRIEND_TEST(TraceEventTestFixture,
-                           TraceBufferRingBufferGetReturnChunk);
-  FRIEND_TEST(TraceEventTestFixture,
-                           TraceBufferRingBufferHalfIteration);
-  FRIEND_TEST(TraceEventTestFixture,
-                           TraceBufferRingBufferFullIteration);
+  FRIEND_TEST(TraceEventTestFixture, TraceBufferRingBufferGetReturnChunk);
+  FRIEND_TEST(TraceEventTestFixture, TraceBufferRingBufferHalfIteration);
+  FRIEND_TEST(TraceEventTestFixture, TraceBufferRingBufferFullIteration);
 
   // This allows constructor and destructor to be private and usable only
   // by the Singleton class.
@@ -602,25 +636,30 @@ class BASE_EXPORT TraceLog {
   const unsigned char* GetCategoryGroupEnabledInternal(const char* name);
   void AddMetadataEventsWhileLocked();
 
-  TraceBuffer* trace_buffer() const { return logged_events_.get(); }
+  TraceBuffer* trace_buffer() const {
+    return logged_events_.get();
+  }
   TraceBuffer* CreateTraceBuffer();
 
-  std::string EventToConsoleMessage(unsigned char phase,
-                                    const MicrosecondsInt64& timestamp,
-                                    TraceEvent* trace_event);
+  std::string EventToConsoleMessage(
+      unsigned char phase,
+      const MicrosecondsInt64& timestamp,
+      TraceEvent* trace_event);
 
-  TraceEvent* AddEventToThreadSharedChunkWhileLocked(TraceEventHandle* handle,
-                                                     bool check_buffer_is_full);
+  TraceEvent* AddEventToThreadSharedChunkWhileLocked(
+      TraceEventHandle* handle,
+      bool check_buffer_is_full);
   void CheckIfBufferIsFullWhileLocked();
   void SetDisabledWhileLocked();
 
-  TraceEvent* GetEventByHandleInternal(TraceEventHandle handle,
-                                       OptionalAutoLock* lock);
+  TraceEvent* GetEventByHandleInternal(
+      TraceEventHandle handle,
+      OptionalAutoLock* lock);
 
-  void ConvertTraceEventsToTraceFormat(gscoped_ptr<TraceBuffer> logged_events,
-                                       const OutputCallback& flush_output_callback);
-  void FinishFlush(int generation,
-                   const OutputCallback& flush_output_callback);
+  void ConvertTraceEventsToTraceFormat(
+      gscoped_ptr<TraceBuffer> logged_events,
+      const OutputCallback& flush_output_callback);
+  void FinishFlush(int generation, const OutputCallback& flush_output_callback);
 
   // Called when a thread which has registered trace events is about to exit.
   void ThreadExiting();
@@ -668,7 +707,8 @@ class BASE_EXPORT TraceLog {
   std::unordered_map<int, std::string> thread_names_;
 
   // The following two maps are used only when ECHO_TO_CONSOLE.
-  std::unordered_map<int, std::stack<MicrosecondsInt64> > thread_event_start_times_;
+  std::unordered_map<int, std::stack<MicrosecondsInt64>>
+      thread_event_start_times_;
   std::unordered_map<std::string, int> thread_colors_;
 
   // XORed with TraceID to make it unlikely to collide with other processes.
@@ -722,7 +762,7 @@ class BASE_EXPORT TraceLog {
   DISALLOW_COPY_AND_ASSIGN(TraceLog);
 };
 
-}  // namespace debug
-}  // namespace kudu
+} // namespace debug
+} // namespace kudu
 
-#endif  // KUDU_UTIL_DEBUG_TRACE_EVENT_IMPL_H_
+#endif // KUDU_UTIL_DEBUG_TRACE_EVENT_IMPL_H_

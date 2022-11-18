@@ -35,15 +35,21 @@ class CharSet {
   CharSet();
   // Deliberately an implicit constructor, so anything that takes a CharSet
   // can also take an explicit list of characters.
-  CharSet(const char* characters);  // NOLINT(runtime/explicit)
+  CharSet(const char* characters); // NOLINT(runtime/explicit)
   explicit CharSet(const CharSet& other);
 
   // Add or remove a character from the set.
-  void Add(unsigned char c) { bits_[Word(c)] |= BitMask(c); }
-  void Remove(unsigned char c) { bits_[Word(c)] &= ~BitMask(c); }
+  void Add(unsigned char c) {
+    bits_[Word(c)] |= BitMask(c);
+  }
+  void Remove(unsigned char c) {
+    bits_[Word(c)] &= ~BitMask(c);
+  }
 
   // Return true if this character is in the set
-  bool Test(unsigned char c) const { return bits_[Word(c)] & BitMask(c); }
+  bool Test(unsigned char c) const {
+    return bits_[Word(c)] & BitMask(c);
+  }
 
  private:
   // The numbers below are optimized for 64-bit hardware. TODO(user): In the
@@ -56,7 +62,9 @@ class CharSet {
 
   // 4 words => the high 2 bits of c are the word number. In general,
   // kShiftValue = 8 - log2(kNumWords)
-  static int Word(unsigned char c) { return c >> 6; }
+  static int Word(unsigned char c) {
+    return c >> 6;
+  }
 
   // And the value we AND with c is ((1 << shift value) - 1)
   // static const int kLowBitsMask = (256 / kNumWords) - 1;
@@ -66,6 +74,6 @@ class CharSet {
   }
 };
 
-}  // namespace strings
+} // namespace strings
 
-#endif  // STRINGS_CHARSET_H_
+#endif // STRINGS_CHARSET_H_

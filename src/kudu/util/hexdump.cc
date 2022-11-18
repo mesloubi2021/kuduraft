@@ -30,7 +30,7 @@
 
 namespace kudu {
 
-std::string HexDump(const Slice &slice) {
+std::string HexDump(const Slice& slice) {
   if (KUDU_SHOULD_REDACT()) {
     return kRedactionMessage;
   }
@@ -38,25 +38,23 @@ std::string HexDump(const Slice &slice) {
   std::string output;
   output.reserve(slice.size() * 5);
 
-  const uint8_t *p = slice.data();
+  const uint8_t* p = slice.data();
 
   int rem = slice.size();
   while (rem > 0) {
-    const uint8_t *line_p = p;
+    const uint8_t* line_p = p;
     int line_len = std::min(rem, 16);
     int line_rem = line_len;
     StringAppendF(&output, "%06lx: ", line_p - slice.data());
 
     while (line_rem >= 2) {
-      StringAppendF(&output, "%02x%02x ",
-                    p[0] & 0xff, p[1] & 0xff);
+      StringAppendF(&output, "%02x%02x ", p[0] & 0xff, p[1] & 0xff);
       p += 2;
       line_rem -= 2;
     }
 
     if (line_rem == 1) {
-      StringAppendF(&output, "%02x   ",
-                    p[0] & 0xff);
+      StringAppendF(&output, "%02x   ", p[0] & 0xff);
       p += 1;
       line_rem -= 1;
     }

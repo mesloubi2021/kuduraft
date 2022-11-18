@@ -29,7 +29,8 @@ namespace cluster {
 class MiniCluster;
 } // namespace cluster
 
-// Utility class for integration tests to verify that the cluster is in a good state.
+// Utility class for integration tests to verify that the cluster is in a good
+// state.
 class ClusterVerifier {
  public:
   explicit ClusterVerifier(cluster::MiniCluster* cluster);
@@ -45,36 +46,35 @@ class ClusterVerifier {
   // Set the number of concurrent scans to execute per tablet server.
   void SetScanConcurrency(int concurrency);
 
-  // Verify that the cluster is in good state. Triggers a gtest assertion failure
-  // on failure.
+  // Verify that the cluster is in good state. Triggers a gtest assertion
+  // failure on failure.
   //
-  // Currently, this just uses ksck to verify that the different replicas of each tablet
-  // eventually agree.
+  // Currently, this just uses ksck to verify that the different replicas of
+  // each tablet eventually agree.
   void CheckCluster();
 
   // Argument for CheckRowCount(...) below.
-  enum ComparisonMode {
-    AT_LEAST,
-    EXACTLY
-  };
+  enum ComparisonMode { AT_LEAST, EXACTLY };
 
-  // Check that the given table has the given number of rows. Depending on ComparisonMode,
-  // the comparison could be exact or a lower bound.
+  // Check that the given table has the given number of rows. Depending on
+  // ComparisonMode, the comparison could be exact or a lower bound.
   //
   // Returns a Corruption Status if the row count is not as expected.
   //
-  // NOTE: this does not perform any retries. If it's possible that the replicas are
-  // still converging, it's best to use CheckCluster() first, which will wait for
-  // convergence.
-  void CheckRowCount(const std::string& table_name,
-                     ComparisonMode mode,
-                     int expected_row_count);
+  // NOTE: this does not perform any retries. If it's possible that the replicas
+  // are still converging, it's best to use CheckCluster() first, which will
+  // wait for convergence.
+  void CheckRowCount(
+      const std::string& table_name,
+      ComparisonMode mode,
+      int expected_row_count);
 
   // The same as above, but retries until a timeout elapses.
-  void CheckRowCountWithRetries(const std::string& table_name,
-                                ComparisonMode mode,
-                                int expected_row_count,
-                                const MonoDelta& timeout);
+  void CheckRowCountWithRetries(
+      const std::string& table_name,
+      ComparisonMode mode,
+      int expected_row_count,
+      const MonoDelta& timeout);
 
   // Run the ksck utility against the cluster.
   Status RunKsck();
@@ -82,10 +82,10 @@ class ClusterVerifier {
  private:
   // Implementation for CheckRowCount -- returns a Status instead of firing
   // gtest assertions.
-  Status DoCheckRowCount(const std::string& table_name,
-                         ComparisonMode mode,
-                         int expected_row_count);
-
+  Status DoCheckRowCount(
+      const std::string& table_name,
+      ComparisonMode mode,
+      int expected_row_count);
 
   tools::KsckChecksumOptions checksum_options_;
 

@@ -38,7 +38,7 @@
 #include "kudu/util/pb_util.h"
 #include "kudu/util/slice.h"
 #include "kudu/util/status.h"
-#include "kudu/util/stopwatch.h"  // IWYU pragma: keep
+#include "kudu/util/stopwatch.h" // IWYU pragma: keep
 #include "kudu/util/test_macros.h"
 #include "kudu/util/test_util.h"
 
@@ -50,12 +50,12 @@ namespace kudu {
 class WireProtocolTest : public KuduTest {
  public:
   WireProtocolTest()
-      : schema_({ ColumnSchema("col1", STRING),
-              ColumnSchema("col2", STRING),
-              ColumnSchema("col3", UINT32, true /* nullable */) },
-        1),
-        test_data_arena_(4096) {
-  }
+      : schema_(
+            {ColumnSchema("col1", STRING),
+             ColumnSchema("col2", STRING),
+             ColumnSchema("col3", UINT32, true /* nullable */)},
+            1),
+        test_data_arena_(4096) {}
 
   void FillRowBlockWithTestRows(RowBlock* block) {
     test_data_arena_.Reset();
@@ -77,6 +77,7 @@ class WireProtocolTest : public KuduTest {
       row.cell(2).set_null(false);
     }
   }
+
  protected:
   Schema schema_;
   Arena test_data_arena_;
@@ -230,13 +231,13 @@ TEST_F(WireProtocolTest, TestColumnarRowBlockToPB) {
   // as the one we put in.
   vector<const uint8_t*> row_ptrs;
   Slice direct_sidecar = direct;
-  ASSERT_OK(ExtractRowsFromRowBlockPB(schema_, pb, indirect,
-                                             &direct_sidecar, &row_ptrs));
+  ASSERT_OK(ExtractRowsFromRowBlockPB(
+      schema_, pb, indirect, &direct_sidecar, &row_ptrs));
   ASSERT_EQ(block.nrows(), row_ptrs.size());
   for (int i = 0; i < block.nrows(); ++i) {
     ConstContiguousRow row_roundtripped(&schema_, row_ptrs[i]);
-    EXPECT_EQ(schema_.DebugRow(block.row(i)),
-              schema_.DebugRow(row_roundtripped));
+    EXPECT_EQ(
+        schema_.DebugRow(block.row(i)), schema_.DebugRow(row_roundtripped));
   }
 }
 
@@ -247,11 +248,13 @@ TEST_F(WireProtocolTest, TestColumnarRowBlockToPBWithPadding) {
   Arena arena(1024);
   // Create a schema with multiple UNIXTIME_MICROS columns in different
   // positions.
-  Schema tablet_schema({ ColumnSchema("key", UNIXTIME_MICROS),
-                         ColumnSchema("col1", STRING),
-                         ColumnSchema("col2", UNIXTIME_MICROS),
-                         ColumnSchema("col3", INT32, true /* nullable */),
-                         ColumnSchema("col4", UNIXTIME_MICROS, true /* nullable */)}, 1);
+  Schema tablet_schema(
+      {ColumnSchema("key", UNIXTIME_MICROS),
+       ColumnSchema("col1", STRING),
+       ColumnSchema("col2", UNIXTIME_MICROS),
+       ColumnSchema("col3", INT32, true /* nullable */),
+       ColumnSchema("col4", UNIXTIME_MICROS, true /* nullable */)},
+      1);
   RowBlock block(tablet_schema, kNumRows, &arena);
   block.selection_vector()->SetAllTrue();
 
@@ -271,17 +274,21 @@ TEST_F(WireProtocolTest, TestColumnarRowBlockToPBWithPadding) {
     row.cell(4).set_null(true);
   }
 
-  // Have the projection schema have columns in a different order from the table schema.
-  Schema proj_schema({ ColumnSchema("col1", STRING),
-                       ColumnSchema("key",  UNIXTIME_MICROS),
-                       ColumnSchema("col2", UNIXTIME_MICROS),
-                       ColumnSchema("col4", UNIXTIME_MICROS, true /* nullable */),
-                       ColumnSchema("col3", INT32, true /* nullable */)}, 0);
+  // Have the projection schema have columns in a different order from the table
+  // schema.
+  Schema proj_schema(
+      {ColumnSchema("col1", STRING),
+       ColumnSchema("key", UNIXTIME_MICROS),
+       ColumnSchema("col2", UNIXTIME_MICROS),
+       ColumnSchema("col4", UNIXTIME_MICROS, true /* nullable */),
+       ColumnSchema("col3", INT32, true /* nullable */)},
+      0);
 
   // Convert to PB.
   RowwiseRowBlockPB pb;
   faststring direct, indirect;
-  SerializeRowBlock(block, &pb, &proj_schema, &direct, &indirect, true /* pad timestamps */);
+  SerializeRowBlock(
+      block, &pb, &proj_schema, &direct, &indirect, true /* pad timestamps */);
   SCOPED_TRACE(pb_util::SecureDebugString(pb));
   SCOPED_TRACE("Row data: " + HexDump(direct));
   SCOPED_TRACE("Indirect data: " + HexDump(indirect));
@@ -292,10 +299,11 @@ TEST_F(WireProtocolTest, TestColumnarRowBlockToPBWithPadding) {
   vector<const uint8_t*> row_ptrs;
   Slice direct_sidecar = direct;
   Slice indirect_sidecar = indirect;
-  ASSERT_OK(RewriteRowBlockPointers(proj_schema, pb, indirect_sidecar, &direct_sidecar, true));
+  ASSERT_OK(RewriteRowBlockPointers(
+      proj_schema, pb, indirect_sidecar, &direct_sidecar, true));
 
-  // Row stride is the normal size for the schema + the number of UNIXTIME_MICROS columns * 8,
-  // the size of the padding per column.
+  // Row stride is the normal size for the schema + the number of
+  // UNIXTIME_MICROS columns * 8, the size of the padding per column.
   size_t row_stride = ContiguousRowHelper::row_size(proj_schema) + 3 * 8;
   ASSERT_EQ(direct_sidecar.size(), row_stride * kNumRows);
   const uint8_t* base_data;
@@ -307,9 +315,8 @@ TEST_F(WireProtocolTest, TestColumnarRowBlockToPBWithPadding) {
 
     // 'col1' comes at 0 bytes offset in the projection schema.
     const Slice* col1 = reinterpret_cast<const Slice*>(base_data);
-    ASSERT_EQ(col1->compare(Slice("hello world col1")), 0) << "Unexpected val for the "
-                                                           << i << "th row:"
-                                                           << col1->ToDebugString();
+    ASSERT_EQ(col1->compare(Slice("hello world col1")), 0)
+        << "Unexpected val for the " << i << "th row:" << col1->ToDebugString();
     // 'key' comes at 16 bytes offset.
     const int64_t key = *reinterpret_cast<const int64_t*>(base_data + 16);
     EXPECT_EQ(key, i);
@@ -318,14 +325,15 @@ TEST_F(WireProtocolTest, TestColumnarRowBlockToPBWithPadding) {
     const int64_t col2 = *reinterpret_cast<const int64_t*>(base_data + 32);
     EXPECT_EQ(col2, i);
 
-    // 'col4' is supposed to be null, but should also read 0 since we memsetted the
-    // memory to 0. It should come at 48 bytes offset:  32 bytes previous + 8 bytes 'col2' +
-    // 8 bytes padding.
+    // 'col4' is supposed to be null, but should also read 0 since we memsetted
+    // the memory to 0. It should come at 48 bytes offset:  32 bytes previous +
+    // 8 bytes 'col2' + 8 bytes padding.
     const int64_t col4 = *reinterpret_cast<const int64_t*>(base_data + 48);
     EXPECT_EQ(col4, 0);
     EXPECT_TRUE(BitmapTest(null_bitmap, 3));
 
-    // 'col3' comes at 64 bytes offset: 48 bytes previous, 8 bytes 'col4', 8 bytes padding
+    // 'col3' comes at 64 bytes offset: 48 bytes previous, 8 bytes 'col4', 8
+    // bytes padding
     const int32_t col3 = *reinterpret_cast<const int32_t*>(base_data + 64);
     EXPECT_EQ(col3, i);
     EXPECT_FALSE(BitmapTest(null_bitmap, 4));
@@ -354,7 +362,7 @@ TEST_F(WireProtocolTest, TestColumnarRowBlockToPBBenchmark) {
 // Test that trying to extract rows from an invalid block correctly returns
 // Corruption statuses.
 TEST_F(WireProtocolTest, TestInvalidRowBlock) {
-  Schema schema({ ColumnSchema("col1", STRING) }, 1);
+  Schema schema({ColumnSchema("col1", STRING)}, 1);
   RowwiseRowBlockPB pb;
   vector<const uint8_t*> row_ptrs;
 
@@ -363,15 +371,16 @@ TEST_F(WireProtocolTest, TestInvalidRowBlock) {
   pb.set_num_rows(1);
   Slice direct = shortstr;
   Status s = ExtractRowsFromRowBlockPB(schema, pb, Slice(), &direct, &row_ptrs);
-  ASSERT_STR_CONTAINS(s.ToString(), "Corruption: Row block has 1 bytes of data");
+  ASSERT_STR_CONTAINS(
+      s.ToString(), "Corruption: Row block has 1 bytes of data");
 
   // Bad pointer into indirect data.
   shortstr = "xxxxxxxxxxxxxxxx";
   pb.set_num_rows(1);
   direct = Slice(shortstr);
   s = ExtractRowsFromRowBlockPB(schema, pb, Slice(), &direct, &row_ptrs);
-  ASSERT_STR_CONTAINS(s.ToString(),
-                      "Corruption: Row #0 contained bad indirect slice");
+  ASSERT_STR_CONTAINS(
+      s.ToString(), "Corruption: Row #0 contained bad indirect slice");
 }
 
 // Test serializing a block which has a selection vector but no columns.
@@ -414,37 +423,52 @@ TEST_F(WireProtocolTest, TestColumnDefaultValue) {
   ColumnSchema col2fpb = ColumnSchemaFromPB(pb);
   ASSERT_TRUE(col2fpb.has_read_default());
   ASSERT_FALSE(col2fpb.has_write_default());
-  ASSERT_EQ(read_default_str, *static_cast<const Slice *>(col2fpb.read_default_value()));
-  ASSERT_EQ(nullptr, static_cast<const Slice *>(col2fpb.write_default_value()));
+  ASSERT_EQ(
+      read_default_str,
+      *static_cast<const Slice*>(col2fpb.read_default_value()));
+  ASSERT_EQ(nullptr, static_cast<const Slice*>(col2fpb.write_default_value()));
 
-  ColumnSchema col3("col3", STRING, false, &read_default_str, &write_default_str);
+  ColumnSchema col3(
+      "col3", STRING, false, &read_default_str, &write_default_str);
   ColumnSchemaToPB(col3, &pb);
   ColumnSchema col3fpb = ColumnSchemaFromPB(pb);
   ASSERT_TRUE(col3fpb.has_read_default());
   ASSERT_TRUE(col3fpb.has_write_default());
-  ASSERT_EQ(read_default_str, *static_cast<const Slice *>(col3fpb.read_default_value()));
-  ASSERT_EQ(write_default_str, *static_cast<const Slice *>(col3fpb.write_default_value()));
+  ASSERT_EQ(
+      read_default_str,
+      *static_cast<const Slice*>(col3fpb.read_default_value()));
+  ASSERT_EQ(
+      write_default_str,
+      *static_cast<const Slice*>(col3fpb.write_default_value()));
 
   ColumnSchema col4("col4", UINT32, false, &read_default_u32);
   ColumnSchemaToPB(col4, &pb);
   ColumnSchema col4fpb = ColumnSchemaFromPB(pb);
   ASSERT_TRUE(col4fpb.has_read_default());
   ASSERT_FALSE(col4fpb.has_write_default());
-  ASSERT_EQ(read_default_u32, *static_cast<const uint32_t *>(col4fpb.read_default_value()));
-  ASSERT_EQ(nullptr, static_cast<const uint32_t *>(col4fpb.write_default_value()));
+  ASSERT_EQ(
+      read_default_u32,
+      *static_cast<const uint32_t*>(col4fpb.read_default_value()));
+  ASSERT_EQ(
+      nullptr, static_cast<const uint32_t*>(col4fpb.write_default_value()));
 
-  ColumnSchema col5("col5", UINT32, false, &read_default_u32, &write_default_u32);
+  ColumnSchema col5(
+      "col5", UINT32, false, &read_default_u32, &write_default_u32);
   ColumnSchemaToPB(col5, &pb);
   ColumnSchema col5fpb = ColumnSchemaFromPB(pb);
   ASSERT_TRUE(col5fpb.has_read_default());
   ASSERT_TRUE(col5fpb.has_write_default());
-  ASSERT_EQ(read_default_u32, *static_cast<const uint32_t *>(col5fpb.read_default_value()));
-  ASSERT_EQ(write_default_u32, *static_cast<const uint32_t *>(col5fpb.write_default_value()));
+  ASSERT_EQ(
+      read_default_u32,
+      *static_cast<const uint32_t*>(col5fpb.read_default_value()));
+  ASSERT_EQ(
+      write_default_u32,
+      *static_cast<const uint32_t*>(col5fpb.write_default_value()));
 }
 
 TEST_F(WireProtocolTest, TestColumnPredicateInList) {
   ColumnSchema col1("col1", INT32);
-  vector<ColumnSchema> cols = { col1 };
+  vector<ColumnSchema> cols = {col1};
   Schema schema(cols, 1);
   Arena arena(1024);
   boost::optional<ColumnPredicate> predicate;
@@ -453,7 +477,7 @@ TEST_F(WireProtocolTest, TestColumnPredicateInList) {
     int five = 5;
     int six = 6;
     int ten = 10;
-    vector<const void*> values { &five, &six, &ten };
+    vector<const void*> values{&five, &six, &ten};
 
     kudu::ColumnPredicate cp = kudu::ColumnPredicate::InList(col1, &values);
     ColumnPredicatePB pb;
@@ -496,7 +520,8 @@ TEST_F(WireProtocolTest, TestColumnPredicateInList) {
 
     Arena arena(1024);
     boost::optional<ColumnPredicate> predicate;
-    ASSERT_TRUE(ColumnPredicateFromPB(schema, &arena, pb, &predicate).IsInvalidArgument());
+    ASSERT_TRUE(ColumnPredicateFromPB(schema, &arena, pb, &predicate)
+                    .IsInvalidArgument());
   }
 }
 } // namespace kudu

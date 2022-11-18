@@ -39,8 +39,11 @@ extern void DumpSSETable();
 // Encodes the given four ints as group-varint, then
 // decodes and ensures the result is the same.
 static void DoTestRoundTripGVI32(
-  uint32_t a, uint32_t b, uint32_t c, uint32_t d,
-  bool use_sse = false) {
+    uint32_t a,
+    uint32_t b,
+    uint32_t c,
+    uint32_t d,
+    bool use_sse = false) {
   faststring buf;
   AppendGroupVarInt32(&buf, a, b, c, d);
 
@@ -54,14 +57,13 @@ static void DoTestRoundTripGVI32(
 
   uint32_t ret[4];
 
-  const uint8_t *end;
+  const uint8_t* end;
 
   if (use_sse) {
-    end = DecodeGroupVarInt32_SSE(
-      buf.data(), &ret[0], &ret[1], &ret[2], &ret[3]);
+    end =
+        DecodeGroupVarInt32_SSE(buf.data(), &ret[0], &ret[1], &ret[2], &ret[3]);
   } else {
-    end = DecodeGroupVarInt32(
-      buf.data(), &ret[0], &ret[1], &ret[2], &ret[3]);
+    end = DecodeGroupVarInt32(buf.data(), &ret[0], &ret[1], &ret[2], &ret[3]);
   }
 
   ASSERT_EQ(a, ret[0]);
@@ -70,7 +72,6 @@ static void DoTestRoundTripGVI32(
   ASSERT_EQ(d, ret[3]);
   ASSERT_EQ(end, buf.data() + real_size);
 }
-
 
 TEST(TestGroupVarInt, TestSSETable) {
   DumpSSETable();
@@ -98,12 +99,11 @@ TEST(TestGroupVarInt, TestGroupVarInt) {
   AppendGroupVarInt32(&buf, 256, 2, 3, 65535);
   ASSERT_EQ(7UL, buf.size());
   ASSERT_EQ(BOOST_BINARY(01 00 00 01), buf.at(0));
-  ASSERT_EQ(256, *reinterpret_cast<const uint16_t *>(&buf[1]));
-  ASSERT_EQ(2, *reinterpret_cast<const uint8_t *>(&buf[3]));
-  ASSERT_EQ(3, *reinterpret_cast<const uint8_t *>(&buf[4]));
-  ASSERT_EQ(65535, *reinterpret_cast<const uint16_t *>(&buf[5]));
+  ASSERT_EQ(256, *reinterpret_cast<const uint16_t*>(&buf[1]));
+  ASSERT_EQ(2, *reinterpret_cast<const uint8_t*>(&buf[3]));
+  ASSERT_EQ(3, *reinterpret_cast<const uint8_t*>(&buf[4]));
+  ASSERT_EQ(65535, *reinterpret_cast<const uint16_t*>(&buf[5]));
 }
-
 
 // Round-trip encode/decodes using group varint
 TEST(TestGroupVarInt, TestRoundTrip) {

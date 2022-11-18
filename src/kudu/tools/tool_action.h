@@ -104,20 +104,27 @@ class ModeBuilder {
 // more modes.
 class Mode {
  public:
-
   // Returns the help for this mode given its parent mode chain.
   std::string BuildHelp(const std::vector<Mode*>& chain) const;
 
   // Returns the help xml for this mode and all child modes
   std::string BuildHelpXML(const std::vector<Mode*>& chain) const;
 
-  const std::string& name() const { return name_; }
+  const std::string& name() const {
+    return name_;
+  }
 
-  const std::string& description() const { return description_; }
+  const std::string& description() const {
+    return description_;
+  }
 
-  const std::vector<std::unique_ptr<Mode>>& modes() const { return submodes_; }
+  const std::vector<std::unique_ptr<Mode>>& modes() const {
+    return submodes_;
+  }
 
-  const std::vector<std::unique_ptr<Action>>& actions() const { return actions_; }
+  const std::vector<std::unique_ptr<Action>>& actions() const {
+    return actions_;
+  }
 
  private:
   friend class ModeBuilder;
@@ -210,8 +217,7 @@ class ActionBuilder {
   // of the action. The order in which required parameters are added to the
   // builder reflects the order they are expected to be parsed from the command
   // line.
-  ActionBuilder& AddRequiredParameter(
-      const ActionArgsDescriptor::Arg& arg);
+  ActionBuilder& AddRequiredParameter(const ActionArgsDescriptor::Arg& arg);
 
   // Add a new required variable-length parameter to this builder.
   //
@@ -233,9 +239,10 @@ class ActionBuilder {
   // The default value and description of the flag can be optionally overriden,
   // for cases where the values are action-dependent. Otherwise, the default
   // value and description from the gflag declaration will be used.
-  ActionBuilder& AddOptionalParameter(std::string param,
-                                      boost::optional<std::string> default_value = boost::none,
-                                      boost::optional<std::string> description = boost::none);
+  ActionBuilder& AddOptionalParameter(
+      std::string param,
+      boost::optional<std::string> default_value = boost::none,
+      boost::optional<std::string> description = boost::none);
 
   // Creates an action using builder state.
   std::unique_ptr<Action> Build();
@@ -264,27 +271,35 @@ class Action {
   };
 
   // Returns the help for this action given its parent mode chain.
-  std::string BuildHelp(const std::vector<Mode*>& chain,
-                        HelpMode mode = FULL_HELP) const;
+  std::string BuildHelp(
+      const std::vector<Mode*>& chain,
+      HelpMode mode = FULL_HELP) const;
 
   // Returns the help xml for this action
   std::string BuildHelpXML(const std::vector<Mode*>& chain) const;
 
   // Runs the operation represented by this action, given a parent mode chain
   // and marshaled command line arguments.
-  Status Run(const std::vector<Mode*>& chain,
-             const std::unordered_map<std::string, std::string>& required_args,
-             const std::vector<std::string>& variadic_args) const;
+  Status Run(
+      const std::vector<Mode*>& chain,
+      const std::unordered_map<std::string, std::string>& required_args,
+      const std::vector<std::string>& variadic_args) const;
 
-  const std::string& name() const { return name_; }
+  const std::string& name() const {
+    return name_;
+  }
 
-  const std::string& description() const { return description_; }
+  const std::string& description() const {
+    return description_;
+  }
 
   const boost::optional<std::string>& extra_description() const {
     return extra_description_;
   }
 
-  const ActionArgsDescriptor& args() const { return args_; }
+  const ActionArgsDescriptor& args() const {
+    return args_;
+  }
 
  private:
   friend class ActionBuilder;

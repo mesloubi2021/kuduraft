@@ -40,14 +40,16 @@ class PeriodicOpenFdChecker {
   // upper_bound:  the maximum number of file descriptors that should be open
   //               at any point in time
   PeriodicOpenFdChecker(Env* env, std::string path_pattern, int upper_bound)
-    : env_(env),
-      path_pattern_(std::move(path_pattern)),
-      initial_fd_count_(CountOpenFds(env, path_pattern_)),
-      max_fd_count_(upper_bound + initial_fd_count_),
-      running_(1),
-      started_(false) {}
+      : env_(env),
+        path_pattern_(std::move(path_pattern)),
+        initial_fd_count_(CountOpenFds(env, path_pattern_)),
+        max_fd_count_(upper_bound + initial_fd_count_),
+        running_(1),
+        started_(false) {}
 
-  ~PeriodicOpenFdChecker() { Stop(); }
+  ~PeriodicOpenFdChecker() {
+    Stop();
+  }
 
   void Start() {
     DCHECK(!started_);
@@ -69,12 +71,13 @@ class PeriodicOpenFdChecker {
     LOG(INFO) << strings::Substitute(
         "Periodic open fd checker starting for path pattern $0"
         "(initial: $1 max: $2)",
-        path_pattern_, initial_fd_count_, max_fd_count_);
+        path_pattern_,
+        initial_fd_count_,
+        max_fd_count_);
     do {
       int open_fd_count = CountOpenFds(env_, path_pattern_);
-      KLOG_EVERY_N_SECS(INFO, 1) << strings::Substitute("Open fd count: $0/$1",
-                                                        open_fd_count,
-                                                        max_fd_count_);
+      KLOG_EVERY_N_SECS(INFO, 1) << strings::Substitute(
+          "Open fd count: $0/$1", open_fd_count, max_fd_count_);
       CHECK_LE(open_fd_count, max_fd_count_);
     } while (!running_.WaitFor(MonoDelta::FromMilliseconds(100)));
   }

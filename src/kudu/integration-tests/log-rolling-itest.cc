@@ -44,10 +44,10 @@ using cluster::ExternalMiniClusterOptions;
 class LogRollingITest : public KuduTest {};
 
 static int64_t CountInfoLogs(const string& log_dir) {
-    vector<string> logfiles;
-    string pattern = Substitute("$0/*.$1.*", log_dir, "INFO");
-    CHECK_OK(Env::Default()->Glob(pattern, &logfiles));
-    return logfiles.size();
+  vector<string> logfiles;
+  string pattern = Substitute("$0/*.$1.*", log_dir, "INFO");
+  CHECK_OK(Env::Default()->Glob(pattern, &logfiles));
+  return logfiles.size();
 }
 
 // Tests that logs roll on startup, and get cleaned up appropriately.
@@ -55,7 +55,9 @@ TEST_F(LogRollingITest, TestLogCleanupOnStartup) {
   ExternalMiniClusterOptions opts;
   opts.num_masters = 1;
   opts.num_tablet_servers = 0;
-  opts.extra_master_flags = { "--max_log_files=3", };
+  opts.extra_master_flags = {
+      "--max_log_files=3",
+  };
   opts.logtostderr = false;
   ExternalMiniCluster cluster(std::move(opts));
   ASSERT_OK(cluster.Start());
@@ -69,8 +71,8 @@ TEST_F(LogRollingITest, TestLogCleanupOnStartup) {
   ASSERT_OK(cluster.master()->WaitForCatalogManager());
 
   for (int i = 1; i <= 10; i++) {
-    ASSERT_EVENTUALLY([&] () {
-        ASSERT_EQ(std::min(3, i), CountInfoLogs(cluster.master()->log_dir()));
+    ASSERT_EVENTUALLY([&]() {
+      ASSERT_EQ(std::min(3, i), CountInfoLogs(cluster.master()->log_dir()));
     });
     cluster.master()->Shutdown();
     ASSERT_OK(cluster.master()->Restart());

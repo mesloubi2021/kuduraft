@@ -27,40 +27,40 @@
 #include <cstdint>
 #include <cstring>
 
-#include "kudu/gutil/port.h"  // IWYU pragma: keep
+#include "kudu/gutil/port.h" // IWYU pragma: keep
 // IWYU pragma: no_include <endian.h>
 
 namespace kudu {
 
-inline uint8_t *InlineEncodeVarint32(uint8_t *dst, uint32_t v) {
+inline uint8_t* InlineEncodeVarint32(uint8_t* dst, uint32_t v) {
   // Operate on characters as unsigneds
-  uint8_t *ptr = dst;
+  uint8_t* ptr = dst;
   static const int B = 128;
-  if (v < (1<<7)) {
+  if (v < (1 << 7)) {
     *(ptr++) = v;
-  } else if (v < (1<<14)) {
+  } else if (v < (1 << 14)) {
     *(ptr++) = v | B;
-    *(ptr++) = v>>7;
-  } else if (v < (1<<21)) {
+    *(ptr++) = v >> 7;
+  } else if (v < (1 << 21)) {
     *(ptr++) = v | B;
-    *(ptr++) = (v>>7) | B;
-    *(ptr++) = v>>14;
-  } else if (v < (1<<28)) {
+    *(ptr++) = (v >> 7) | B;
+    *(ptr++) = v >> 14;
+  } else if (v < (1 << 28)) {
     *(ptr++) = v | B;
-    *(ptr++) = (v>>7) | B;
-    *(ptr++) = (v>>14) | B;
-    *(ptr++) = v>>21;
+    *(ptr++) = (v >> 7) | B;
+    *(ptr++) = (v >> 14) | B;
+    *(ptr++) = v >> 21;
   } else {
     *(ptr++) = v | B;
-    *(ptr++) = (v>>7) | B;
-    *(ptr++) = (v>>14) | B;
-    *(ptr++) = (v>>21) | B;
-    *(ptr++) = v>>28;
+    *(ptr++) = (v >> 7) | B;
+    *(ptr++) = (v >> 14) | B;
+    *(ptr++) = (v >> 21) | B;
+    *(ptr++) = v >> 28;
   }
   return ptr;
 }
 
-inline void InlineEncodeFixed32(uint8_t *buf, uint32_t value) {
+inline void InlineEncodeFixed32(uint8_t* buf, uint32_t value) {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
   memcpy(buf, &value, sizeof(value));
 #else
@@ -71,7 +71,7 @@ inline void InlineEncodeFixed32(uint8_t *buf, uint32_t value) {
 #endif
 }
 
-inline void InlineEncodeFixed64(uint8_t *buf, uint64_t value) {
+inline void InlineEncodeFixed64(uint8_t* buf, uint64_t value) {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
   memcpy(buf, &value, sizeof(value));
 #else
@@ -86,17 +86,16 @@ inline void InlineEncodeFixed64(uint8_t *buf, uint64_t value) {
 #endif
 }
 
-
 // Standard Put... routines append to a string
 template <class StrType>
-inline void InlinePutFixed32(StrType *dst, uint32_t value) {
+inline void InlinePutFixed32(StrType* dst, uint32_t value) {
   uint8_t buf[sizeof(value)];
   InlineEncodeFixed32(buf, value);
   dst->append(buf, sizeof(buf));
 }
 
 template <class StrType>
-inline void InlinePutFixed64(StrType *dst, uint64_t value) {
+inline void InlinePutFixed64(StrType* dst, uint64_t value) {
   uint8_t buf[sizeof(value)];
   InlineEncodeFixed64(buf, value);
   dst->append(buf, sizeof(buf));
@@ -110,7 +109,7 @@ inline void InlinePutVarint32(StrType* dst, uint32_t v) {
   int old_size = dst->size();
   dst->resize(old_size + 5);
   uint8_t* p = &(*dst)[old_size];
-  uint8_t *ptr = InlineEncodeVarint32(p, v);
+  uint8_t* ptr = InlineEncodeVarint32(p, v);
 
   dst->resize(old_size + ptr - p);
 }

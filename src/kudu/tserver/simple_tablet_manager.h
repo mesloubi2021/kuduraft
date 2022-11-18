@@ -73,9 +73,9 @@ struct TabletServerOptions;
 
 // Keeps track of the tablets hosted on the tablet server side.
 //
-// TODO(todd): will also be responsible for keeping the local metadata about which
-// tablets are hosted on this server persistent on disk, as well as re-opening all
-// the tablets at startup, etc.
+// TODO(todd): will also be responsible for keeping the local metadata about
+// which tablets are hosted on this server persistent on disk, as well as
+// re-opening all the tablets at startup, etc.
 class TSTabletManager : public consensus::ConsensusRoundHandler {
  public:
   // Construct the tablet manager.
@@ -85,11 +85,11 @@ class TSTabletManager : public consensus::ConsensusRoundHandler {
 
   virtual ~TSTabletManager();
 
-  Status Load(FsManager *fs_manager);
+  Status Load(FsManager* fs_manager);
 
-  // Load all tablet metadata blocks from disk, and open their respective tablets.
-  // Upon return of this method all existing tablets are registered, but
-  // the bootstrap is performed asynchronously.
+  // Load all tablet metadata blocks from disk, and open their respective
+  // tablets. Upon return of this method all existing tablets are registered,
+  // but the bootstrap is performed asynchronously.
   Status Init(bool is_first_run);
 
   // Start the raft ring.
@@ -113,7 +113,8 @@ class TSTabletManager : public consensus::ConsensusRoundHandler {
 
   // Used by consensus to notify the tablet replica that a consensus-only round
   // has finished, advancing MVCC safe time as appropriate.
-  virtual void FinishConsensusOnlyRound(consensus::ConsensusRound* round) override;
+  virtual void FinishConsensusOnlyRound(
+      consensus::ConsensusRound* round) override;
 
   virtual Status StartConsensusOnlyRound(
       const scoped_refptr<consensus::ConsensusRound>& round) override;
@@ -129,12 +130,13 @@ class TSTabletManager : public consensus::ConsensusRoundHandler {
   }
 
   // Marks the tablet as dirty so that it's included in the next heartbeat.
-  void MarkTabletDirty(const std::string& reason) {
-  }
+  void MarkTabletDirty(const std::string& reason) {}
 
  private:
   // Standard log prefix, given a tablet id.
-  static std::string LogPrefix(const std::string& tablet_id, FsManager *fs_manager);
+  static std::string LogPrefix(
+      const std::string& tablet_id,
+      FsManager* fs_manager);
   std::string LogPrefix(const std::string& tablet_id) const {
     return LogPrefix(tablet_id, fs_manager_);
   }
@@ -158,7 +160,7 @@ class TSTabletManager : public consensus::ConsensusRoundHandler {
   Status WaitUntilConsensusRunning(const MonoDelta& timeout);
 
   // Create either a standalone or distributed config
-  Status CreateNew(FsManager *fs_manager);
+  Status CreateNew(FsManager* fs_manager);
 
   // Helper function to create Raft consensus and log
   // Consensus is yet to be started at the end of this
@@ -173,22 +175,24 @@ class TSTabletManager : public consensus::ConsensusRoundHandler {
 
   // Use the master options to generate a new consensus configuration.
   // In addition, resolve all UUIDs of this consensus configuration.
-  Status CreateDistributedConfig(const TabletServerOptions& options,
-                                 consensus::RaftConfigPB* committed_config);
+  Status CreateDistributedConfig(
+      const TabletServerOptions& options,
+      consensus::RaftConfigPB* committed_config);
 
   Status CreateConfigFromTserverAddresses(
       const TabletServerOptions& options,
-      KC::RaftConfigPB *new_config);
+      KC::RaftConfigPB* new_config);
 
   void CreateConfigFromBootstrapPeers(
       const TabletServerOptions& options,
-      KC::RaftConfigPB *new_config);
+      KC::RaftConfigPB* new_config);
 
  private:
   FsManager* const fs_manager_;
 
   const scoped_refptr<consensus::ConsensusMetadataManager> cmeta_manager_;
-  const scoped_refptr<consensus::PersistentVarsManager> persistent_vars_manager_;
+  const scoped_refptr<consensus::PersistentVarsManager>
+      persistent_vars_manager_;
 
   // Kudu log, which was created by the passed in
   // factory entity
@@ -209,7 +213,8 @@ class TSTabletManager : public consensus::ConsensusRoundHandler {
 
   consensus::ConsensusBootstrapInfo bootstrap_info_;
 
-  // Function to mark this TabletReplica's tablet as dirty in the TSTabletManager.
+  // Function to mark this TabletReplica's tablet as dirty in the
+  // TSTabletManager.
   //
   // Must be called whenever cluster membership or leadership changes, or when
   // the tablet's schema changes.

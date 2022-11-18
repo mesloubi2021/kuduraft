@@ -33,14 +33,14 @@ namespace internal {
 
 // Cheap, single-arg "bound callback" (similar to kudu::Callback) for use
 // in KuduOnceDynamic.
-template<typename T>
+template <typename T>
 struct MemberFunc {
   KuduOnceDynamic* once;
   T* instance;
   Status (T::*member_func)();
 };
 
-template<typename T>
+template <typename T>
 void InitCb(void* arg) {
   MemberFunc<T>* mf = reinterpret_cast<MemberFunc<T>*>(arg);
   mf->once->status_ = (mf->instance->*mf->member_func)();
@@ -60,18 +60,16 @@ void InitCb(void* arg) {
 // - Access to initialization state is safe for concurrent use.
 class KuduOnceDynamic {
  public:
-  KuduOnceDynamic()
-    : init_succeeded_(false) {
-  }
+  KuduOnceDynamic() : init_succeeded_(false) {}
 
   // If the underlying GoogleOnceDynamic has yet to be invoked, invokes the
   // provided member function and stores its return value. Otherwise,
   // returns the stored Status.
   //
   // T: the type of the member passed in.
-  template<typename T>
+  template <typename T>
   Status Init(Status (T::*member_func)(), T* instance) {
-    internal::MemberFunc<T> mf = { this, instance, member_func };
+    internal::MemberFunc<T> mf = {this, instance, member_func};
 
     // Clang UBSAN doesn't like it when GoogleOnceDynamic handles the cast
     // of the argument:
@@ -87,11 +85,13 @@ class KuduOnceDynamic {
 
   // kMemOrderAcquire ensures that loads/stores that come after init_succeeded()
   // aren't reordered to come before it instead. kMemOrderRelease ensures
-  // the opposite (i.e. loads/stores before set_init_succeeded() aren't reordered
-  // to come after it).
+  // the opposite (i.e. loads/stores before set_init_succeeded() aren't
+  // reordered to come after it).
   //
   // Taken together, threads can safely synchronize on init_succeeded_.
-  bool init_succeeded() const { return init_succeeded_.Load(kMemOrderAcquire); }
+  bool init_succeeded() const {
+    return init_succeeded_.Load(kMemOrderAcquire);
+  }
 
   // Returns the memory usage of this object without the object itself. Should
   // be used when embedded inside another object.
@@ -102,10 +102,12 @@ class KuduOnceDynamic {
   size_t memory_footprint_including_this() const;
 
  private:
-  template<typename T>
+  template <typename T>
   friend void internal::InitCb(void* arg);
 
-  void set_init_succeeded() { init_succeeded_.Store(true, kMemOrderRelease); }
+  void set_init_succeeded() {
+    init_succeeded_.Store(true, kMemOrderRelease);
+  }
 
   AtomicBool init_succeeded_;
   GoogleOnceDynamic once_;
@@ -115,12 +117,11 @@ class KuduOnceDynamic {
 // Similar to the KuduOnceDynamic class, but accepts a lambda function.
 class KuduOnceLambda {
  public:
-  KuduOnceLambda()
-    : init_succeeded_(false) {}
+  KuduOnceLambda() : init_succeeded_(false) {}
 
   // If the underlying `once_flag` has yet to be invoked, invokes the provided
   // lambda and stores its return value. Otherwise, returns the stored Status.
-  template<typename Fn>
+  template <typename Fn>
   Status Init(Fn fn) {
     std::call_once(once_flag_, [this, fn] {
       status_ = fn();

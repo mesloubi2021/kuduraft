@@ -17,8 +17,8 @@
 
 #include "kudu/rpc/acceptor_pool.h"
 
-#include <string>
 #include <ostream>
+#include <string>
 #include <vector>
 
 #include <gflags/gflags.h>
@@ -42,30 +42,36 @@ namespace protobuf {
 class Message;
 
 }
-}
+} // namespace google
 
 using google::protobuf::Message;
 using std::string;
 
-METRIC_DEFINE_counter(server, rpc_connections_accepted,
-                      "RPC Connections Accepted",
-                      kudu::MetricUnit::kConnections,
-                      "Number of incoming TCP connections made to the RPC server");
+METRIC_DEFINE_counter(
+    server,
+    rpc_connections_accepted,
+    "RPC Connections Accepted",
+    kudu::MetricUnit::kConnections,
+    "Number of incoming TCP connections made to the RPC server");
 
-DEFINE_int32(rpc_acceptor_listen_backlog, 128,
-             "Socket backlog parameter used when listening for RPC connections. "
-             "This defines the maximum length to which the queue of pending "
-             "TCP connections inbound to the RPC server may grow. If a connection "
-             "request arrives when the queue is full, the client may receive "
-             "an error. Higher values may help the server ride over bursts of "
-             "new inbound connection requests.");
+DEFINE_int32(
+    rpc_acceptor_listen_backlog,
+    128,
+    "Socket backlog parameter used when listening for RPC connections. "
+    "This defines the maximum length to which the queue of pending "
+    "TCP connections inbound to the RPC server may grow. If a connection "
+    "request arrives when the queue is full, the client may receive "
+    "an error. Higher values may help the server ride over bursts of "
+    "new inbound connection requests.");
 TAG_FLAG(rpc_acceptor_listen_backlog, advanced);
 
 namespace kudu {
 namespace rpc {
 
-AcceptorPool::AcceptorPool(Messenger* messenger, Socket* socket,
-                           Sockaddr bind_address)
+AcceptorPool::AcceptorPool(
+    Messenger* messenger,
+    Socket* socket,
+    Sockaddr bind_address)
     : messenger_(messenger),
       socket_(socket->Release()),
       bind_address_(bind_address),
@@ -82,8 +88,12 @@ Status AcceptorPool::Start(int num_threads) {
 
   for (int i = 0; i < num_threads; i++) {
     scoped_refptr<kudu::Thread> new_thread;
-    Status s = kudu::Thread::Create("acceptor pool", "acceptor",
-        &AcceptorPool::RunThread, this, &new_thread);
+    Status s = kudu::Thread::Create(
+        "acceptor pool",
+        "acceptor",
+        &AcceptorPool::RunThread,
+        this,
+        &new_thread);
     if (!s.ok()) {
       Shutdown();
       return s;
@@ -103,9 +113,11 @@ void AcceptorPool::Shutdown() {
 #if defined(__linux__)
   // Closing the socket will break us out of accept() if we're in it, and
   // prevent future accepts.
-  WARN_NOT_OK(socket_.Shutdown(true, true),
-              strings::Substitute("Could not shut down acceptor socket on $0",
-                                  bind_address_.ToString()));
+  WARN_NOT_OK(
+      socket_.Shutdown(true, true),
+      strings::Substitute(
+          "Could not shut down acceptor socket on $0",
+          bind_address_.ToString()));
 #else
   // Calling shutdown on an accepting (non-connected) socket is illegal on most
   // platforms (but not Linux). Instead, the accepting threads are interrupted
@@ -154,8 +166,8 @@ void AcceptorPool::RunThread() {
       if (Release_Load(&closing_)) {
         break;
       }
-      KLOG_EVERY_N_SECS(WARNING, 1) << "AcceptorPool: accept failed: " << s.ToString()
-                                    << THROTTLE_MSG;
+      KLOG_EVERY_N_SECS(WARNING, 1)
+          << "AcceptorPool: accept failed: " << s.ToString() << THROTTLE_MSG;
       continue;
     }
     s = new_sock.SetNoDelay(true);
@@ -163,7 +175,8 @@ void AcceptorPool::RunThread() {
       s = new_sock.SetReceiveBuf(messenger_->get_receive_buffer());
     }
     if (!s.ok()) {
-      KLOG_EVERY_N_SECS(WARNING, 1) << "Acceptor with remote = " << remote.ToString()
+      KLOG_EVERY_N_SECS(WARNING, 1)
+          << "Acceptor with remote = " << remote.ToString()
           << " failed to set TCP_NODELAY on a newly accepted socket: "
           << s.ToString() << THROTTLE_MSG;
       continue;

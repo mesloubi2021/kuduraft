@@ -30,7 +30,7 @@ void faststring::GrowByAtLeast(size_t count) {
 
   size_t to_reserve = len_ + count;
   if (len_ + count < len_ * 3 / 2) {
-    to_reserve = len_ *  3 / 2;
+    to_reserve = len_ * 3 / 2;
   }
   GrowArray(to_reserve);
 }

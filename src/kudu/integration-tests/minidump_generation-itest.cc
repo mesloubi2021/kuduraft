@@ -46,7 +46,9 @@ class MinidumpGenerationITest : public ExternalMiniClusterITestBase {
   void WaitForMinidumps(int expected, const string& dir);
 };
 
-void MinidumpGenerationITest::WaitForMinidumps(int expected, const string& dir) {
+void MinidumpGenerationITest::WaitForMinidumps(
+    int expected,
+    const string& dir) {
   ASSERT_EVENTUALLY([&] {
     vector<string> matches;
     ASSERT_OK(env_->Glob(JoinPathSegments(dir, "*.dmp"), &matches));
@@ -60,7 +62,8 @@ TEST_F(MinidumpGenerationITest, TestCreateMinidumpOnCrash) {
 
   // Test kudu-tserver.
   ExternalTabletServer* ts = cluster_->tablet_server(0);
-  string dir = Substitute("$0/$1/$2", ts->log_dir(), "minidumps", "kudu-tserver");
+  string dir =
+      Substitute("$0/$1/$2", ts->log_dir(), "minidumps", "kudu-tserver");
   ASSERT_OK(ts->process()->Kill(SIGABRT));
   NO_FATALS(WaitForMinidumps(1, dir));
 
@@ -77,7 +80,8 @@ TEST_F(MinidumpGenerationITest, TestCreateMinidumpOnSIGUSR1) {
 
   // Enable minidumps and ensure SIGUSR1 generates them.
   ExternalTabletServer* ts = cluster_->tablet_server(0);
-  string dir = Substitute("$0/$1/$2", ts->log_dir(), "minidumps", "kudu-tserver");
+  string dir =
+      Substitute("$0/$1/$2", ts->log_dir(), "minidumps", "kudu-tserver");
   ASSERT_OK(ts->process()->Kill(SIGUSR1));
   NO_FATALS(WaitForMinidumps(1, dir));
   NO_FATALS(cluster_->AssertNoCrashes());

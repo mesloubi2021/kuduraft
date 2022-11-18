@@ -41,7 +41,10 @@
 #include "kudu/util/slice.h"
 #include "kudu/util/test_util.h"
 
-DEFINE_int32(num_threads, 16, "The number of threads to access the cache concurrently.");
+DEFINE_int32(
+    num_threads,
+    16,
+    "The number of threads to access the cache concurrently.");
 DEFINE_int32(run_seconds, 1, "The number of seconds to run the benchmark");
 
 using std::atomic;
@@ -78,21 +81,27 @@ struct BenchSetup {
   string ToString() const {
     string ret;
     switch (pattern) {
-      case Pattern::ZIPFIAN: ret += "ZIPFIAN"; break;
-      case Pattern::UNIFORM: ret += "UNIFORM"; break;
+      case Pattern::ZIPFIAN:
+        ret += "ZIPFIAN";
+        break;
+      case Pattern::UNIFORM:
+        ret += "UNIFORM";
+        break;
     }
-    ret += StringPrintf(" ratio=%.2fx n_unique=%d", dataset_cache_ratio, max_key());
+    ret += StringPrintf(
+        " ratio=%.2fx n_unique=%d", dataset_cache_ratio, max_key());
     return ret;
   }
 
   // Return the maximum cache key to be generated for a lookup.
   uint32_t max_key() const {
-    return static_cast<int64_t>(kCacheCapacity * dataset_cache_ratio) / kEntrySize;
+    return static_cast<int64_t>(kCacheCapacity * dataset_cache_ratio) /
+        kEntrySize;
   }
 };
 
 class CacheBench : public KuduTest,
-                   public testing::WithParamInterface<BenchSetup>{
+                   public testing::WithParamInterface<BenchSetup> {
  public:
   void SetUp() override {
     KuduTest::SetUp();
@@ -141,10 +150,10 @@ class CacheBench : public KuduTest,
     atomic<int64_t> total_hits(0);
     for (int i = 0; i < n_threads; i++) {
       threads[i] = thread([&]() {
-          pair<int64_t, int64_t> hits_lookups = DoQueries(&done);
-          total_hits += hits_lookups.first;
-          total_lookups += hits_lookups.second;
-        });
+        pair<int64_t, int64_t> hits_lookups = DoQueries(&done);
+        total_hits += hits_lookups.first;
+        total_lookups += hits_lookups.second;
+      });
     }
     SleepFor(MonoDelta::FromSeconds(n_seconds));
     done = true;
@@ -160,32 +169,37 @@ class CacheBench : public KuduTest,
 
 // Test both distributions, and for each, test both the case where the data
 // fits in the cache and where it is a bit larger.
-INSTANTIATE_TEST_CASE_P(Patterns, CacheBench, testing::ValuesIn(std::vector<BenchSetup>{
-      {BenchSetup::Pattern::ZIPFIAN, 1.0},
-      {BenchSetup::Pattern::ZIPFIAN, 3.0},
-      {BenchSetup::Pattern::UNIFORM, 1.0},
-      {BenchSetup::Pattern::UNIFORM, 3.0}
-    }));
+INSTANTIATE_TEST_CASE_P(
+    Patterns,
+    CacheBench,
+    testing::ValuesIn(std::vector<BenchSetup>{
+        {BenchSetup::Pattern::ZIPFIAN, 1.0},
+        {BenchSetup::Pattern::ZIPFIAN, 3.0},
+        {BenchSetup::Pattern::UNIFORM, 1.0},
+        {BenchSetup::Pattern::UNIFORM, 3.0}}));
 
 TEST_P(CacheBench, RunBench) {
   const BenchSetup& setup = GetParam();
 
-  // Run a short warmup phase to try to populate the cache. Otherwise even if the
-  // dataset is smaller than the cache capacity, we would count a bunch of misses
-  // during the warm-up phase.
+  // Run a short warmup phase to try to populate the cache. Otherwise even if
+  // the dataset is smaller than the cache capacity, we would count a bunch of
+  // misses during the warm-up phase.
   LOG(INFO) << "Warming up...";
   RunQueryThreads(FLAGS_num_threads, 1);
 
   LOG(INFO) << "Running benchmark...";
-  pair<int64_t, int64_t> hits_lookups = RunQueryThreads(FLAGS_num_threads, FLAGS_run_seconds);
+  pair<int64_t, int64_t> hits_lookups =
+      RunQueryThreads(FLAGS_num_threads, FLAGS_run_seconds);
   int64_t hits = hits_lookups.first;
   int64_t lookups = hits_lookups.second;
 
   int64_t l_per_sec = lookups / FLAGS_run_seconds;
   double hit_rate = static_cast<double>(hits) / lookups;
   string test_case = setup.ToString();
-  LOG(INFO) << test_case << ": " << HumanReadableNum::ToString(l_per_sec) << " lookups/sec";
-  LOG(INFO) << test_case << ": " << StringPrintf("%.1f", hit_rate * 100.0) << "% hit rate";
+  LOG(INFO) << test_case << ": " << HumanReadableNum::ToString(l_per_sec)
+            << " lookups/sec";
+  LOG(INFO) << test_case << ": " << StringPrintf("%.1f", hit_rate * 100.0)
+            << "% hit rate";
 }
 
 } // namespace kudu

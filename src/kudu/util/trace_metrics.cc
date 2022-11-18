@@ -47,7 +47,8 @@ static InternMap* g_intern_map;
 } // anonymous namespace
 
 const char* TraceMetrics::InternName(const string& name) {
-  DCHECK(std::all_of(name.begin(), name.end(), [] (char c) { return isprint(c); } ))
+  DCHECK(
+      std::all_of(name.begin(), name.end(), [](char c) { return isprint(c); }))
       << "not printable: " << name;
 
   debug::ScopedLeakCheckDisabler no_leakcheck;
@@ -65,8 +66,8 @@ const char* TraceMetrics::InternName(const string& name) {
   (*g_intern_map)[name] = dup;
 
   // We don't expect this map to grow large.
-  DCHECK_LT(g_intern_map->size(), 100) <<
-      "Too many interned strings: " << *g_intern_map;
+  DCHECK_LT(g_intern_map->size(), 100)
+      << "Too many interned strings: " << *g_intern_map;
 
   return dup;
 }

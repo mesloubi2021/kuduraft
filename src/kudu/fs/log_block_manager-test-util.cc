@@ -49,14 +49,15 @@ namespace fs {
 using pb_util::WritablePBContainerFile;
 using std::shared_ptr;
 using std::string;
-using std::vector;
 using std::unique_ptr;
 using std::unordered_map;
+using std::vector;
 
-LBMCorruptor::LBMCorruptor(Env* env, vector<string> data_dirs, uint32_t rand_seed)
-    : env_(env),
-      data_dirs_(std::move(data_dirs)),
-      rand_(rand_seed) {
+LBMCorruptor::LBMCorruptor(
+    Env* env,
+    vector<string> data_dirs,
+    uint32_t rand_seed)
+    : env_(env), data_dirs_(std::move(data_dirs)), rand_(rand_seed) {
   CHECK_GT(data_dirs_.size(), 0);
 }
 
@@ -73,13 +74,16 @@ Status LBMCorruptor::Init() {
       // and metadata files, so that only containers with both will be included.
       string stripped;
       if (TryStripSuffixString(
-          f, LogBlockManager::kContainerDataFileSuffix, &stripped)) {
+              f, LogBlockManager::kContainerDataFileSuffix, &stripped)) {
         containers_by_name[stripped].name = stripped;
         containers_by_name[stripped].data_filename = JoinPathSegments(dd, f);
       } else if (TryStripSuffixString(
-          f, LogBlockManager::kContainerMetadataFileSuffix, &stripped)) {
+                     f,
+                     LogBlockManager::kContainerMetadataFileSuffix,
+                     &stripped)) {
         containers_by_name[stripped].name = stripped;
-        containers_by_name[stripped].metadata_filename = JoinPathSegments(dd, f);
+        containers_by_name[stripped].metadata_filename =
+            JoinPathSegments(dd, f);
       }
     }
 
@@ -92,8 +96,8 @@ Status LBMCorruptor::Init() {
         // File size is an imprecise proxy for whether a container is full, but
         // it should be good enough.
         uint64_t data_file_size;
-        RETURN_NOT_OK(env_->GetFileSize(e.second.data_filename,
-                                        &data_file_size));
+        RETURN_NOT_OK(
+            env_->GetFileSize(e.second.data_filename, &data_file_size));
         if (data_file_size >= FLAGS_log_container_max_size) {
           full_containers.push_back(e.second);
         }
@@ -126,8 +130,8 @@ Status LBMCorruptor::PreallocateFullContainer() {
   opts.mode = Env::OPEN_EXISTING;
   RETURN_NOT_OK(env_->NewRWFile(opts, c->data_filename, &data_file));
   int64_t initial_size;
-  RETURN_NOT_OK(PreallocateForBlock(data_file.get(), mode,
-                                    kPreallocateBytes, &initial_size));
+  RETURN_NOT_OK(PreallocateForBlock(
+      data_file.get(), mode, kPreallocateBytes, &initial_size));
   if (mode == RWFile::DONT_CHANGE_FILE_SIZE) {
     // Some older versions of ext4 (such as on el6) will not truncate unwritten
     // preallocated space that extends beyond the file size. Let's help them
@@ -157,8 +161,11 @@ Status LBMCorruptor::AddUnpunchedBlockToFullContainer() {
   RETURN_NOT_OK(env_->NewRWFile(opts, c->data_filename, &data_file));
   int64_t block_length = (rand_.Uniform(16) + 1) * fs_block_size;
   int64_t initial_data_size;
-  RETURN_NOT_OK(PreallocateForBlock(data_file.get(), RWFile::CHANGE_FILE_SIZE,
-                                    block_length, &initial_data_size));
+  RETURN_NOT_OK(PreallocateForBlock(
+      data_file.get(),
+      RWFile::CHANGE_FILE_SIZE,
+      block_length,
+      &initial_data_size));
   RETURN_NOT_OK(data_file->Close());
 
   // Having written out the block, write both CREATE and DELETE metadata
@@ -166,8 +173,8 @@ Status LBMCorruptor::AddUnpunchedBlockToFullContainer() {
   unique_ptr<WritablePBContainerFile> metadata_writer;
   RETURN_NOT_OK(OpenMetadataWriter(*c, &metadata_writer));
   BlockId block_id(rand_.Next64());
-  RETURN_NOT_OK(AppendCreateRecord(metadata_writer.get(), block_id,
-                                   initial_data_size, block_length));
+  RETURN_NOT_OK(AppendCreateRecord(
+      metadata_writer.get(), block_id, initial_data_size, block_length));
   RETURN_NOT_OK(AppendDeleteRecord(metadata_writer.get(), block_id));
 
   LOG(INFO) << "Added unpunched block to full container " << c->name;
@@ -177,12 +184,12 @@ Status LBMCorruptor::AddUnpunchedBlockToFullContainer() {
 Status LBMCorruptor::CreateIncompleteContainer() {
   unique_ptr<RWFile> data_file;
   unique_ptr<RWFile> metadata_file;
-  string unsuffixed_path = JoinPathSegments(GetRandomDataDir(),
-                                            oid_generator_.Next());
-  string data_fname = StrCat(
-      unsuffixed_path, LogBlockManager::kContainerDataFileSuffix);
-  string metadata_fname = StrCat(
-      unsuffixed_path, LogBlockManager::kContainerMetadataFileSuffix);
+  string unsuffixed_path =
+      JoinPathSegments(GetRandomDataDir(), oid_generator_.Next());
+  string data_fname =
+      StrCat(unsuffixed_path, LogBlockManager::kContainerDataFileSuffix);
+  string metadata_fname =
+      StrCat(unsuffixed_path, LogBlockManager::kContainerMetadataFileSuffix);
 
   // Create an incomplete container. Kinds of incomplete containers:
   //
@@ -229,8 +236,11 @@ Status LBMCorruptor::AddMalformedRecordToContainer() {
     RWFileOptions opts;
     opts.mode = Env::OPEN_EXISTING;
     RETURN_NOT_OK(env_->NewRWFile(opts, c->data_filename, &data_file));
-    RETURN_NOT_OK(PreallocateForBlock(data_file.get(), RWFile::CHANGE_FILE_SIZE,
-                                      kBlockSize, &initial_data_size));
+    RETURN_NOT_OK(PreallocateForBlock(
+        data_file.get(),
+        RWFile::CHANGE_FILE_SIZE,
+        kBlockSize,
+        &initial_data_size));
     RETURN_NOT_OK(data_file->Close());
   }
 
@@ -316,8 +326,8 @@ Status LBMCorruptor::AddMisalignedBlockToContainer() {
   // decide to write a zero-length block to the end of it.
   uint64_t length_beyond_eof = block_offset - initial_data_size;
   if (length_beyond_eof > 0) {
-    RETURN_NOT_OK(data_file->PreAllocate(initial_data_size, length_beyond_eof,
-                                         RWFile::CHANGE_FILE_SIZE));
+    RETURN_NOT_OK(data_file->PreAllocate(
+        initial_data_size, length_beyond_eof, RWFile::CHANGE_FILE_SIZE));
   }
 
   // Populate the block with repeated sequences of its id so that readers who
@@ -332,14 +342,15 @@ Status LBMCorruptor::AddMisalignedBlockToContainer() {
   for (int i = 0; i < KUDU_ARRAYSIZE(data); i += sizeof(raw_block_id)) {
     memcpy(&data[i], &raw_block_id, sizeof(raw_block_id));
   }
-  RETURN_NOT_OK(data_file->Write(block_offset, Slice(data, KUDU_ARRAYSIZE(data))));
+  RETURN_NOT_OK(
+      data_file->Write(block_offset, Slice(data, KUDU_ARRAYSIZE(data))));
   RETURN_NOT_OK(data_file->Close());
 
   // Having written out the block, write a corresponding metadata record.
   unique_ptr<WritablePBContainerFile> metadata_writer;
   RETURN_NOT_OK(OpenMetadataWriter(*c, &metadata_writer));
-  RETURN_NOT_OK(AppendCreateRecord(metadata_writer.get(), block_id,
-                                   block_offset, block_length));
+  RETURN_NOT_OK(AppendCreateRecord(
+      metadata_writer.get(), block_id, block_offset, block_length));
 
   LOG(INFO) << "Added misaligned block to container " << c->name;
   return metadata_writer->Close();
@@ -353,9 +364,8 @@ Status LBMCorruptor::AddPartialRecordToContainer() {
   RETURN_NOT_OK(OpenMetadataWriter(*c, &metadata_writer));
 
   // Add a new good record to the container.
-  RETURN_NOT_OK(AppendCreateRecord(metadata_writer.get(),
-                                   BlockId(rand_.Next64()),
-                                   0, 0));
+  RETURN_NOT_OK(
+      AppendCreateRecord(metadata_writer.get(), BlockId(rand_.Next64()), 0, 0));
 
   // Corrupt the record by truncating one byte off the end of it.
   {
@@ -377,14 +387,18 @@ Status LBMCorruptor::AddPartialRecordToContainer() {
   auto remove_matching_container = [&](const Container& e) {
     return container_name == e.name;
   };
-  all_containers_.erase(std::remove_if(all_containers_.begin(),
-                                       all_containers_.end(),
-                                       remove_matching_container),
-                        all_containers_.end());
-  full_containers_.erase(std::remove_if(full_containers_.begin(),
-                                        full_containers_.end(),
-                                        remove_matching_container),
-                        full_containers_.end());
+  all_containers_.erase(
+      std::remove_if(
+          all_containers_.begin(),
+          all_containers_.end(),
+          remove_matching_container),
+      all_containers_.end());
+  full_containers_.erase(
+      std::remove_if(
+          full_containers_.begin(),
+          full_containers_.end(),
+          remove_matching_container),
+      full_containers_.end());
 
   LOG(INFO) << "Added partial record to container " << container_name;
   return Status::OK();
@@ -424,9 +438,8 @@ Status LBMCorruptor::OpenMetadataWriter(
   RWFileOptions opts;
   opts.mode = Env::OPEN_EXISTING;
   unique_ptr<RWFile> metadata_file;
-  RETURN_NOT_OK(env_->NewRWFile(opts,
-                                container.metadata_filename,
-                                &metadata_file));
+  RETURN_NOT_OK(
+      env_->NewRWFile(opts, container.metadata_filename, &metadata_file));
   unique_ptr<WritablePBContainerFile> local_writer(
       new WritablePBContainerFile(shared_ptr<RWFile>(metadata_file.release())));
   RETURN_NOT_OK(local_writer->OpenExisting());
@@ -435,10 +448,11 @@ Status LBMCorruptor::OpenMetadataWriter(
   return Status::OK();
 }
 
-Status LBMCorruptor::AppendCreateRecord(WritablePBContainerFile* writer,
-                                        BlockId block_id,
-                                        int64_t block_offset,
-                                        int64_t block_length) {
+Status LBMCorruptor::AppendCreateRecord(
+    WritablePBContainerFile* writer,
+    BlockId block_id,
+    int64_t block_offset,
+    int64_t block_length) {
   BlockRecordPB record;
   block_id.CopyToPB(record.mutable_block_id());
   record.set_op_type(CREATE);
@@ -448,8 +462,9 @@ Status LBMCorruptor::AppendCreateRecord(WritablePBContainerFile* writer,
   return writer->Append(record);
 }
 
-Status LBMCorruptor::AppendDeleteRecord(WritablePBContainerFile* writer,
-                                        BlockId block_id) {
+Status LBMCorruptor::AppendDeleteRecord(
+    WritablePBContainerFile* writer,
+    BlockId block_id) {
   BlockRecordPB record;
   block_id.CopyToPB(record.mutable_block_id());
   record.set_op_type(DELETE);
@@ -457,10 +472,11 @@ Status LBMCorruptor::AppendDeleteRecord(WritablePBContainerFile* writer,
   return writer->Append(record);
 }
 
-Status LBMCorruptor::PreallocateForBlock(RWFile* data_file,
-                                         RWFile::PreAllocateMode mode,
-                                         int64_t block_length,
-                                         int64_t* old_data_file_size) {
+Status LBMCorruptor::PreallocateForBlock(
+    RWFile* data_file,
+    RWFile::PreAllocateMode mode,
+    int64_t block_length,
+    int64_t* old_data_file_size) {
   uint64_t initial_size;
   RETURN_NOT_OK(data_file->Size(&initial_size));
   RETURN_NOT_OK(data_file->PreAllocate(initial_size, block_length, mode));
@@ -469,8 +485,9 @@ Status LBMCorruptor::PreallocateForBlock(RWFile* data_file,
   return Status::OK();
 }
 
-Status LBMCorruptor::GetRandomContainer(FindContainerMode mode,
-                                        const Container** container) const {
+Status LBMCorruptor::GetRandomContainer(
+    FindContainerMode mode,
+    const Container** container) const {
   if (mode == FULL) {
     if (full_containers_.empty()) {
       return Status::IllegalState("no full containers");

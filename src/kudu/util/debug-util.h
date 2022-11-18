@@ -37,7 +37,8 @@
 
 namespace kudu {
 
-template <typename T> class ArrayView;
+template <typename T>
+class ArrayView;
 class MonoTime;
 class StackTrace;
 class StackTraceCollector;
@@ -74,18 +75,18 @@ Status SetStackTraceSignal(int signum);
 //
 // This function is thread-safe.
 //
-// NOTE: if Kudu is running inside a debugger, this can be annoying to a developer since
-// it internally uses signals that will cause the debugger to stop. Consider checking
-// 'IsBeingDebugged()' from os-util.h before using this function for non-critical use
-// cases.
+// NOTE: if Kudu is running inside a debugger, this can be annoying to a
+// developer since it internally uses signals that will cause the debugger to
+// stop. Consider checking 'IsBeingDebugged()' from os-util.h before using this
+// function for non-critical use cases.
 std::string DumpThreadStack(int64_t tid);
 
 // Capture the thread stack of another thread
 //
-// NOTE: if Kudu is running inside a debugger, this can be annoying to a developer since
-// it internally uses signals that will cause the debugger to stop. Consider checking
-// 'IsBeingDebugged()' from os-util.h before using this function for non-critical use
-// cases.
+// NOTE: if Kudu is running inside a debugger, this can be annoying to a
+// developer since it internally uses signals that will cause the debugger to
+// stop. Consider checking 'IsBeingDebugged()' from os-util.h before using this
+// function for non-critical use cases.
 Status GetThreadStack(int64_t tid, StackTrace* stack);
 
 // Return the current stack trace, stringified.
@@ -111,8 +112,8 @@ std::string GetLogFormatStackTraceHex();
 
 // Collect the current stack trace in hex form into the given buffer.
 //
-// The resulting trace just includes the hex addresses, space-separated. This is suitable
-// for later stringification by pasting into 'addr2line' for example.
+// The resulting trace just includes the hex addresses, space-separated. This is
+// suitable for later stringification by pasting into 'addr2line' for example.
 //
 // This function is async-safe.
 void HexStackTraceToString(char* buf, size_t size);
@@ -122,18 +123,16 @@ void HexStackTraceToString(char* buf, size_t size);
 // Requires external synchronization.
 class StackTrace {
  public:
-
   // Constructs a new (uncollected) stack trace.
-  StackTrace()
-    : num_frames_(0) {
-  }
+  StackTrace() : num_frames_(0) {}
 
   // Resets the stack trace to an uncollected state.
   void Reset() {
     num_frames_ = 0;
   }
 
-  // Returns true if Collect() (but not Reset()) has been called on this stack trace.
+  // Returns true if Collect() (but not Reset()) has been called on this stack
+  // trace.
   bool HasCollected() const {
     return num_frames_ > 0;
   }
@@ -146,16 +145,16 @@ class StackTrace {
   // Returns true if the stack trace 's' matches this trace.
   bool Equals(const StackTrace& s) const {
     return s.num_frames_ == num_frames_ &&
-      strings::memeq(frames_, s.frames_,
-                     num_frames_ * sizeof(frames_[0]));
+        strings::memeq(frames_, s.frames_, num_frames_ * sizeof(frames_[0]));
   }
 
   // Comparison operator for use in sorting.
   bool LessThan(const StackTrace& s) const;
 
-  // Collect and store the current stack trace. Skips the top 'skip_frames' frames
-  // from the stack. For example, a value of '1' will skip whichever function
-  // called the 'Collect()' function. The 'Collect' function itself is always skipped.
+  // Collect and store the current stack trace. Skips the top 'skip_frames'
+  // frames from the stack. For example, a value of '1' will skip whichever
+  // function called the 'Collect()' function. The 'Collect' function itself is
+  // always skipped.
   //
   // This function is async-safe.
   void Collect(int skip_frames = 0);
@@ -171,7 +170,8 @@ class StackTrace {
 
   enum Flags {
     // Do not fix up the addresses on the stack to try to point to the 'call'
-    // instructions instead of the return address. This is necessary when dumping
+    // instructions instead of the return address. This is necessary when
+    // dumping
     // addresses to be interpreted by 'pprof', which does this fix-up itself.
     NO_FIX_CALLER_ADDRESSES = 1,
 
@@ -244,12 +244,12 @@ class StackTraceSnapshot {
     capture_thread_names_ = c;
   }
 
-  // Snapshot the stack traces of all threads in the process. This may return a bad
-  // Status in the case that stack traces aren't supported on the platform, or if
-  // the process is running inside a debugger.
+  // Snapshot the stack traces of all threads in the process. This may return a
+  // bad Status in the case that stack traces aren't supported on the platform,
+  // or if the process is running inside a debugger.
   //
-  // NOTE: this may take some time and should not be called in a latency-sensitive
-  // context.
+  // NOTE: this may take some time and should not be called in a
+  // latency-sensitive context.
   Status SnapshotAllStacks();
 
   // After having collected stacks, visit them, grouped by shared
@@ -265,10 +265,14 @@ class StackTraceSnapshot {
   // Return the number of threads which were interrogated for a stack trace.
   //
   // NOTE: this includes threads which failed to collect.
-  int num_threads() const { return infos_.size(); }
+  int num_threads() const {
+    return infos_.size();
+  }
 
   // Return the number of threads which failed to collect a stack trace.
-  int num_failed() const { return num_failed_; }
+  int num_failed() const {
+    return num_failed_;
+  }
 
  private:
   std::vector<StackTraceSnapshot::ThreadInfo> infos_;
@@ -277,7 +281,6 @@ class StackTraceSnapshot {
 
   bool capture_thread_names_ = true;
 };
-
 
 // Class to collect the stack trace of another thread within this process.
 // This allows for more advanced use cases than 'DumpThreadStack(tid)' above.

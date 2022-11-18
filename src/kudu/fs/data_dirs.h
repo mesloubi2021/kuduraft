@@ -84,24 +84,28 @@ class DataDirGroup {
   // looking them up in 'uuid_idx_by_uuid'.
   //
   // Returns an error if a uuid cannot be found.
-  Status LoadFromPB(const UuidIndexByUuidMap& uuid_idx_by_uuid,
-                    const DataDirGroupPB& pb);
+  Status LoadFromPB(
+      const UuidIndexByUuidMap& uuid_idx_by_uuid,
+      const DataDirGroupPB& pb);
 
   // Writes this group's UUIDs to 'pb', looking them up via index in
   // 'uuid_by_uuid_idx'.
   //
   // Returns an error if an index cannot be found.
-  Status CopyToPB(const UuidByUuidIndexMap& uuid_by_uuid_idx,
-                  DataDirGroupPB* pb) const;
+  Status CopyToPB(
+      const UuidByUuidIndexMap& uuid_by_uuid_idx,
+      DataDirGroupPB* pb) const;
 
-  const std::vector<int>& uuid_indices() const { return uuid_indices_; }
+  const std::vector<int>& uuid_indices() const {
+    return uuid_indices_;
+  }
 
  private:
   // UUID indices corresponding to the data directories within the group.
   std::vector<int> uuid_indices_;
 };
 
-}  // namespace internal
+} // namespace internal
 
 // Detected type of filesystem.
 enum class DataDirFsType {
@@ -140,12 +144,13 @@ struct DataDirMetrics {
 // Representation of a data directory in use by the block manager.
 class DataDir {
  public:
-  DataDir(Env* env,
-          DataDirMetrics* metrics,
-          DataDirFsType fs_type,
-          std::string dir,
-          std::unique_ptr<PathInstanceMetadataFile> metadata_file,
-          std::unique_ptr<ThreadPool> pool);
+  DataDir(
+      Env* env,
+      DataDirMetrics* metrics,
+      DataDirFsType fs_type,
+      std::string dir,
+      std::unique_ptr<PathInstanceMetadataFile> metadata_file,
+      std::unique_ptr<ThreadPool> pool);
   ~DataDir();
 
   // Shuts down this dir's thread pool, waiting for any closures submitted via
@@ -176,9 +181,13 @@ class DataDir {
   };
   Status RefreshIsFull(RefreshMode mode);
 
-  DataDirFsType fs_type() const { return fs_type_; }
+  DataDirFsType fs_type() const {
+    return fs_type_;
+  }
 
-  const std::string& dir() const { return dir_; }
+  const std::string& dir() const {
+    return dir_;
+  }
 
   const PathInstanceMetadataFile* instance() const {
     return metadata_file_.get();
@@ -252,30 +261,39 @@ class DataDirManager {
 
   // Public static initializers for use in tests. When used, data_fs_roots is
   // expected to be the successfully canonicalized directories.
-  static Status CreateNewForTests(Env* env, std::vector<std::string> data_fs_roots,
-                                  DataDirManagerOptions opts,
-                                  std::unique_ptr<DataDirManager>* dd_manager);
-  static Status OpenExistingForTests(Env* env, std::vector<std::string> data_fs_roots,
-                                     DataDirManagerOptions opts,
-                                     std::unique_ptr<DataDirManager>* dd_manager);
+  static Status CreateNewForTests(
+      Env* env,
+      std::vector<std::string> data_fs_roots,
+      DataDirManagerOptions opts,
+      std::unique_ptr<DataDirManager>* dd_manager);
+  static Status OpenExistingForTests(
+      Env* env,
+      std::vector<std::string> data_fs_roots,
+      DataDirManagerOptions opts,
+      std::unique_ptr<DataDirManager>* dd_manager);
 
   // Constructs a directory manager and creates its necessary files on-disk.
   //
   // Returns an error if any of the directories already exist.
-  static Status CreateNew(Env* env, CanonicalizedRootsList data_fs_roots,
-                          DataDirManagerOptions opts,
-                          std::unique_ptr<DataDirManager>* dd_manager);
+  static Status CreateNew(
+      Env* env,
+      CanonicalizedRootsList data_fs_roots,
+      DataDirManagerOptions opts,
+      std::unique_ptr<DataDirManager>* dd_manager);
 
   // Constructs a directory manager and indexes the files found on-disk.
   //
   // Returns an error if the number of on-disk directories found exceeds the
   // max allowed, or if locks need to be acquired and cannot be.
-  static Status OpenExisting(Env* env, CanonicalizedRootsList data_fs_roots,
-                             DataDirManagerOptions opts,
-                             std::unique_ptr<DataDirManager>* dd_manager);
+  static Status OpenExisting(
+      Env* env,
+      CanonicalizedRootsList data_fs_roots,
+      DataDirManagerOptions opts,
+      std::unique_ptr<DataDirManager>* dd_manager);
 
   // Returns the root names from the input 'root_list'.
-  static std::vector<std::string> GetRootNames(const CanonicalizedRootsList& root_list);
+  static std::vector<std::string> GetRootNames(
+      const CanonicalizedRootsList& root_list);
 
   ~DataDirManager();
 
@@ -299,14 +317,16 @@ class DataDirManager {
   //
   // Returns an error if the tablet already exists or if a data dir in the
   // group is missing.
-  Status LoadDataDirGroupFromPB(const std::string& tablet_id,
-                                const DataDirGroupPB& pb);
+  Status LoadDataDirGroupFromPB(
+      const std::string& tablet_id,
+      const DataDirGroupPB& pb);
 
   // Serializes the DataDirGroupPB associated with the given tablet_id.
   //
   // Returns an error if the tablet was not already registered or if a data dir
   // is missing.
-  Status GetDataDirGroupPB(const std::string& tablet_id, DataDirGroupPB* pb) const;
+  Status GetDataDirGroupPB(const std::string& tablet_id, DataDirGroupPB* pb)
+      const;
 
   // Creates a new data dir group for the specified tablet. Adds data
   // directories to this new group until the limit specified by
@@ -320,8 +340,9 @@ class DataDirManager {
   // Results in an error if all disks are full or if the tablet already has a
   // data dir group associated with it. If returning with an error, the
   // DataDirManager will be unchanged.
-  Status CreateDataDirGroup(const std::string& tablet_id,
-                            DirDistributionMode mode = DirDistributionMode::USE_FLAG_SPEC);
+  Status CreateDataDirGroup(
+      const std::string& tablet_id,
+      DirDistributionMode mode = DirDistributionMode::USE_FLAG_SPEC);
 
   // Deletes the group for the specified tablet. Maps from tablet_id to group
   // and data dir to tablet set are cleared of all references to the tablet.
@@ -390,7 +411,8 @@ class DataDirManager {
   // Finds a uuid index by UUID, returning false if it can't be found.
   bool FindUuidIndexByUuid(const std::string& uuid, int* uuid_idx) const;
 
-  // Finds a UUID by canonicalized root name, returning false if it can't be found.
+  // Finds a UUID by canonicalized root name, returning false if it can't be
+  // found.
   bool FindUuidByRoot(const std::string& root, std::string* uuid) const;
 
  private:
@@ -401,9 +423,10 @@ class DataDirManager {
   FRIEND_TEST(DataDirsTest, TestFailedDirNotAddedToGroup);
 
   // Constructs a directory manager.
-  DataDirManager(Env* env,
-                 DataDirManagerOptions opts,
-                 CanonicalizedRootsList canonicalized_data_roots);
+  DataDirManager(
+      Env* env,
+      DataDirManagerOptions opts,
+      CanonicalizedRootsList canonicalized_data_roots);
 
   // Initializes the data directories on disk.
   //
@@ -437,8 +460,10 @@ class DataDirManager {
   //
   // Returns an error if any disk operations fail.
   Status CreateNewDataDirectoriesAndUpdateInstances(
-      std::vector<std::pair<std::string, std::string>> root_uuid_pairs_to_create,
-      std::vector<std::unique_ptr<PathInstanceMetadataFile>> instances_to_update,
+      std::vector<std::pair<std::string, std::string>>
+          root_uuid_pairs_to_create,
+      std::vector<std::unique_ptr<PathInstanceMetadataFile>>
+          instances_to_update,
       std::vector<std::string> all_uuids);
 
   // Updates the on-disk instance files specified by 'instances_to_update'
@@ -447,7 +472,8 @@ class DataDirManager {
   //
   // Returns an error if any disk operations fail.
   Status UpdateInstances(
-      std::vector<std::unique_ptr<PathInstanceMetadataFile>> instances_to_update,
+      std::vector<std::unique_ptr<PathInstanceMetadataFile>>
+          instances_to_update,
       std::vector<std::string> new_all_uuids);
 
   // Repeatedly selects directories from those available to put into a new
@@ -462,12 +488,15 @@ class DataDirManager {
   // added. Although this function does not itself change DataDirManager state,
   // its expected usage warrants that it is called within the scope of a
   // lock_guard of dir_group_lock_.
-  void GetDirsForGroupUnlocked(int target_size, std::vector<int>* group_indices);
+  void GetDirsForGroupUnlocked(
+      int target_size,
+      std::vector<int>* group_indices);
 
   // Goes through the data dirs in 'uuid_indices' and populates
   // 'healthy_indices' with those that haven't failed.
-  void RemoveUnhealthyDataDirsUnlocked(const std::vector<int>& uuid_indices,
-                                       std::vector<int>* healthy_indices) const;
+  void RemoveUnhealthyDataDirsUnlocked(
+      const std::vector<int>& uuid_indices,
+      std::vector<int>* healthy_indices) const;
 
   // The environment to be used for all data directory operations.
   Env* env_;
@@ -494,7 +523,8 @@ class DataDirManager {
   typedef std::unordered_map<DataDir*, int> ReverseUuidIndexMap;
   ReverseUuidIndexMap uuid_idx_by_data_dir_;
 
-  typedef std::unordered_map<std::string, internal::DataDirGroup> TabletDataDirGroupMap;
+  typedef std::unordered_map<std::string, internal::DataDirGroup>
+      TabletDataDirGroupMap;
   TabletDataDirGroupMap group_by_tablet_map_;
 
   typedef std::unordered_map<int, std::set<std::string>> TabletsByUuidIndexMap;

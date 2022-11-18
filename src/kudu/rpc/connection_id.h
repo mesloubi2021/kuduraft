@@ -26,8 +26,9 @@ namespace kudu {
 namespace rpc {
 
 // Used to key on Connection information.
-// For use as a key in an unordered STL collection, use ConnectionIdHash and ConnectionIdEqual.
-// This class is copyable for STL compatibility, but not assignable (use CopyFrom() for that).
+// For use as a key in an unordered STL collection, use ConnectionIdHash and
+// ConnectionIdEqual. This class is copyable for STL compatibility, but not
+// assignable (use CopyFrom() for that).
 class ConnectionId {
  public:
   ConnectionId();
@@ -36,24 +37,32 @@ class ConnectionId {
   ConnectionId(const ConnectionId& other) = default;
 
   // Convenience constructor.
-  ConnectionId(const Sockaddr& remote,
-               std::string hostname,
-               UserCredentials user_credentials);
+  ConnectionId(
+      const Sockaddr& remote,
+      std::string hostname,
+      UserCredentials user_credentials);
 
   // The remote address.
-  const Sockaddr& remote() const { return remote_; }
+  const Sockaddr& remote() const {
+    return remote_;
+  }
 
-  const std::string& hostname() const { return hostname_; }
+  const std::string& hostname() const {
+    return hostname_;
+  }
 
   // The credentials of the user associated with this connection, if any.
   void set_user_credentials(UserCredentials user_credentials);
 
-  const UserCredentials& user_credentials() const { return user_credentials_; }
+  const UserCredentials& user_credentials() const {
+    return user_credentials_;
+  }
 
   // Copy state from another object to this one.
   void CopyFrom(const ConnectionId& other);
 
-  // Returns a string representation of the object, not including the password field.
+  // Returns a string representation of the object, not including the password
+  // field.
   std::string ToString() const;
 
   size_t HashCode() const;
@@ -64,7 +73,8 @@ class ConnectionId {
   Sockaddr remote_;
 
   // The original host name before it was resolved to 'remote_'.
-  // This must be retained since it is used to compute Kerberos Service Principal Names (SPNs).
+  // This must be retained since it is used to compute Kerberos Service
+  // Principal Names (SPNs).
   std::string hostname_;
 
   UserCredentials user_credentials_;
@@ -72,12 +82,12 @@ class ConnectionId {
 
 class ConnectionIdHash {
  public:
-  std::size_t operator() (const ConnectionId& conn_id) const;
+  std::size_t operator()(const ConnectionId& conn_id) const;
 };
 
 class ConnectionIdEqual {
  public:
-  bool operator() (const ConnectionId& cid1, const ConnectionId& cid2) const;
+  bool operator()(const ConnectionId& cid1, const ConnectionId& cid2) const;
 };
 
 } // namespace rpc

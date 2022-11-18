@@ -54,13 +54,15 @@ class UserCredentials;
 // Setters on the Proxy are not thread-safe, and calling a setter after any RPC
 // request has started will cause a fatal error.
 //
-// After initialization, multiple threads may make calls using the same proxy object.
+// After initialization, multiple threads may make calls using the same proxy
+// object.
 class Proxy {
  public:
-  Proxy(std::shared_ptr<Messenger> messenger,
-        const Sockaddr& remote,
-        std::string hostname,
-        std::string service_name);
+  Proxy(
+      std::shared_ptr<Messenger> messenger,
+      const Sockaddr& remote,
+      std::string hostname,
+      std::string service_name);
 
   ~Proxy();
 
@@ -78,9 +80,9 @@ class Proxy {
   //       completion of the call. The RPC system does not take ownership
   //       of this storage.
   //
-  // NOTE: 'req' and 'resp' should be the appropriate protocol buffer implementation
-  // class corresponding to the parameter and result types of the service method
-  // defined in the service's '.proto' file.
+  // NOTE: 'req' and 'resp' should be the appropriate protocol buffer
+  // implementation class corresponding to the parameter and result types of the
+  // service method defined in the service's '.proto' file.
   //
   // controller: the RpcController to associate with this call. Each call
   //             must use a unique controller object. Does not take ownership.
@@ -90,24 +92,28 @@ class Proxy {
   //           thereafter. It may be invoked either on the caller's thread
   //           or by an RPC IO thread, and thus should take care to not
   //           block or perform any heavy CPU work.
-  void AsyncRequest(const std::string& method,
-                    const google::protobuf::Message& req,
-                    google::protobuf::Message* resp,
-                    RpcController* controller,
-                    const ResponseCallback& callback) const;
+  void AsyncRequest(
+      const std::string& method,
+      const google::protobuf::Message& req,
+      google::protobuf::Message* resp,
+      RpcController* controller,
+      const ResponseCallback& callback) const;
 
   // The same as AsyncRequest(), except that the call blocks until the call
   // finishes. If the call fails, returns a non-OK result.
-  Status SyncRequest(const std::string& method,
-                     const google::protobuf::Message& req,
-                     google::protobuf::Message* resp,
-                     RpcController* controller) const;
+  Status SyncRequest(
+      const std::string& method,
+      const google::protobuf::Message& req,
+      google::protobuf::Message* resp,
+      RpcController* controller) const;
 
   // Set the user credentials which should be used to log in.
   void set_user_credentials(const UserCredentials& user_credentials);
 
   // Get the user credentials which should be used to log in.
-  const UserCredentials& user_credentials() const { return conn_id_.user_credentials(); }
+  const UserCredentials& user_credentials() const {
+    return conn_id_.user_credentials();
+  }
 
   std::string ToString() const;
 

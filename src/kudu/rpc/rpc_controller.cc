@@ -33,7 +33,6 @@
 #include "kudu/rpc/transfer.h"
 #include "kudu/util/slice.h"
 
-
 using std::unique_ptr;
 using strings::Substitute;
 namespace kudu {
@@ -41,7 +40,8 @@ namespace kudu {
 namespace rpc {
 
 RpcController::RpcController()
-    : credentials_policy_(CredentialsPolicy::ANY_CREDENTIALS), messenger_(nullptr) {
+    : credentials_policy_(CredentialsPolicy::ANY_CREDENTIALS),
+      messenger_(nullptr) {
   DVLOG(4) << "RpcController " << this << " constructed";
 }
 
@@ -59,7 +59,8 @@ void RpcController::Swap(RpcController* other) {
   }
 
   std::swap(outbound_sidecars_, other->outbound_sidecars_);
-  std::swap(outbound_sidecars_total_bytes_, other->outbound_sidecars_total_bytes_);
+  std::swap(
+      outbound_sidecars_total_bytes_, other->outbound_sidecars_total_bytes_);
   std::swap(timeout_, other->timeout_);
   std::swap(credentials_policy_, other->credentials_policy_);
   std::swap(call_, other->call_);
@@ -150,7 +151,8 @@ Status RpcController::AddOutboundSidecar(unique_ptr<RpcSidecar> car, int* idx) {
   int64_t sidecar_bytes = car->AsSlice().size();
   if (outbound_sidecars_total_bytes_ >
       TransferLimits::kMaxTotalSidecarBytes - sidecar_bytes) {
-    return Status::RuntimeError(Substitute("Total size of sidecars $0 would exceed limit $1",
+    return Status::RuntimeError(Substitute(
+        "Total size of sidecars $0 would exceed limit $1",
         static_cast<int64_t>(outbound_sidecars_total_bytes_) + sidecar_bytes,
         TransferLimits::kMaxTotalSidecarBytes));
   }

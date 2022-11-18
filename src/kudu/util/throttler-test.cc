@@ -24,13 +24,12 @@
 
 namespace kudu {
 
-class ThrottlerTest : public KuduTest {
-};
+class ThrottlerTest : public KuduTest {};
 
 TEST_F(ThrottlerTest, TestOpThrottle) {
   // Check operation rate throttling
   MonoTime now = MonoTime::Now();
-  Throttler t0(now, 1000, 1000*1000, 1);
+  Throttler t0(now, 1000, 1000 * 1000, 1);
   // Fill up bucket
   now += MonoDelta::FromMilliseconds(2000);
   // Check throttle behavior for 1 second.
@@ -46,7 +45,7 @@ TEST_F(ThrottlerTest, TestOpThrottle) {
 TEST_F(ThrottlerTest, TestIOThrottle) {
   // Check operation rate throttling
   MonoTime now = MonoTime::Now();
-  Throttler t0(now, 50000, 1000*1000, 1);
+  Throttler t0(now, 50000, 1000 * 1000, 1);
   // Fill up bucket
   now += MonoDelta::FromMilliseconds(2000);
   // Check throttle behavior for 1 second.
@@ -62,7 +61,7 @@ TEST_F(ThrottlerTest, TestIOThrottle) {
 TEST_F(ThrottlerTest, TestBurst) {
   // Check IO rate throttling
   MonoTime now = MonoTime::Now();
-  Throttler t0(now, 2000, 1000*1000, 5);
+  Throttler t0(now, 2000, 1000 * 1000, 5);
   // Fill up bucket
   now += MonoDelta::FromMilliseconds(2000);
   for (int i = 0; i < 100; i++) {

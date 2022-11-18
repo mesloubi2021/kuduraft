@@ -46,14 +46,12 @@ class MultiDirClusterITest : public ExternalMiniClusterITestBase {};
 
 TEST_F(MultiDirClusterITest, TestBasicMultiDirCluster) {
   const uint32_t kNumDataDirs = 3;
-  vector<string> ts_flags = {
-    // Flush frequently to trigger writes.
-    "--flush_threshold_mb=1",
-    "--flush_threshold_secs=1",
+  vector<string> ts_flags = {// Flush frequently to trigger writes.
+                             "--flush_threshold_mb=1",
+                             "--flush_threshold_secs=1",
 
-    // Spread tablet data across all data dirs.
-    "--fs_target_data_dirs_per_tablet=0"
-  };
+                             // Spread tablet data across all data dirs.
+                             "--fs_target_data_dirs_per_tablet=0"};
 
   ExternalMiniClusterOptions opts;
   opts.extra_tserver_flags = std::move(ts_flags);
@@ -86,7 +84,8 @@ TEST_F(MultiDirClusterITest, TestBasicMultiDirCluster) {
       string data_path = JoinPathSegments(data_dir, "data");
       vector<string> files;
       ListFilesInDir(env_, data_path, &files);
-      int* num_files_before_insert = FindOrNull(num_files_in_each_dir, data_dir);
+      int* num_files_before_insert =
+          FindOrNull(num_files_in_each_dir, data_dir);
       ASSERT_NE(nullptr, num_files_before_insert);
       if (*num_files_before_insert < files.size()) {
         num_dirs_added_to++;
@@ -96,10 +95,11 @@ TEST_F(MultiDirClusterITest, TestBasicMultiDirCluster) {
     // data written to it.
     ASSERT_GT(num_dirs_added_to, 1);
     vector<string> wal_files;
-    ASSERT_OK(ListFilesInDir(env_, JoinPathSegments(ts->wal_dir(), "wals"), &wal_files));
+    ASSERT_OK(ListFilesInDir(
+        env_, JoinPathSegments(ts->wal_dir(), "wals"), &wal_files));
     ASSERT_FALSE(wal_files.empty());
   });
   work.StopAndJoin();
 }
 
-}  // namespace kudu
+} // namespace kudu

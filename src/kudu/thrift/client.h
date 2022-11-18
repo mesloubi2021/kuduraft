@@ -50,7 +50,6 @@ namespace thrift {
 
 // Options for a Thrift client connection.
 struct ClientOptions {
-
   // Thrift socket send timeout
   MonoDelta send_timeout = MonoDelta::FromSeconds(60);
 
@@ -78,9 +77,11 @@ struct ClientOptions {
 };
 
 std::shared_ptr<apache::thrift::protocol::TProtocol> CreateClientProtocol(
-    const HostPort& address, const ClientOptions& options);
+    const HostPort& address,
+    const ClientOptions& options);
 
-// Returns 'true' if the error should result in the Thrift client being torn down.
+// Returns 'true' if the error should result in the Thrift client being torn
+// down.
 bool IsFatalError(const Status& error);
 
 // A wrapper class around a Thrift service client which provides support for HA
@@ -90,10 +91,9 @@ bool IsFatalError(const Status& error);
 // automatically reconnecting on faults and retrying requests.
 //
 // This class is thread safe after Start() is called.
-template<typename Service>
+template <typename Service>
 class HaClient {
  public:
-
   HaClient();
   ~HaClient();
 
@@ -103,11 +103,11 @@ class HaClient {
   // Stops the highly available Thrift service client instance.
   void Stop();
 
-  // Synchronously executes a task with exclusive access to the thrift service client.
+  // Synchronously executes a task with exclusive access to the thrift service
+  // client.
   Status Execute(std::function<Status(Service*)> task) WARN_UNUSED_RESULT;
 
  private:
-
   // Reconnects to an instance of the Thrift service, or returns an error if all
   // service instances are unavailable.
   Status Reconnect();
@@ -137,25 +137,26 @@ class HaClient {
 // linked to the thrift module.
 ///////////////////////////////////////////////////////////////////////////////
 
-template<typename Service>
+template <typename Service>
 HaClient<Service>::HaClient()
     : service_client_(HostPort("", 0), options_),
       reconnect_after_(MonoTime::Now()),
       reconnect_failure_(Status::OK()),
       consecutive_reconnect_failures_(0),
-      reconnect_idx_(0) {
-}
+      reconnect_idx_(0) {}
 
-template<typename Service>
+template <typename Service>
 HaClient<Service>::~HaClient() {
   Stop();
 }
 
-template<typename Service>
-Status HaClient<Service>::Start(std::vector<HostPort> addresses, ClientOptions options) {
+template <typename Service>
+Status HaClient<Service>::Start(
+    std::vector<HostPort> addresses,
+    ClientOptions options) {
   if (threadpool_) {
     return Status::IllegalState(strings::Substitute(
-          "$0 HA client is already started", Service::kServiceName));
+        "$0 HA client is already started", Service::kServiceName));
   }
 
   addresses_ = std::move(addresses);
@@ -164,21 +165,21 @@ Status HaClient<Service>::Start(std::vector<HostPort> addresses, ClientOptions o
   // The thread pool must be capped at one thread to ensure serialized access to
   // the fields of the service client (which isn't thread safe).
   RETURN_NOT_OK(ThreadPoolBuilder(Service::kServiceName)
-      .set_min_threads(1)
-      .set_max_threads(1)
-      .Build(&threadpool_));
+                    .set_min_threads(1)
+                    .set_max_threads(1)
+                    .Build(&threadpool_));
 
   return Status::OK();
 }
 
-template<typename Service>
+template <typename Service>
 void HaClient<Service>::Stop() {
   if (threadpool_) {
     threadpool_->Shutdown();
   }
 }
 
-template<typename Service>
+template <typename Service>
 Status HaClient<Service>::Execute(std::function<Status(Service*)> task) {
   Synchronizer synchronizer;
   auto callback = synchronizer.AsStdStatusCallback();
@@ -239,7 +240,8 @@ Status HaClient<Service>::Execute(std::function<Status(Service*)> task) {
           // cluster.
           consecutive_reconnect_failures_++;
           reconnect_after_ = MonoTime::Now() +
-              std::min(MonoDelta::FromMilliseconds(100 << consecutive_reconnect_failures_),
+              std::min(MonoDelta::FromMilliseconds(
+                           100 << consecutive_reconnect_failures_),
                        MonoDelta::FromSeconds(10));
           reconnect_failure_ = std::move(reconnect_status);
           return callback(reconnect_failure_);
@@ -260,21 +262,27 @@ Status HaClient<Service>::Execute(std::function<Status(Service*)> task) {
       // don't log loudly here because odds are the reconnection will fail if
       // it's a true fault, at which point we do log loudly.
       VLOG(1) << strings::Substitute(
-          "Call to $0 failed: $1", Service::kServiceName, task_status.ToString());
+          "Call to $0 failed: $1",
+          Service::kServiceName,
+          task_status.ToString());
 
       if (attempt == 0) {
         first_failure = std::move(task_status);
       }
 
-      WARN_NOT_OK(service_client_.Stop(),
-                  strings::Substitute("Failed to stop $0 client", Service::kServiceName));
+      WARN_NOT_OK(
+          service_client_.Stop(),
+          strings::Substitute(
+              "Failed to stop $0 client", Service::kServiceName));
     }
 
     // We've exhausted the allowed retries.
     DCHECK(!first_failure.ok());
     LOG(WARNING) << strings::Substitute(
         "Call to $0 failed after $1 retries: $2",
-        Service::kServiceName, options_.retry_count, first_failure.ToString());
+        Service::kServiceName,
+        options_.retry_count,
+        first_failure.ToString());
 
     return callback(first_failure);
   }));
@@ -290,7 +298,7 @@ Status HaClient<Service>::Execute(std::function<Status(Service*)> task) {
 // application-level checks like ensuring that the connected service is
 // configured correctly. So, it's better to handle reconnecting and failover in
 // this higher-level construct.
-template<typename Service>
+template <typename Service>
 Status HaClient<Service>::Reconnect() {
   Status s;
 
@@ -309,12 +317,17 @@ Status HaClient<Service>::Reconnect() {
       return Status::OK();
     }
 
-    WARN_NOT_OK(s, strings::Substitute("Failed to connect to $0 ($1)",
-          Service::kServiceName, address.ToString()))
+    WARN_NOT_OK(
+        s,
+        strings::Substitute(
+            "Failed to connect to $0 ($1)",
+            Service::kServiceName,
+            address.ToString()))
   }
 
-  WARN_NOT_OK(service_client_.Stop(),
-              strings::Substitute("Failed to stop $0 client", Service::kServiceName));
+  WARN_NOT_OK(
+      service_client_.Stop(),
+      strings::Substitute("Failed to stop $0 client", Service::kServiceName));
   return s;
 }
 } // namespace thrift

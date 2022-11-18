@@ -25,9 +25,9 @@ const char* GetNegStr(T* value) {
   }
 }
 
-}  // namespace
+} // namespace
 
-bool HumanReadableNumBytes::LessThan(const string &a, const string &b) {
+bool HumanReadableNumBytes::LessThan(const string& a, const string& b) {
   int64 a_bytes, b_bytes;
   if (!HumanReadableNumBytes::ToInt64(a, &a_bytes))
     a_bytes = 0;
@@ -36,13 +36,13 @@ bool HumanReadableNumBytes::LessThan(const string &a, const string &b) {
   return (a_bytes < b_bytes);
 }
 
-bool HumanReadableNumBytes::ToInt64(const string &str, int64 *num_bytes) {
-  const char *cstr = str.c_str();
+bool HumanReadableNumBytes::ToInt64(const string& str, int64* num_bytes) {
+  const char* cstr = str.c_str();
   bool neg = (*cstr == '-');
   if (neg) {
     cstr++;
   }
-  char *end;
+  char* end;
   double d = strtod(cstr, &end);
   // If this didn't consume the entire string, fail.
   if ((end - str.c_str()) + 1 < str.size())
@@ -50,15 +50,22 @@ bool HumanReadableNumBytes::ToInt64(const string &str, int64 *num_bytes) {
   int64 scale = 1;
   switch (*end) {
     // NB: an int64 can only go up to <8 EB.
-    case 'E':  scale <<= 10;   // Fall through...
-    case 'P':  scale <<= 10;
-    case 'T':  scale <<= 10;
-    case 'G':  scale <<= 10;
-    case 'M':  scale <<= 10;
+    case 'E':
+      scale <<= 10; // Fall through...
+    case 'P':
+      scale <<= 10;
+    case 'T':
+      scale <<= 10;
+    case 'G':
+      scale <<= 10;
+    case 'M':
+      scale <<= 10;
     case 'K':
-    case 'k':  scale <<= 10;
+    case 'k':
+      scale <<= 10;
     case 'B':
-    case '\0': break;          // To here.
+    case '\0':
+      break; // To here.
     default:
       return false;
   }
@@ -72,25 +79,34 @@ bool HumanReadableNumBytes::ToInt64(const string &str, int64 *num_bytes) {
   return true;
 }
 
-bool HumanReadableNumBytes::ToDouble(const string &str, double *num_bytes) {
-  char *end;
+bool HumanReadableNumBytes::ToDouble(const string& str, double* num_bytes) {
+  char* end;
   double d = strtod(str.c_str(), &end);
   // If this didn't consume the entire string, fail.
   if ((end - str.c_str()) + 1 < str.size())
     return false;
   const char scale = *end;
   switch (scale) {
-    case 'Y':  d *= 1024.0;   // That's a yotta bytes!
-    case 'Z':  d *= 1024.0;
-    case 'E':  d *= 1024.0;
-    case 'P':  d *= 1024.0;
-    case 'T':  d *= 1024.0;
-    case 'G':  d *= 1024.0;
-    case 'M':  d *= 1024.0;
+    case 'Y':
+      d *= 1024.0; // That's a yotta bytes!
+    case 'Z':
+      d *= 1024.0;
+    case 'E':
+      d *= 1024.0;
+    case 'P':
+      d *= 1024.0;
+    case 'T':
+      d *= 1024.0;
+    case 'G':
+      d *= 1024.0;
+    case 'M':
+      d *= 1024.0;
     case 'K':
-    case 'k':  d *= 1024.0;
+    case 'k':
+      d *= 1024.0;
     case 'B':
-    case '\0': break;         // to here.
+    case '\0':
+      break; // to here.
     default:
       return false;
   }
@@ -99,7 +115,7 @@ bool HumanReadableNumBytes::ToDouble(const string &str, double *num_bytes) {
 }
 
 string HumanReadableNumBytes::DoubleToString(double num_bytes) {
-  const char *neg_str = GetNegStr(&num_bytes);
+  const char* neg_str = GetNegStr(&num_bytes);
   static const char units[] = "BKMGTPEZY";
   double scaled = num_bytes;
   int i = 0;
@@ -119,7 +135,7 @@ string HumanReadableNumBytes::ToString(int64 num_bytes) {
     return "-8E";
   }
 
-  const char *neg_str = GetNegStr(&num_bytes);
+  const char* neg_str = GetNegStr(&num_bytes);
 
   // Special case for bytes.
   if (num_bytes < GG_LONGLONG(1024)) {
@@ -127,7 +143,7 @@ string HumanReadableNumBytes::ToString(int64 num_bytes) {
     return StringPrintf("%s%" PRId64 "B", neg_str, num_bytes);
   }
 
-  static const char units[] = "KMGTPE";  // int64 only goes up to E.
+  static const char units[] = "KMGTPE"; // int64 only goes up to E.
   const char* unit = units;
   while (num_bytes >= GG_LONGLONG(1024) * GG_LONGLONG(1024)) {
     num_bytes /= GG_LONGLONG(1024);
@@ -135,9 +151,11 @@ string HumanReadableNumBytes::ToString(int64 num_bytes) {
     CHECK(unit < units + arraysize(units));
   }
 
-  return StringPrintf(((*unit == 'K')
-                       ? "%s%.1f%c"
-                       : "%s%.2f%c"), neg_str, num_bytes / 1024.0, *unit);
+  return StringPrintf(
+      ((*unit == 'K') ? "%s%.1f%c" : "%s%.2f%c"),
+      neg_str,
+      num_bytes / 1024.0,
+      *unit);
 }
 
 string HumanReadableNumBytes::ToStringWithoutRounding(int64 num_bytes) {
@@ -146,8 +164,8 @@ string HumanReadableNumBytes::ToStringWithoutRounding(int64 num_bytes) {
     return "-8E";
   }
 
-  const char *neg_str = GetNegStr(&num_bytes);
-  static const char units[] = "BKMGTPE";  // int64 only goes up to E.
+  const char* neg_str = GetNegStr(&num_bytes);
+  static const char units[] = "BKMGTPE"; // int64 only goes up to E.
 
   int64 num_units = num_bytes;
   int unit_type = 0;
@@ -181,7 +199,7 @@ string HumanReadableInt::ToString(int64 value) {
     StringAppendF(&s, "%0.3G", static_cast<double>(value));
   } else {
     static const char units[] = "kMBT";
-    const char *unit = units;
+    const char* unit = units;
     while (value >= GG_LONGLONG(1000000)) {
       value /= GG_LONGLONG(1000);
       ++unit;
@@ -215,7 +233,7 @@ string HumanReadableNum::DoubleToString(double value) {
     StringAppendF(&s, "%0.3G", value);
   } else {
     static const char units[] = "kMBT";
-    const char *unit = units;
+    const char* unit = units;
     while (value >= 1e6) {
       value /= 1e3;
       ++unit;
@@ -226,8 +244,8 @@ string HumanReadableNum::DoubleToString(double value) {
   return s;
 }
 
-bool HumanReadableNum::ToDouble(const string &str, double *value) {
-  char *end;
+bool HumanReadableNum::ToDouble(const string& str, double* value) {
+  char* end;
   double d = strtod(str.c_str(), &end);
   // Allow the string to contain at most one extra character:
   if ((end - str.c_str()) + 1 < str.size())
@@ -248,8 +266,8 @@ bool HumanReadableNum::ToDouble(const string &str, double *value) {
   return true;
 }
 
-bool HumanReadableInt::ToInt64(const string &str, int64 *value) {
-  char *end;
+bool HumanReadableInt::ToInt64(const string& str, int64* value) {
+  char* end;
   double d = strtod(str.c_str(), &end);
   if (d > kint64max || d < kint64min)
     return false;
@@ -326,62 +344,61 @@ string HumanReadableElapsedTime::ToShortString(double seconds) {
 
 bool HumanReadableElapsedTime::ToDouble(const string& str, double* value) {
   struct TimeUnits {
-    const char* unit;  // unit name
-    double seconds;    // number of seconds in that unit (minutes => 60)
+    const char* unit; // unit name
+    double seconds; // number of seconds in that unit (minutes => 60)
   };
 
   // These must be sorted in decreasing length.  In particulary, a
   // string must exist before and of its substrings or the substring
   // will match;
   static const TimeUnits kUnits[] = {
-    // Long forms
-    { "nanosecond", 0.000000001 },
-    { "microsecond", 0.000001 },
-    { "millisecond", 0.001 },
-    { "second", 1.0 },
-    { "minute", 60.0 },
-    { "hour", 3600.0 },
-    { "day", 86400.0 },
-    { "week", 7 * 86400.0 },
-    { "month", 30 * 86400.0 },
-    { "year", 365 * 86400.0 },
+      // Long forms
+      {"nanosecond", 0.000000001},
+      {"microsecond", 0.000001},
+      {"millisecond", 0.001},
+      {"second", 1.0},
+      {"minute", 60.0},
+      {"hour", 3600.0},
+      {"day", 86400.0},
+      {"week", 7 * 86400.0},
+      {"month", 30 * 86400.0},
+      {"year", 365 * 86400.0},
 
-    // Abbreviated forms
-    { "nanosec", 0.000000001 },
-    { "microsec", 0.000001 },
-    { "millisec", 0.001 },
-    { "sec", 1.0 },
-    { "min", 60.0 },
-    { "hr", 3600.0 },
-    { "dy", 86400.0 },
-    { "wk", 7 * 86400.0 },
-    { "mon", 30 * 86400.0 },
-    { "yr", 365 * 86400.0 },
+      // Abbreviated forms
+      {"nanosec", 0.000000001},
+      {"microsec", 0.000001},
+      {"millisec", 0.001},
+      {"sec", 1.0},
+      {"min", 60.0},
+      {"hr", 3600.0},
+      {"dy", 86400.0},
+      {"wk", 7 * 86400.0},
+      {"mon", 30 * 86400.0},
+      {"yr", 365 * 86400.0},
 
-    // nano -> n
-    { "nsecond", 0.000000001 },
-    { "nsec", 0.000000001 },
-    // micro -> u
-    { "usecond", 0.000001 },
-    { "usec", 0.000001 },
-    // milli -> m
-    { "msecond", 0.001 },
-    { "msec", 0.001 },
+      // nano -> n
+      {"nsecond", 0.000000001},
+      {"nsec", 0.000000001},
+      // micro -> u
+      {"usecond", 0.000001},
+      {"usec", 0.000001},
+      // milli -> m
+      {"msecond", 0.001},
+      {"msec", 0.001},
 
-    // Ultra-short form
-    { "ns", 0.000000001 },
-    { "us", 0.000001 },
-    { "ms", 0.001 },
-    { "s", 1.0 },
-    { "m", 60.0 },
-    { "h", 3600.0 },
-    { "d", 86400.0 },
-    { "w", 7 * 86400.0 },
-    { "M", 30 * 86400.0 },  // upper-case M to disambiguate with minute
-    { "y", 365 * 86400.0 }
-  };
+      // Ultra-short form
+      {"ns", 0.000000001},
+      {"us", 0.000001},
+      {"ms", 0.001},
+      {"s", 1.0},
+      {"m", 60.0},
+      {"h", 3600.0},
+      {"d", 86400.0},
+      {"w", 7 * 86400.0},
+      {"M", 30 * 86400.0}, // upper-case M to disambiguate with minute
+      {"y", 365 * 86400.0}};
 
-  char* unit_start;     // Start of unit name.
+  char* unit_start; // Start of unit name.
   double work_value = 0;
   int sign = 1;
   const char* interval_start = SkipLeadingWhiteSpace(str.c_str());
@@ -414,7 +431,7 @@ bool HumanReadableElapsedTime::ToDouble(const string& str, double* value) {
         interval_start = unit_start + unit_len;
         // Allowing pluralization of any unit (except empty string)
         if (unit_len > 0 && *interval_start == 's') {
-            interval_start++;
+          interval_start++;
         }
         found_unit = true;
       }

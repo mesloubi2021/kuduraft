@@ -35,12 +35,12 @@ extern const char kOldTmpInfix[];
 
 // Join two path segments with the appropriate path separator,
 // if necessary.
-std::string JoinPathSegments(const std::string& a,
-                             const std::string& b);
+std::string JoinPathSegments(const std::string& a, const std::string& b);
 
 // Join each path segment in a list with a common suffix segment.
-std::vector<std::string> JoinPathSegmentsV(const std::vector<std::string>& v,
-                                           const std::string& s);
+std::vector<std::string> JoinPathSegmentsV(
+    const std::vector<std::string>& v,
+    const std::string& s);
 
 // Split a path into segments with the appropriate path separator.
 std::vector<std::string> SplitPath(const std::string& path);
@@ -55,9 +55,10 @@ std::string BaseName(const std::string& path);
 
 // Attempts to find the path to the executable, searching the provided locations
 // as well as the $PATH environment variable.
-Status FindExecutable(const std::string& binary,
-                      const std::vector<std::string>& search,
-                      std::string* path) WARN_UNUSED_RESULT;
+Status FindExecutable(
+    const std::string& binary,
+    const std::vector<std::string>& search,
+    std::string* path) WARN_UNUSED_RESULT;
 
 } // namespace kudu
 #endif /* KUDU_UTIL_PATH_UTIL_H */

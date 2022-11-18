@@ -44,25 +44,28 @@ namespace consensus {
 // This class is ONLY thread-safe across different tablets. Concurrent access
 // to Create() or Load() for the same tablet id is thread-hostile and must be
 // externally synchronized. Failure to do so may result in a crash.
-class PersistentVarsManager : public RefCountedThreadSafe<PersistentVarsManager> {
+class PersistentVarsManager
+    : public RefCountedThreadSafe<PersistentVarsManager> {
  public:
   explicit PersistentVarsManager(FsManager* fs_manager);
 
   // Create a PersistentVars instance keyed by 'tablet_id'.
   // Returns an error if a PersistentVars instance with that key already exists.
-  Status CreatePersistentVars(const std::string& tablet_id,
-                     scoped_refptr<PersistentVars>* persistent_vars_out = nullptr);
+  Status CreatePersistentVars(
+      const std::string& tablet_id,
+      scoped_refptr<PersistentVars>* persistent_vars_out = nullptr);
 
   // Load the PersistentVars instance keyed by 'tablet_id'.
-  // Returns an error if it cannot be found, either in 'persistent_vars_cache_' or on
-  // disk.
-  Status LoadPersistentVars(const std::string& tablet_id,
-                   scoped_refptr<PersistentVars>* persistent_vars_out = nullptr);
+  // Returns an error if it cannot be found, either in 'persistent_vars_cache_'
+  // or on disk.
+  Status LoadPersistentVars(
+      const std::string& tablet_id,
+      scoped_refptr<PersistentVars>* persistent_vars_out = nullptr);
 
   // Check whether the Persistent Vars file exists for a given tablet
   bool PersistentVarsFileExists(const std::string& tablet_id) const;
 
-private:
+ private:
   friend class RefCountedThreadSafe<PersistentVarsManager>;
 
   FsManager* const fs_manager_;
@@ -71,7 +74,8 @@ private:
   Mutex persistent_vars_lock_;
 
   // Cache for PersistentVars objects (tablet_id => persistent_vars).
-  std::unordered_map<std::string, scoped_refptr<PersistentVars>> persistent_vars_cache_;
+  std::unordered_map<std::string, scoped_refptr<PersistentVars>>
+      persistent_vars_cache_;
 
   DISALLOW_COPY_AND_ASSIGN(PersistentVarsManager);
 };

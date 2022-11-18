@@ -64,7 +64,8 @@ static void InvokeDestructors(void* t) {
 static void CreateKey() {
   int ret = pthread_key_create(&destructors_key, &InvokeDestructors);
   // Linux supports up to 1024 keys, we will use only one for all thread locals.
-  CHECK_EQ(0, ret) << "pthread_key_create() failed, cannot add destructor to thread: "
+  CHECK_EQ(0, ret)
+      << "pthread_key_create() failed, cannot add destructor to thread: "
       << "error " << ret << ": " << ErrnoToString(ret);
 }
 
@@ -76,11 +77,13 @@ void AddDestructor(void (*destructor)(void*), void* arg) {
   std::unique_ptr<PerThreadDestructorList> p(new PerThreadDestructorList());
   p->destructor = destructor;
   p->arg = arg;
-  p->next = reinterpret_cast<PerThreadDestructorList*>(pthread_getspecific(destructors_key));
+  p->next = reinterpret_cast<PerThreadDestructorList*>(
+      pthread_getspecific(destructors_key));
   int ret = pthread_setspecific(destructors_key, p.release());
   // The only time this check should fail is if we are out of memory, or if
   // somehow key creation failed, which should be caught by the above CHECK.
-  CHECK_EQ(0, ret) << "pthread_setspecific() failed, cannot update destructor list: "
+  CHECK_EQ(0, ret)
+      << "pthread_setspecific() failed, cannot update destructor list: "
       << "error " << ret << ": " << ErrnoToString(ret);
 }
 

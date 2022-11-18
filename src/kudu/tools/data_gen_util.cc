@@ -30,10 +30,11 @@
 namespace kudu {
 namespace tools {
 
-void WriteValueToColumn(const client::KuduSchema& schema,
-                        int col_idx,
-                        uint64_t value,
-                        KuduPartialRow* row) {
+void WriteValueToColumn(
+    const client::KuduSchema& schema,
+    int col_idx,
+    uint64_t value,
+    KuduPartialRow* row) {
   client::KuduColumnSchema::DataType type = schema.Column(col_idx).type();
   char buf[kFastToBufferSize];
   switch (type) {
@@ -67,8 +68,11 @@ void WriteValueToColumn(const client::KuduSchema& schema,
 }
 
 template <class RNG>
-void GenerateDataForRow(const client::KuduSchema& schema, uint64_t record_id,
-                        RNG* random, KuduPartialRow* row) {
+void GenerateDataForRow(
+    const client::KuduSchema& schema,
+    uint64_t record_id,
+    RNG* random,
+    KuduPartialRow* row) {
   for (int col_idx = 0; col_idx < schema.num_columns(); col_idx++) {
     // We randomly generate the inserted data, except for the first column,
     // which is always based on a monotonic "record id".
@@ -83,12 +87,16 @@ void GenerateDataForRow(const client::KuduSchema& schema, uint64_t record_id,
 }
 
 // Explicit specialization for callers outside this compilation unit.
-template
-void GenerateDataForRow(const client::KuduSchema& schema, uint64_t record_id,
-                        Random* random, KuduPartialRow* row);
-template
-void GenerateDataForRow(const client::KuduSchema& schema, uint64_t record_id,
-                        ThreadSafeRandom* random, KuduPartialRow* row);
+template void GenerateDataForRow(
+    const client::KuduSchema& schema,
+    uint64_t record_id,
+    Random* random,
+    KuduPartialRow* row);
+template void GenerateDataForRow(
+    const client::KuduSchema& schema,
+    uint64_t record_id,
+    ThreadSafeRandom* random,
+    KuduPartialRow* row);
 
 } // namespace tools
 } // namespace kudu

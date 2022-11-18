@@ -32,9 +32,9 @@
 
 #include "kudu/client/client-test-util.h"
 #include "kudu/client/client.h"
-#include "kudu/client/shared_ptr.h"
 #include "kudu/client/scan_predicate.h"
 #include "kudu/client/schema.h"
+#include "kudu/client/shared_ptr.h"
 #include "kudu/client/value.h"
 #include "kudu/client/write_op.h"
 #include "kudu/common/common.pb.h"
@@ -100,9 +100,11 @@ struct RangePartitionOptions {
   vector<pair<vector<int32_t>, vector<int32_t>>> bounds;
 };
 
-int NumPartitions(const vector<HashPartitionOptions>& hash_partitions,
-                  const RangePartitionOptions& range_partition) {
-  int partitions = std::max(1UL, range_partition.bounds.size()) + range_partition.splits.size();
+int NumPartitions(
+    const vector<HashPartitionOptions>& hash_partitions,
+    const RangePartitionOptions& range_partition) {
+  int partitions = std::max(1UL, range_partition.bounds.size()) +
+      range_partition.splits.size();
   for (const auto& hash_partition : hash_partitions) {
     partitions *= hash_partition.num_buckets;
   }
@@ -112,20 +114,23 @@ int NumPartitions(const vector<HashPartitionOptions>& hash_partitions,
 string RowToString(const vector<int32_t> row) {
   string s = "(";
   for (int i = 0; i < row.size(); i++) {
-    if (i != 0) s.append(", ");
+    if (i != 0)
+      s.append(", ");
     s.append(std::to_string(row[i]));
   }
   s.append(")");
   return s;
 }
 
-string PartitionOptionsToString(const vector<HashPartitionOptions>& hash_partitions,
-                                const RangePartitionOptions& range_partition) {
+string PartitionOptionsToString(
+    const vector<HashPartitionOptions>& hash_partitions,
+    const RangePartitionOptions& range_partition) {
   string s;
   for (const auto& hash_partition : hash_partitions) {
     s.append("HASH (");
     for (int i = 0; i < hash_partition.columns.size(); i++) {
-      if (i != 0) s.append(", ");
+      if (i != 0)
+        s.append(", ");
       s.append(hash_partition.columns[i]);
     }
     s.append(") INTO ");
@@ -135,7 +140,8 @@ string PartitionOptionsToString(const vector<HashPartitionOptions>& hash_partiti
 
   s.append("RANGE (");
   for (int i = 0; i < range_partition.columns.size(); i++) {
-    if (i != 0) s.append(", ");
+    if (i != 0)
+      s.append(", ");
     s.append(range_partition.columns[i]);
   }
   s.append(")");
@@ -144,7 +150,8 @@ string PartitionOptionsToString(const vector<HashPartitionOptions>& hash_partiti
     s.append(" SPLIT ROWS ");
 
     for (int i = 0; i < range_partition.splits.size(); i++) {
-      if (i != 0) s.append(", ");
+      if (i != 0)
+        s.append(", ");
       s.append(RowToString(range_partition.splits[i]));
     }
   }
@@ -153,7 +160,8 @@ string PartitionOptionsToString(const vector<HashPartitionOptions>& hash_partiti
     s.append(" BOUNDS (");
 
     for (int i = 0; i < range_partition.bounds.size(); i++) {
-      if (i != 0) s.append(", ");
+      if (i != 0)
+        s.append(", ");
       s.append("[");
       s.append(RowToString(range_partition.bounds[i].first));
       s.append(", ");
@@ -165,14 +173,14 @@ string PartitionOptionsToString(const vector<HashPartitionOptions>& hash_partiti
   return s;
 }
 
-typedef std::tuple<vector<HashPartitionOptions>, RangePartitionOptions> TestParamType;
+typedef std::tuple<vector<HashPartitionOptions>, RangePartitionOptions>
+    TestParamType;
 
-class FlexPartitioningITest : public KuduTest,
-                              public testing::WithParamInterface<TestParamType> {
+class FlexPartitioningITest
+    : public KuduTest,
+      public testing::WithParamInterface<TestParamType> {
  public:
-  FlexPartitioningITest()
-    : random_(GetRandomSeed32()) {
-  }
+  FlexPartitioningITest() : random_(GetRandomSeed32()) {}
 
   void SetUp() override {
     KuduTest::SetUp();
@@ -181,7 +189,8 @@ class FlexPartitioningITest : public KuduTest,
     opts.num_tablet_servers = 1;
     // This test produces lots of tablets. With container and log preallocation,
     // we end up using quite a bit of disk space. So, we disable them.
-    opts.extra_tserver_flags.emplace_back("--log_container_preallocate_bytes=0");
+    opts.extra_tserver_flags.emplace_back(
+        "--log_container_preallocate_bytes=0");
     opts.extra_tserver_flags.emplace_back("--log_preallocate_segments=false");
     cluster_.reset(new ExternalMiniCluster(std::move(opts)));
     ASSERT_OK(cluster_->Start());
@@ -190,31 +199,31 @@ class FlexPartitioningITest : public KuduTest,
   }
 
  protected:
-
-  void TestPartitionOptions(const vector<HashPartitionOptions> hash_options,
-                            const RangePartitionOptions range_options) {
+  void TestPartitionOptions(
+      const vector<HashPartitionOptions> hash_options,
+      const RangePartitionOptions range_options) {
     NO_FATALS(CreateTable(hash_options, range_options));
     NO_FATALS(InsertAndVerifyScans(range_options));
     DeleteTable();
   }
 
-  void CreateTable(const vector<HashPartitionOptions> hash_partitions,
-                   const RangePartitionOptions range_partition) {
+  void CreateTable(
+      const vector<HashPartitionOptions> hash_partitions,
+      const RangePartitionOptions range_partition) {
     KuduSchemaBuilder b;
     b.AddColumn("c0")->Type(KuduColumnSchema::INT32)->NotNull();
     b.AddColumn("c1")->Type(KuduColumnSchema::INT32)->NotNull();
     b.AddColumn("c2")->Type(KuduColumnSchema::INT32)->NotNull();
-    b.SetPrimaryKey({ "c0", "c1", "c2" });
+    b.SetPrimaryKey({"c0", "c1", "c2"});
     KuduSchema schema;
     ASSERT_OK(b.Build(&schema));
 
     gscoped_ptr<KuduTableCreator> table_creator(client_->NewTableCreator());
-    table_creator->table_name(kTableName)
-        .schema(&schema)
-        .num_replicas(1);
+    table_creator->table_name(kTableName).schema(&schema).num_replicas(1);
 
     for (const auto& hash_partition : hash_partitions) {
-      table_creator->add_hash_partitions(hash_partition.columns, hash_partition.num_buckets);
+      table_creator->add_hash_partitions(
+          hash_partition.columns, hash_partition.num_buckets);
     }
 
     vector<const KuduPartialRow*> split_rows;
@@ -260,11 +269,12 @@ class FlexPartitioningITest : public KuduTest,
     req.mutable_table()->set_table_name(kTableName);
     req.set_max_returned_locations(100);
 
-    for (int i = 1; ; i++) {
+    for (int i = 1;; i++) {
       CHECK_LE(i, 10) << "CountTablets timed out";
 
       controller.Reset();
-      CHECK_OK(cluster_->master_proxy()->GetTableLocations(req, &resp, &controller));
+      CHECK_OK(
+          cluster_->master_proxy()->GetTableLocations(req, &resp, &controller));
 
       if (resp.has_error()) {
         CHECK_EQ(MasterErrorPB::TABLET_NOT_RUNNING, resp.error().code());
@@ -280,7 +290,9 @@ class FlexPartitioningITest : public KuduTest,
   // unique c0 value in the range bounds. If there are no range bounds, then
   // c0 values [0, 1000) will be used. The number of inserted rows is returned
   // in 'row_count'.
-  Status InsertRows(const RangePartitionOptions& range_partition, int* row_count);
+  Status InsertRows(
+      const RangePartitionOptions& range_partition,
+      int* row_count);
 
   // Perform a scan with a predicate on 'col_name' BETWEEN 'lower' AND 'upper'.
   // Verifies that the results match up with applying the same scan against our
@@ -291,14 +303,15 @@ class FlexPartitioningITest : public KuduTest,
   // BETWEEN 'lower' AND 'upper'. Verifies that the results match up with
   // 'expected_rows'. Called by CheckScanWithColumnPredicates as an additional
   // check.
-  void CheckScanTokensWithColumnPredicate(Slice col_name,
-                                          int lower,
-                                          int upper,
-                                          const vector<string>& expected_rows);
+  void CheckScanTokensWithColumnPredicate(
+      Slice col_name,
+      int lower,
+      int upper,
+      const vector<string>& expected_rows);
 
   // Like the above, but uses the primary key range scan API in the client to
-  // scan between 'inserted_rows_[lower]' (inclusive) and 'inserted_rows_[upper]'
-  // (exclusive).
+  // scan between 'inserted_rows_[lower]' (inclusive) and
+  // 'inserted_rows_[upper]' (exclusive).
   void CheckPKRangeScan(int lower, int upper);
   void CheckPartitionKeyRangeScanWithPKRange(int lower, int upper);
 
@@ -319,14 +332,15 @@ class FlexPartitioningITest : public KuduTest,
   vector<unique_ptr<KuduPartialRow>> inserted_rows_;
 };
 
-Status FlexPartitioningITest::InsertRows(const RangePartitionOptions& range_partition,
-                                         int* row_count) {
-  static const vector<pair<vector<int32_t>, vector<int32_t>>> kDefaultBounds =
-    {{ { 0 }, { 1000 } }};
+Status FlexPartitioningITest::InsertRows(
+    const RangePartitionOptions& range_partition,
+    int* row_count) {
+  static const vector<pair<vector<int32_t>, vector<int32_t>>> kDefaultBounds = {
+      {{0}, {1000}}};
   CHECK(inserted_rows_.empty());
 
   const vector<pair<vector<int32_t>, vector<int32_t>>>& bounds =
-    range_partition.bounds.empty() ? kDefaultBounds : range_partition.bounds;
+      range_partition.bounds.empty() ? kDefaultBounds : range_partition.bounds;
 
   shared_ptr<KuduSession> session(client_->NewSession());
   session->SetTimeoutMillis(60000);
@@ -336,7 +350,8 @@ Status FlexPartitioningITest::InsertRows(const RangePartitionOptions& range_part
   for (const auto& bound : bounds) {
     for (int32_t i = bound.first[0]; i < bound.second[0]; i++) {
       gscoped_ptr<KuduInsert> insert(table_->NewInsert());
-      tools::GenerateDataForRow(table_->schema(), i, &random_, insert->mutable_row());
+      tools::GenerateDataForRow(
+          table_->schema(), i, &random_, insert->mutable_row());
       inserted_rows_.emplace_back(new KuduPartialRow(*insert->mutable_row()));
       RETURN_NOT_OK(session->Apply(insert.release()));
       count++;
@@ -348,7 +363,10 @@ Status FlexPartitioningITest::InsertRows(const RangePartitionOptions& range_part
   return Status::OK();
 }
 
-void FlexPartitioningITest::CheckScanWithColumnPredicate(Slice col_name, int lower, int upper) {
+void FlexPartitioningITest::CheckScanWithColumnPredicate(
+    Slice col_name,
+    int lower,
+    int upper) {
   KuduScanner scanner(table_.get());
   ASSERT_OK(scanner.SetTimeoutMillis(60000));
   ASSERT_OK(scanner.AddConjunctPredicate(table_->NewComparisonPredicate(
@@ -374,11 +392,15 @@ void FlexPartitioningITest::CheckScanWithColumnPredicate(Slice col_name, int low
   ASSERT_EQ(expected_rows.size(), rows.size());
   ASSERT_EQ(expected_rows, rows);
 
-  NO_FATALS(CheckScanTokensWithColumnPredicate(col_name, lower, upper, expected_rows));
+  NO_FATALS(CheckScanTokensWithColumnPredicate(
+      col_name, lower, upper, expected_rows));
 }
 
 void FlexPartitioningITest::CheckScanTokensWithColumnPredicate(
-    Slice col_name, int lower, int upper, const vector<string>& expected_rows) {
+    Slice col_name,
+    int lower,
+    int upper,
+    const vector<string>& expected_rows) {
   KuduScanTokenBuilder builder(table_.get());
   ASSERT_OK(builder.SetTimeoutMillis(60000));
 
@@ -425,18 +447,19 @@ void FlexPartitioningITest::CheckPKRangeScan(int lower, int upper) {
 
 void FlexPartitioningITest::CheckPartitionKeyRangeScan() {
   GetTableLocationsResponsePB table_locations;
-  ASSERT_OK(GetTableLocations(cluster_->master_proxy(),
-                              table_->name(),
-                              MonoDelta::FromSeconds(32),
-                              master::VOTER_REPLICA,
-                              &table_locations));
+  ASSERT_OK(GetTableLocations(
+      cluster_->master_proxy(),
+      table_->name(),
+      MonoDelta::FromSeconds(32),
+      master::VOTER_REPLICA,
+      &table_locations));
 
   vector<string> rows;
 
   for (const master::TabletLocationsPB& tablet_locations :
-                table_locations.tablet_locations()) {
-
-    string partition_key_start = tablet_locations.partition().partition_key_start();
+       table_locations.tablet_locations()) {
+    string partition_key_start =
+        tablet_locations.partition().partition_key_start();
     string partition_key_end = tablet_locations.partition().partition_key_end();
 
     KuduScanner scanner(table_.get());
@@ -457,19 +480,22 @@ void FlexPartitioningITest::CheckPartitionKeyRangeScan() {
   ASSERT_EQ(rows, expected_rows);
 }
 
-void FlexPartitioningITest::CheckPartitionKeyRangeScanWithPKRange(int lower, int upper) {
+void FlexPartitioningITest::CheckPartitionKeyRangeScanWithPKRange(
+    int lower,
+    int upper) {
   GetTableLocationsResponsePB table_locations;
-  ASSERT_OK(GetTableLocations(cluster_->master_proxy(),
-                              table_->name(),
-                              MonoDelta::FromSeconds(32),
-                              master::VOTER_REPLICA,
-                              &table_locations));
+  ASSERT_OK(GetTableLocations(
+      cluster_->master_proxy(),
+      table_->name(),
+      MonoDelta::FromSeconds(32),
+      master::VOTER_REPLICA,
+      &table_locations));
   vector<string> rows;
 
   for (const master::TabletLocationsPB& tablet_locations :
-                table_locations.tablet_locations()) {
-
-    string partition_key_start = tablet_locations.partition().partition_key_start();
+       table_locations.tablet_locations()) {
+    string partition_key_start =
+        tablet_locations.partition().partition_key_start();
     string partition_key_end = tablet_locations.partition().partition_key_end();
 
     KuduScanner scanner(table_.get());
@@ -492,7 +518,8 @@ void FlexPartitioningITest::CheckPartitionKeyRangeScanWithPKRange(int lower, int
   ASSERT_EQ(rows, expected_rows);
 }
 
-void FlexPartitioningITest::InsertAndVerifyScans(const RangePartitionOptions& range_partition) {
+void FlexPartitioningITest::InsertAndVerifyScans(
+    const RangePartitionOptions& range_partition) {
   int row_count;
   ASSERT_OK(InsertRows(range_partition, &row_count));
 
@@ -528,8 +555,8 @@ void FlexPartitioningITest::InsertAndVerifyScans(const RangePartitionOptions& ra
         std::swap(lower, upper);
       }
 
-      NO_FATALS(CheckScanWithColumnPredicate(table_->schema().Column(col_idx).name(),
-                                             lower, upper));
+      NO_FATALS(CheckScanWithColumnPredicate(
+          table_->schema().Column(col_idx).name(), lower, upper));
     }
   }
 
@@ -546,9 +573,7 @@ void FlexPartitioningITest::InsertAndVerifyScans(const RangePartitionOptions& ra
   }
 
   // 4) Use the Per-tablet "partition key range" API.
-  {
-    NO_FATALS(CheckPartitionKeyRangeScan());
-  }
+  { NO_FATALS(CheckPartitionKeyRangeScan()); }
 
   // 5) Use the Per-tablet "partition key range" API with primary key range.
   {
@@ -566,46 +591,50 @@ void FlexPartitioningITest::InsertAndVerifyScans(const RangePartitionOptions& ra
   }
 }
 
-const vector<vector<HashPartitionOptions>> kHashOptions {
-  // No hash partitioning
-  {},
-  // HASH (c1) INTO 4 BUCKETS
-  { HashPartitionOptions { { "c1" }, 4 } },
-  // HASH (c0, c1) INTO 3 BUCKETS
-  { HashPartitionOptions { { "c0", "c1" }, 3 } },
-  // HASH (c1, c0) INTO 3 BUCKETS, HASH (c2) INTO 3 BUCKETS
-  { HashPartitionOptions { { "c1", "c0" }, 3 },
-    HashPartitionOptions { { "c2" }, 3 } },
-  // HASH (c2) INTO 2 BUCKETS, HASH (c1) INTO 2 BUCKETS, HASH (c0) INTO 2 BUCKETS
-  { HashPartitionOptions { { "c2" }, 2 },
-    HashPartitionOptions { { "c1" }, 2 },
-    HashPartitionOptions { { "c0" }, 2 } },
+const vector<vector<HashPartitionOptions>> kHashOptions{
+    // No hash partitioning
+    {},
+    // HASH (c1) INTO 4 BUCKETS
+    {HashPartitionOptions{{"c1"}, 4}},
+    // HASH (c0, c1) INTO 3 BUCKETS
+    {HashPartitionOptions{{"c0", "c1"}, 3}},
+    // HASH (c1, c0) INTO 3 BUCKETS, HASH (c2) INTO 3 BUCKETS
+    {HashPartitionOptions{{"c1", "c0"}, 3}, HashPartitionOptions{{"c2"}, 3}},
+    // HASH (c2) INTO 2 BUCKETS, HASH (c1) INTO 2 BUCKETS, HASH (c0) INTO 2
+    // BUCKETS
+    {HashPartitionOptions{{"c2"}, 2},
+     HashPartitionOptions{{"c1"}, 2},
+     HashPartitionOptions{{"c0"}, 2}},
 };
 
-const vector<RangePartitionOptions> kRangeOptions {
-  // No range partitioning
-  RangePartitionOptions { {}, {}, {} },
-  // RANGE (c0)
-  RangePartitionOptions { { "c0" }, { }, { } },
-  // RANGE (c0) SPLIT ROWS (500)
-  RangePartitionOptions { { "c0" }, { { 500 } }, { } },
-  // RANGE (c2, c1) SPLIT ROWS (500, 0), (500, 500), (1000, 0)
-  RangePartitionOptions { { "c2", "c1" }, { { 500, 0 }, { 500, 500 }, { 1000, 0 } }, { } },
-  // RANGE (c0) BOUNDS ((0), (500)), ((500), (1000))
-  RangePartitionOptions { { "c0" }, { }, { { { 0 }, { 500 } }, { { 500 }, { 1000 } } } },
-  // RANGE (c0) SPLIT ROWS (500) BOUNDS ((0), (1000))
-  RangePartitionOptions { { "c0" }, { }, { { { 0 }, { 500 } }, { { 500 }, { 1000 } } } },
-  // RANGE (c0, c1) SPLIT ROWS (500), (2001), (2500), (2999)
-  //                BOUNDS ((0), (1000)), ((2000), (3000))
-   RangePartitionOptions{ { "c0", "c1" }, { { 500 }, { 2001 }, { 2500 }, { 2999 } },
-                          { { { 0 }, { 1000 } }, { { 2000 }, { 3000 } } } },
+const vector<RangePartitionOptions> kRangeOptions{
+    // No range partitioning
+    RangePartitionOptions{{}, {}, {}},
+    // RANGE (c0)
+    RangePartitionOptions{{"c0"}, {}, {}},
+    // RANGE (c0) SPLIT ROWS (500)
+    RangePartitionOptions{{"c0"}, {{500}}, {}},
+    // RANGE (c2, c1) SPLIT ROWS (500, 0), (500, 500), (1000, 0)
+    RangePartitionOptions{{"c2", "c1"}, {{500, 0}, {500, 500}, {1000, 0}}, {}},
+    // RANGE (c0) BOUNDS ((0), (500)), ((500), (1000))
+    RangePartitionOptions{{"c0"}, {}, {{{0}, {500}}, {{500}, {1000}}}},
+    // RANGE (c0) SPLIT ROWS (500) BOUNDS ((0), (1000))
+    RangePartitionOptions{{"c0"}, {}, {{{0}, {500}}, {{500}, {1000}}}},
+    // RANGE (c0, c1) SPLIT ROWS (500), (2001), (2500), (2999)
+    //                BOUNDS ((0), (1000)), ((2000), (3000))
+    RangePartitionOptions{
+        {"c0", "c1"},
+        {{500}, {2001}, {2500}, {2999}},
+        {{{0}, {1000}}, {{2000}, {3000}}}},
 };
 
 // Instantiate all combinations of hash options and range options.
-INSTANTIATE_TEST_CASE_P(Shards, FlexPartitioningITest,
-                        testing::Combine(
-                            testing::ValuesIn(kHashOptions),
-                            testing::ValuesIn(kRangeOptions)));
+INSTANTIATE_TEST_CASE_P(
+    Shards,
+    FlexPartitioningITest,
+    testing::Combine(
+        testing::ValuesIn(kHashOptions),
+        testing::ValuesIn(kRangeOptions)));
 
 TEST_P(FlexPartitioningITest, TestFlexPartitioning) {
   const auto& hash_option = std::get<0>(GetParam());
@@ -615,11 +644,12 @@ TEST_P(FlexPartitioningITest, TestFlexPartitioning) {
 } // namespace itest
 } // namespace kudu
 
-// Define a gtest printer overload so that the test output clearly identifies the test case that
-// failed.
+// Define a gtest printer overload so that the test output clearly identifies
+// the test case that failed.
 namespace testing {
 template <>
-std::string PrintToString<kudu::itest::TestParamType>(const kudu::itest::TestParamType& param) {
+std::string PrintToString<kudu::itest::TestParamType>(
+    const kudu::itest::TestParamType& param) {
   const auto& hash_option = std::get<0>(param);
   const auto& range_option = std::get<1>(param);
   return kudu::itest::PartitionOptionsToString(hash_option, range_option);

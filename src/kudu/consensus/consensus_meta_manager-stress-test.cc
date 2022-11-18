@@ -66,8 +66,7 @@ class ConsensusMetadataManagerStressTest : public KuduTest {
   ConsensusMetadataManagerStressTest()
       : rng_(SeedRandom()),
         fs_manager_(env_, GetTestPath("fs_root")),
-        cmeta_manager_(new ConsensusMetadataManager(&fs_manager_)) {
-  }
+        cmeta_manager_(new ConsensusMetadataManager(&fs_manager_)) {}
 
   void SetUp() override {
     KuduTest::SetUp();
@@ -154,7 +153,8 @@ TEST_F(ConsensusMetadataManagerStressTest, CreateLoadDeleteTSANTest) {
         OpType type = static_cast<OpType>(rng_.Uniform(kNumOpTypes));
         switch (type) {
           case kCreate: {
-            Status s = cmeta_manager_->CreateCMeta(tablet_id, config_, kInitialTerm);
+            Status s =
+                cmeta_manager_->CreateCMeta(tablet_id, config_, kInitialTerm);
             if (tablet_cmeta_exists[tablet_id]) {
               CHECK(s.IsAlreadyPresent()) << s.ToString();
             } else {
@@ -187,7 +187,9 @@ TEST_F(ConsensusMetadataManagerStressTest, CreateLoadDeleteTSANTest) {
             tablet_cmeta_exists[tablet_id] = false;
             break;
           }
-          default: LOG(FATAL) << type; break;
+          default:
+            LOG(FATAL) << type;
+            break;
         }
       }
     });
@@ -197,7 +199,8 @@ TEST_F(ConsensusMetadataManagerStressTest, CreateLoadDeleteTSANTest) {
     threads[thread_num].join();
   }
 
-  LOG(INFO) << "Ops performed: " << ops_performed.load(std::memory_order_relaxed);
+  LOG(INFO) << "Ops performed: "
+            << ops_performed.load(std::memory_order_relaxed);
 }
 
 } // namespace consensus

@@ -63,7 +63,7 @@ Status Sockaddr::ParseString(const std::string& s, uint16_t default_port) {
   return Status::OK();
 }
 
-Sockaddr& Sockaddr::operator=(const struct sockaddr_in6 &addr) {
+Sockaddr& Sockaddr::operator=(const struct sockaddr_in6& addr) {
   memcpy(&addr_, &addr, sizeof(struct sockaddr_in6));
   return *this;
 }
@@ -72,15 +72,14 @@ bool Sockaddr::operator==(const Sockaddr& other) const {
   return memcmp(&other.addr_, &addr_, sizeof(addr_)) == 0;
 }
 
-bool Sockaddr::operator<(const Sockaddr &rhs) const {
+bool Sockaddr::operator<(const Sockaddr& rhs) const {
   return NetworkByteOrder::Load128(addr_.sin6_addr.s6_addr) <
       NetworkByteOrder::Load128(rhs.addr_.sin6_addr.s6_addr);
 }
 
 uint64 Sockaddr::HashCode() const {
   // Note: IPv6 addresses are 128 bits.
-  uint64 hash = Hash128to64(
-      NetworkByteOrder::Load128(addr_.sin6_addr.s6_addr));
+  uint64 hash = Hash128to64(NetworkByteOrder::Load128(addr_.sin6_addr.s6_addr));
   hash = Hash64NumWithSeed(addr_.sin6_port, hash);
   return hash;
 }
@@ -131,17 +130,24 @@ Status Sockaddr::LookupHostname(string* hostname) const {
   int flags = 0;
 
   int rc;
-  LOG_SLOW_EXECUTION(WARNING, 200,
-                     Substitute("DNS reverse-lookup for $0", ToString())) {
-    rc = getnameinfo((struct sockaddr *) &addr_, sizeof(sockaddr_in6),
-                     host, NI_MAXHOST,
-                     nullptr, 0, flags);
+  LOG_SLOW_EXECUTION(
+      WARNING, 200, Substitute("DNS reverse-lookup for $0", ToString())) {
+    rc = getnameinfo(
+        (struct sockaddr*)&addr_,
+        sizeof(sockaddr_in6),
+        host,
+        NI_MAXHOST,
+        nullptr,
+        0,
+        flags);
   }
   if (PREDICT_FALSE(rc != 0)) {
     if (rc == EAI_SYSTEM) {
       int errno_saved = errno;
-      return Status::NetworkError(Substitute("getnameinfo: $0", gai_strerror(rc)),
-                                  strerror(errno_saved), errno_saved);
+      return Status::NetworkError(
+          Substitute("getnameinfo: $0", gai_strerror(rc)),
+          strerror(errno_saved),
+          errno_saved);
     }
     return Status::NetworkError("getnameinfo", gai_strerror(rc), rc);
   }

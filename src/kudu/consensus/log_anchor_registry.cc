@@ -36,26 +36,28 @@ using std::string;
 using strings::Substitute;
 using strings::SubstituteAndAppend;
 
-LogAnchorRegistry::LogAnchorRegistry() {
-}
+LogAnchorRegistry::LogAnchorRegistry() {}
 
 LogAnchorRegistry::~LogAnchorRegistry() {
   CHECK(anchors_.empty());
 }
 
-void LogAnchorRegistry::Register(int64_t log_index,
-                                 const string& owner,
-                                 LogAnchor* anchor) {
+void LogAnchorRegistry::Register(
+    int64_t log_index,
+    const string& owner,
+    LogAnchor* anchor) {
   std::lock_guard<simple_spinlock> l(lock_);
   RegisterUnlocked(log_index, owner, anchor);
 }
 
-Status LogAnchorRegistry::UpdateRegistration(int64_t log_index,
-                                             const std::string& owner,
-                                             LogAnchor* anchor) {
+Status LogAnchorRegistry::UpdateRegistration(
+    int64_t log_index,
+    const std::string& owner,
+    LogAnchor* anchor) {
   std::lock_guard<simple_spinlock> l(lock_);
-  RETURN_NOT_OK_PREPEND(UnregisterUnlocked(anchor),
-                        "Unable to swap registration, anchor not registered")
+  RETURN_NOT_OK_PREPEND(
+      UnregisterUnlocked(anchor),
+      "Unable to swap registration, anchor not registered")
   RegisterUnlocked(log_index, owner, anchor);
   return Status::OK();
 }
@@ -67,7 +69,8 @@ Status LogAnchorRegistry::Unregister(LogAnchor* anchor) {
 
 Status LogAnchorRegistry::UnregisterIfAnchored(LogAnchor* anchor) {
   std::lock_guard<simple_spinlock> l(lock_);
-  if (!anchor->is_registered) return Status::OK();
+  if (!anchor->is_registered)
+    return Status::OK();
   return UnregisterUnlocked(anchor);
 }
 
@@ -95,18 +98,22 @@ std::string LogAnchorRegistry::DumpAnchorInfo() const {
   for (const AnchorMultiMap::value_type& entry : anchors_) {
     const LogAnchor* anchor = entry.second;
     DCHECK(anchor->is_registered);
-    if (!buf.empty()) buf += ", ";
-    SubstituteAndAppend(&buf, "LogAnchor[index=$0, age=$1s, owner=$2]",
-                        anchor->log_index,
-                        (now - anchor->when_registered).ToSeconds(),
-                        anchor->owner);
+    if (!buf.empty())
+      buf += ", ";
+    SubstituteAndAppend(
+        &buf,
+        "LogAnchor[index=$0, age=$1s, owner=$2]",
+        anchor->log_index,
+        (now - anchor->when_registered).ToSeconds(),
+        anchor->owner);
   }
   return buf;
 }
 
-void LogAnchorRegistry::RegisterUnlocked(int64_t log_index,
-                                         const std::string& owner,
-                                         LogAnchor* anchor) {
+void LogAnchorRegistry::RegisterUnlocked(
+    int64_t log_index,
+    const std::string& owner,
+    LogAnchor* anchor) {
   DCHECK(anchor != nullptr);
   DCHECK(!anchor->is_registered);
 
@@ -132,21 +139,21 @@ Status LogAnchorRegistry::UnregisterUnlocked(LogAnchor* anchor) {
     }
     ++iter;
   }
-  return Status::NotFound(Substitute("Anchor with index $0 and owner $1 not found",
-                                     anchor->log_index, anchor->owner));
+  return Status::NotFound(Substitute(
+      "Anchor with index $0 and owner $1 not found",
+      anchor->log_index,
+      anchor->owner));
 }
 
-LogAnchor::LogAnchor()
-  : is_registered(false),
-    log_index(kInvalidOpIdIndex) {
-}
+LogAnchor::LogAnchor() : is_registered(false), log_index(kInvalidOpIdIndex) {}
 
 LogAnchor::~LogAnchor() {
   CHECK(!is_registered) << "Attempted to destruct a registered LogAnchor";
 }
 
-MinLogIndexAnchorer::MinLogIndexAnchorer(LogAnchorRegistry* registry,
-                                         string owner)
+MinLogIndexAnchorer::MinLogIndexAnchorer(
+    LogAnchorRegistry* registry,
+    string owner)
     : registry_(DCHECK_NOTNULL(registry)),
       owner_(std::move(owner)),
       minimum_log_index_(kInvalidOpIdIndex) {}
@@ -162,7 +169,8 @@ void MinLogIndexAnchorer::AnchorIfMinimum(int64_t log_index) {
     registry_->Register(minimum_log_index_, owner_, &anchor_);
   } else if (log_index < minimum_log_index_) {
     minimum_log_index_ = log_index;
-    CHECK_OK(registry_->UpdateRegistration(minimum_log_index_, owner_, &anchor_));
+    CHECK_OK(
+        registry_->UpdateRegistration(minimum_log_index_, owner_, &anchor_));
   }
 }
 

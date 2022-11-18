@@ -21,9 +21,9 @@ import "kudu/util/pb_util.proto";
 
 message TestSecurePrintingPB {
   optional string insecure1 = 1;
-  optional string secure1 = 2 [(kudu.REDACT) = true];
+  optional string secure1 = 2 [ (kudu.REDACT) = true ];
   optional string insecure2 = 3;
-  optional string secure2 = 4 [(kudu.REDACT) = true];
-  repeated string repeated_secure = 5 [(kudu.REDACT) = true];
+  optional string secure2 = 4 [ (kudu.REDACT) = true ];
+  repeated string repeated_secure = 5 [ (kudu.REDACT) = true ];
   optional string insecure3 = 6;
 }

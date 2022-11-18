@@ -15,9 +15,9 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include <stdint.h>
 #include <memory>
 #include <ostream>
-#include <stdint.h>
 #include <string>
 #include <vector>
 
@@ -54,11 +54,11 @@ DECLARE_int32(flush_threshold_secs);
 namespace kudu {
 namespace tserver {
 
-using client::sp::shared_ptr;
 using client::KuduClient;
 using client::KuduClientBuilder;
 using client::KuduScanner;
 using client::KuduTable;
+using client::sp::shared_ptr;
 using itest::FindTabletLeader;
 using itest::TServerDetails;
 using std::string;
@@ -67,9 +67,7 @@ using strings::Substitute;
 using tablet::TabletReplica;
 using tserver::MiniTabletServer;
 
-enum ReplicaType {
-  LEADER, FOLLOWER
-};
+enum ReplicaType { LEADER, FOLLOWER };
 
 class StopTabletITest : public MiniClusterITestBase,
                         public ::testing::WithParamInterface<ReplicaType> {
@@ -94,8 +92,10 @@ class StopTabletITest : public MiniClusterITestBase,
   void StopTablet(const string& tablet_id, int tserver_num = 0) {
     scoped_refptr<TabletReplica> replica;
     MiniTabletServer* ts = cluster_->mini_tablet_server(tserver_num);
-    LOG(INFO) << Substitute("Stopping T $0 P $1", tablet_id, ts->uuid());;
-    ASSERT_OK(ts->server()->tablet_manager()->GetTabletReplica(tablet_id, &replica));
+    LOG(INFO) << Substitute("Stopping T $0 P $1", tablet_id, ts->uuid());
+    ;
+    ASSERT_OK(
+        ts->server()->tablet_manager()->GetTabletReplica(tablet_id, &replica));
     replica->tablet()->Stop();
 
     // We need to also stop replica ops since, upon running with a stopped
@@ -124,11 +124,14 @@ class StopTabletITest : public MiniClusterITestBase,
     });
 
     // Wait until the replica is running.
-    AssertEventually([&] {
-      scoped_refptr<TabletReplica> replica;
-      ASSERT_OK(ts->server()->tablet_manager()->GetTabletReplica(*tablet_id, &replica));
-      ASSERT_EQ(replica->state(), tablet::RUNNING);
-    }, MonoDelta::FromSeconds(60));
+    AssertEventually(
+        [&] {
+          scoped_refptr<TabletReplica> replica;
+          ASSERT_OK(ts->server()->tablet_manager()->GetTabletReplica(
+              *tablet_id, &replica));
+          ASSERT_EQ(replica->state(), tablet::RUNNING);
+        },
+        MonoDelta::FromSeconds(60));
   }
 
  private:
@@ -139,8 +142,7 @@ class StopTabletITest : public MiniClusterITestBase,
         ts_map_, tablet_id, MonoDelta::FromSeconds(10), &leader_details));
     for (int i = 0; i < cluster_->num_tablet_servers(); i++) {
       MiniTabletServer* candidate = cluster_->mini_tablet_server(i);
-      if (candidate->uuid() ==
-          leader_details->instance_id.permanent_uuid()) {
+      if (candidate->uuid() == leader_details->instance_id.permanent_uuid()) {
         *leader_num = i;
         return Status::OK();
       }
@@ -165,8 +167,10 @@ TEST_P(StopTabletITest, TestSingleStoppedTabletsDontScan) {
   write_workload.Start();
   while (write_workload.rows_inserted() < kTargetNumRows) {
     SleepFor(MonoDelta::FromMilliseconds(50));
-    KLOG_EVERY_N_SECS(INFO, 1) << Substitute("$0 / $1 rows inserted",
-        write_workload.rows_inserted(), kTargetNumRows);
+    KLOG_EVERY_N_SECS(INFO, 1) << Substitute(
+        "$0 / $1 rows inserted",
+        write_workload.rows_inserted(),
+        kTargetNumRows);
   }
   write_workload.StopAndJoin();
   MiniTabletServer* ts = cluster_->mini_tablet_server(0);
@@ -218,8 +222,8 @@ TEST_P(StopTabletITest, TestStoppedTabletsScansGetRedirected) {
   rw_workload.Start();
   while (rw_workload.rows_inserted() < kTargetNumRows) {
     SleepFor(MonoDelta::FromMilliseconds(50));
-    KLOG_EVERY_N_SECS(INFO, 1) << Substitute("$0 / $1 rows inserted",
-        rw_workload.rows_inserted(), kTargetNumRows);
+    KLOG_EVERY_N_SECS(INFO, 1) << Substitute(
+        "$0 / $1 rows inserted", rw_workload.rows_inserted(), kTargetNumRows);
   }
 
   // Stop the replica.
@@ -277,8 +281,8 @@ TEST_P(StopTabletITest, TestStoppedTabletsDontWrite) {
     int target_after_stop = writes.rows_inserted() + 10000;
     while (writes.rows_inserted() < target_after_stop) {
       SleepFor(MonoDelta::FromMilliseconds(50));
-      KLOG_EVERY_N_SECS(INFO, 1) << Substitute("$0 / $1 rows inserted",
-          writes.rows_inserted(), target_after_stop);
+      KLOG_EVERY_N_SECS(INFO, 1) << Substitute(
+          "$0 / $1 rows inserted", writes.rows_inserted(), target_after_stop);
     }
   }
   writes.StopAndJoin();
@@ -321,7 +325,10 @@ TEST_P(StopTabletITest, TestShutdownWhileWriting) {
   NO_FATALS(cv.CheckCluster());
 }
 
-INSTANTIATE_TEST_CASE_P(StopTablets, StopTabletITest, ::testing::Values(LEADER, FOLLOWER));
+INSTANTIATE_TEST_CASE_P(
+    StopTablets,
+    StopTabletITest,
+    ::testing::Values(LEADER, FOLLOWER));
 
-}  // namespace tserver
-}  // namespace kudu
+} // namespace tserver
+} // namespace kudu

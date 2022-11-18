@@ -67,10 +67,19 @@
 #include "kudu/util/thread.h"
 
 DEFINE_int32(num_writer_threads, 4, "Number of threads writing to the log");
-DEFINE_int32(num_reader_threads, 1, "Number of threads accessing the log while writes are ongoing");
+DEFINE_int32(
+    num_reader_threads,
+    1,
+    "Number of threads accessing the log while writes are ongoing");
 DEFINE_int32(num_batches_per_thread, 2000, "Number of batches per thread");
-DEFINE_int32(num_ops_per_batch_avg, 5, "Target average number of ops per batch");
-DEFINE_bool(verify_log, true, "Whether to verify the log by reading it after the writes complete");
+DEFINE_int32(
+    num_ops_per_batch_avg,
+    5,
+    "Target average number of ops per batch");
+DEFINE_bool(
+    verify_log,
+    true,
+    "Whether to verify the log by reading it after the writes complete");
 
 DECLARE_int32(log_thread_idle_threshold_ms);
 DECLARE_int32(log_inject_thread_lifecycle_latency_ms);
@@ -78,22 +87,20 @@ DECLARE_int32(log_inject_thread_lifecycle_latency_ms);
 namespace kudu {
 namespace log {
 
+using consensus::make_scoped_refptr_replicate;
+using consensus::OpId;
+using consensus::ReplicateMsg;
+using consensus::ReplicateRefPtr;
+using consensus::WRITE_OP;
 using std::shared_ptr;
 using std::vector;
-using consensus::OpId;
-using consensus::ReplicateRefPtr;
-using consensus::ReplicateMsg;
-using consensus::WRITE_OP;
-using consensus::make_scoped_refptr_replicate;
 
 namespace {
 
 class CustomLatchCallback : public RefCountedThreadSafe<CustomLatchCallback> {
  public:
   CustomLatchCallback(CountDownLatch* latch, vector<Status>* errors)
-      : latch_(latch),
-        errors_(errors) {
-  }
+      : latch_(latch), errors_(errors) {}
 
   void StatusCB(const Status& s) {
     if (!s.ok()) {
@@ -115,28 +122,32 @@ class CustomLatchCallback : public RefCountedThreadSafe<CustomLatchCallback> {
 
 class MultiThreadedLogTest : public LogTestBase {
  public:
-  MultiThreadedLogTest()
-      : random_(SeedRandom()) {
-  }
+  MultiThreadedLogTest() : random_(SeedRandom()) {}
 
   virtual void SetUp() override {
     LogTestBase::SetUp();
   }
 
   vector<consensus::ReplicateRefPtr> CreateRandomBatch() {
-    int num_ops = static_cast<int>(random_.Normal(
-        static_cast<double>(FLAGS_num_ops_per_batch_avg), 1.0));
+    int num_ops = static_cast<int>(
+        random_.Normal(static_cast<double>(FLAGS_num_ops_per_batch_avg), 1.0));
     DVLOG(1) << num_ops << " ops in this batch";
     num_ops = std::max(num_ops, 1);
     vector<consensus::ReplicateRefPtr> ret;
     for (int j = 0; j < num_ops; j++) {
-      ReplicateRefPtr replicate = make_scoped_refptr_replicate(new ReplicateMsg);
+      ReplicateRefPtr replicate =
+          make_scoped_refptr_replicate(new ReplicateMsg);
       replicate->get()->set_op_type(WRITE_OP);
       replicate->get()->set_timestamp(clock_->Now().ToUint64());
-      tserver::WriteRequestPB* request = replicate->get()->mutable_write_request();
-      AddTestRowToPB(RowOperationsPB::INSERT, schema_, 12345, 0,
-                     "this is a test insert",
-                     request->mutable_row_operations());
+      tserver::WriteRequestPB* request =
+          replicate->get()->mutable_write_request();
+      AddTestRowToPB(
+          RowOperationsPB::INSERT,
+          schema_,
+          12345,
+          0,
+          "this is a test insert",
+          request->mutable_row_operations());
       request->set_tablet_id(kTestTablet);
       ret.push_back(replicate);
     }
@@ -163,7 +174,8 @@ class MultiThreadedLogTest : public LogTestBase {
       {
         std::lock_guard<simple_spinlock> l(lock_);
         AssignIndexes(&batch_replicates);
-        ASSERT_OK(log_->AsyncAppendReplicates(batch_replicates, cb->AsStatusCallback()));
+        ASSERT_OK(log_->AsyncAppendReplicates(
+            batch_replicates, cb->AsStatusCallback()));
       }
       MAYBE_INJECT_RANDOM_LATENCY(FLAGS_log_inject_thread_lifecycle_latency_ms);
     }
@@ -177,8 +189,13 @@ class MultiThreadedLogTest : public LogTestBase {
   void Run() {
     for (int i = 0; i < FLAGS_num_writer_threads; i++) {
       scoped_refptr<kudu::Thread> new_thread;
-      CHECK_OK(kudu::Thread::Create("test", "inserter",
-          &MultiThreadedLogTest::LogWriterThread, this, i, &new_thread));
+      CHECK_OK(kudu::Thread::Create(
+          "test",
+          "inserter",
+          &MultiThreadedLogTest::LogWriterThread,
+          this,
+          i,
+          &new_thread));
       threads_.push_back(new_thread);
     }
 
@@ -188,12 +205,13 @@ class MultiThreadedLogTest : public LogTestBase {
     vector<std::thread> reader_threads;
     for (int i = 0; i < FLAGS_num_reader_threads; i++) {
       reader_threads.emplace_back([&]() {
-          std::map<int64_t, int64_t> map;
-          while (!stop_reader) {
-            log_->GetReplaySizeMap(&map);
-            log_->GetGCableDataSize(RetentionIndexes(FLAGS_num_batches_per_thread));
-          }
-        });
+        std::map<int64_t, int64_t> map;
+        while (!stop_reader) {
+          log_->GetReplaySizeMap(&map);
+          log_->GetGCableDataSize(
+              RetentionIndexes(FLAGS_num_batches_per_thread));
+        }
+      });
     }
 
     // Wait for the writers to finish.
@@ -210,7 +228,8 @@ class MultiThreadedLogTest : public LogTestBase {
 
   void VerifyLog() {
     shared_ptr<LogReader> reader;
-    ASSERT_OK(LogReader::Open(fs_manager_.get(), nullptr, kTestTablet, nullptr, &reader));
+    ASSERT_OK(LogReader::Open(
+        fs_manager_.get(), nullptr, kTestTablet, nullptr, &reader));
     SegmentSequence segments;
     ASSERT_OK(reader->GetSegmentsSnapshot(&segments));
 
@@ -227,7 +246,7 @@ class MultiThreadedLogTest : public LogTestBase {
  private:
   ThreadSafeRandom random_;
   simple_spinlock lock_;
-  vector<scoped_refptr<kudu::Thread> > threads_;
+  vector<scoped_refptr<kudu::Thread>> threads_;
 };
 
 TEST_F(MultiThreadedLogTest, TestAppends) {
@@ -238,10 +257,13 @@ TEST_F(MultiThreadedLogTest, TestAppends) {
   }
 
   ASSERT_OK(BuildLog());
-  LOG_TIMING(INFO, strings::Substitute("inserting $0 batches($1 threads, $2 per-thread)",
-                                       FLAGS_num_writer_threads * FLAGS_num_batches_per_thread,
-                                       FLAGS_num_writer_threads,
-                                       FLAGS_num_batches_per_thread)) {
+  LOG_TIMING(
+      INFO,
+      strings::Substitute(
+          "inserting $0 batches($1 threads, $2 per-thread)",
+          FLAGS_num_writer_threads * FLAGS_num_batches_per_thread,
+          FLAGS_num_writer_threads,
+          FLAGS_num_batches_per_thread)) {
     ASSERT_NO_FATAL_FAILURE(Run());
   }
   ASSERT_OK(log_->Close());

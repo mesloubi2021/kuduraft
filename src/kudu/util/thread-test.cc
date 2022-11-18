@@ -52,11 +52,10 @@ TEST_F(ThreadTest, TestJoinAndWarn) {
   }
 
   scoped_refptr<Thread> holder;
-  ASSERT_OK(Thread::Create("test", "sleeper thread", usleep, 1000*1000, &holder));
-  ASSERT_OK(ThreadJoiner(holder.get())
-                   .warn_after_ms(10)
-                   .warn_every_ms(100)
-                   .Join());
+  ASSERT_OK(
+      Thread::Create("test", "sleeper thread", usleep, 1000 * 1000, &holder));
+  ASSERT_OK(
+      ThreadJoiner(holder.get()).warn_after_ms(10).warn_every_ms(100).Join());
 }
 
 TEST_F(ThreadTest, TestFailedJoin) {
@@ -66,11 +65,11 @@ TEST_F(ThreadTest, TestFailedJoin) {
   }
 
   scoped_refptr<Thread> holder;
-  ASSERT_OK(Thread::Create("test", "sleeper thread", usleep, 1000*1000, &holder));
-  Status s = ThreadJoiner(holder.get())
-    .give_up_after_ms(50)
-    .Join();
-  ASSERT_STR_CONTAINS(s.ToString(), "Timed out after 50ms joining on sleeper thread");
+  ASSERT_OK(
+      Thread::Create("test", "sleeper thread", usleep, 1000 * 1000, &holder));
+  Status s = ThreadJoiner(holder.get()).give_up_after_ms(50).Join();
+  ASSERT_STR_CONTAINS(
+      s.ToString(), "Timed out after 50ms joining on sleeper thread");
 }
 
 static void TryJoinOnSelf() {
@@ -113,8 +112,8 @@ TEST_F(ThreadTest, ThreadStartBenchmark) {
   }
 }
 
-// The following tests only run in debug mode, since thread restrictions are no-ops
-// in release builds.
+// The following tests only run in debug mode, since thread restrictions are
+// no-ops in release builds.
 #ifndef NDEBUG
 TEST_F(ThreadTest, TestThreadRestrictions_IO) {
   // Default should be to allow IO
@@ -128,11 +127,12 @@ TEST_F(ThreadTest, TestThreadRestrictions_IO) {
   ThreadRestrictions::SetIOAllowed(true);
 
   // Disallow IO - doing IO should crash the process.
-  ASSERT_DEATH({
-      ThreadRestrictions::SetIOAllowed(false);
-      ignore_result(Env::Default()->FileExists("/"));
-    },
-    "Function marked as IO-only was called from a thread that disallows IO");
+  ASSERT_DEATH(
+      {
+        ThreadRestrictions::SetIOAllowed(false);
+        ignore_result(Env::Default()->FileExists("/"));
+      },
+      "Function marked as IO-only was called from a thread that disallows IO");
 }
 
 TEST_F(ThreadTest, TestThreadRestrictions_Waiting) {
@@ -148,12 +148,13 @@ TEST_F(ThreadTest, TestThreadRestrictions_Waiting) {
   ThreadRestrictions::SetWaitAllowed(true);
 
   // Disallow waiting - blocking on a latch should crash the process.
-  ASSERT_DEATH({
-      ThreadRestrictions::SetWaitAllowed(false);
-      CountDownLatch l(0);
-      l.Wait();
-    },
-    "Waiting is not allowed to be used on this thread");
+  ASSERT_DEATH(
+      {
+        ThreadRestrictions::SetWaitAllowed(false);
+        CountDownLatch l(0);
+        l.Wait();
+      },
+      "Waiting is not allowed to be used on this thread");
 }
 #endif // NDEBUG
 

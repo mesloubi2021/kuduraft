@@ -32,9 +32,11 @@
 #include "kudu/util/status.h"
 #include "kudu/util/string_case.h"
 
-DEFINE_int32(metrics_retirement_age_ms, 120 * 1000,
-             "The minimum number of milliseconds a metric will be kept for after it is "
-             "no longer active. (Advanced option)");
+DEFINE_int32(
+    metrics_retirement_age_ms,
+    120 * 1000,
+    "The minimum number of milliseconds a metric will be kept for after it is "
+    "no longer active. (Advanced option)");
 TAG_FLAG(metrics_retirement_age_ms, runtime);
 TAG_FLAG(metrics_retirement_age_ms, advanced);
 
@@ -142,13 +144,11 @@ const char* MetricType::Name(MetricType::Type type) {
 // MetricEntityPrototype
 //
 
-MetricEntityPrototype::MetricEntityPrototype(const char* name)
-  : name_(name) {
+MetricEntityPrototype::MetricEntityPrototype(const char* name) : name_(name) {
   MetricPrototypeRegistry::get()->AddEntity(this);
 }
 
-MetricEntityPrototype::~MetricEntityPrototype() {
-}
+MetricEntityPrototype::~MetricEntityPrototype() {}
 
 scoped_refptr<MetricEntity> MetricEntityPrototype::Instantiate(
     MetricRegistry* registry,
@@ -157,42 +157,46 @@ scoped_refptr<MetricEntity> MetricEntityPrototype::Instantiate(
   return registry->FindOrCreateEntity(this, id, initial_attrs);
 }
 
-
 //
 // MetricEntity
 //
 
-MetricEntity::MetricEntity(const MetricEntityPrototype* prototype,
-                           std::string id, AttributeMap attributes)
+MetricEntity::MetricEntity(
+    const MetricEntityPrototype* prototype,
+    std::string id,
+    AttributeMap attributes)
     : prototype_(prototype),
       id_(std::move(id)),
       attributes_(std::move(attributes)),
       published_(true) {}
 
-MetricEntity::~MetricEntity() {
-}
+MetricEntity::~MetricEntity() {}
 
 void MetricEntity::CheckInstantiation(const MetricPrototype* proto) const {
   CHECK_STREQ(prototype_->name(), proto->entity_type())
-    << "Metric " << proto->name() << " may not be instantiated entity of type "
-    << prototype_->name() << " (expected: " << proto->entity_type() << ")";
+      << "Metric " << proto->name()
+      << " may not be instantiated entity of type " << prototype_->name()
+      << " (expected: " << proto->entity_type() << ")";
 }
 
-scoped_refptr<Metric> MetricEntity::FindOrNull(const MetricPrototype& prototype) const {
+scoped_refptr<Metric> MetricEntity::FindOrNull(
+    const MetricPrototype& prototype) const {
   std::lock_guard<simple_spinlock> l(lock_);
   return FindPtrOrNull(metric_map_, &prototype);
 }
 
 namespace {
 
-bool MatchMetricInList(const string& metric_name,
-                       const vector<string>& match_params) {
+bool MatchMetricInList(
+    const string& metric_name,
+    const vector<string>& match_params) {
   string metric_name_uc;
   ToUpperCase(metric_name, &metric_name_uc);
 
   for (const string& param : match_params) {
     // Handle wildcard.
-    if (param == "*") return true;
+    if (param == "*")
+      return true;
     // The parameter is a case-insensitive substring match of the metric name.
     string param_uc;
     ToUpperCase(param, &param_uc);
@@ -205,32 +209,35 @@ bool MatchMetricInList(const string& metric_name,
 
 } // anonymous namespace
 
-
-Status MetricEntity::WriteAsJson(JsonWriter* writer,
-                                 const vector<string>& requested_metrics,
-                                 const MetricJsonOptions& opts) const {
+Status MetricEntity::WriteAsJson(
+    JsonWriter* writer,
+    const vector<string>& requested_metrics,
+    const MetricJsonOptions& opts) const {
   bool select_all = MatchMetricInList(id(), requested_metrics);
 
-  // We want the keys to be in alphabetical order when printing, so we use an ordered map here.
-  typedef std::map<const char*, scoped_refptr<Metric> > OrderedMetricMap;
+  // We want the keys to be in alphabetical order when printing, so we use an
+  // ordered map here.
+  typedef std::map<const char*, scoped_refptr<Metric>> OrderedMetricMap;
   OrderedMetricMap metrics;
   AttributeMap attrs;
   {
-    // Snapshot the metrics in this registry (not guaranteed to be a consistent snapshot)
+    // Snapshot the metrics in this registry (not guaranteed to be a consistent
+    // snapshot)
     std::lock_guard<simple_spinlock> l(lock_);
     attrs = attributes_;
     for (const MetricMap::value_type& val : metric_map_) {
       const MetricPrototype* prototype = val.first;
       const scoped_refptr<Metric>& metric = val.second;
 
-      if (select_all || MatchMetricInList(prototype->name(), requested_metrics)) {
+      if (select_all ||
+          MatchMetricInList(prototype->name(), requested_metrics)) {
         InsertOrDie(&metrics, prototype->name(), metric);
       }
     }
   }
 
-  // If we had a filter, and we didn't either match this entity or any metrics inside
-  // it, don't print the entity at all.
+  // If we had a filter, and we didn't either match this entity or any metrics
+  // inside it, don't print the entity at all.
   if (!requested_metrics.empty() && !select_all && metrics.empty()) {
     return Status::OK();
   }
@@ -261,8 +268,9 @@ Status MetricEntity::WriteAsJson(JsonWriter* writer,
       if (!opts.include_untouched_metrics && m->IsUntouched()) {
         continue;
       }
-      WARN_NOT_OK(m->WriteAsJson(writer, opts),
-                  strings::Substitute("Failed to write $0 as JSON", val.first));
+      WARN_NOT_OK(
+          m->WriteAsJson(writer, opts),
+          strings::Substitute("Failed to write $0 as JSON", val.first));
     }
   }
   writer->EndArray();
@@ -280,20 +288,21 @@ void MetricEntity::RetireOldMetrics() {
     const scoped_refptr<Metric>& metric = it->second;
 
     if (PREDICT_TRUE(!metric->HasOneRef() && published_)) {
-      // The metric is still in use. Note that, in the case of "NeverRetire()", the metric
-      // will have a ref-count of 2 because it is reffed by the 'never_retire_metrics_'
-      // collection.
+      // The metric is still in use. Note that, in the case of "NeverRetire()",
+      // the metric will have a ref-count of 2 because it is reffed by the
+      // 'never_retire_metrics_' collection.
 
-      // Ensure that it is not marked for later retirement (this could happen in the case
-      // that a metric is un-reffed and then re-reffed later by looking it up from the
-      // registry).
+      // Ensure that it is not marked for later retirement (this could happen in
+      // the case that a metric is un-reffed and then re-reffed later by looking
+      // it up from the registry).
       metric->retire_time_ = MonoTime();
       ++it;
       continue;
     }
 
     if (!metric->retire_time_.Initialized()) {
-      VLOG(3) << "Metric " << it->first << " has become un-referenced or unpublished. "
+      VLOG(3) << "Metric " << it->first
+              << " has become un-referenced or unpublished. "
               << "Will retire after the retention interval";
       // This is the first time we've seen this metric as retirable.
       metric->retire_time_ =
@@ -305,12 +314,12 @@ void MetricEntity::RetireOldMetrics() {
     // If we've already seen this metric in a previous scan, check if it's
     // time to retire it yet.
     if (now < metric->retire_time_) {
-      VLOG(3) << "Metric " << it->first << " is un-referenced, but still within "
+      VLOG(3) << "Metric " << it->first
+              << " is un-referenced, but still within "
               << "the retention interval";
       ++it;
       continue;
     }
-
 
     VLOG(2) << "Retiring metric " << it->first;
     metric_map_.erase(it++);
@@ -336,15 +345,14 @@ void MetricEntity::SetAttribute(const string& key, const string& val) {
 // MetricRegistry
 //
 
-MetricRegistry::MetricRegistry() {
-}
+MetricRegistry::MetricRegistry() {}
 
-MetricRegistry::~MetricRegistry() {
-}
+MetricRegistry::~MetricRegistry() {}
 
-Status MetricRegistry::WriteAsJson(JsonWriter* writer,
-                                   const vector<string>& requested_metrics,
-                                   const MetricJsonOptions& opts) const {
+Status MetricRegistry::WriteAsJson(
+    JsonWriter* writer,
+    const vector<string>& requested_metrics,
+    const MetricJsonOptions& opts) const {
   EntityMap entities;
   {
     std::lock_guard<simple_spinlock> l(lock_);
@@ -353,17 +361,19 @@ Status MetricRegistry::WriteAsJson(JsonWriter* writer,
 
   writer->StartArray();
   for (const auto& e : entities) {
-    WARN_NOT_OK(e.second->WriteAsJson(writer, requested_metrics, opts),
-                Substitute("Failed to write entity $0 as JSON", e.second->id()));
+    WARN_NOT_OK(
+        e.second->WriteAsJson(writer, requested_metrics, opts),
+        Substitute("Failed to write entity $0 as JSON", e.second->id()));
   }
   writer->EndArray();
 
   // Rather than having a thread poll metrics periodically to retire old ones,
-  // we'll just retire them here. The only downside is that, if no one is polling
-  // metrics, we may end up leaving them around indefinitely; however, metrics are
-  // small, and one might consider it a feature: if monitoring stops polling for
-  // metrics, we should keep them around until the next poll.
-  entities.clear(); // necessary to deref metrics we just dumped before doing retirement scan.
+  // we'll just retire them here. The only downside is that, if no one is
+  // polling metrics, we may end up leaving them around indefinitely; however,
+  // metrics are small, and one might consider it a feature: if monitoring stops
+  // polling for metrics, we should keep them around until the next poll.
+  entities.clear(); // necessary to deref metrics we just dumped before doing
+                    // retirement scan.
   const_cast<MetricRegistry*>(this)->RetireOldMetrics();
   return Status::OK();
 }
@@ -375,11 +385,11 @@ void MetricRegistry::RetireOldMetrics() {
 
     if (it->second->num_metrics() == 0 &&
         (it->second->HasOneRef() || !it->second->published())) {
-      // This entity has no metrics and either has no more external references or has
-      // been marked as unpublished, so we can remove it.
-      // Unlike retiring the metrics themselves, we don't wait for any timeout
-      // to retire them -- we assume that that timed retention has been satisfied
-      // by holding onto the metrics inside the entity.
+      // This entity has no metrics and either has no more external references
+      // or has been marked as unpublished, so we can remove it. Unlike retiring
+      // the metrics themselves, we don't wait for any timeout to retire them --
+      // we assume that that timed retention has been satisfied by holding onto
+      // the metrics inside the entity.
       entities_.erase(it++);
     } else {
       ++it;
@@ -399,7 +409,8 @@ void MetricPrototypeRegistry::AddMetric(const MetricPrototype* prototype) {
   metrics_.push_back(prototype);
 }
 
-void MetricPrototypeRegistry::AddEntity(const MetricEntityPrototype* prototype) {
+void MetricPrototypeRegistry::AddEntity(
+    const MetricEntityPrototype* prototype) {
   std::lock_guard<simple_spinlock> l(lock_);
   entities_.push_back(prototype);
 }
@@ -450,8 +461,9 @@ MetricPrototype::MetricPrototype(CtorArgs args) : args_(args) {
   MetricPrototypeRegistry::get()->AddMetric(this);
 }
 
-void MetricPrototype::WriteFields(JsonWriter* writer,
-                                  const MetricJsonOptions& opts) const {
+void MetricPrototype::WriteFields(
+    JsonWriter* writer,
+    const MetricJsonOptions& opts) const {
   writer->String("name");
   writer->String(name());
 
@@ -474,8 +486,7 @@ void MetricPrototype::WriteFields(JsonWriter* writer,
 // FunctionGaugeDetacher
 //
 
-FunctionGaugeDetacher::FunctionGaugeDetacher() {
-}
+FunctionGaugeDetacher::FunctionGaugeDetacher() {}
 
 FunctionGaugeDetacher::~FunctionGaugeDetacher() {
   for (const Closure& c : callbacks_) {
@@ -508,12 +519,9 @@ scoped_refptr<MetricEntity> MetricRegistry::FindOrCreateEntity(
 std::atomic<int64_t> Metric::g_epoch_;
 
 Metric::Metric(const MetricPrototype* prototype)
-    : prototype_(prototype),
-      m_epoch_(current_epoch()) {
-}
+    : prototype_(prototype), m_epoch_(current_epoch()) {}
 
-Metric::~Metric() {
-}
+Metric::~Metric() {}
 
 void Metric::IncrementEpoch() {
   g_epoch_++;
@@ -534,8 +542,8 @@ void Metric::UpdateModificationEpochSlowPath() {
 // Gauge
 //
 
-Status Gauge::WriteAsJson(JsonWriter* writer,
-                          const MetricJsonOptions& opts) const {
+Status Gauge::WriteAsJson(JsonWriter* writer, const MetricJsonOptions& opts)
+    const {
   writer->StartObject();
 
   prototype_->WriteFields(writer, opts);
@@ -551,8 +559,9 @@ Status Gauge::WriteAsJson(JsonWriter* writer,
 // StringGauge
 //
 
-StringGauge::StringGauge(const GaugePrototype<string>* proto,
-                         string initial_value)
+StringGauge::StringGauge(
+    const GaugePrototype<string>* proto,
+    string initial_value)
     : Gauge(proto), value_(std::move(initial_value)) {}
 
 std::string StringGauge::value() const {
@@ -573,14 +582,15 @@ void StringGauge::WriteValue(JsonWriter* writer) const {
 //
 // Counter
 //
-// This implementation is optimized by using a striped counter. See LongAdder for details.
+// This implementation is optimized by using a striped counter. See LongAdder
+// for details.
 
-scoped_refptr<Counter> CounterPrototype::Instantiate(const scoped_refptr<MetricEntity>& entity) {
+scoped_refptr<Counter> CounterPrototype::Instantiate(
+    const scoped_refptr<MetricEntity>& entity) {
   return entity->FindOrCreateCounter(this);
 }
 
-Counter::Counter(const CounterPrototype* proto) : Metric(proto) {
-}
+Counter::Counter(const CounterPrototype* proto) : Metric(proto) {}
 
 int64_t Counter::value() const {
   return value_.Value();
@@ -595,8 +605,8 @@ void Counter::IncrementBy(int64_t amount) {
   value_.IncrementBy(amount);
 }
 
-Status Counter::WriteAsJson(JsonWriter* writer,
-                            const MetricJsonOptions& opts) const {
+Status Counter::WriteAsJson(JsonWriter* writer, const MetricJsonOptions& opts)
+    const {
   writer->StartObject();
 
   prototype_->WriteFields(writer, opts);
@@ -612,18 +622,24 @@ Status Counter::WriteAsJson(JsonWriter* writer,
 // HistogramPrototype
 /////////////////////////////////////////////////
 
-HistogramPrototype::HistogramPrototype(const MetricPrototype::CtorArgs& args,
-                                       uint64_t max_trackable_value, int num_sig_digits)
-  : MetricPrototype(args),
-    max_trackable_value_(max_trackable_value),
-    num_sig_digits_(num_sig_digits) {
+HistogramPrototype::HistogramPrototype(
+    const MetricPrototype::CtorArgs& args,
+    uint64_t max_trackable_value,
+    int num_sig_digits)
+    : MetricPrototype(args),
+      max_trackable_value_(max_trackable_value),
+      num_sig_digits_(num_sig_digits) {
   // Better to crash at definition time that at instantiation time.
   CHECK(HdrHistogram::IsValidHighestTrackableValue(max_trackable_value))
-      << Substitute("Invalid max trackable value on histogram $0: $1",
-                    args.name_, max_trackable_value);
+      << Substitute(
+             "Invalid max trackable value on histogram $0: $1",
+             args.name_,
+             max_trackable_value);
   CHECK(HdrHistogram::IsValidNumSignificantDigits(num_sig_digits))
-      << Substitute("Invalid number of significant digits on histogram $0: $1",
-                    args.name_, num_sig_digits);
+      << Substitute(
+             "Invalid number of significant digits on histogram $0: $1",
+             args.name_,
+             num_sig_digits);
 }
 
 scoped_refptr<Histogram> HistogramPrototype::Instantiate(
@@ -636,9 +652,10 @@ scoped_refptr<Histogram> HistogramPrototype::Instantiate(
 /////////////////////////////////////////////////
 
 Histogram::Histogram(const HistogramPrototype* proto)
-  : Metric(proto),
-    histogram_(new HdrHistogram(proto->max_trackable_value(), proto->num_sig_digits())) {
-}
+    : Metric(proto),
+      histogram_(new HdrHistogram(
+          proto->max_trackable_value(),
+          proto->num_sig_digits())) {}
 
 void Histogram::Increment(int64_t value) {
   UpdateModificationEpoch();
@@ -650,19 +667,19 @@ void Histogram::IncrementBy(int64_t value, int64_t amount) {
   histogram_->IncrementBy(value, amount);
 }
 
-Status Histogram::WriteAsJson(JsonWriter* writer,
-                              const MetricJsonOptions& opts) const {
-
+Status Histogram::WriteAsJson(JsonWriter* writer, const MetricJsonOptions& opts)
+    const {
   HistogramSnapshotPB snapshot;
   RETURN_NOT_OK(GetHistogramSnapshotPB(&snapshot, opts));
   writer->Protobuf(snapshot);
-  if(opts.refresh_histogram_metrics)
+  if (opts.refresh_histogram_metrics)
     histogram_->ResetHistogram();
   return Status::OK();
 }
 
-Status Histogram::GetHistogramSnapshotPB(HistogramSnapshotPB* snapshot_pb,
-                                         const MetricJsonOptions& opts) const {
+Status Histogram::GetHistogramSnapshotPB(
+    HistogramSnapshotPB* snapshot_pb,
+    const MetricJsonOptions& opts) const {
   snapshot_pb->set_name(prototype_->name());
   if (opts.include_schema_info) {
     snapshot_pb->set_type(MetricType::Name(prototype_->type()));
@@ -670,7 +687,8 @@ Status Histogram::GetHistogramSnapshotPB(HistogramSnapshotPB* snapshot_pb,
     snapshot_pb->set_unit(MetricUnit::Name(prototype_->unit()));
     snapshot_pb->set_description(prototype_->description());
     snapshot_pb->set_max_trackable_value(histogram_->highest_trackable_value());
-    snapshot_pb->set_num_significant_digits(histogram_->num_significant_digits());
+    snapshot_pb->set_num_significant_digits(
+        histogram_->num_significant_digits());
   }
   // Fast-path for a reasonably common case of an empty histogram. This occurs
   // when a histogram is tracking some information about a feature not in
@@ -732,7 +750,7 @@ double Histogram::MeanValueForTests() const {
 }
 
 ScopedLatencyMetric::ScopedLatencyMetric(Histogram* latency_hist)
-  : latency_hist_(latency_hist) {
+    : latency_hist_(latency_hist) {
   if (latency_hist_) {
     time_started_ = MonoTime::Now();
   }

@@ -59,22 +59,24 @@ using strings::Substitute;
 //
 // Note: if a non-disk-failure error is produced, the instance will remain
 // healthy. These errors should be handled externally.
-#define RETURN_NOT_OK_FAIL_INSTANCE_PREPEND(status_expr, msg) do { \
-  const Status& _s = (status_expr); \
-  if (PREDICT_FALSE(!_s.ok())) { \
-    const Status _s_prepended = _s.CloneAndPrepend(msg); \
-    if (_s.IsNotFound() || _s.IsDiskFailure()) { \
-      health_status_ = _s_prepended; \
-      LOG(INFO) << "Instance is unhealthy: " << _s_prepended.ToString(); \
-      return Status::OK(); \
-    } \
-    return _s_prepended; \
-  } \
-} while (0)
+#define RETURN_NOT_OK_FAIL_INSTANCE_PREPEND(status_expr, msg)              \
+  do {                                                                     \
+    const Status& _s = (status_expr);                                      \
+    if (PREDICT_FALSE(!_s.ok())) {                                         \
+      const Status _s_prepended = _s.CloneAndPrepend(msg);                 \
+      if (_s.IsNotFound() || _s.IsDiskFailure()) {                         \
+        health_status_ = _s_prepended;                                     \
+        LOG(INFO) << "Instance is unhealthy: " << _s_prepended.ToString(); \
+        return Status::OK();                                               \
+      }                                                                    \
+      return _s_prepended;                                                 \
+    }                                                                      \
+  } while (0)
 
-PathInstanceMetadataFile::PathInstanceMetadataFile(Env* env,
-                                                   string block_manager_type,
-                                                   string filename)
+PathInstanceMetadataFile::PathInstanceMetadataFile(
+    Env* env,
+    string block_manager_type,
+    string filename)
     : env_(env),
       block_manager_type_(std::move(block_manager_type)),
       filename_(std::move(filename)) {}
@@ -85,9 +87,11 @@ PathInstanceMetadataFile::~PathInstanceMetadataFile() {
   }
 }
 
-Status PathInstanceMetadataFile::Create(const string& uuid, const vector<string>& all_uuids) {
-  DCHECK(!lock_) <<
-      "Creating a metadata file that's already locked would release the lock";
+Status PathInstanceMetadataFile::Create(
+    const string& uuid,
+    const vector<string>& all_uuids) {
+  DCHECK(!lock_)
+      << "Creating a metadata file that's already locked would release the lock";
   DCHECK(ContainsKey(set<string>(all_uuids.begin(), all_uuids.end()), uuid));
 
   // Create a temporary file with which to fetch the filesystem's block size.
@@ -100,12 +104,11 @@ Status PathInstanceMetadataFile::Create(const string& uuid, const vector<string>
   string tmp_template = JoinPathSegments(
       DirName(filename_), Substitute("getblocksize$0.XXXXXX", kTmpInfix));
   unique_ptr<WritableFile> tmp_file;
-  RETURN_NOT_OK(env_->NewTempWritableFile(WritableFileOptions(),
-                                          tmp_template,
-                                          &created_filename, &tmp_file));
+  RETURN_NOT_OK(env_->NewTempWritableFile(
+      WritableFileOptions(), tmp_template, &created_filename, &tmp_file));
   SCOPED_CLEANUP({
-    WARN_NOT_OK(env_->DeleteFile(created_filename),
-                "could not delete temporary file");
+    WARN_NOT_OK(
+        env_->DeleteFile(created_filename), "could not delete temporary file");
   });
   uint64_t block_size;
   RETURN_NOT_OK(env_->GetBlockSize(created_filename, &block_size));
@@ -125,32 +128,43 @@ Status PathInstanceMetadataFile::Create(const string& uuid, const vector<string>
   new_instance.set_filesystem_block_size_bytes(block_size);
 
   return pb_util::WritePBContainerToPath(
-      env_, filename_, new_instance,
+      env_,
+      filename_,
+      new_instance,
       pb_util::NO_OVERWRITE,
       FLAGS_enable_data_block_fsync ? pb_util::SYNC : pb_util::NO_SYNC);
 }
 
 Status PathInstanceMetadataFile::LoadFromDisk() {
-  DCHECK(!lock_) <<
-      "Opening a metadata file that's already locked would release the lock";
+  DCHECK(!lock_)
+      << "Opening a metadata file that's already locked would release the lock";
 
   unique_ptr<PathInstanceMetadataPB> pb(new PathInstanceMetadataPB());
-  RETURN_NOT_OK_FAIL_INSTANCE_PREPEND(pb_util::ReadPBContainerFromPath(env_, filename_, pb.get()),
+  RETURN_NOT_OK_FAIL_INSTANCE_PREPEND(
+      pb_util::ReadPBContainerFromPath(env_, filename_, pb.get()),
       Substitute("Failed to read metadata file from $0", filename_));
 
   if (pb->block_manager_type() != block_manager_type_) {
     return Status::IOError(Substitute(
-      "existing data was written using the '$0' block manager; cannot restart "
-      "with a different block manager '$1' without reformatting",
-      pb->block_manager_type(), block_manager_type_));
+        "existing data was written using the '$0' block manager; cannot restart "
+        "with a different block manager '$1' without reformatting",
+        pb->block_manager_type(),
+        block_manager_type_));
   }
 
   uint64_t block_size;
-  RETURN_NOT_OK_FAIL_INSTANCE_PREPEND(env_->GetBlockSize(filename_, &block_size),
-      Substitute("Failed to load metadata file. Could not get block size of $0", filename_));
+  RETURN_NOT_OK_FAIL_INSTANCE_PREPEND(
+      env_->GetBlockSize(filename_, &block_size),
+      Substitute(
+          "Failed to load metadata file. Could not get block size of $0",
+          filename_));
   if (pb->filesystem_block_size_bytes() != block_size) {
-    return Status::IOError("Wrong filesystem block size", Substitute(
-        "Expected $0 but was $1", pb->filesystem_block_size_bytes(), block_size));
+    return Status::IOError(
+        "Wrong filesystem block size",
+        Substitute(
+            "Expected $0 but was $1",
+            pb->filesystem_block_size_bytes(),
+            block_size));
   }
 
   metadata_.swap(pb);
@@ -161,10 +175,11 @@ Status PathInstanceMetadataFile::Lock() {
   DCHECK(!lock_);
 
   FileLock* lock;
-  RETURN_NOT_OK_FAIL_INSTANCE_PREPEND(env_->LockFile(filename_, &lock),
-                                      "Could not lock block_manager_instance file. Make sure that "
-                                      "Kudu is not already running and you are not trying to run "
-                                      "Kudu with a different user than before");
+  RETURN_NOT_OK_FAIL_INSTANCE_PREPEND(
+      env_->LockFile(filename_, &lock),
+      "Could not lock block_manager_instance file. Make sure that "
+      "Kudu is not already running and you are not trying to run "
+      "Kudu with a different user than before");
   lock_.reset(lock);
   return Status::OK();
 }
@@ -172,8 +187,9 @@ Status PathInstanceMetadataFile::Lock() {
 Status PathInstanceMetadataFile::Unlock() {
   DCHECK(lock_);
 
-  RETURN_NOT_OK_FAIL_INSTANCE_PREPEND(env_->UnlockFile(lock_.release()),
-                                      Substitute("Could not unlock $0", filename_));
+  RETURN_NOT_OK_FAIL_INSTANCE_PREPEND(
+      env_->UnlockFile(lock_.release()),
+      Substitute("Could not unlock $0", filename_));
   return Status::OK();
 }
 
@@ -207,13 +223,15 @@ Status PathInstanceMetadataFile::CheckIntegrity(
 
   // Set of UUIDs specified in the path set of the first healthy instance. All
   // instances will be compared against it to make sure all path sets match.
-  set<string> all_uuids(instances[first_healthy]->metadata()->path_set().all_uuids().begin(),
-                        instances[first_healthy]->metadata()->path_set().all_uuids().end());
+  set<string> all_uuids(
+      instances[first_healthy]->metadata()->path_set().all_uuids().begin(),
+      instances[first_healthy]->metadata()->path_set().all_uuids().end());
 
   if (all_uuids.size() != instances.size()) {
-    return Status::IOError(
-        Substitute("$0 data directories provided, but expected $1",
-                   instances.size(), all_uuids.size()));
+    return Status::IOError(Substitute(
+        "$0 data directories provided, but expected $1",
+        instances.size(),
+        all_uuids.size()));
   }
 
   for (const auto& instance : instances) {
@@ -226,39 +244,45 @@ Status PathInstanceMetadataFile::CheckIntegrity(
     const PathSetPB& path_set = instance->metadata()->path_set();
 
     // Check that the instance's UUID has not been claimed by another instance.
-    PathInstanceMetadataFile** other = InsertOrReturnExisting(
-        &uuids, path_set.uuid(), instance.get());
+    PathInstanceMetadataFile** other =
+        InsertOrReturnExisting(&uuids, path_set.uuid(), instance.get());
     if (other) {
       return Status::IOError(
-          Substitute("Data directories $0 and $1 have duplicate instance metadata UUIDs",
-                     (*other)->dir(), instance->dir()),
+          Substitute(
+              "Data directories $0 and $1 have duplicate instance metadata UUIDs",
+              (*other)->dir(),
+              instance->dir()),
           path_set.uuid());
     }
 
     // Check that the instance's UUID is a member of all_uuids.
     if (!ContainsKey(all_uuids, path_set.uuid())) {
       return Status::IOError(
-          Substitute("Data directory $0 instance metadata contains unexpected UUID",
-                     instance->dir()),
+          Substitute(
+              "Data directory $0 instance metadata contains unexpected UUID",
+              instance->dir()),
           path_set.uuid());
     }
 
     // Check that the instance's UUID set does not contain duplicates.
-    set<string> deduplicated_uuids(path_set.all_uuids().begin(),
-                                   path_set.all_uuids().end());
+    set<string> deduplicated_uuids(
+        path_set.all_uuids().begin(), path_set.all_uuids().end());
     string all_uuids_str = JoinStrings(path_set.all_uuids(), ",");
     if (deduplicated_uuids.size() != path_set.all_uuids_size()) {
       return Status::IOError(
-          Substitute("Data directory $0 instance metadata path set contains duplicate UUIDs",
-                     instance->dir()),
+          Substitute(
+              "Data directory $0 instance metadata path set contains duplicate UUIDs",
+              instance->dir()),
           JoinStrings(path_set.all_uuids(), ","));
     }
 
     // Check that the instance's UUID set matches the expected set.
     if (deduplicated_uuids != all_uuids) {
       return Status::IOError(
-          Substitute("Data directories $0 and $1 have different instance metadata UUID sets",
-                     instances[0]->dir(), instance->dir()),
+          Substitute(
+              "Data directories $0 and $1 have different instance metadata UUID sets",
+              instances[0]->dir(),
+              instance->dir()),
           Substitute("$0 vs $1", JoinStrings(all_uuids, ","), all_uuids_str));
     }
   }

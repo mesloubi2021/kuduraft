@@ -22,20 +22,23 @@ std::string StripPrefixString(StringPiece str, const StringPiece& prefix);
 // Like StripPrefixString, but return true if the prefix was
 // successfully matched.  Write the output to *result.
 // It is safe for result to point back to the input string.
-bool TryStripPrefixString(StringPiece str, const StringPiece& prefix,
-                          std::string* result);
+bool TryStripPrefixString(
+    StringPiece str,
+    const StringPiece& prefix,
+    std::string* result);
 
 // Given a string and a putative suffix, returns the string minus the
 // suffix string if the suffix matches, otherwise the original
 // string.
 std::string StripSuffixString(StringPiece str, const StringPiece& suffix);
 
-
 // Like StripSuffixString, but return true if the suffix was
 // successfully matched.  Write the output to *result.
 // It is safe for result to point back to the input string.
-bool TryStripSuffixString(StringPiece str, const StringPiece& suffix,
-                          std::string* result);
+bool TryStripSuffixString(
+    StringPiece str,
+    const StringPiece& suffix,
+    std::string* result);
 
 // ----------------------------------------------------------------------
 // StripString
@@ -121,11 +124,12 @@ namespace strings {
 template <typename Collection>
 inline void StripWhiteSpaceInCollection(Collection* collection) {
   for (typename Collection::iterator it = collection->begin();
-       it != collection->end(); ++it)
+       it != collection->end();
+       ++it)
     StripWhiteSpace(&(*it));
 }
 
-}  // namespace strings
+} // namespace strings
 
 // ----------------------------------------------------------------------
 // StripLeadingWhiteSpace
@@ -139,7 +143,7 @@ inline const char* StripLeadingWhiteSpace(const char* line) {
   while (ascii_isspace(*line))
     ++line;
 
-  if ('\0' == *line)  // end of line, no non-whitespace
+  if ('\0' == *line) // end of line, no non-whitespace
     return NULL;
 
   return line;
@@ -155,7 +159,6 @@ void StripLeadingWhiteSpace(std::string* str);
 
 // Remove leading, trailing, and duplicate internal whitespace.
 void RemoveExtraWhitespace(std::string* s);
-
 
 // ----------------------------------------------------------------------
 // SkipLeadingWhiteSpace
@@ -186,7 +189,6 @@ inline char* SkipLeadingWhiteSpace(char* str) {
 
 void StripCurlyBraces(std::string* s);
 void StripBrackets(char left, char right, std::string* s);
-
 
 // ----------------------------------------------------------------------
 // StripMarkupTags
@@ -269,4 +271,4 @@ int memrm(char* str, int strlen, char c);
 int strrmm(char* str, const char* chars);
 int strrmm(std::string* str, const std::string& chars);
 
-#endif  // STRINGS_STRIP_H_
+#endif // STRINGS_STRIP_H_

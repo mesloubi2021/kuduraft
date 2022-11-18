@@ -29,14 +29,20 @@
 
 int main(int argc, char** argv) {
   if (argc != 5) {
-    fprintf(stderr, "usage: %s <path> <start block> <end block> <stride>\n", argv[0]);
+    fprintf(
+        stderr,
+        "usage: %s <path> <start block> <end block> <stride>\n",
+        argv[0]);
     fprintf(stderr, "\n");
-    fprintf(stderr, "Punches holes in an existing file designated by <path>.\n");
+    fprintf(
+        stderr, "Punches holes in an existing file designated by <path>.\n");
     fprintf(stderr, "\n");
-    fprintf(stderr, "Holes are punched on a per-filesystem block basis, "
-                    "beginning at <start block> and ending at <end block> "
-                    "(exclusive). Blocks can be skipped with <stride>; a value "
-                    "of 1 means every block in the range will be punched.\n");
+    fprintf(
+        stderr,
+        "Holes are punched on a per-filesystem block basis, "
+        "beginning at <start block> and ending at <end block> "
+        "(exclusive). Blocks can be skipped with <stride>; a value "
+        "of 1 means every block in the range will be punched.\n");
     exit(1);
   }
 
@@ -59,10 +65,11 @@ int main(int argc, char** argv) {
 
   int block_num;
   for (block_num = start_block; block_num < end_block; block_num += stride) {
-    ret = fallocate(fd,
-                    FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE,
-                    block_num * sbuf.st_blksize,
-                    sbuf.st_blksize);
+    ret = fallocate(
+        fd,
+        FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE,
+        block_num * sbuf.st_blksize,
+        sbuf.st_blksize);
     if (ret < 0) {
       perror("fallocate");
       return ret;

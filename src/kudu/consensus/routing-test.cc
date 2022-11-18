@@ -33,7 +33,8 @@ using std::unordered_map;
 namespace kudu {
 namespace consensus {
 
-static void AddEdge(ProxyTopologyPB* proxy_topology, string peer, string upstream_uuid) {
+static void
+AddEdge(ProxyTopologyPB* proxy_topology, string peer, string upstream_uuid) {
   ProxyEdgePB* edge = proxy_topology->add_proxy_edges();
   edge->set_peer_uuid(std::move(peer));
   edge->set_proxy_from_uuid(std::move(upstream_uuid));
@@ -82,7 +83,8 @@ TEST(RoutingTest, TestProxyFromNotInRaftConfig) {
   ASSERT_STR_CONTAINS(s.ToString(), "have been ignored: " + kBogusUuid);
 
   string next_hop;
-  ASSERT_OK(routing_table.NextHop(/*src_uuid=*/"peer-0", /*dest_uuid=*/"peer-1", &next_hop));
+  ASSERT_OK(routing_table.NextHop(
+      /*src_uuid=*/"peer-0", /*dest_uuid=*/"peer-1", &next_hop));
   ASSERT_EQ("peer-1", next_hop); // Direct routing fallback.
 }
 
@@ -99,7 +101,8 @@ TEST(RoutingTest, TestStaleRouter) {
   ASSERT_OK(routing_table.Init(raft_config, proxy_topology, kLeaderUuid));
 
   string next_hop;
-  ASSERT_OK(routing_table.NextHop(/*src_uuid=*/"peer-1", /*dest_uuid=*/"peer-2", &next_hop));
+  ASSERT_OK(routing_table.NextHop(
+      /*src_uuid=*/"peer-1", /*dest_uuid=*/"peer-2", &next_hop));
   ASSERT_EQ("peer-2", next_hop); // Direct routing fallback.
 }
 

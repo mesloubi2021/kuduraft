@@ -46,11 +46,17 @@ class Mutex {
   void Release();
   bool TryAcquire();
 
-  void lock() { Acquire(); }
-  void unlock() { Release(); }
-  bool try_lock() { return TryAcquire(); }
+  void lock() {
+    Acquire();
+  }
+  void unlock() {
+    Release();
+  }
+  bool try_lock() {
+    return TryAcquire();
+  }
 
-#ifdef FB_DO_NOT_REMOVE  // #ifndef NDEBUG
+#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
   void AssertAcquired() const;
 #else
   void AssertAcquired() const {}
@@ -61,7 +67,7 @@ class Mutex {
 
   pthread_mutex_t native_handle_;
 
-#ifdef FB_DO_NOT_REMOVE  // #ifndef NDEBUG
+#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
   // Members and routines taking care of locks assertions.
   void CheckHeldAndUnmark();
   void CheckUnheldAndMark();
@@ -88,9 +94,7 @@ class MutexLock {
   //   MutexLock l(lock_); // acquired
   //   ...
   // } // released
-  explicit MutexLock(Mutex& lock)
-    : lock_(&lock),
-      owned_(true) {
+  explicit MutexLock(Mutex& lock) : lock_(&lock), owned_(true) {
     lock_->Acquire();
   }
 
@@ -103,9 +107,7 @@ class MutexLock {
   //   MutexLock l(lock_, AlreadyAcquired());
   //   ...
   // } // released
-  MutexLock(Mutex& lock, const AlreadyAcquired&)
-    : lock_(&lock),
-      owned_(true) {
+  MutexLock(Mutex& lock, const AlreadyAcquired&) : lock_(&lock), owned_(true) {
     lock_->AssertAcquired();
   }
 

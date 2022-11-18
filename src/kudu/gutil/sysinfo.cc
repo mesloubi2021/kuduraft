@@ -28,20 +28,20 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#if (defined(_WIN32) || defined(__MINGW32__)) && !defined(__CYGWIN__) && !defined(__CYGWIN32)
-# define PLATFORM_WINDOWS 1
+#if (defined(_WIN32) || defined(__MINGW32__)) && !defined(__CYGWIN__) && \
+    !defined(__CYGWIN32)
+#define PLATFORM_WINDOWS 1
 #endif
 
+#include <fcntl.h> // for open()
+#include <unistd.h> // for read()
 
-#include <fcntl.h>    // for open()
-#include <unistd.h>   // for read()
-
-#if defined __MACH__              // Mac OS X, almost certainly
+#if defined __MACH__ // Mac OS X, almost certainly
 #include <sys/sysctl.h> // @manual// how we figure out numcpu's on OS X
 #include <sys/types.h>
 #elif defined __FreeBSD__
 #include <sys/sysctl.h> // @manual
-#elif defined __sun__             // Solaris
+#elif defined __sun__ // Solaris
 #include <procfs.h> // @manual    // for, e.g., prmap_t
 #elif defined(PLATFORM_WINDOWS)
 #include <process.h> // @manual   // for getpid() (actually, _getpid())
@@ -51,16 +51,16 @@
 
 #include "kudu/gutil/sysinfo.h"
 
-#include <cerrno>    // for errno
-#include <cstdio>    // for snprintf(), sscanf()
-#include <cstdlib>   // for getenv()
-#include <cstring>   // for memmove(), memchr(), etc.
+#include <cerrno> // for errno
+#include <cstdio> // for snprintf(), sscanf()
+#include <cstdlib> // for getenv()
+#include <cstring> // for memmove(), memchr(), etc.
 #include <ctime>
 #include <ostream>
 
 #include <glog/logging.h>
 
-#include "kudu/gutil/dynamic_annotations.h"   // for RunningOnValgrind
+#include "kudu/gutil/dynamic_annotations.h" // for RunningOnValgrind
 #include "kudu/gutil/integral_types.h"
 #include "kudu/gutil/macros.h"
 #include "kudu/gutil/port.h"
@@ -79,8 +79,8 @@ namespace base {
 //    hooks and such.
 // ----------------------------------------------------------------------
 
-static double cpuinfo_cycles_per_second = 1.0;  // 0.0 might be dangerous
-static int cpuinfo_num_cpus = 1;  // Conservative guess
+static double cpuinfo_cycles_per_second = 1.0; // 0.0 might be dangerous
+static int cpuinfo_num_cpus = 1; // Conservative guess
 static int cpuinfo_max_cpu_index = -1;
 
 void SleepForNanoseconds(int64_t nanoseconds) {
@@ -89,7 +89,7 @@ void SleepForNanoseconds(int64_t nanoseconds) {
   sleep_time.tv_sec = nanoseconds / 1000 / 1000 / 1000;
   sleep_time.tv_nsec = (nanoseconds % (1000 * 1000 * 1000));
   while (nanosleep(&sleep_time, &sleep_time) != 0 && errno == EINTR)
-    ;  // Ignore signals and wait for the full interval to elapse.
+    ; // Ignore signals and wait for the full interval to elapse.
 }
 
 void SleepForMilliseconds(int64_t milliseconds) {
@@ -102,7 +102,7 @@ static int64 EstimateCyclesPerSecond(const int estimate_time_ms) {
   CHECK(estimate_time_ms > 0);
   if (estimate_time_ms <= 0)
     return 1;
-  double multiplier = 1000.0 / (double)estimate_time_ms;  // scale by this much
+  double multiplier = 1000.0 / (double)estimate_time_ms; // scale by this much
 
   const int64 start_ticks = CycleClock::Now();
   SleepForMilliseconds(estimate_time_ms);
@@ -113,22 +113,24 @@ static int64 EstimateCyclesPerSecond(const int estimate_time_ms) {
 // ReadIntFromFile is only called on linux and cygwin platforms.
 #if defined(__linux__) || defined(__CYGWIN__) || defined(__CYGWIN32__)
 
-// Slurp a file with a single read() call into 'buf'. This is only safe to use on small
-// files in places like /proc where we are guaranteed not to get a partial read.
-// Any remaining bytes in the buffer are zeroed.
+// Slurp a file with a single read() call into 'buf'. This is only safe to use
+// on small files in places like /proc where we are guaranteed not to get a
+// partial read. Any remaining bytes in the buffer are zeroed.
 //
-// 'buflen' must be more than large enough to hold the whole file, or else this will
-// issue a FATAL error.
+// 'buflen' must be more than large enough to hold the whole file, or else this
+// will issue a FATAL error.
 static bool SlurpSmallTextFile(const char* file, char* buf, int buflen) {
   bool ret = false;
   int fd;
   RETRY_ON_EINTR(fd, open(file, O_RDONLY));
-  if (fd == -1) return ret;
+  if (fd == -1)
+    return ret;
 
   memset(buf, '\0', buflen);
   int n;
   RETRY_ON_EINTR(n, read(fd, buf, buflen - 1));
-  CHECK_NE(n, buflen - 1) << "buffer of len " << buflen << " not large enough to store "
+  CHECK_NE(n, buflen - 1) << "buffer of len " << buflen
+                          << " not large enough to store "
                           << "contents of " << file;
   if (n > 0) {
     ret = true;
@@ -145,7 +147,7 @@ static bool SlurpSmallTextFile(const char* file, char* buf, int buflen) {
 
 // Helper function for reading an int from a file. Returns true if successful
 // and the memory location pointed to by value is set to the value read.
-static bool ReadIntFromFile(const char *file, int *value) {
+static bool ReadIntFromFile(const char* file, int* value) {
   char line[1024];
   if (!SlurpSmallTextFile(file, line, arraysize(line))) {
     return false;
@@ -161,7 +163,8 @@ static bool ReadIntFromFile(const char *file, int *value) {
 
 static int ReadMaxCPUIndex() {
   char buf[1024];
-  CHECK(SlurpSmallTextFile("/sys/devices/system/cpu/present", buf, arraysize(buf)));
+  CHECK(SlurpSmallTextFile(
+      "/sys/devices/system/cpu/present", buf, arraysize(buf)));
 
   // On a single-core machine, 'buf' will contain the string '0' with a newline.
   if (strcmp(buf, "0\n") == 0) {
@@ -174,7 +177,8 @@ static int ReadMaxCPUIndex() {
   char* max_cpu_str = &buf[2];
   char* err;
   int val = strtol(max_cpu_str, &err, 10);
-  CHECK(*err == '\n' || *err == '\0') << "unable to parse max CPU index from: " << buf;
+  CHECK(*err == '\n' || *err == '\0')
+      << "unable to parse max CPU index from: " << buf;
   return val;
 }
 
@@ -188,8 +192,9 @@ static int ReadMaxCPUIndex() {
 // memory.
 
 static void InitializeSystemInfo() {
-  static bool already_called = false;   // safe if we run before threads
-  if (already_called)  return;
+  static bool already_called = false; // safe if we run before threads
+  if (already_called)
+    return;
   already_called = true;
 
   bool saw_mhz = false;
@@ -215,17 +220,17 @@ static void InitializeSystemInfo() {
   // well.
   if (!saw_mhz &&
       ReadIntFromFile("/sys/devices/system/cpu/cpu0/tsc_freq_khz", &freq)) {
-      // The value is in kHz (as the file name suggests).  For example, on a
-      // 2GHz warpstation, the file contains the value "2000000".
-      cpuinfo_cycles_per_second = freq * 1000.0;
-      saw_mhz = true;
+    // The value is in kHz (as the file name suggests).  For example, on a
+    // 2GHz warpstation, the file contains the value "2000000".
+    cpuinfo_cycles_per_second = freq * 1000.0;
+    saw_mhz = true;
   }
 
   // If CPU scaling is in effect, we want to use the *maximum* frequency,
   // not whatever CPU speed some random processor happens to be using now.
   if (!saw_mhz &&
-      ReadIntFromFile("/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq",
-                      &freq)) {
+      ReadIntFromFile(
+          "/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq", &freq)) {
     // The value is in kHz.  For example, on a 2GHz machine, the file
     // contains the value "2000000".
     cpuinfo_cycles_per_second = freq * 1000.0;
@@ -237,7 +242,8 @@ static void InitializeSystemInfo() {
   int fd;
   RETRY_ON_EINTR(fd, open(pname, O_RDONLY));
   if (fd == -1) {
-    PLOG(FATAL) << "Unable to read CPU info from /proc. procfs must be mounted.";
+    PLOG(FATAL)
+        << "Unable to read CPU info from /proc. procfs must be mounted.";
   }
 
   double bogo_clock = 1.0;
@@ -245,19 +251,19 @@ static void InitializeSystemInfo() {
   int num_cpus = 0;
   line[0] = line[1] = '\0';
   int chars_read = 0;
-  do {   // we'll exit when the last read didn't read anything
+  do { // we'll exit when the last read didn't read anything
     // Move the next line to the beginning of the buffer
     const int oldlinelen = strlen(line);
-    if (sizeof(line) == oldlinelen + 1)    // oldlinelen took up entire line
+    if (sizeof(line) == oldlinelen + 1) // oldlinelen took up entire line
       line[0] = '\0';
-    else                                   // still other lines left to save
-      memmove(line, line + oldlinelen+1, sizeof(line) - (oldlinelen+1));
+    else // still other lines left to save
+      memmove(line, line + oldlinelen + 1, sizeof(line) - (oldlinelen + 1));
     // Terminate the new line, reading more if we can't find the newline
     char* newline = strchr(line, '\n');
     if (newline == NULL) {
       const int linelen = strlen(line);
-      const int bytes_to_read = sizeof(line)-1 - linelen;
-      CHECK(bytes_to_read > 0);  // because the memmove recovered >=1 bytes
+      const int bytes_to_read = sizeof(line) - 1 - linelen;
+      CHECK(bytes_to_read > 0); // because the memmove recovered >=1 bytes
       RETRY_ON_EINTR(chars_read, read(fd, line + linelen, bytes_to_read));
       line[linelen + chars_read] = '\0';
       newline = strchr(line, '\n');
@@ -267,16 +273,17 @@ static void InitializeSystemInfo() {
 
 #if defined(__powerpc__) || defined(__ppc__)
     // PowerPC cpus report the frequency in "clock" line
-    if (strncasecmp(line, "clock", sizeof("clock")-1) == 0) {
+    if (strncasecmp(line, "clock", sizeof("clock") - 1) == 0) {
       const char* freqstr = strchr(line, ':');
       if (freqstr) {
         // PowerPC frequencies are only reported as MHz (check 'show_cpuinfo'
         // function at arch/powerpc/kernel/setup-common.c)
-        char *endp = strstr(line, "MHz");
+        char* endp = strstr(line, "MHz");
         if (endp) {
           *endp = 0;
-          cpuinfo_cycles_per_second = strtod(freqstr+1, &err) * 1000000.0;
-          if (freqstr[1] != '\0' && *err == '\0' && cpuinfo_cycles_per_second > 0)
+          cpuinfo_cycles_per_second = strtod(freqstr + 1, &err) * 1000000.0;
+          if (freqstr[1] != '\0' && *err == '\0' &&
+              cpuinfo_cycles_per_second > 0)
             saw_mhz = true;
         }
       }
@@ -284,23 +291,23 @@ static void InitializeSystemInfo() {
     // When parsing the "cpu MHz" and "bogomips" (fallback) entries, we only
     // accept postive values. Some environments (virtual machines) report zero,
     // which would cause infinite looping in WallTime_Init.
-    if (!saw_mhz && strncasecmp(line, "cpu MHz", sizeof("cpu MHz")-1) == 0) {
+    if (!saw_mhz && strncasecmp(line, "cpu MHz", sizeof("cpu MHz") - 1) == 0) {
       const char* freqstr = strchr(line, ':');
       if (freqstr) {
-        cpuinfo_cycles_per_second = strtod(freqstr+1, &err) * 1000000.0;
+        cpuinfo_cycles_per_second = strtod(freqstr + 1, &err) * 1000000.0;
         if (freqstr[1] != '\0' && *err == '\0' && cpuinfo_cycles_per_second > 0)
           saw_mhz = true;
       }
-    } else if (strncasecmp(line, "bogomips", sizeof("bogomips")-1) == 0) {
+    } else if (strncasecmp(line, "bogomips", sizeof("bogomips") - 1) == 0) {
       const char* freqstr = strchr(line, ':');
       if (freqstr) {
-        bogo_clock = strtod(freqstr+1, &err) * 1000000.0;
+        bogo_clock = strtod(freqstr + 1, &err) * 1000000.0;
         if (freqstr[1] != '\0' && *err == '\0' && bogo_clock > 0)
           saw_bogo = true;
       }
 #endif
-    } else if (strncasecmp(line, "processor", sizeof("processor")-1) == 0) {
-      num_cpus++;  // count up every time we see an "processor :" entry
+    } else if (strncasecmp(line, "processor", sizeof("processor") - 1) == 0) {
+      num_cpus++; // count up every time we see an "processor :" entry
     }
   } while (chars_read > 0);
   int ret;
@@ -320,7 +327,7 @@ static void InitializeSystemInfo() {
     }
   }
   if (cpuinfo_cycles_per_second == 0.0) {
-    cpuinfo_cycles_per_second = 1.0;   // maybe unnecessary, but safe
+    cpuinfo_cycles_per_second = 1.0; // maybe unnecessary, but safe
   }
   if (num_cpus > 0) {
     cpuinfo_num_cpus = num_cpus;
@@ -345,10 +352,13 @@ static void InitializeSystemInfo() {
   unsigned int hz = 0;
 #endif
   size_t sz = sizeof(hz);
-  const char *sysctl_path = "machdep.tsc_freq";
-  if ( sysctlbyname(sysctl_path, &hz, &sz, NULL, 0) != 0 ) {
-    fprintf(stderr, "Unable to determine clock rate from sysctl: %s: %s\n",
-            sysctl_path, strerror(errno));
+  const char* sysctl_path = "machdep.tsc_freq";
+  if (sysctlbyname(sysctl_path, &hz, &sz, NULL, 0) != 0) {
+    fprintf(
+        stderr,
+        "Unable to determine clock rate from sysctl: %s: %s\n",
+        sysctl_path,
+        strerror(errno));
     cpuinfo_cycles_per_second = EstimateCyclesPerSecond(1000);
   } else {
     cpuinfo_cycles_per_second = hz;
@@ -356,17 +366,20 @@ static void InitializeSystemInfo() {
   // TODO(csilvers): also figure out cpuinfo_num_cpus
 
 #elif defined(PLATFORM_WINDOWS)
-# pragma comment(lib, "shlwapi.lib")  // for SHGetValue()
+#pragma comment(lib, "shlwapi.lib") // for SHGetValue()
   // In NT, read MHz from the registry. If we fail to do so or we're in win9x
   // then make a crude estimate.
   OSVERSIONINFO os;
   os.dwOSVersionInfoSize = sizeof(os);
   DWORD data, data_size = sizeof(data);
-  if (GetVersionEx(&os) &&
-      os.dwPlatformId == VER_PLATFORM_WIN32_NT &&
-      SUCCEEDED(SHGetValueA(HKEY_LOCAL_MACHINE,
-                         "HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0",
-                           "~MHz", NULL, &data, &data_size)))
+  if (GetVersionEx(&os) && os.dwPlatformId == VER_PLATFORM_WIN32_NT &&
+      SUCCEEDED(SHGetValueA(
+          HKEY_LOCAL_MACHINE,
+          "HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0",
+          "~MHz",
+          NULL,
+          &data,
+          &data_size)))
     cpuinfo_cycles_per_second = (int64)data * (int64)(1000 * 1000); // was mhz
   else
     cpuinfo_cycles_per_second = EstimateCyclesPerSecond(500); // TODO <500?
@@ -394,10 +407,15 @@ static void InitializeSystemInfo() {
 
   int num_cpus = 0;
   size_t size = sizeof(num_cpus);
-  int numcpus_name[] = { CTL_HW, HW_NCPU };
-  if (::sysctl(numcpus_name, arraysize(numcpus_name), &num_cpus, &size, nullptr, 0)
-      == 0
-      && (size == sizeof(num_cpus)))
+  int numcpus_name[] = {CTL_HW, HW_NCPU};
+  if (::sysctl(
+          numcpus_name,
+          arraysize(numcpus_name),
+          &num_cpus,
+          &size,
+          nullptr,
+          0) == 0 &&
+      (size == sizeof(num_cpus)))
     cpuinfo_num_cpus = num_cpus;
 
 #else

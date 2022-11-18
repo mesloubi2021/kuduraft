@@ -47,14 +47,15 @@ class RemoteUser {
     return authenticated_by_;
   }
 
-  const std::string& username() const { return username_; }
+  const std::string& username() const {
+    return username_;
+  }
 
   boost::optional<std::string> principal() const {
     return principal_;
   }
 
-  void SetAuthenticatedByKerberos(std::string username,
-                                  std::string principal) {
+  void SetAuthenticatedByKerberos(std::string username, std::string principal) {
     authenticated_by_ = KERBEROS;
     username_ = std::move(username);
     principal_ = std::move(principal);
@@ -66,8 +67,9 @@ class RemoteUser {
     principal_ = boost::none;
   }
 
-  void SetAuthenticatedByClientCert(std::string username,
-                                    boost::optional<std::string> principal) {
+  void SetAuthenticatedByClientCert(
+      std::string username,
+      boost::optional<std::string> principal) {
     authenticated_by_ = CLIENT_CERT;
     username_ = std::move(username);
     principal_ = std::move(principal);

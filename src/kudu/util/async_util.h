@@ -15,7 +15,8 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-// Utility functions which are handy when doing async/callback-based programming.
+// Utility functions which are handy when doing async/callback-based
+// programming.
 
 #pragma once
 
@@ -43,9 +44,7 @@ namespace kudu {
 // indefinitely.
 class Synchronizer {
  public:
-  Synchronizer()
-    : data_(std::make_shared<Data>()) {
-  }
+  Synchronizer() : data_(std::make_shared<Data>()) {}
 
   void StatusCB(const Status& status) {
     Data::Callback(std::weak_ptr<Data>(data_), status);
@@ -56,7 +55,8 @@ class Synchronizer {
   }
 
   StdStatusCallback AsStdStatusCallback() {
-    return std::bind(Data::Callback, std::weak_ptr<Data>(data_), std::placeholders::_1);
+    return std::bind(
+        Data::Callback, std::weak_ptr<Data>(data_), std::placeholders::_1);
   }
 
   Status Wait() const {
@@ -66,7 +66,8 @@ class Synchronizer {
 
   Status WaitFor(const MonoDelta& delta) const {
     if (PREDICT_FALSE(!data_->latch.WaitFor(delta))) {
-      return Status::TimedOut("timed out while waiting for the callback to be called");
+      return Status::TimedOut(
+          "timed out while waiting for the callback to be called");
     }
     return data_->status;
   }
@@ -76,10 +77,8 @@ class Synchronizer {
   }
 
  private:
-
   struct Data {
-    Data() : latch(1) {
-    }
+    Data() : latch(1) {}
 
     static void Callback(std::weak_ptr<Data> weak, const Status& status) {
       auto ptr = weak.lock();

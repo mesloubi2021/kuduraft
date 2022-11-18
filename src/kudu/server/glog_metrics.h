@@ -41,7 +41,6 @@ class ScopedGLogMetrics {
   gscoped_ptr<google::LogSink> sink_;
 };
 
-
 // Registers glog-related metrics.
 // This can be called multiple times on different entities, though the resulting
 // metrics will be identical, since the GLog tracking is process-wide.

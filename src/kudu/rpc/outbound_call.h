@@ -71,10 +71,9 @@ class RpcSidecar;
 // of different threads, making it tricky to enforce single ownership.
 class OutboundCall {
  public:
-
-  // Phases of an outbound RPC. Making an outbound RPC might involve establishing
-  // a connection to the remote server first, and the actual call is made only
-  // once the connection to the server is established.
+  // Phases of an outbound RPC. Making an outbound RPC might involve
+  // establishing a connection to the remote server first, and the actual call
+  // is made only once the connection to the server is established.
   enum class Phase {
     // The phase of connection negotiation between the caller and the callee.
     CONNECTION_NEGOTIATION,
@@ -83,18 +82,22 @@ class OutboundCall {
     REMOTE_CALL,
   };
 
-  OutboundCall(const ConnectionId& conn_id, const RemoteMethod& remote_method,
-               google::protobuf::Message* response_storage,
-               RpcController* controller, ResponseCallback callback);
+  OutboundCall(
+      const ConnectionId& conn_id,
+      const RemoteMethod& remote_method,
+      google::protobuf::Message* response_storage,
+      RpcController* controller,
+      ResponseCallback callback);
 
   ~OutboundCall();
 
-  // Serialize the given request PB into this call's internal storage, and assume
-  // ownership of any sidecars that should accompany this request.
+  // Serialize the given request PB into this call's internal storage, and
+  // assume ownership of any sidecars that should accompany this request.
   //
-  // Because the request data is fully serialized by this call, 'req' may be subsequently
-  // mutated with no ill effects.
-  void SetRequestPayload(const google::protobuf::Message& req,
+  // Because the request data is fully serialized by this call, 'req' may be
+  // subsequently mutated with no ill effects.
+  void SetRequestPayload(
+      const google::protobuf::Message& req,
       std::vector<std::unique_ptr<RpcSidecar>>&& sidecars);
 
   // Assign the call ID for this call. This is called from the reactor
@@ -109,11 +112,11 @@ class OutboundCall {
   // Returns the number of slices in the serialized call.
   size_t SerializeTo(TransferPayload* slices);
 
-  // Mark in the call that cancellation has been requested. If the call hasn't yet
-  // started sending or has finished sending the RPC request but is waiting for a
-  // response, cancel the RPC right away. Otherwise, wait until the RPC has finished
-  // sending before cancelling it. If the call is finished, it's a no-op.
-  // REQUIRES: must be called from the reactor thread.
+  // Mark in the call that cancellation has been requested. If the call hasn't
+  // yet started sending or has finished sending the RPC request but is waiting
+  // for a response, cancel the RPC right away. Otherwise, wait until the RPC
+  // has finished sending before cancelling it. If the call is finished, it's a
+  // no-op. REQUIRES: must be called from the reactor thread.
   void Cancel();
 
   // Callback after the call has been put on the outbound connection queue.
@@ -129,9 +132,10 @@ class OutboundCall {
   // Mark the call as failed. This also triggers the callback to notify
   // the caller. If the call failed due to a remote error, then err_pb
   // should be set to the error returned by the remote server.
-  void SetFailed(Status status,
-                 Phase phase = Phase::REMOTE_CALL,
-                 std::unique_ptr<ErrorStatusPB> err_pb = nullptr);
+  void SetFailed(
+      Status status,
+      Phase phase = Phase::REMOTE_CALL,
+      std::unique_ptr<ErrorStatusPB> err_pb = nullptr);
 
   // Mark the call as timed out. This also triggers the callback to notify
   // the caller.
@@ -160,11 +164,21 @@ class OutboundCall {
   // Getters
   ////////////////////////////////////////////////////////////
 
-  const ConnectionId& conn_id() const { return conn_id_; }
-  const RemoteMethod& remote_method() const { return remote_method_; }
-  const ResponseCallback &callback() const { return callback_; }
-  RpcController* controller() { return controller_; }
-  const RpcController* controller() const { return controller_; }
+  const ConnectionId& conn_id() const {
+    return conn_id_;
+  }
+  const RemoteMethod& remote_method() const {
+    return remote_method_;
+  }
+  const ResponseCallback& callback() const {
+    return callback_;
+  }
+  RpcController* controller() {
+    return controller_;
+  }
+  const RpcController* controller() const {
+    return controller_;
+  }
 
   // Return true if a call ID has been assigned to this call.
   bool call_id_assigned() const {
@@ -182,8 +196,8 @@ class OutboundCall {
     return cancellation_requested_;
   }
 
-  // Test function which returns true if a cancellation request should be injected
-  // at the current state.
+  // Test function which returns true if a cancellation request should be
+  // injected at the current state.
   bool ShouldInjectCancellation() const {
     return FLAGS_rpc_inject_cancellation_state != -1 &&
         FLAGS_rpc_inject_cancellation_state == state();
@@ -211,7 +225,8 @@ class OutboundCall {
 
   static std::string StateName(State state);
 
-  // Mark the call as cancelled. This also invokes the callback to notify the caller.
+  // Mark the call as cancelled. This also invokes the callback to notify the
+  // caller.
   void SetCancelled();
 
   void set_state(State new_state);
@@ -239,9 +254,9 @@ class OutboundCall {
   Status status_;
   std::unique_ptr<ErrorStatusPB> error_pb_;
 
-  // Call the user-provided callback. Note that entries in 'sidecars_' are cleared
-  // prior to invoking the callback so the client can assume that the call doesn't
-  // hold references to outbound sidecars.
+  // Call the user-provided callback. Note that entries in 'sidecars_' are
+  // cleared prior to invoking the callback so the client can assume that the
+  // call doesn't hold references to outbound sidecars.
   void CallCallback();
 
   // The RPC header.
@@ -273,8 +288,9 @@ class OutboundCall {
   // All sidecars to be sent with this call.
   std::vector<std::unique_ptr<RpcSidecar>> sidecars_;
 
-  // Total size in bytes of all sidecars in 'sidecars_'. Set in SetRequestPayload().
-  // This cannot exceed TransferLimits::kMaxTotalSidecarBytes.
+  // Total size in bytes of all sidecars in 'sidecars_'. Set in
+  // SetRequestPayload(). This cannot exceed
+  // TransferLimits::kMaxTotalSidecarBytes.
   int32_t sidecar_byte_size_ = -1;
 
   // True if cancellation was requested on this call.
@@ -312,8 +328,9 @@ class CallResponse {
   }
 
   // Return the serialized response data. This is just the response "body" --
-  // either a serialized ErrorStatusPB, or the serialized user response protobuf.
-  const Slice &serialized_response() const {
+  // either a serialized ErrorStatusPB, or the serialized user response
+  // protobuf.
+  const Slice& serialized_response() const {
     DCHECK(parsed_);
     return serialized_response_;
   }

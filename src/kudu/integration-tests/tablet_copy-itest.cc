@@ -81,16 +81,23 @@
 METRIC_DECLARE_gauge_int32(tablets_num_running);
 METRIC_DECLARE_gauge_int32(tablets_num_bootstrapping);
 
-DEFINE_int32(test_num_threads, 16,
-             "Number of test threads to launch");
-DEFINE_int32(test_delete_leader_num_iters, 3,
-             "Number of iterations to run in TestDeleteLeaderDuringTabletCopyStressTest.");
-DEFINE_int32(test_delete_leader_min_rows_per_iter, 20,
-             "Number of writer threads in TestDeleteLeaderDuringTabletCopyStressTest.");
-DEFINE_int32(test_delete_leader_payload_bytes, 16 * 1024,
-             "Payload byte size in TestDeleteLeaderDuringTabletCopyStressTest.");
-DEFINE_int32(test_delete_leader_num_writer_threads, 1,
-             "Number of writer threads in TestDeleteLeaderDuringTabletCopyStressTest.");
+DEFINE_int32(test_num_threads, 16, "Number of test threads to launch");
+DEFINE_int32(
+    test_delete_leader_num_iters,
+    3,
+    "Number of iterations to run in TestDeleteLeaderDuringTabletCopyStressTest.");
+DEFINE_int32(
+    test_delete_leader_min_rows_per_iter,
+    20,
+    "Number of writer threads in TestDeleteLeaderDuringTabletCopyStressTest.");
+DEFINE_int32(
+    test_delete_leader_payload_bytes,
+    16 * 1024,
+    "Payload byte size in TestDeleteLeaderDuringTabletCopyStressTest.");
+DEFINE_int32(
+    test_delete_leader_num_writer_threads,
+    1,
+    "Number of writer threads in TestDeleteLeaderDuringTabletCopyStressTest.");
 
 using kudu::client::KuduSchema;
 using kudu::client::KuduSchemaFromSchema;
@@ -105,8 +112,8 @@ using kudu::consensus::MakeOpId;
 using kudu::consensus::RaftPeerPB;
 using kudu::itest::AddServer;
 using kudu::itest::DeleteTablet;
-using kudu::itest::GetInt64Metric;
 using kudu::itest::FindTabletLeader;
+using kudu::itest::GetInt64Metric;
 using kudu::itest::StartElection;
 using kudu::itest::StartTabletCopy;
 using kudu::itest::TServerDetails;
@@ -133,7 +140,8 @@ using std::vector;
 using strings::Substitute;
 
 METRIC_DECLARE_entity(tablet);
-METRIC_DECLARE_histogram(handler_latency_kudu_consensus_ConsensusService_UpdateConsensus);
+METRIC_DECLARE_histogram(
+    handler_latency_kudu_consensus_ConsensusService_UpdateConsensus);
 METRIC_DECLARE_counter(glog_info_messages);
 METRIC_DECLARE_counter(glog_warning_messages);
 METRIC_DECLARE_counter(glog_error_messages);
@@ -146,14 +154,13 @@ METRIC_DECLARE_gauge_uint64(log_block_manager_blocks_under_management);
 
 namespace kudu {
 
-class TabletCopyITest : public ExternalMiniClusterITestBase {
-};
+class TabletCopyITest : public ExternalMiniClusterITestBase {};
 
 // If a rogue (a.k.a. zombie) leader tries to replace a tombstoned
 // tablet via Tablet Copy, make sure its term isn't older than the latest term
-// we observed. If it is older, make sure we reject the request, to avoid allowing old
-// leaders to create a parallel universe. This is possible because config
-// change could cause nodes to move around. The term check is reasonable
+// we observed. If it is older, make sure we reject the request, to avoid
+// allowing old leaders to create a parallel universe. This is possible because
+// config change could cause nodes to move around. The term check is reasonable
 // because only one node can be elected leader for a given term.
 //
 // A leader can "go rogue" due to a VM pause, CTRL-z, partition, etc.
@@ -166,7 +173,8 @@ TEST_F(TabletCopyITest, TestRejectRogueLeader) {
 
   vector<string> ts_flags, master_flags;
   ts_flags.emplace_back("--enable_leader_failure_detection=false");
-  master_flags.emplace_back("--catalog_manager_wait_for_new_tablets_to_elect_leader=false");
+  master_flags.emplace_back(
+      "--catalog_manager_wait_for_new_tablets_to_elect_leader=false");
   NO_FATALS(StartCluster(ts_flags, master_flags));
 
   const MonoDelta timeout = MonoDelta::FromSeconds(30);
@@ -187,33 +195,37 @@ TEST_F(TabletCopyITest, TestRejectRogueLeader) {
 
   // Wait until all replicas are up and running.
   for (int i = 0; i < cluster_->num_tablet_servers(); i++) {
-    ASSERT_OK(WaitUntilTabletRunning(ts_map_[cluster_->tablet_server(i)->uuid()],
-                                     tablet_id, timeout));
+    ASSERT_OK(WaitUntilTabletRunning(
+        ts_map_[cluster_->tablet_server(i)->uuid()], tablet_id, timeout));
   }
 
   LOG(INFO) << "loading data...";
 
   // Elect a leader for term 1, then run some data through the cluster.
   int zombie_leader_index = 1;
-  string zombie_leader_uuid = cluster_->tablet_server(zombie_leader_index)->uuid();
+  string zombie_leader_uuid =
+      cluster_->tablet_server(zombie_leader_index)->uuid();
   ASSERT_OK(StartElection(ts_map_[zombie_leader_uuid], tablet_id, timeout));
   workload.Start();
-  ASSERT_EVENTUALLY([&] {
-    ASSERT_GE(workload.rows_inserted(), 100);
-  });
+  ASSERT_EVENTUALLY([&] { ASSERT_GE(workload.rows_inserted(), 100); });
   workload.StopAndJoin();
 
-  ASSERT_OK(WaitForServersToAgree(timeout, ts_map_, tablet_id, workload.batches_completed()));
+  ASSERT_OK(WaitForServersToAgree(
+      timeout, ts_map_, tablet_id, workload.batches_completed()));
 
-  // Come out of the blue and try to initiate Tablet Copy from a running server while
-  // specifying an old term. That running server should reject the request.
-  // We are essentially masquerading as a rogue leader here.
-  Status s = StartTabletCopy(ts, tablet_id, zombie_leader_uuid,
-                             HostPort(cluster_->tablet_server(1)->bound_rpc_addr()),
-                             /*caller_term=*/ 0, // Say I'm from term 0.
-                             timeout);
+  // Come out of the blue and try to initiate Tablet Copy from a running server
+  // while specifying an old term. That running server should reject the
+  // request. We are essentially masquerading as a rogue leader here.
+  Status s = StartTabletCopy(
+      ts,
+      tablet_id,
+      zombie_leader_uuid,
+      HostPort(cluster_->tablet_server(1)->bound_rpc_addr()),
+      /*caller_term=*/0, // Say I'm from term 0.
+      timeout);
   ASSERT_TRUE(s.IsInvalidArgument()) << s.ToString();
-  ASSERT_STR_CONTAINS(s.ToString(), "term 0, which is lower than last-logged term 1");
+  ASSERT_STR_CONTAINS(
+      s.ToString(), "term 0, which is lower than last-logged term 1");
 
   // Now pause the actual leader so we can bring him back as a zombie later.
   ASSERT_OK(cluster_->tablet_server(zombie_leader_index)->Pause());
@@ -222,7 +234,8 @@ TEST_F(TabletCopyITest, TestRejectRogueLeader) {
   int new_leader_index = 2;
   string new_leader_uuid = cluster_->tablet_server(new_leader_index)->uuid();
   ASSERT_OK(StartElection(ts_map_[new_leader_uuid], tablet_id, timeout));
-  ASSERT_OK(itest::WaitUntilLeader(ts_map_[new_leader_uuid], tablet_id, timeout));
+  ASSERT_OK(
+      itest::WaitUntilLeader(ts_map_[new_leader_uuid], tablet_id, timeout));
   LOG(INFO) << "successfully elected new leader";
 
   unordered_map<string, TServerDetails*> active_ts_map = ts_map_;
@@ -231,16 +244,17 @@ TEST_F(TabletCopyITest, TestRejectRogueLeader) {
   // Wait for the NO_OP entry from the term 2 election to propagate to the
   // remaining nodes' logs so that we are guaranteed to reject the rogue
   // leader's tablet copy request when we bring it back online.
-  int log_index = workload.batches_completed() + 2; // 2 terms == 2 additional NO_OP entries.
-  ASSERT_OK(WaitForServersToAgree(timeout, active_ts_map, tablet_id, log_index));
+  int log_index = workload.batches_completed() +
+      2; // 2 terms == 2 additional NO_OP entries.
+  ASSERT_OK(
+      WaitForServersToAgree(timeout, active_ts_map, tablet_id, log_index));
 
   // Write more rows to the new leader.
   LOG(INFO) << "restarting workload...";
   int64_t prev_inserted = workload.rows_inserted();
   workload.Start();
-  ASSERT_EVENTUALLY([&] {
-    ASSERT_GE(workload.rows_inserted(), prev_inserted + 100);
-  });
+  ASSERT_EVENTUALLY(
+      [&] { ASSERT_GE(workload.rows_inserted(), prev_inserted + 100); });
   workload.StopAndJoin();
 
   // Now kill the new leader and tombstone the replica on TS 0.
@@ -255,35 +269,43 @@ TEST_F(TabletCopyITest, TestRejectRogueLeader) {
   LOG(INFO) << "unpausing old (rogue) leader " << zombie_leader_uuid << "...";
   ASSERT_OK(cluster_->tablet_server(zombie_leader_index)->Resume());
 
-  // Loop for a few seconds to ensure that the tablet doesn't transition to READY.
+  // Loop for a few seconds to ensure that the tablet doesn't transition to
+  // READY.
   MonoTime deadline = MonoTime::Now() + MonoDelta::FromSeconds(5);
   while (MonoTime::Now() < deadline) {
     ASSERT_OK(itest::ListTablets(ts, timeout, &tablets));
     ASSERT_EQ(1, tablets.size());
-    ASSERT_EQ(TABLET_DATA_TOMBSTONED, tablets[0].tablet_status().tablet_data_state());
+    ASSERT_EQ(
+        TABLET_DATA_TOMBSTONED, tablets[0].tablet_status().tablet_data_state());
     SleepFor(MonoDelta::FromMilliseconds(10));
   }
 
-  LOG(INFO) << "the rogue leader was not able to tablet copy the tombstoned follower";
+  LOG(INFO)
+      << "the rogue leader was not able to tablet copy the tombstoned follower";
 
   // Send a tablet copy start request from a "fake" leader that
   // sends an up-to-date term in the tablet copy request but the actual term
   // stored in the copy source's consensus metadata would still be old.
-  ExternalTabletServer* zombie_ets = cluster_->tablet_server(zombie_leader_index);
+  ExternalTabletServer* zombie_ets =
+      cluster_->tablet_server(zombie_leader_index);
   // It's not necessarily part of the API but this could return faliure due to
   // rejecting the remote. We intend to make that part async though, so ignoring
   // this return value in this test.
-  ignore_result(StartTabletCopy(ts, tablet_id, zombie_leader_uuid,
-                                HostPort(zombie_ets->bound_rpc_addr()),
-                                /* caller_term=*/ 2, // Say I'm from term 2.
-                                timeout));
+  ignore_result(StartTabletCopy(
+      ts,
+      tablet_id,
+      zombie_leader_uuid,
+      HostPort(zombie_ets->bound_rpc_addr()),
+      /* caller_term=*/2, // Say I'm from term 2.
+      timeout));
 
   // Wait another few seconds to be sure the tablet copy is rejected.
   deadline = MonoTime::Now() + MonoDelta::FromSeconds(5);
   while (MonoTime::Now() < deadline) {
     ASSERT_OK(itest::ListTablets(ts, timeout, &tablets));
     ASSERT_EQ(1, tablets.size());
-    ASSERT_EQ(TABLET_DATA_TOMBSTONED, tablets[0].tablet_status().tablet_data_state());
+    ASSERT_EQ(
+        TABLET_DATA_TOMBSTONED, tablets[0].tablet_status().tablet_data_state());
     SleepFor(MonoDelta::FromMilliseconds(10));
   }
 }
@@ -318,8 +340,8 @@ TEST_F(TabletCopyITest, TestListTabletsDuringTabletCopy) {
 
   // Ensure all the servers agree before we proceed.
   workload.StopAndJoin();
-  ASSERT_OK(WaitForServersToAgree(kTimeout, ts_map_, tablet_id,
-                                  workload.batches_completed()));
+  ASSERT_OK(WaitForServersToAgree(
+      kTimeout, ts_map_, tablet_id, workload.batches_completed()));
 
   int leader_index;
   int follower_index;
@@ -356,15 +378,14 @@ TEST_F(TabletCopyITest, TestListTabletsDuringTabletCopy) {
   barrier.Wait();
 
   // Tombstone the tablet on the follower.
-  LOG(INFO) << "Tombstoning follower tablet " << tablet_id
-            << " on TS " << follower_ts->uuid();
-  ASSERT_OK(DeleteTablet(follower_ts, tablet_id, TABLET_DATA_TOMBSTONED, kTimeout));
+  LOG(INFO) << "Tombstoning follower tablet " << tablet_id << " on TS "
+            << follower_ts->uuid();
+  ASSERT_OK(
+      DeleteTablet(follower_ts, tablet_id, TABLET_DATA_TOMBSTONED, kTimeout));
 
   // A new good copy should automatically get created via tablet copy.
   ASSERT_OK(inspect_->WaitForTabletDataStateOnTS(
-      follower_index, tablet_id,
-      { tablet::TABLET_DATA_READY },
-      kTimeout));
+      follower_index, tablet_id, {tablet::TABLET_DATA_READY}, kTimeout));
 
   // Wait for all threads to finish.
   finish.store(true, std::memory_order_relaxed);
@@ -385,7 +406,8 @@ TEST_F(TabletCopyITest, TestCopyAfterFailedCopy) {
   cluster_opts.num_tablet_servers = 3;
   // We're going to tombstone replicas manually, so prevent the master from
   // tombstoning evicted followers.
-  cluster_opts.extra_master_flags.emplace_back("--master_tombstone_evicted_tablet_replicas=false");
+  cluster_opts.extra_master_flags.emplace_back(
+      "--master_tombstone_evicted_tablet_replicas=false");
   NO_FATALS(StartClusterWithOpts(std::move(cluster_opts)));
 
   // Populate a tablet with some data.
@@ -403,8 +425,8 @@ TEST_F(TabletCopyITest, TestCopyAfterFailedCopy) {
 
   // Ensure all the servers agree before we proceed.
   workload.StopAndJoin();
-  ASSERT_OK(WaitForServersToAgree(kTimeout, ts_map_, tablet_id,
-                                  workload.batches_completed()));
+  ASSERT_OK(WaitForServersToAgree(
+      kTimeout, ts_map_, tablet_id, workload.batches_completed()));
 
   int leader_index;
   int follower_index;
@@ -420,23 +442,33 @@ TEST_F(TabletCopyITest, TestCopyAfterFailedCopy) {
   follower_ts = ts_map_[follower->uuid()];
 
   // Tombstone the follower.
-  ASSERT_OK(DeleteTabletWithRetries(follower_ts, tablet_id,
-                                    TabletDataState::TABLET_DATA_TOMBSTONED,
-                                    kTimeout));
+  ASSERT_OK(DeleteTabletWithRetries(
+      follower_ts,
+      tablet_id,
+      TabletDataState::TABLET_DATA_TOMBSTONED,
+      kTimeout));
   HostPort leader_addr;
-  ASSERT_OK(HostPortFromPB(leader_ts->registration.rpc_addresses(0), &leader_addr));
+  ASSERT_OK(
+      HostPortFromPB(leader_ts->registration.rpc_addresses(0), &leader_addr));
 
   // Inject failures to the metadata and trigger the tablet copy. This will
   // cause the copy to fail.
-  ASSERT_OK(cluster_->SetFlag(cluster_->tablet_server(follower_index),
-      "env_inject_eio_globs", JoinPathSegments(cluster_->WalRootForTS(follower_index),
-                                               "tablet-meta/**")));
-  ASSERT_OK(cluster_->SetFlag(cluster_->tablet_server(follower_index),
-      "env_inject_eio", "0.10"));
+  ASSERT_OK(cluster_->SetFlag(
+      cluster_->tablet_server(follower_index),
+      "env_inject_eio_globs",
+      JoinPathSegments(
+          cluster_->WalRootForTS(follower_index), "tablet-meta/**")));
+  ASSERT_OK(cluster_->SetFlag(
+      cluster_->tablet_server(follower_index), "env_inject_eio", "0.10"));
   Status s;
   ASSERT_EVENTUALLY([&] {
-    s = itest::StartTabletCopy(follower_ts, tablet_id, leader_ts->uuid(),
-                               leader_addr, std::numeric_limits<int64_t>::max(), kTimeout);
+    s = itest::StartTabletCopy(
+        follower_ts,
+        tablet_id,
+        leader_ts->uuid(),
+        leader_addr,
+        std::numeric_limits<int64_t>::max(),
+        kTimeout);
     ASSERT_STR_CONTAINS(s.ToString(), "INJECTED FAILURE");
   });
 
@@ -444,8 +476,13 @@ TEST_F(TabletCopyITest, TestCopyAfterFailedCopy) {
   // cleaning up so we might get some "already in progress" errors; eventually
   // a copy will successfully start and fail with the expected error.
   ASSERT_EVENTUALLY([&] {
-    s = itest::StartTabletCopy(follower_ts, tablet_id, leader_ts->uuid(),
-                               leader_addr, std::numeric_limits<int64_t>::max(), kTimeout);
+    s = itest::StartTabletCopy(
+        follower_ts,
+        tablet_id,
+        leader_ts->uuid(),
+        leader_addr,
+        std::numeric_limits<int64_t>::max(),
+        kTimeout);
     ASSERT_STR_CONTAINS(s.ToString(), "INJECTED FAILURE");
   });
 
@@ -453,16 +490,21 @@ TEST_F(TabletCopyITest, TestCopyAfterFailedCopy) {
   // should not crash the destination server.
   for (int i = 0; i < cluster_->num_tablet_servers(); i++) {
     const auto tserver = cluster_->tablet_server(i);
-    ASSERT_TRUE(tserver->IsProcessAlive())
-        << Substitute("Tablet server $0 ($1) has crashed...", i, tserver->uuid());
+    ASSERT_TRUE(tserver->IsProcessAlive()) << Substitute(
+        "Tablet server $0 ($1) has crashed...", i, tserver->uuid());
   }
 
   // Finally, trigger a successful copy.
-  ASSERT_OK(cluster_->SetFlag(cluster_->tablet_server(follower_index),
-      "env_inject_eio", "0.0"));
+  ASSERT_OK(cluster_->SetFlag(
+      cluster_->tablet_server(follower_index), "env_inject_eio", "0.0"));
   ASSERT_EVENTUALLY([&] {
-    ASSERT_OK(itest::StartTabletCopy(follower_ts, tablet_id, leader_ts->uuid(),
-                                    leader_addr, std::numeric_limits<int64_t>::max(), kTimeout));
+    ASSERT_OK(itest::StartTabletCopy(
+        follower_ts,
+        tablet_id,
+        leader_ts->uuid(),
+        leader_addr,
+        std::numeric_limits<int64_t>::max(),
+        kTimeout));
   });
 }
 
@@ -493,7 +535,8 @@ TEST_F(TabletCopyITest, TestDeleteTabletDuringTabletCopy) {
 
   // Ensure all the servers agree before we proceed.
   workload.StopAndJoin();
-  ASSERT_OK(WaitForServersToAgree(timeout, ts_map_, tablet_id, workload.batches_completed()));
+  ASSERT_OK(WaitForServersToAgree(
+      timeout, ts_map_, tablet_id, workload.batches_completed()));
 
   // Set up an FsManager to use with the TabletCopyClient.
   FsManagerOpts opts;
@@ -509,12 +552,15 @@ TEST_F(TabletCopyITest, TestDeleteTabletDuringTabletCopy) {
 
   {
     // Start up a TabletCopyClient and open a tablet copy session.
-    TabletCopyClient tc_client(tablet_id, fs_manager.get(),
-                               cmeta_manager, cluster_->messenger(),
-                               nullptr /* no metrics */);
+    TabletCopyClient tc_client(
+        tablet_id,
+        fs_manager.get(),
+        cmeta_manager,
+        cluster_->messenger(),
+        nullptr /* no metrics */);
     scoped_refptr<tablet::TabletMetadata> meta;
-    ASSERT_OK(tc_client.Start(cluster_->tablet_server(kTsIndex)->bound_rpc_hostport(),
-                              &meta));
+    ASSERT_OK(tc_client.Start(
+        cluster_->tablet_server(kTsIndex)->bound_rpc_hostport(), &meta));
 
     // Tombstone the tablet on the remote!
     ASSERT_OK(DeleteTablet(ts, tablet_id, TABLET_DATA_TOMBSTONED, timeout));
@@ -526,27 +572,28 @@ TEST_F(TabletCopyITest, TestDeleteTabletDuringTabletCopy) {
     // Run destructor, which closes the remote session.
   }
 
-  SleepFor(MonoDelta::FromMilliseconds(50));  // Give a little time for a crash (KUDU-1009).
+  SleepFor(MonoDelta::FromMilliseconds(
+      50)); // Give a little time for a crash (KUDU-1009).
   ASSERT_TRUE(cluster_->tablet_server(kTsIndex)->IsProcessAlive());
 }
 
-// This test ensures that a leader can Tablet Copy on top of a tombstoned replica
-// that has a higher term recorded in the replica's consensus metadata if the
-// replica's last-logged opid has the same term (or less) as the leader serving
-// as the tablet copy source. When a tablet is tombstoned, its last-logged
-// opid is stored in a field its on-disk superblock.
+// This test ensures that a leader can Tablet Copy on top of a tombstoned
+// replica that has a higher term recorded in the replica's consensus metadata
+// if the replica's last-logged opid has the same term (or less) as the leader
+// serving as the tablet copy source. When a tablet is tombstoned, its
+// last-logged opid is stored in a field its on-disk superblock.
 TEST_F(TabletCopyITest, TestTabletCopyFollowerWithHigherTerm) {
-  vector<string> ts_flags = { "--enable_leader_failure_detection=false" };
+  vector<string> ts_flags = {"--enable_leader_failure_detection=false"};
   vector<string> master_flags = {
       "--catalog_manager_wait_for_new_tablets_to_elect_leader=false",
-      "--allow_unsafe_replication_factor=true"
-  };
+      "--allow_unsafe_replication_factor=true"};
   const int kNumTabletServers = 2;
   NO_FATALS(StartCluster(ts_flags, master_flags, kNumTabletServers));
 
   const MonoDelta timeout = MonoDelta::FromSeconds(30);
   const int kFollowerIndex = 0;
-  TServerDetails* follower_ts = ts_map_[cluster_->tablet_server(kFollowerIndex)->uuid()];
+  TServerDetails* follower_ts =
+      ts_map_[cluster_->tablet_server(kFollowerIndex)->uuid()];
 
   TestWorkload workload(cluster_.get());
   workload.set_num_replicas(2);
@@ -559,13 +606,14 @@ TEST_F(TabletCopyITest, TestTabletCopyFollowerWithHigherTerm) {
 
   // Wait until all replicas are up and running.
   for (int i = 0; i < cluster_->num_tablet_servers(); i++) {
-    ASSERT_OK(WaitUntilTabletRunning(ts_map_[cluster_->tablet_server(i)->uuid()],
-                                     tablet_id, timeout));
+    ASSERT_OK(WaitUntilTabletRunning(
+        ts_map_[cluster_->tablet_server(i)->uuid()], tablet_id, timeout));
   }
 
   // Elect a leader for term 1, then run some data through the cluster.
   const int kLeaderIndex = 1;
-  TServerDetails* leader_ts = ts_map_[cluster_->tablet_server(kLeaderIndex)->uuid()];
+  TServerDetails* leader_ts =
+      ts_map_[cluster_->tablet_server(kLeaderIndex)->uuid()];
   ASSERT_OK(StartElection(leader_ts, tablet_id, timeout));
   workload.Start();
   while (workload.rows_inserted() < 100) {
@@ -573,7 +621,8 @@ TEST_F(TabletCopyITest, TestTabletCopyFollowerWithHigherTerm) {
   }
   workload.StopAndJoin();
 
-  ASSERT_OK(WaitForServersToAgree(timeout, ts_map_, tablet_id, workload.batches_completed()));
+  ASSERT_OK(WaitForServersToAgree(
+      timeout, ts_map_, tablet_id, workload.batches_completed()));
 
   // Pause the leader and increment the term on the follower by starting an
   // election on the follower. The election will fail asynchronously but we
@@ -583,16 +632,18 @@ TEST_F(TabletCopyITest, TestTabletCopyFollowerWithHigherTerm) {
   int64_t term = 0;
   for (int i = 0; i < 1000; i++) {
     consensus::ConsensusStatePB cstate;
-    ASSERT_OK(itest::GetConsensusState(follower_ts, tablet_id, timeout, EXCLUDE_HEALTH_REPORT,
-                                       &cstate));
+    ASSERT_OK(itest::GetConsensusState(
+        follower_ts, tablet_id, timeout, EXCLUDE_HEALTH_REPORT, &cstate));
     term = cstate.current_term();
-    if (term == 2) break;
+    if (term == 2)
+      break;
     SleepFor(MonoDelta::FromMilliseconds(10));
   }
   ASSERT_EQ(2, term);
 
   // Now tombstone the follower.
-  ASSERT_OK(DeleteTablet(follower_ts, tablet_id, TABLET_DATA_TOMBSTONED, timeout));
+  ASSERT_OK(
+      DeleteTablet(follower_ts, tablet_id, TABLET_DATA_TOMBSTONED, timeout));
 
   // Restart the follower's TS so that the leader's TS won't get its queued
   // vote request messages. This is a hack but seems to work.
@@ -604,7 +655,8 @@ TEST_F(TabletCopyITest, TestTabletCopyFollowerWithHigherTerm) {
   ASSERT_OK(cluster_->tablet_server(kLeaderIndex)->Resume());
 
   // Wait for the follower to come back up.
-  ASSERT_OK(WaitForServersToAgree(timeout, ts_map_, tablet_id, workload.batches_completed()));
+  ASSERT_OK(WaitForServersToAgree(
+      timeout, ts_map_, tablet_id, workload.batches_completed()));
 }
 
 // Test that multiple concurrent tablet copies do not cause problems.
@@ -625,7 +677,8 @@ TEST_F(TabletCopyITest, TestConcurrentTabletCopys) {
   ts_flags.emplace_back("--log_min_segments_to_retain=100");
   ts_flags.emplace_back("--flush_threshold_mb=0"); // Constantly flush.
   ts_flags.emplace_back("--maintenance_manager_polling_interval_ms=10");
-  master_flags.emplace_back("--catalog_manager_wait_for_new_tablets_to_elect_leader=false");
+  master_flags.emplace_back(
+      "--catalog_manager_wait_for_new_tablets_to_elect_leader=false");
   NO_FATALS(StartCluster(ts_flags, master_flags));
 
   const MonoDelta timeout = MonoDelta::FromSeconds(60);
@@ -637,19 +690,21 @@ TEST_F(TabletCopyITest, TestConcurrentTabletCopys) {
   vector<const KuduPartialRow*> splits;
   for (int i = 0; i < kNumTablets - 1; i++) {
     KuduPartialRow* row = client_schema.NewRow();
-    ASSERT_OK(row->SetInt32(0, std::numeric_limits<int32_t>::max() / kNumTablets * (i + 1)));
+    ASSERT_OK(row->SetInt32(
+        0, std::numeric_limits<int32_t>::max() / kNumTablets * (i + 1)));
     splits.push_back(row);
   }
   gscoped_ptr<KuduTableCreator> table_creator(client_->NewTableCreator());
   ASSERT_OK(table_creator->table_name(TestWorkload::kDefaultTableName)
-                          .split_rows(splits)
-                          .schema(&client_schema)
-                          .set_range_partition_columns({ "key" })
-                          .num_replicas(3)
-                          .Create());
+                .split_rows(splits)
+                .schema(&client_schema)
+                .set_range_partition_columns({"key"})
+                .num_replicas(3)
+                .Create());
 
   const int kTsIndex = 0; // We'll test with the first TS.
-  TServerDetails* target_ts = ts_map_[cluster_->tablet_server(kTsIndex)->uuid()];
+  TServerDetails* target_ts =
+      ts_map_[cluster_->tablet_server(kTsIndex)->uuid()];
 
   // Figure out the tablet ids of the created tablets.
   vector<ListTabletsResponsePB::StatusAndSchemaPB> tablets;
@@ -663,8 +718,8 @@ TEST_F(TabletCopyITest, TestConcurrentTabletCopys) {
   // Wait until all replicas are up and running.
   for (int i = 0; i < cluster_->num_tablet_servers(); i++) {
     for (const string& tablet_id : tablet_ids) {
-      ASSERT_OK(WaitUntilTabletRunning(ts_map_[cluster_->tablet_server(i)->uuid()],
-                                       tablet_id, timeout));
+      ASSERT_OK(WaitUntilTabletRunning(
+          ts_map_[cluster_->tablet_server(i)->uuid()], tablet_id, timeout));
     }
   }
 
@@ -695,13 +750,17 @@ TEST_F(TabletCopyITest, TestConcurrentTabletCopys) {
   ASSERT_OK(cluster_->tablet_server(kLeaderIndex)->Pause());
 
   for (const string& tablet_id : tablet_ids) {
-    LOG(INFO) << "Tombstoning tablet " << tablet_id << " on TS " << target_ts->uuid();
-    ASSERT_OK(DeleteTablet(target_ts, tablet_id, TABLET_DATA_TOMBSTONED,
-                           MonoDelta::FromSeconds(10)));
+    LOG(INFO) << "Tombstoning tablet " << tablet_id << " on TS "
+              << target_ts->uuid();
+    ASSERT_OK(DeleteTablet(
+        target_ts,
+        tablet_id,
+        TABLET_DATA_TOMBSTONED,
+        MonoDelta::FromSeconds(10)));
   }
 
-  // Unpause the leader TS and wait for it to initiate Tablet Copy and replace the tombstoned
-  // tablets, in parallel.
+  // Unpause the leader TS and wait for it to initiate Tablet Copy and replace
+  // the tombstoned tablets, in parallel.
   ASSERT_OK(cluster_->tablet_server(kLeaderIndex)->Resume());
   for (const string& tablet_id : tablet_ids) {
     ASSERT_OK(WaitUntilTabletRunning(target_ts, tablet_id, timeout));
@@ -709,8 +768,10 @@ TEST_F(TabletCopyITest, TestConcurrentTabletCopys) {
 
   ClusterVerifier v(cluster_.get());
   NO_FATALS(v.CheckCluster());
-  NO_FATALS(v.CheckRowCount(workload.table_name(), ClusterVerifier::AT_LEAST,
-                            workload.rows_inserted()));
+  NO_FATALS(v.CheckRowCount(
+      workload.table_name(),
+      ClusterVerifier::AT_LEAST,
+      workload.rows_inserted()));
 }
 
 // Test that repeatedly runs a load, tombstones a follower, then tombstones the
@@ -745,8 +806,8 @@ TEST_F(TabletCopyITest, TestDeleteLeaderDuringTabletCopyStressTest) {
 
   // Wait until all replicas are up and running.
   for (int i = 0; i < cluster_->num_tablet_servers(); i++) {
-    ASSERT_OK(WaitUntilTabletRunning(ts_map_[cluster_->tablet_server(i)->uuid()],
-                                     tablet_id, timeout));
+    ASSERT_OK(WaitUntilTabletRunning(
+        ts_map_[cluster_->tablet_server(i)->uuid()], tablet_id, timeout));
   }
 
   int leader_index = -1;
@@ -769,23 +830,28 @@ TEST_F(TabletCopyITest, TestDeleteLeaderDuringTabletCopyStressTest) {
     // Spin up the workload.
     workload.Start();
     while (workload.rows_inserted() < rows_previously_inserted +
-                                      FLAGS_test_delete_leader_min_rows_per_iter) {
+               FLAGS_test_delete_leader_min_rows_per_iter) {
       SleepFor(MonoDelta::FromMilliseconds(10));
     }
 
     // Tombstone the follower.
-    LOG(INFO) << "Tombstoning follower tablet " << tablet_id << " on TS " << follower_ts->uuid();
-    ASSERT_OK(DeleteTablet(follower_ts, tablet_id, TABLET_DATA_TOMBSTONED, timeout));
+    LOG(INFO) << "Tombstoning follower tablet " << tablet_id << " on TS "
+              << follower_ts->uuid();
+    ASSERT_OK(
+        DeleteTablet(follower_ts, tablet_id, TABLET_DATA_TOMBSTONED, timeout));
 
     // Wait for tablet copy to start.
     ASSERT_OK(inspect_->WaitForTabletDataStateOnTS(
-        follower_index, tablet_id,
-        { tablet::TABLET_DATA_COPYING, tablet::TABLET_DATA_READY },
+        follower_index,
+        tablet_id,
+        {tablet::TABLET_DATA_COPYING, tablet::TABLET_DATA_READY},
         timeout));
 
     // Tombstone the leader.
-    LOG(INFO) << "Tombstoning leader tablet " << tablet_id << " on TS " << leader_ts->uuid();
-    ASSERT_OK(DeleteTablet(leader_ts, tablet_id, TABLET_DATA_TOMBSTONED, timeout));
+    LOG(INFO) << "Tombstoning leader tablet " << tablet_id << " on TS "
+              << leader_ts->uuid();
+    ASSERT_OK(
+        DeleteTablet(leader_ts, tablet_id, TABLET_DATA_TOMBSTONED, timeout));
 
     // Quiesce and rebuild to full strength. This involves electing a new
     // leader from the remaining three, which requires a unanimous vote, and
@@ -796,8 +862,10 @@ TEST_F(TabletCopyITest, TestDeleteLeaderDuringTabletCopyStressTest) {
 
   ClusterVerifier v(cluster_.get());
   NO_FATALS(v.CheckCluster());
-  NO_FATALS(v.CheckRowCount(workload.table_name(), ClusterVerifier::AT_LEAST,
-                            workload.rows_inserted()));
+  NO_FATALS(v.CheckRowCount(
+      workload.table_name(),
+      ClusterVerifier::AT_LEAST,
+      workload.rows_inserted()));
 }
 
 namespace {
@@ -864,15 +932,17 @@ int64_t CountLogMessages(ExternalTabletServer* ets) {
 } // anonymous namespace
 
 // Test that if tablet copy is disabled by a flag, we don't get into
-// tight loops after a tablet is deleted. This is a regression test for situation
-// similar to the bug described in KUDU-821: we were previously handling a missing
-// tablet within consensus in such a way that we'd immediately send another RPC.
+// tight loops after a tablet is deleted. This is a regression test for
+// situation similar to the bug described in KUDU-821: we were previously
+// handling a missing tablet within consensus in such a way that we'd
+// immediately send another RPC.
 TEST_F(TabletCopyITest, TestDisableTabletCopy_NoTightLoopWhenTabletDeleted) {
   MonoDelta timeout = MonoDelta::FromSeconds(10);
   vector<string> ts_flags, master_flags;
   ts_flags.emplace_back("--enable_leader_failure_detection=false");
   ts_flags.emplace_back("--enable_tablet_copy=false");
-  master_flags.emplace_back("--catalog_manager_wait_for_new_tablets_to_elect_leader=false");
+  master_flags.emplace_back(
+      "--catalog_manager_wait_for_new_tablets_to_elect_leader=false");
   NO_FATALS(StartCluster(ts_flags, master_flags));
 
   TestWorkload workload(cluster_.get());
@@ -888,8 +958,8 @@ TEST_F(TabletCopyITest, TestDisableTabletCopy_NoTightLoopWhenTabletDeleted) {
 
   // Wait until all replicas are up and running.
   for (int i = 0; i < cluster_->num_tablet_servers(); i++) {
-    ASSERT_OK(WaitUntilTabletRunning(ts_map_[cluster_->tablet_server(i)->uuid()],
-                                     tablet_id, timeout));
+    ASSERT_OK(WaitUntilTabletRunning(
+        ts_map_[cluster_->tablet_server(i)->uuid()], tablet_id, timeout));
   }
 
   // Elect a leader (TS 0)
@@ -903,11 +973,12 @@ TEST_F(TabletCopyITest, TestDisableTabletCopy_NoTightLoopWhenTabletDeleted) {
   }
 
   // Tombstone the tablet on one of the servers (TS 1)
-  ASSERT_OK(DeleteTablet(replica_ts, tablet_id, TABLET_DATA_TOMBSTONED, timeout));
+  ASSERT_OK(
+      DeleteTablet(replica_ts, tablet_id, TABLET_DATA_TOMBSTONED, timeout));
 
-  // Ensure that, if we sleep for a second while still doing writes to the leader:
-  // a) we don't spew logs on the leader side
-  // b) we don't get hit with a lot of UpdateConsensus calls on the replica.
+  // Ensure that, if we sleep for a second while still doing writes to the
+  // leader: a) we don't spew logs on the leader side b) we don't get hit with a
+  // lot of UpdateConsensus calls on the replica.
   MonoTime start = MonoTime::Now();
   int64_t num_update_rpcs_initial = CountUpdateConsensusCalls(replica_ets);
   int64_t num_logs_initial = CountLogMessages(leader_ts);
@@ -920,22 +991,26 @@ TEST_F(TabletCopyITest, TestDisableTabletCopy_NoTightLoopWhenTabletDeleted) {
 
   // Calculate rate per second of RPCs and log messages
   int64_t update_rpcs_per_second =
-      (num_update_rpcs_after_sleep - num_update_rpcs_initial) / elapsed.ToSeconds();
+      (num_update_rpcs_after_sleep - num_update_rpcs_initial) /
+      elapsed.ToSeconds();
   EXPECT_LT(update_rpcs_per_second, 20);
   double num_logs_per_second =
       (num_logs_after_sleep - num_logs_initial) / elapsed.ToSeconds();
-  EXPECT_LT(num_logs_per_second, 60); // We might occasionally get unrelated log messages.
+  EXPECT_LT(
+      num_logs_per_second,
+      60); // We might occasionally get unrelated log messages.
 }
 
-// Test that if a Tablet Copy is taking a long time but the client peer is still responsive,
-// the leader won't mark it as failed.
+// Test that if a Tablet Copy is taking a long time but the client peer is still
+// responsive, the leader won't mark it as failed.
 TEST_F(TabletCopyITest, TestSlowCopyDoesntFail) {
   MonoDelta timeout = MonoDelta::FromSeconds(30);
   vector<string> ts_flags, master_flags;
   ts_flags.emplace_back("--enable_leader_failure_detection=false");
   ts_flags.emplace_back("--tablet_copy_download_file_inject_latency_ms=5000");
   ts_flags.emplace_back("--follower_unavailable_considered_failed_sec=2");
-  master_flags.emplace_back("--catalog_manager_wait_for_new_tablets_to_elect_leader=false");
+  master_flags.emplace_back(
+      "--catalog_manager_wait_for_new_tablets_to_elect_leader=false");
   NO_FATALS(StartCluster(ts_flags, master_flags));
 
   TestWorkload workload(cluster_.get());
@@ -951,8 +1026,8 @@ TEST_F(TabletCopyITest, TestSlowCopyDoesntFail) {
 
   // Wait until all replicas are up and running.
   for (int i = 0; i < cluster_->num_tablet_servers(); i++) {
-    ASSERT_OK(WaitUntilTabletRunning(ts_map_[cluster_->tablet_server(i)->uuid()],
-                                     tablet_id, timeout));
+    ASSERT_OK(WaitUntilTabletRunning(
+        ts_map_[cluster_->tablet_server(i)->uuid()], tablet_id, timeout));
   }
 
   // Elect a leader (TS 0)
@@ -965,22 +1040,25 @@ TEST_F(TabletCopyITest, TestSlowCopyDoesntFail) {
     SleepFor(MonoDelta::FromMilliseconds(10));
   }
 
-
   // Tombstone the follower.
-  LOG(INFO) << "Tombstoning follower tablet " << tablet_id << " on TS " << replica_ts->uuid();
-  ASSERT_OK(DeleteTablet(replica_ts, tablet_id, TABLET_DATA_TOMBSTONED, timeout));
+  LOG(INFO) << "Tombstoning follower tablet " << tablet_id << " on TS "
+            << replica_ts->uuid();
+  ASSERT_OK(
+      DeleteTablet(replica_ts, tablet_id, TABLET_DATA_TOMBSTONED, timeout));
 
   // Wait for tablet copy to start.
-  ASSERT_OK(inspect_->WaitForTabletDataStateOnTS(1, tablet_id,
-                                                 { tablet::TABLET_DATA_COPYING }, timeout));
+  ASSERT_OK(inspect_->WaitForTabletDataStateOnTS(
+      1, tablet_id, {tablet::TABLET_DATA_COPYING}, timeout));
 
   workload.StopAndJoin();
   ASSERT_OK(WaitForServersToAgree(timeout, ts_map_, tablet_id, 1));
 
   ClusterVerifier v(cluster_.get());
   NO_FATALS(v.CheckCluster());
-  NO_FATALS(v.CheckRowCount(workload.table_name(), ClusterVerifier::AT_LEAST,
-                            workload.rows_inserted()));
+  NO_FATALS(v.CheckRowCount(
+      workload.table_name(),
+      ClusterVerifier::AT_LEAST,
+      workload.rows_inserted()));
 }
 
 // Attempting to start Tablet Copy on a tablet that was deleted with
@@ -993,8 +1071,9 @@ TEST_F(TabletCopyITest, TestTabletCopyingDeletedTabletFails) {
   // Should get an error saying it's illegal.
 
   MonoDelta kTimeout = MonoDelta::FromSeconds(30);
-  NO_FATALS(StartCluster({"--enable_leader_failure_detection=false"},
-                         {"--catalog_manager_wait_for_new_tablets_to_elect_leader=false"}));
+  NO_FATALS(StartCluster(
+      {"--enable_leader_failure_detection=false"},
+      {"--catalog_manager_wait_for_new_tablets_to_elect_leader=false"}));
 
   TestWorkload workload(cluster_.get());
   workload.set_num_replicas(3);
@@ -1009,8 +1088,8 @@ TEST_F(TabletCopyITest, TestTabletCopyingDeletedTabletFails) {
 
   // Wait until all replicas are up and running.
   for (int i = 0; i < cluster_->num_tablet_servers(); i++) {
-    ASSERT_OK(WaitUntilTabletRunning(ts_map_[cluster_->tablet_server(i)->uuid()],
-                                     tablet_id, kTimeout));
+    ASSERT_OK(WaitUntilTabletRunning(
+        ts_map_[cluster_->tablet_server(i)->uuid()], tablet_id, kTimeout));
   }
 
   // Elect a leader for term 1, then run some data through the cluster.
@@ -1021,39 +1100,47 @@ TEST_F(TabletCopyITest, TestTabletCopyingDeletedTabletFails) {
   // bring back the leader after that until restarting the process.
   ASSERT_OK(DeleteTablet(leader, tablet_id, TABLET_DATA_DELETED, kTimeout));
 
-  Status s = StartTabletCopy(leader, tablet_id,
-                             cluster_->tablet_server(1)->uuid(),
-                             HostPort(cluster_->tablet_server(1)->bound_rpc_addr()),
-                             1, // We are in term 1.
-                             kTimeout);
+  Status s = StartTabletCopy(
+      leader,
+      tablet_id,
+      cluster_->tablet_server(1)->uuid(),
+      HostPort(cluster_->tablet_server(1)->bound_rpc_addr()),
+      1, // We are in term 1.
+      kTimeout);
   ASSERT_TRUE(s.IsIllegalState()) << s.ToString();
-  ASSERT_STR_CONTAINS(s.ToString(), "Cannot transition from state TABLET_DATA_DELETED");
+  ASSERT_STR_CONTAINS(
+      s.ToString(), "Cannot transition from state TABLET_DATA_DELETED");
 
   // Restart the server so that it won't remember the tablet was permanently
   // deleted and we can tablet copy the server again.
   cluster_->tablet_server(0)->Shutdown();
   ASSERT_OK(cluster_->tablet_server(0)->Restart());
 
-  ASSERT_OK(StartTabletCopy(leader, tablet_id,
-                            cluster_->tablet_server(1)->uuid(),
-                            HostPort(cluster_->tablet_server(1)->bound_rpc_addr()),
-                            1, // We are in term 1.
-                            kTimeout));
+  ASSERT_OK(StartTabletCopy(
+      leader,
+      tablet_id,
+      cluster_->tablet_server(1)->uuid(),
+      HostPort(cluster_->tablet_server(1)->bound_rpc_addr()),
+      1, // We are in term 1.
+      kTimeout));
   ASSERT_OK(WaitForServersToAgree(kTimeout, ts_map_, tablet_id, 1));
 }
 
-// Test that tablet copy clears the last-logged opid stored in the TabletMetadata.
+// Test that tablet copy clears the last-logged opid stored in the
+// TabletMetadata.
 TEST_F(TabletCopyITest, TestTabletCopyClearsLastLoggedOpId) {
   MonoDelta kTimeout = MonoDelta::FromSeconds(30);
-  NO_FATALS(StartCluster({"--enable_leader_failure_detection=false"},
-                         {"--catalog_manager_wait_for_new_tablets_to_elect_leader=false"}));
+  NO_FATALS(StartCluster(
+      {"--enable_leader_failure_detection=false"},
+      {"--catalog_manager_wait_for_new_tablets_to_elect_leader=false"}));
 
   TestWorkload workload(cluster_.get());
   workload.set_num_replicas(3);
   workload.Setup();
 
   int leader_index = 0;
-  TServerDetails* leader = ts_map_[cluster_->tablet_server(leader_index)->uuid()];
+  TServerDetails* leader =
+      ts_map_[cluster_->tablet_server(leader_index)->uuid()];
 
   // Figure out the tablet id of the created tablet.
   vector<ListTabletsResponsePB::StatusAndSchemaPB> tablets;
@@ -1062,8 +1149,8 @@ TEST_F(TabletCopyITest, TestTabletCopyClearsLastLoggedOpId) {
 
   // Wait until all replicas are up and running.
   for (int i = 0; i < cluster_->num_tablet_servers(); i++) {
-    ASSERT_OK(WaitUntilTabletRunning(ts_map_[cluster_->tablet_server(i)->uuid()],
-                                     tablet_id, kTimeout));
+    ASSERT_OK(WaitUntilTabletRunning(
+        ts_map_[cluster_->tablet_server(i)->uuid()], tablet_id, kTimeout));
   }
 
   // Elect a leader for term 1, then generate some data to copy.
@@ -1076,32 +1163,38 @@ TEST_F(TabletCopyITest, TestTabletCopyClearsLastLoggedOpId) {
   workload.StopAndJoin();
   ASSERT_OK(WaitForServersToAgree(kTimeout, ts_map_, tablet_id, 1));
 
-  // No last-logged opid should initially be stored in the superblock on a brand-new tablet.
+  // No last-logged opid should initially be stored in the superblock on a
+  // brand-new tablet.
   tablet::TabletSuperBlockPB superblock_pb;
-  ASSERT_OK(inspect_->ReadTabletSuperBlockOnTS(leader_index, tablet_id, &superblock_pb));
+  ASSERT_OK(inspect_->ReadTabletSuperBlockOnTS(
+      leader_index, tablet_id, &superblock_pb));
   ASSERT_FALSE(superblock_pb.has_tombstone_last_logged_opid());
 
   // Now tombstone the leader.
   ASSERT_OK(DeleteTablet(leader, tablet_id, TABLET_DATA_TOMBSTONED, kTimeout));
 
   // We should end up with a last-logged opid in the superblock.
-  ASSERT_OK(inspect_->ReadTabletSuperBlockOnTS(leader_index, tablet_id, &superblock_pb));
+  ASSERT_OK(inspect_->ReadTabletSuperBlockOnTS(
+      leader_index, tablet_id, &superblock_pb));
   ASSERT_TRUE(superblock_pb.has_tombstone_last_logged_opid());
   consensus::OpId last_logged_opid = superblock_pb.tombstone_last_logged_opid();
   ASSERT_EQ(1, last_logged_opid.term());
   ASSERT_GT(last_logged_opid.index(), kMinBatches);
 
   int follower_index = 1;
-  ASSERT_OK(StartTabletCopy(leader, tablet_id,
-                            cluster_->tablet_server(follower_index)->uuid(),
-                            cluster_->tablet_server(follower_index)->bound_rpc_hostport(),
-                            1, // We are in term 1.
-                            kTimeout));
+  ASSERT_OK(StartTabletCopy(
+      leader,
+      tablet_id,
+      cluster_->tablet_server(follower_index)->uuid(),
+      cluster_->tablet_server(follower_index)->bound_rpc_hostport(),
+      1, // We are in term 1.
+      kTimeout));
 
   ASSERT_EVENTUALLY([&] {
     // Ensure that the last-logged opid has been cleared from the superblock
     // once it persists the TABLET_DATA_READY state to disk.
-    ASSERT_OK(inspect_->ReadTabletSuperBlockOnTS(leader_index, tablet_id, &superblock_pb));
+    ASSERT_OK(inspect_->ReadTabletSuperBlockOnTS(
+        leader_index, tablet_id, &superblock_pb));
     ASSERT_EQ(TABLET_DATA_READY, superblock_pb.tablet_data_state());
     ASSERT_FALSE(superblock_pb.has_tombstone_last_logged_opid())
         << SecureShortDebugString(superblock_pb);
@@ -1117,9 +1210,10 @@ TEST_F(TabletCopyITest, TestTabletCopyThrottling) {
   // forcibly make copies of tablets onto servers it doesn't know about.
   // We also want to make sure only one tablet copy is possible at a given time
   // in order to test the throttling.
-  NO_FATALS(StartCluster({"--num_tablets_to_copy_simultaneously=1"},
-                         {"--master_tombstone_evicted_tablet_replicas=false"},
-                         2));
+  NO_FATALS(StartCluster(
+      {"--num_tablets_to_copy_simultaneously=1"},
+      {"--master_tombstone_evicted_tablet_replicas=false"},
+      2));
   // Shut down the 2nd tablet server; we'll create tablets on the first one.
   cluster_->tablet_server(1)->Shutdown();
 
@@ -1168,10 +1262,11 @@ TEST_F(TabletCopyITest, TestTabletCopyThrottling) {
   int num_service_unavailable = 0;
   int num_inprogress = 0;
   while (!tablets.empty()) {
-    for (auto tablet_id = tablets.begin(); tablet_id != tablets.end(); ) {
-      tserver::TabletServerErrorPB::Code error_code = tserver::TabletServerErrorPB::UNKNOWN_ERROR;
-      Status s = StartTabletCopy(ts1, *tablet_id, ts0->uuid(),
-                                 ts0_hostport, 0, kTimeout, &error_code);
+    for (auto tablet_id = tablets.begin(); tablet_id != tablets.end();) {
+      tserver::TabletServerErrorPB::Code error_code =
+          tserver::TabletServerErrorPB::UNKNOWN_ERROR;
+      Status s = StartTabletCopy(
+          ts1, *tablet_id, ts0->uuid(), ts0_hostport, 0, kTimeout, &error_code);
       if (!s.ok()) {
         switch (error_code) {
           case tserver::TabletServerErrorPB::THROTTLED:
@@ -1187,15 +1282,16 @@ TEST_F(TabletCopyITest, TestTabletCopyThrottling) {
           case tserver::TabletServerErrorPB::INVALID_CONFIG:
             // The tablet copy has already completed, and the remote tablet now
             // has the correct term (not 0).
-            ASSERT_STR_MATCHES(s.ToString(),
-                               "Leader has replica of tablet .* with term 0, "
-                               "which is lower than last-logged term .* on local replica. "
-                               "Rejecting tablet copy request");
+            ASSERT_STR_MATCHES(
+                s.ToString(),
+                "Leader has replica of tablet .* with term 0, "
+                "which is lower than last-logged term .* on local replica. "
+                "Rejecting tablet copy request");
             tablet_id = tablets.erase(tablet_id);
             continue;
           default:
-            FAIL() << "Unexpected tablet copy failure: " << s.ToString()
-                  << ": " << tserver::TabletServerErrorPB::Code_Name(error_code);
+            FAIL() << "Unexpected tablet copy failure: " << s.ToString() << ": "
+                   << tserver::TabletServerErrorPB::Code_Name(error_code);
         }
       }
       ++tablet_id;
@@ -1203,24 +1299,27 @@ TEST_F(TabletCopyITest, TestTabletCopyThrottling) {
     SleepFor(MonoDelta::FromMilliseconds(1));
   }
 
-  // Ensure that we get at least one service unavailable and copy in progress responses.
+  // Ensure that we get at least one service unavailable and copy in progress
+  // responses.
   ASSERT_GT(num_service_unavailable, 0);
   ASSERT_GT(num_inprogress, 0);
-  LOG(INFO) << "Number of Service unavailable responses: " << num_service_unavailable;
+  LOG(INFO) << "Number of Service unavailable responses: "
+            << num_service_unavailable;
   LOG(INFO) << "Number of in progress responses: " << num_inprogress;
 }
 
-class TabletCopyFailureITest : public TabletCopyITest,
-                               public ::testing::WithParamInterface<const char*> {
-};
+class TabletCopyFailureITest
+    : public TabletCopyITest,
+      public ::testing::WithParamInterface<const char*> {};
 // Trigger tablet copy failures a couple different ways: session timeout and
 // crash. We want all tablet copy attempts to fail after initial setup.
 const char* kTabletCopyFailureITestFlags[] = {
-  "--tablet_copy_early_session_timeout_prob=1.0",
-  "--tablet_copy_fault_crash_on_fetch_all=1.0"
-};
-INSTANTIATE_TEST_CASE_P(FailureCause, TabletCopyFailureITest,
-                        ::testing::ValuesIn(kTabletCopyFailureITestFlags));
+    "--tablet_copy_early_session_timeout_prob=1.0",
+    "--tablet_copy_fault_crash_on_fetch_all=1.0"};
+INSTANTIATE_TEST_CASE_P(
+    FailureCause,
+    TabletCopyFailureITest,
+    ::testing::ValuesIn(kTabletCopyFailureITestFlags));
 
 // Test that a failed tablet copy of a brand-new replica results in still being
 // able to vote while tombstoned.
@@ -1228,15 +1327,13 @@ TEST_P(TabletCopyFailureITest, TestTabletCopyNewReplicaFailureCanVote) {
   const MonoDelta kTimeout = MonoDelta::FromSeconds(30);
   const string& failure_flag = GetParam();
   const vector<string> kMasterFlags = {
-    // If running with the 3-4-3 replication scheme, it's necessary to disable
-    // the default catalog manager's behavior of adding and evicting tablet
-    // replicas: this test scenario manages replicasa on its own.
-    "--catalog_manager_evict_excess_replicas=false",
-    "--master_add_server_when_underreplicated=false",
+      // If running with the 3-4-3 replication scheme, it's necessary to disable
+      // the default catalog manager's behavior of adding and evicting tablet
+      // replicas: this test scenario manages replicasa on its own.
+      "--catalog_manager_evict_excess_replicas=false",
+      "--master_add_server_when_underreplicated=false",
   };
-  const vector<string> kTserverFlags = {
-    failure_flag
-  };
+  const vector<string> kTserverFlags = {failure_flag};
   constexpr auto kNumReplicas = 3;
   constexpr auto kNumTabletServers = kNumReplicas + 1;
 
@@ -1247,8 +1344,12 @@ TEST_P(TabletCopyFailureITest, TestTabletCopyNewReplicaFailureCanVote) {
 
   ASSERT_OK(inspect_->WaitForReplicaCount(kNumReplicas));
   master::GetTableLocationsResponsePB table_locations;
-  ASSERT_OK(itest::GetTableLocations(cluster_->master_proxy(), TestWorkload::kDefaultTableName,
-                                     kTimeout, master::VOTER_REPLICA, &table_locations));
+  ASSERT_OK(itest::GetTableLocations(
+      cluster_->master_proxy(),
+      TestWorkload::kDefaultTableName,
+      kTimeout,
+      master::VOTER_REPLICA,
+      &table_locations));
   ASSERT_EQ(1, table_locations.tablet_locations_size());
   string tablet_id = table_locations.tablet_locations(0).tablet_id();
   set<string> replica_uuids;
@@ -1270,10 +1371,12 @@ TEST_P(TabletCopyFailureITest, TestTabletCopyNewReplicaFailureCanVote) {
   ASSERT_EVENTUALLY([&] {
     TServerDetails* leader_ts;
     ASSERT_OK(FindTabletLeader(ts_map_, tablet_id, kTimeout, &leader_ts));
-    ASSERT_OK(itest::WaitForOpFromCurrentTerm(leader_ts, tablet_id, COMMITTED_OPID, kTimeout));
+    ASSERT_OK(itest::WaitForOpFromCurrentTerm(
+        leader_ts, tablet_id, COMMITTED_OPID, kTimeout));
 
     // Adding a server will trigger a tablet copy.
-    ASSERT_OK(AddServer(leader_ts, tablet_id, new_replica_ts, RaftPeerPB::VOTER, kTimeout));
+    ASSERT_OK(AddServer(
+        leader_ts, tablet_id, new_replica_ts, RaftPeerPB::VOTER, kTimeout));
   });
 
   // Wait until the new replica has done its initial download, and has either
@@ -1281,10 +1384,13 @@ TEST_P(TabletCopyFailureITest, TestTabletCopyNewReplicaFailureCanVote) {
   // persisted its cmeta.
   int new_replica_idx = cluster_->tablet_server_index_by_uuid(new_replica_uuid);
   ASSERT_EVENTUALLY([&] {
-    ASSERT_OK(inspect_->CheckTabletDataStateOnTS(new_replica_idx, tablet_id,
-                                                 { TABLET_DATA_COPYING, TABLET_DATA_TOMBSTONED }));
+    ASSERT_OK(inspect_->CheckTabletDataStateOnTS(
+        new_replica_idx,
+        tablet_id,
+        {TABLET_DATA_COPYING, TABLET_DATA_TOMBSTONED}));
     ConsensusMetadataPB cmeta_pb;
-    ASSERT_OK(inspect_->ReadConsensusMetadataOnTS(new_replica_idx, tablet_id, &cmeta_pb));
+    ASSERT_OK(inspect_->ReadConsensusMetadataOnTS(
+        new_replica_idx, tablet_id, &cmeta_pb));
   });
 
   // Restart the cluster with 3 voters instead of 4, including the new replica
@@ -1297,11 +1403,13 @@ TEST_P(TabletCopyFailureITest, TestTabletCopyNewReplicaFailureCanVote) {
   }
 
   TabletSuperBlockPB superblock;
-  ASSERT_OK(inspect_->ReadTabletSuperBlockOnTS(new_replica_idx, tablet_id, &superblock));
-  LOG(INFO) << "Restarting tablet servers. New replica TS UUID: " << new_replica_uuid
-            << ", tablet data state: "
+  ASSERT_OK(inspect_->ReadTabletSuperBlockOnTS(
+      new_replica_idx, tablet_id, &superblock));
+  LOG(INFO) << "Restarting tablet servers. New replica TS UUID: "
+            << new_replica_uuid << ", tablet data state: "
             << tablet::TabletDataState_Name(superblock.tablet_data_state())
-            << ", last-logged opid: " << superblock.tombstone_last_logged_opid();
+            << ", last-logged opid: "
+            << superblock.tombstone_last_logged_opid();
   ASSERT_TRUE(superblock.has_tombstone_last_logged_opid());
   ASSERT_OPID_EQ(MakeOpId(1, 0), superblock.tombstone_last_logged_opid());
 
@@ -1313,9 +1421,7 @@ TEST_P(TabletCopyFailureITest, TestTabletCopyNewReplicaFailureCanVote) {
 
   // Now wait until we can write.
   workload.Start();
-  ASSERT_EVENTUALLY([&] {
-    ASSERT_GE(workload.rows_inserted(), 100);
-  });
+  ASSERT_EVENTUALLY([&] { ASSERT_GE(workload.rows_inserted(), 100); });
   workload.StopAndJoin();
 }
 
@@ -1324,15 +1430,16 @@ TEST_P(TabletCopyFailureITest, TestTabletCopyNewReplicaFailureCanVote) {
 TEST_P(TabletCopyFailureITest, TestFailedTabletCopyRetainsLastLoggedOpId) {
   MonoDelta kTimeout = MonoDelta::FromSeconds(30);
   const string& tablet_copy_failure_flag = GetParam();
-  NO_FATALS(StartCluster({"--enable_leader_failure_detection=false",
-                          tablet_copy_failure_flag},
-                         {"--catalog_manager_wait_for_new_tablets_to_elect_leader=false"}));
+  NO_FATALS(StartCluster(
+      {"--enable_leader_failure_detection=false", tablet_copy_failure_flag},
+      {"--catalog_manager_wait_for_new_tablets_to_elect_leader=false"}));
 
   TestWorkload workload(cluster_.get());
   workload.Setup();
 
   int first_leader_index = 0;
-  TServerDetails* first_leader = ts_map_[cluster_->tablet_server(first_leader_index)->uuid()];
+  TServerDetails* first_leader =
+      ts_map_[cluster_->tablet_server(first_leader_index)->uuid()];
 
   // Figure out the tablet id of the created tablet.
   vector<ListTabletsResponsePB::StatusAndSchemaPB> tablets;
@@ -1341,45 +1448,52 @@ TEST_P(TabletCopyFailureITest, TestFailedTabletCopyRetainsLastLoggedOpId) {
 
   // Wait until all replicas are up and running.
   for (int i = 0; i < cluster_->num_tablet_servers(); i++) {
-    ASSERT_OK(WaitUntilTabletRunning(ts_map_[cluster_->tablet_server(i)->uuid()],
-                                     tablet_id, kTimeout));
+    ASSERT_OK(WaitUntilTabletRunning(
+        ts_map_[cluster_->tablet_server(i)->uuid()], tablet_id, kTimeout));
   }
 
   // Elect a leader for term 1, then generate some data to copy.
   ASSERT_OK(StartElection(first_leader, tablet_id, kTimeout));
   workload.Start();
   const int kMinBatches = 10;
-  ASSERT_EVENTUALLY([&] {
-    ASSERT_GE(workload.batches_completed(), kMinBatches);
-  });
+  ASSERT_EVENTUALLY(
+      [&] { ASSERT_GE(workload.batches_completed(), kMinBatches); });
   workload.StopAndJoin();
   ASSERT_OK(WaitForServersToAgree(kTimeout, ts_map_, tablet_id, 1));
 
   // Tombstone the first leader.
-  ASSERT_OK(DeleteTablet(first_leader, tablet_id, TABLET_DATA_TOMBSTONED, kTimeout));
+  ASSERT_OK(
+      DeleteTablet(first_leader, tablet_id, TABLET_DATA_TOMBSTONED, kTimeout));
 
-  // We should end up with a last-logged opid in the superblock of the first leader.
+  // We should end up with a last-logged opid in the superblock of the first
+  // leader.
   tablet::TabletSuperBlockPB superblock_pb;
-  ASSERT_OK(inspect_->ReadTabletSuperBlockOnTS(first_leader_index, tablet_id, &superblock_pb));
+  ASSERT_OK(inspect_->ReadTabletSuperBlockOnTS(
+      first_leader_index, tablet_id, &superblock_pb));
   ASSERT_TRUE(superblock_pb.has_tombstone_last_logged_opid());
   consensus::OpId last_logged_opid = superblock_pb.tombstone_last_logged_opid();
   ASSERT_EQ(1, last_logged_opid.term());
   ASSERT_GT(last_logged_opid.index(), kMinBatches);
-  int64_t initial_mtime = inspect_->GetTabletSuperBlockMTimeOrDie(first_leader_index, tablet_id);
+  int64_t initial_mtime =
+      inspect_->GetTabletSuperBlockMTimeOrDie(first_leader_index, tablet_id);
 
   // Elect a new leader.
   int second_leader_index = 1;
-  TServerDetails* second_leader = ts_map_[cluster_->tablet_server(second_leader_index)->uuid()];
+  TServerDetails* second_leader =
+      ts_map_[cluster_->tablet_server(second_leader_index)->uuid()];
   ASSERT_OK(StartElection(second_leader, tablet_id, kTimeout));
 
   // The second leader will initiate a tablet copy on the first leader. Wait
   // for it to fail (via crash or abort).
   ASSERT_EVENTUALLY([&] {
     // Superblock must have been modified.
-    int64_t cur_mtime = inspect_->GetTabletSuperBlockMTimeOrDie(first_leader_index, tablet_id);
+    int64_t cur_mtime =
+        inspect_->GetTabletSuperBlockMTimeOrDie(first_leader_index, tablet_id);
     ASSERT_GT(cur_mtime, initial_mtime);
-    ASSERT_OK(inspect_->CheckTabletDataStateOnTS(first_leader_index, tablet_id,
-                                                 { TABLET_DATA_COPYING, TABLET_DATA_TOMBSTONED }));
+    ASSERT_OK(inspect_->CheckTabletDataStateOnTS(
+        first_leader_index,
+        tablet_id,
+        {TABLET_DATA_COPYING, TABLET_DATA_TOMBSTONED}));
   });
 
   // Bounce the cluster to get rid of leaders and reach a steady state.
@@ -1389,11 +1503,13 @@ TEST_P(TabletCopyFailureITest, TestFailedTabletCopyRetainsLastLoggedOpId) {
   // After failing the tablet copy, we should retain the old tombstoned
   // tablet's last-logged opid.
   ASSERT_EVENTUALLY([&] {
-    ASSERT_OK(inspect_->ReadTabletSuperBlockOnTS(first_leader_index, tablet_id, &superblock_pb));
+    ASSERT_OK(inspect_->ReadTabletSuperBlockOnTS(
+        first_leader_index, tablet_id, &superblock_pb));
     ASSERT_EQ(TABLET_DATA_TOMBSTONED, superblock_pb.tablet_data_state());
     ASSERT_TRUE(superblock_pb.has_tombstone_last_logged_opid())
         << SecureShortDebugString(superblock_pb);
-    ASSERT_OPID_EQ(last_logged_opid, superblock_pb.tombstone_last_logged_opid());
+    ASSERT_OPID_EQ(
+        last_logged_opid, superblock_pb.tombstone_last_logged_opid());
   });
 }
 
@@ -1413,11 +1529,16 @@ class BadTabletCopyITest : public TabletCopyITest,
 // server.
 const char* kFlagFaultOnFetch = "fault_crash_on_handle_tc_fetch_data";
 const char* kFlagEarlyTimeout = "tablet_copy_early_session_timeout_prob";
-const char* kBadTabletCopyITestFlags[] = { kFlagFaultOnFetch, kFlagEarlyTimeout };
-INSTANTIATE_TEST_CASE_P(FaultFlags, BadTabletCopyITest,
-                        ::testing::ValuesIn(kBadTabletCopyITestFlags));
+const char* kBadTabletCopyITestFlags[] = {kFlagFaultOnFetch, kFlagEarlyTimeout};
+INSTANTIATE_TEST_CASE_P(
+    FaultFlags,
+    BadTabletCopyITest,
+    ::testing::ValuesIn(kBadTabletCopyITestFlags));
 
-void BadTabletCopyITest::LoadTable(TestWorkload* workload, int min_rows, int min_blocks) {
+void BadTabletCopyITest::LoadTable(
+    TestWorkload* workload,
+    int min_rows,
+    int min_blocks) {
   const MonoDelta kTimeout = MonoDelta::FromSeconds(30);
   // Always include TS 1 and check its blocks. This is always included.
   const int kReplicaIdx = 1;
@@ -1440,14 +1561,17 @@ void BadTabletCopyITest::LoadTable(TestWorkload* workload, int min_rows, int min
     }
   }
   ASSERT_EQ(3, replicas.size());
-  ASSERT_TRUE(ContainsKey(replicas, cluster_->tablet_server(kReplicaIdx)->uuid()));
+  ASSERT_TRUE(
+      ContainsKey(replicas, cluster_->tablet_server(kReplicaIdx)->uuid()));
 
-  int64_t before_blocks = CountBlocksUnderManagement(cluster_->tablet_server(kReplicaIdx));
+  int64_t before_blocks =
+      CountBlocksUnderManagement(cluster_->tablet_server(kReplicaIdx));
   int64_t after_blocks;
   int64_t blocks_diff;
   workload->Start();
   do {
-    after_blocks = CountBlocksUnderManagement(cluster_->tablet_server(kReplicaIdx));
+    after_blocks =
+        CountBlocksUnderManagement(cluster_->tablet_server(kReplicaIdx));
     blocks_diff = after_blocks - before_blocks;
     KLOG_EVERY_N_SECS(INFO, 1) << "Blocks diff: " << blocks_diff;
     SleepFor(MonoDelta::FromMilliseconds(10));
@@ -1458,10 +1582,12 @@ void BadTabletCopyITest::LoadTable(TestWorkload* workload, int min_rows, int min
   ASSERT_OK(WaitForServersToAgree(kTimeout, replicas, tablet_id, 0));
 }
 
-// Ensure that a tablet copy failure results in no orphaned blocks and no data loss.
+// Ensure that a tablet copy failure results in no orphaned blocks and no data
+// loss.
 TEST_P(BadTabletCopyITest, TestBadCopy) {
   if (!AllowSlowTests()) {
-    LOG(WARNING) << "Not running " << CURRENT_TEST_NAME() << " because it is a slow test.";
+    LOG(WARNING) << "Not running " << CURRENT_TEST_NAME()
+                 << " because it is a slow test.";
     return;
   }
 
@@ -1474,16 +1600,19 @@ TEST_P(BadTabletCopyITest, TestBadCopy) {
   const string& failure_flag = GetParam();
   NO_FATALS(StartCluster(
       {
-        // Flush aggressively to create many blocks.
-        "--flush_threshold_mb=0",
-        "--maintenance_manager_polling_interval_ms=10",
-        // Wait only 10 seconds before evicting a failed replica.
-        "--follower_unavailable_considered_failed_sec=10",
-        Substitute("--$0=1.0", failure_flag),
-      }, {
-        // Wait only 5 seconds before master decides TS not eligible for a replica.
-        "--tserver_unresponsive_timeout_ms=5000",
-      }, kNumTabletServers));
+          // Flush aggressively to create many blocks.
+          "--flush_threshold_mb=0",
+          "--maintenance_manager_polling_interval_ms=10",
+          // Wait only 10 seconds before evicting a failed replica.
+          "--follower_unavailable_considered_failed_sec=10",
+          Substitute("--$0=1.0", failure_flag),
+      },
+      {
+          // Wait only 5 seconds before master decides TS not eligible for a
+          // replica.
+          "--tserver_unresponsive_timeout_ms=5000",
+      },
+      kNumTabletServers));
 
   // Don't allow TS 3 to get a copy of Table A.
   cluster_->tablet_server(3)->Shutdown();
@@ -1520,18 +1649,19 @@ TEST_P(BadTabletCopyITest, TestBadCopy) {
   // Shut down replica with only [A].
   cluster_->tablet_server(0)->Shutdown();
 
-  // The leader of A will evict TS 0 and the master will trigger re-replication to TS 3.
+  // The leader of A will evict TS 0 and the master will trigger re-replication
+  // to TS 3.
 
   if (failure_flag == kFlagFaultOnFetch) {
-    // Tablet copy will cause the leader tablet server for A (either TS 1 or TS 2)
-    // to crash because of --fault_crash_on_handle_tc_fetch_data=1.0
-    // This will also cause the tablet copy session to fail and the new replica
-    // on TS 3 to be tombstoned.
+    // Tablet copy will cause the leader tablet server for A (either TS 1 or TS
+    // 2) to crash because of --fault_crash_on_handle_tc_fetch_data=1.0 This
+    // will also cause the tablet copy session to fail and the new replica on TS
+    // 3 to be tombstoned.
     bool crashed = false;
     while (!crashed) {
       for (int i : {1, 2}) {
-        Status s = cluster_->tablet_server(i)
-            ->WaitForInjectedCrash(MonoDelta::FromMilliseconds(10));
+        Status s = cluster_->tablet_server(i)->WaitForInjectedCrash(
+            MonoDelta::FromMilliseconds(10));
         if (s.ok()) {
           crashed = true;
           break;
@@ -1563,8 +1693,8 @@ TEST_P(BadTabletCopyITest, TestBadCopy) {
   // re-replicating.
   cluster_->Shutdown();
   for (int i = 0; i < cluster_->num_tablet_servers(); i++) {
-    cluster_->tablet_server(i)->mutable_flags()
-        ->push_back(Substitute("--$0=0.0", failure_flag));
+    cluster_->tablet_server(i)->mutable_flags()->push_back(
+        Substitute("--$0=0.0", failure_flag));
   }
   ASSERT_OK(cluster_->Restart());
 
@@ -1576,8 +1706,10 @@ TEST_P(BadTabletCopyITest, TestBadCopy) {
 
   LOG(INFO) << "Checking row count...";
   for (TestWorkload* workload : {&workload1, &workload2}) {
-    NO_FATALS(v.CheckRowCount(workload->table_name(), ClusterVerifier::AT_LEAST,
-                              workload->rows_inserted()));
+    NO_FATALS(v.CheckRowCount(
+        workload->table_name(),
+        ClusterVerifier::AT_LEAST,
+        workload->rows_inserted()));
   }
 }
 
@@ -1658,59 +1790,65 @@ TEST_F(TabletCopyITest, TestTabletCopyMetrics) {
 
   // Ensure all the servers agree before we proceed.
   workload.StopAndJoin();
-  ASSERT_OK(WaitForServersToAgree(kTimeout, ts_map_, tablet_id,
-                                  workload.batches_completed()));
+  ASSERT_OK(WaitForServersToAgree(
+      kTimeout, ts_map_, tablet_id, workload.batches_completed()));
 
   int leader_index;
   int follower_index;
   TServerDetails* leader_ts;
   TServerDetails* follower_ts;
 
-  // Find the leader and then tombstone the follower replica, causing a tablet copy.
+  // Find the leader and then tombstone the follower replica, causing a tablet
+  // copy.
   ASSERT_OK(FindTabletLeader(ts_map_, tablet_id, kTimeout, &leader_ts));
   leader_index = cluster_->tablet_server_index_by_uuid(leader_ts->uuid());
   follower_index = (leader_index + 1) % cluster_->num_tablet_servers();
   follower_ts = ts_map_[cluster_->tablet_server(follower_index)->uuid()];
 
-  LOG(INFO) << "Tombstoning follower tablet " << tablet_id
-            << " on TS " << follower_ts->uuid();
-  ASSERT_OK(DeleteTablet(follower_ts, tablet_id, TABLET_DATA_TOMBSTONED, kTimeout));
+  LOG(INFO) << "Tombstoning follower tablet " << tablet_id << " on TS "
+            << follower_ts->uuid();
+  ASSERT_OK(
+      DeleteTablet(follower_ts, tablet_id, TABLET_DATA_TOMBSTONED, kTimeout));
 
   // Wait for copying to start.
   ASSERT_OK(inspect_->WaitForTabletDataStateOnTS(
-      follower_index, tablet_id,
-      { tablet::TABLET_DATA_COPYING },
-      kTimeout));
+      follower_index, tablet_id, {tablet::TABLET_DATA_COPYING}, kTimeout));
 
-  // We should see one source session on the leader and one client session on the follower.
-  ASSERT_EQ(1, TabletCopyOpenSourceSessions(cluster_->tablet_server(leader_index)));
-  ASSERT_EQ(1, TabletCopyOpenClientSessions(cluster_->tablet_server(follower_index)));
+  // We should see one source session on the leader and one client session on
+  // the follower.
+  ASSERT_EQ(
+      1, TabletCopyOpenSourceSessions(cluster_->tablet_server(leader_index)));
+  ASSERT_EQ(
+      1, TabletCopyOpenClientSessions(cluster_->tablet_server(follower_index)));
 
   // Wait for copying to finish.
   ASSERT_OK(inspect_->WaitForTabletDataStateOnTS(
-      follower_index, tablet_id,
-      { tablet::TABLET_DATA_READY },
-      kTimeout));
+      follower_index, tablet_id, {tablet::TABLET_DATA_READY}, kTimeout));
 
-  // Check that the final bytes fetched is equal to the final bytes sent, and both are positive.
-  int64_t bytes_sent = TabletCopyBytesSent(cluster_->tablet_server(leader_index));
-  int64_t bytes_fetched = TabletCopyBytesFetched(cluster_->tablet_server(follower_index));
+  // Check that the final bytes fetched is equal to the final bytes sent, and
+  // both are positive.
+  int64_t bytes_sent =
+      TabletCopyBytesSent(cluster_->tablet_server(leader_index));
+  int64_t bytes_fetched =
+      TabletCopyBytesFetched(cluster_->tablet_server(follower_index));
   ASSERT_GT(bytes_sent, 0);
   ASSERT_EQ(bytes_sent, bytes_fetched);
 
-  // The tablet copy sessions last until bootstrap is complete, so we'll wait for the
-  // new replica to catch up then check there are no open sessions.
-  ASSERT_OK(WaitForServersToAgree(kTimeout, ts_map_, tablet_id,
-                                  workload.batches_completed()));
+  // The tablet copy sessions last until bootstrap is complete, so we'll wait
+  // for the new replica to catch up then check there are no open sessions.
+  ASSERT_OK(WaitForServersToAgree(
+      kTimeout, ts_map_, tablet_id, workload.batches_completed()));
 
-  ASSERT_EQ(0, TabletCopyOpenSourceSessions(cluster_->tablet_server(leader_index)));
-  ASSERT_EQ(0, TabletCopyOpenClientSessions(cluster_->tablet_server(follower_index)));
+  ASSERT_EQ(
+      0, TabletCopyOpenSourceSessions(cluster_->tablet_server(leader_index)));
+  ASSERT_EQ(
+      0, TabletCopyOpenClientSessions(cluster_->tablet_server(follower_index)));
 
   NO_FATALS(cluster_->AssertNoCrashes());
 }
 
 namespace {
-int64_t CountRunningTablets(ExternalTabletServer *ets) {
+int64_t CountRunningTablets(ExternalTabletServer* ets) {
   int64_t ret;
   CHECK_OK(GetInt64Metric(
       ets->bound_http_hostport(),
@@ -1722,7 +1860,7 @@ int64_t CountRunningTablets(ExternalTabletServer *ets) {
   return ret;
 }
 
-int64_t CountBootstrappingTablets(ExternalTabletServer *ets) {
+int64_t CountBootstrappingTablets(ExternalTabletServer* ets) {
   int64_t ret;
   CHECK_OK(GetInt64Metric(
       ets->bound_http_hostport(),
@@ -1734,7 +1872,7 @@ int64_t CountBootstrappingTablets(ExternalTabletServer *ets) {
   return ret;
 }
 
-int64_t CountRowsInserted(ExternalTabletServer *ets) {
+int64_t CountRowsInserted(ExternalTabletServer* ets) {
   int64_t ret;
   CHECK_OK(GetInt64Metric(
       ets->bound_http_hostport(),
@@ -1751,7 +1889,7 @@ int64_t CountRowsInserted(ExternalTabletServer *ets) {
 TEST_F(TabletCopyITest, TestTabletStateMetricsDuringTabletCopy) {
   MonoDelta kTimeout = MonoDelta::FromSeconds(30);
   const int kTsIndex = 1; // Pick a random TS.
-  NO_FATALS(StartCluster({ "--tablet_state_walk_min_period_ms=10" }));
+  NO_FATALS(StartCluster({"--tablet_state_walk_min_period_ms=10"}));
 
   // Populate the tablet with some data.
   TestWorkload workload(cluster_.get());
@@ -1768,10 +1906,11 @@ TEST_F(TabletCopyITest, TestTabletStateMetricsDuringTabletCopy) {
   string tablet_id = tablets[0].tablet_status().tablet_id();
 
   // Ensure all the servers agree before we proceed.
-  ASSERT_OK(WaitForServersToAgree(kTimeout, ts_map_, tablet_id,
-                                  workload.batches_completed()));
+  ASSERT_OK(WaitForServersToAgree(
+      kTimeout, ts_map_, tablet_id, workload.batches_completed()));
 
-  // Find the leader so we can tombstone a follower, which makes the test faster and more focused.
+  // Find the leader so we can tombstone a follower, which makes the test faster
+  // and more focused.
   int leader_index;
   int follower_index;
   TServerDetails* leader_ts;
@@ -1787,7 +1926,8 @@ TEST_F(TabletCopyITest, TestTabletStateMetricsDuringTabletCopy) {
   });
 
   // Tombstone the tablet on the follower.
-  ASSERT_OK(DeleteTablet(follower_ts, tablet_id, TABLET_DATA_TOMBSTONED, kTimeout));
+  ASSERT_OK(
+      DeleteTablet(follower_ts, tablet_id, TABLET_DATA_TOMBSTONED, kTimeout));
 
   // State: 0 running tablets.
   ASSERT_EVENTUALLY([&] {
@@ -1795,14 +1935,15 @@ TEST_F(TabletCopyITest, TestTabletStateMetricsDuringTabletCopy) {
   });
 
   // Wait for the tablet to be revived via tablet copy.
-  ASSERT_OK(inspect_->WaitForTabletDataStateOnTS(follower_index, tablet_id,
-                                                 { tablet::TABLET_DATA_READY },
-                                                 kTimeout));
+  ASSERT_OK(inspect_->WaitForTabletDataStateOnTS(
+      follower_index, tablet_id, {tablet::TABLET_DATA_READY}, kTimeout));
 
   // State: 1 running or bootstrapping tablet.
   ASSERT_EVENTUALLY([&] {
-    ASSERT_EQ(1, CountRunningTablets(cluster_->tablet_server(follower_index)) +
-                 CountBootstrappingTablets(cluster_->tablet_server(follower_index)));
+    ASSERT_EQ(
+        1,
+        CountRunningTablets(cluster_->tablet_server(follower_index)) +
+            CountBootstrappingTablets(cluster_->tablet_server(follower_index)));
   });
 }
 
@@ -1826,10 +1967,11 @@ TEST_F(TabletCopyITest, TestMetricsResetAfterRevival) {
   string tablet_id = tablets[0].tablet_status().tablet_id();
 
   // Ensure all the servers agree before we proceed.
-  ASSERT_OK(WaitForServersToAgree(kTimeout, ts_map_, tablet_id,
-                                  workload.batches_completed()));
+  ASSERT_OK(WaitForServersToAgree(
+      kTimeout, ts_map_, tablet_id, workload.batches_completed()));
 
-  // Find the leader so we can tombstone a follower, which makes the test faster and more focused.
+  // Find the leader so we can tombstone a follower, which makes the test faster
+  // and more focused.
   int leader_index;
   int follower_index;
   ASSERT_EVENTUALLY([&]() {
@@ -1844,12 +1986,15 @@ TEST_F(TabletCopyITest, TestMetricsResetAfterRevival) {
     ASSERT_GT(CountRowsInserted(cluster_->tablet_server(follower_index)), 0);
 
     // Tombstone the tablet on the follower.
-    ASSERT_OK(DeleteTablet(follower_ts, tablet_id, TABLET_DATA_TOMBSTONED, kTimeout));
+    ASSERT_OK(
+        DeleteTablet(follower_ts, tablet_id, TABLET_DATA_TOMBSTONED, kTimeout));
   });
 
   // Don't cache the state metrics or the below assertion won't be accurate.
-  ASSERT_OK(cluster_->SetFlag(cluster_->tablet_server(follower_index),
-            "tablet_state_walk_min_period_ms", "0"));
+  ASSERT_OK(cluster_->SetFlag(
+      cluster_->tablet_server(follower_index),
+      "tablet_state_walk_min_period_ms",
+      "0"));
 
   // Wait for the tablet to be successfully bootstrapped.
   ASSERT_EVENTUALLY([&] {
@@ -1869,9 +2014,12 @@ TEST_F(TabletCopyITest, TestBeginTabletCopySessionConcurrency) {
 
   // Inject latency during session initialization. This should show up in
   // TabletCopyService::BeginTabletCopySession() RPC calls.
-  NO_FATALS(StartCluster({Substitute("--tablet_copy_session_inject_latency_on_init_ms=$0",
-                                     kInjectedLatency.ToMilliseconds())},
-                         {}, /*num_tablet_servers=*/ 1));
+  NO_FATALS(StartCluster(
+      {Substitute(
+          "--tablet_copy_session_inject_latency_on_init_ms=$0",
+          kInjectedLatency.ToMilliseconds())},
+      {},
+      /*num_tablet_servers=*/1));
 
   // Create a bunch of tablets to operate on at once.
   const int kNumTablets = 10;
@@ -1899,7 +2047,8 @@ TEST_F(TabletCopyITest, TestBeginTabletCopySessionConcurrency) {
     threads.emplace_back([&, ts, tablet_id] {
       while (true) {
         MonoTime start = MonoTime::Now();
-        Status s = itest::BeginTabletCopySession(ts, tablet_id, "dummy-uuid", kTimeout);
+        Status s = itest::BeginTabletCopySession(
+            ts, tablet_id, "dummy-uuid", kTimeout);
         MonoDelta duration = MonoTime::Now() - start;
         lock_guard<mutex> l(m);
         if (s.ok()) {
@@ -1920,7 +2069,8 @@ TEST_F(TabletCopyITest, TestBeginTabletCopySessionConcurrency) {
   // least the amount of time that we slept for.
   int num_slower_than_latency = 0;
   for (const auto& lat : success_latencies) {
-    if (lat >= kInjectedLatency) num_slower_than_latency++;
+    if (lat >= kInjectedLatency)
+      num_slower_than_latency++;
   }
   // We should have had exactly # tablets sessions that were slow due to the
   // latency injection.

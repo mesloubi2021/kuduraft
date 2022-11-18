@@ -27,10 +27,10 @@
 #include "kudu/consensus/opid_util.h"
 #include "kudu/consensus/quorum_util.h"
 #include "kudu/fs/fs_manager.h"
-#include "kudu/util/test_macros.h"
-#include "kudu/util/test_util.h"
 #include "kudu/gutil/ref_counted.h"
 #include "kudu/util/status.h"
+#include "kudu/util/test_macros.h"
+#include "kudu/util/test_util.h"
 
 using google::protobuf::util::MessageDifferencer;
 
@@ -45,8 +45,7 @@ class ConsensusMetadataManagerTest : public KuduTest {
  public:
   ConsensusMetadataManagerTest()
       : fs_manager_(env_, GetTestPath("fs_root")),
-        cmeta_manager_(new ConsensusMetadataManager(&fs_manager_)) {
-  }
+        cmeta_manager_(new ConsensusMetadataManager(&fs_manager_)) {}
 
   void SetUp() override {
     KuduTest::SetUp();
@@ -74,9 +73,12 @@ TEST_F(ConsensusMetadataManagerTest, TestCreateLoad) {
   ASSERT_TRUE(s.IsNotFound()) << s.ToString();
 
   // Create a new ConsensusMetadata instance.
-  ASSERT_OK(cmeta_manager_->CreateCMeta(kTabletId, config_, kInitialTerm,
-                                   ConsensusMetadataCreateMode::FLUSH_ON_CREATE,
-                                   &cmeta));
+  ASSERT_OK(cmeta_manager_->CreateCMeta(
+      kTabletId,
+      config_,
+      kInitialTerm,
+      ConsensusMetadataCreateMode::FLUSH_ON_CREATE,
+      &cmeta));
 
   // Load it back.
   ASSERT_OK(cmeta_manager_->LoadCMeta(kTabletId, &cmeta));
@@ -96,19 +98,23 @@ TEST_F(ConsensusMetadataManagerTest, TestLoadOrCreate) {
   {
     // Create as needed (this call will perform the creation).
     scoped_refptr<ConsensusMetadata> cmeta;
-    ASSERT_OK(cmeta_manager_->LoadOrCreateCMeta(kTabletId, config_, kInitialTerm,
-                                           ConsensusMetadataCreateMode::FLUSH_ON_CREATE,
-                                           &cmeta));
+    ASSERT_OK(cmeta_manager_->LoadOrCreateCMeta(
+        kTabletId,
+        config_,
+        kInitialTerm,
+        ConsensusMetadataCreateMode::FLUSH_ON_CREATE,
+        &cmeta));
     ASSERT_TRUE(cmeta); // Ensure that the create path returns a valid cmeta.
   }
 
   // Load (this should not need to perform the creation).
   scoped_refptr<ConsensusMetadata> cmeta;
-  ASSERT_OK(cmeta_manager_->LoadOrCreateCMeta(kTabletId,
-                                         /*config=*/ RaftConfigPB(), // Empty config.
-                                         /*initial_term=*/ 123,      // Different term.
-                                         ConsensusMetadataCreateMode::FLUSH_ON_CREATE,
-                                         &cmeta));
+  ASSERT_OK(cmeta_manager_->LoadOrCreateCMeta(
+      kTabletId,
+      /*config=*/RaftConfigPB(), // Empty config.
+      /*initial_term=*/123, // Different term.
+      ConsensusMetadataCreateMode::FLUSH_ON_CREATE,
+      &cmeta));
   ASSERT_TRUE(cmeta); // Ensure that the load path returns a valid cmeta.
 
   // Ensure we got the results of what we requested to create in our first
@@ -133,10 +139,16 @@ TEST_F(ConsensusMetadataManagerTest, TestDelete) {
 
 // Test attempting to create multiple "unflushed" cmeta instances.
 TEST_F(ConsensusMetadataManagerTest, TestCreateMultipleUnFlushedCMetas) {
-  ASSERT_OK(cmeta_manager_->CreateCMeta(kTabletId, config_, kInitialTerm,
-                                   ConsensusMetadataCreateMode::NO_FLUSH_ON_CREATE));
-  Status s = cmeta_manager_->CreateCMeta(kTabletId, config_, kInitialTerm,
-                                    ConsensusMetadataCreateMode::NO_FLUSH_ON_CREATE);
+  ASSERT_OK(cmeta_manager_->CreateCMeta(
+      kTabletId,
+      config_,
+      kInitialTerm,
+      ConsensusMetadataCreateMode::NO_FLUSH_ON_CREATE));
+  Status s = cmeta_manager_->CreateCMeta(
+      kTabletId,
+      config_,
+      kInitialTerm,
+      ConsensusMetadataCreateMode::NO_FLUSH_ON_CREATE);
   ASSERT_TRUE(s.IsAlreadyPresent()) << s.ToString();
   ASSERT_STR_CONTAINS(s.ToString(), "exists");
 }
@@ -148,9 +160,11 @@ TEST_F(ConsensusMetadataManagerTest, TestNoClobber) {
 
   // Creating it again should fail, both in FLUSH_ON_CREATE and
   // NO_FLUSH_ON_CREATE modes.
-  for (auto create_mode : { ConsensusMetadataCreateMode::FLUSH_ON_CREATE,
-                            ConsensusMetadataCreateMode::NO_FLUSH_ON_CREATE }) {
-    Status s = cmeta_manager_->CreateCMeta(kTabletId, config_, kInitialTerm, create_mode);
+  for (auto create_mode :
+       {ConsensusMetadataCreateMode::FLUSH_ON_CREATE,
+        ConsensusMetadataCreateMode::NO_FLUSH_ON_CREATE}) {
+    Status s = cmeta_manager_->CreateCMeta(
+        kTabletId, config_, kInitialTerm, create_mode);
     ASSERT_TRUE(s.IsAlreadyPresent()) << s.ToString();
     ASSERT_STR_CONTAINS(s.ToString(), "already exists");
   }

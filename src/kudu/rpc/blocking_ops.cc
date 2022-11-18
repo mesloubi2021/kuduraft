@@ -53,14 +53,18 @@ Status CheckInBlockingMode(const Socket* sock) {
   return Status::OK();
 }
 
-Status SendFramedMessageBlocking(Socket* sock, const MessageLite& header, const MessageLite& msg,
+Status SendFramedMessageBlocking(
+    Socket* sock,
+    const MessageLite& header,
+    const MessageLite& msg,
     const MonoTime& deadline) {
   DCHECK(sock != nullptr);
   DCHECK(header.IsInitialized()) << "header protobuf must be initialized";
   DCHECK(msg.IsInitialized()) << "msg protobuf must be initialized";
 
   // Ensure we are in blocking mode.
-  // These blocking calls are typically not in the fast path, so doing this for all build types.
+  // These blocking calls are typically not in the fast path, so doing this for
+  // all build types.
   RETURN_NOT_OK(CheckInBlockingMode(sock));
 
   // Serialize message
@@ -73,14 +77,20 @@ Status SendFramedMessageBlocking(Socket* sock, const MessageLite& header, const 
 
   // Write header & param to stream
   size_t nsent;
-  RETURN_NOT_OK(sock->BlockingWrite(header_buf.data(), header_buf.size(), &nsent, deadline));
-  RETURN_NOT_OK(sock->BlockingWrite(param_buf.data(), param_buf.size(), &nsent, deadline));
+  RETURN_NOT_OK(sock->BlockingWrite(
+      header_buf.data(), header_buf.size(), &nsent, deadline));
+  RETURN_NOT_OK(sock->BlockingWrite(
+      param_buf.data(), param_buf.size(), &nsent, deadline));
 
   return Status::OK();
 }
 
-Status ReceiveFramedMessageBlocking(Socket* sock, faststring* recv_buf,
-    MessageLite* header, Slice* param_buf, const MonoTime& deadline) {
+Status ReceiveFramedMessageBlocking(
+    Socket* sock,
+    faststring* recv_buf,
+    MessageLite* header,
+    Slice* param_buf,
+    const MonoTime& deadline) {
   DCHECK(sock != nullptr);
   DCHECK(recv_buf != nullptr);
   DCHECK(header != nullptr);
@@ -92,7 +102,8 @@ Status ReceiveFramedMessageBlocking(Socket* sock, faststring* recv_buf,
   recv_buf->clear();
   recv_buf->resize(kMsgLengthPrefixLength);
   size_t recvd = 0;
-  RETURN_NOT_OK(sock->BlockingRecv(recv_buf->data(), kMsgLengthPrefixLength, &recvd, deadline));
+  RETURN_NOT_OK(sock->BlockingRecv(
+      recv_buf->data(), kMsgLengthPrefixLength, &recvd, deadline));
   uint32_t payload_len = NetworkByteOrder::Load32(recv_buf->data());
 
   // Verify that the payload size isn't out of bounds.
@@ -106,19 +117,23 @@ Status ReceiveFramedMessageBlocking(Socket* sock, faststring* recv_buf,
           "Verify that you have specified a valid RPC port and not an HTTP port.");
     }
 
-    return Status::IOError(
-        strings::Substitute(
-            "received invalid message of size $0 which exceeds"
-            " the rpc_max_message_size of $1 bytes",
-            payload_len, FLAGS_rpc_max_message_size));
+    return Status::IOError(strings::Substitute(
+        "received invalid message of size $0 which exceeds"
+        " the rpc_max_message_size of $1 bytes",
+        payload_len,
+        FLAGS_rpc_max_message_size));
   }
 
   // Read the message payload.
   recvd = 0;
   recv_buf->resize(payload_len + kMsgLengthPrefixLength);
-  RETURN_NOT_OK(sock->BlockingRecv(recv_buf->data() + kMsgLengthPrefixLength,
-                payload_len, &recvd, deadline));
-  RETURN_NOT_OK(serialization::ParseMessage(Slice(*recv_buf), header, param_buf));
+  RETURN_NOT_OK(sock->BlockingRecv(
+      recv_buf->data() + kMsgLengthPrefixLength,
+      payload_len,
+      &recvd,
+      deadline));
+  RETURN_NOT_OK(
+      serialization::ParseMessage(Slice(*recv_buf), header, param_buf));
   return Status::OK();
 }
 

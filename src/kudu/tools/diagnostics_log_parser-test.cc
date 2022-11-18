@@ -64,7 +64,8 @@ TEST(DiagLogParserTest, TestParseLine) {
   {
     // The date and time should be parsed successfully.
     ParsedLine pl;
-    string line = "I0220 17:38:09.950546 stacks 1519177089950546 {\"foo\" : \"bar\"}";
+    string line =
+        "I0220 17:38:09.950546 stacks 1519177089950546 {\"foo\" : \"bar\"}";
     ASSERT_OK(pl.Parse(line));
     ASSERT_EQ("0220 17:38:09.950546", pl.date_time());
   }
@@ -73,7 +74,8 @@ TEST(DiagLogParserTest, TestParseLine) {
     // The line parser recognizes "stacks" and "symbols" categories.
     // "metrics" isn't recognized yet.
     ParsedLine pl;
-    string line = "I0220 17:38:09.950546 stacks 1519177089950546 {\"foo\" : \"bar\"}";
+    string line =
+        "I0220 17:38:09.950546 stacks 1519177089950546 {\"foo\" : \"bar\"}";
     ASSERT_OK(pl.Parse(line));
     ASSERT_EQ(RecordType::kStacks, pl.type());
 
@@ -93,7 +95,8 @@ TEST(DiagLogParserTest, TestParseLine) {
   {
     // The timestamp must be a number.
     ParsedLine pl;
-    string line = "I0220 17:38:09.950546 stacks 1234foo567890000 {\"foo\" : \"bar\"}";
+    string line =
+        "I0220 17:38:09.950546 stacks 1234foo567890000 {\"foo\" : \"bar\"}";
     Status s = pl.Parse(line);
     ASSERT_TRUE(s.IsInvalidArgument());
     ASSERT_STR_CONTAINS(s.ToString(), "invalid timestamp");
@@ -102,7 +105,8 @@ TEST(DiagLogParserTest, TestParseLine) {
   {
     // The json blob must be valid json.
     ParsedLine pl;
-    string line = "I0220 17:38:09.950546 stacks 1519177089950546 {\"foo\" : \"bar\"}";
+    string line =
+        "I0220 17:38:09.950546 stacks 1519177089950546 {\"foo\" : \"bar\"}";
     ASSERT_OK(pl.Parse(line));
     string val = (*pl.json())["foo"].GetString();
     ASSERT_EQ(val, "bar");
@@ -130,17 +134,20 @@ TEST(DiagLogParserTest, TestParseSymbols) {
   TestSymbolsLogVisitor lv;
   LogParser lp(&lv);
 
-  string line = "I0220 17:38:09.950546 symbols 1519177089950546 {\"addr\" : 99}";
+  string line =
+      "I0220 17:38:09.950546 symbols 1519177089950546 {\"addr\" : 99}";
   Status s = lp.ParseLine(line);
   ASSERT_TRUE(s.IsInvalidArgument());
   ASSERT_STR_CONTAINS(s.ToString(), "expected symbol values to be strings");
 
-  line = "I0220 17:38:09.950546 symbols 1519177089950546 {\"addr\" : { \"bar\" : \"baaz\" } }";
+  line =
+      "I0220 17:38:09.950546 symbols 1519177089950546 {\"addr\" : { \"bar\" : \"baaz\" } }";
   s = lp.ParseLine(line);
   ASSERT_TRUE(s.IsInvalidArgument());
   ASSERT_STR_CONTAINS(s.ToString(), "expected symbol values to be strings");
 
-  line = "I0220 17:38:09.950546 symbols 1519177089950546 {\"addr\" : \"symbol\"}";
+  line =
+      "I0220 17:38:09.950546 symbols 1519177089950546 {\"addr\" : \"symbol\"}";
   ASSERT_OK(lp.ParseLine(line));
   ASSERT_EQ("addr", lv.addr_);
   ASSERT_EQ("symbol", lv.symbol_);
@@ -159,8 +166,9 @@ TEST(DiagLogParserTest, TestParseStacks) {
   LogParser lp(&lv);
 
   // The "reason" field must be a string, if present.
-  string line = "I0220 17:38:09.950546 stacks 1519177089950546 "
-         "{\"reason\" : 1.2, \"groups\" : []}";
+  string line =
+      "I0220 17:38:09.950546 stacks 1519177089950546 "
+      "{\"reason\" : 1.2, \"groups\" : []}";
   Status s = lp.ParseLine(line);
   ASSERT_TRUE(s.IsInvalidArgument());
   ASSERT_STR_CONTAINS(s.ToString(), "expected stacks 'reason' to be a string");
@@ -178,57 +186,69 @@ TEST(DiagLogParserTest, TestParseStacks) {
   ASSERT_STR_CONTAINS(s.ToString(), "'groups' field should be an array");
 
   // A member of the groups array (a group) must be an object.
-  line = "I0220 17:38:09.950546 stacks 1519177089950546 {\"groups\" : [\"foo\"]}";
+  line =
+      "I0220 17:38:09.950546 stacks 1519177089950546 {\"groups\" : [\"foo\"]}";
   s = lp.ParseLine(line);
   ASSERT_TRUE(s.IsInvalidArgument());
-  ASSERT_STR_CONTAINS(s.ToString(), "expected stacks groups to be JSON objects");
+  ASSERT_STR_CONTAINS(
+      s.ToString(), "expected stacks groups to be JSON objects");
 
   // A group must have "tids" and stack fields.
-  line = "I0220 17:38:09.950546 stacks 1519177089950546 "
-         "{\"groups\" : [{\"stack\" : []}]}";
+  line =
+      "I0220 17:38:09.950546 stacks 1519177089950546 "
+      "{\"groups\" : [{\"stack\" : []}]}";
   s = lp.ParseLine(line);
   ASSERT_TRUE(s.IsInvalidArgument());
-  ASSERT_STR_CONTAINS(s.ToString(), "expected stacks groups to have frames and tids");
+  ASSERT_STR_CONTAINS(
+      s.ToString(), "expected stacks groups to have frames and tids");
 
-  line = "I0220 17:38:09.950546 stacks 1519177089950546 "
-         "{\"groups\" : [{\"tids\" : 5}]}";
+  line =
+      "I0220 17:38:09.950546 stacks 1519177089950546 "
+      "{\"groups\" : [{\"tids\" : 5}]}";
   s = lp.ParseLine(line);
   ASSERT_TRUE(s.IsInvalidArgument());
-  ASSERT_STR_CONTAINS(s.ToString(), "expected stacks groups to have frames and tids");
+  ASSERT_STR_CONTAINS(
+      s.ToString(), "expected stacks groups to have frames and tids");
 
   // A group must have a "tids" field, with value a numeric array
-  line = "I0220 17:38:09.950546 stacks 1519177089950546 "
-         "{\"groups\" : [{\"tids\" : 5, \"stack\" : []}]}";
+  line =
+      "I0220 17:38:09.950546 stacks 1519177089950546 "
+      "{\"groups\" : [{\"tids\" : 5, \"stack\" : []}]}";
   s = lp.ParseLine(line);
   ASSERT_TRUE(s.IsInvalidArgument());
   ASSERT_STR_CONTAINS(s.ToString(), "expected 'tids' to be an array");
 
-  line = "I0220 17:38:09.950546 stacks 1519177089950546 "
-         "{\"groups\" : [{\"tids\" : [false], \"stack\" : []}]}";
+  line =
+      "I0220 17:38:09.950546 stacks 1519177089950546 "
+      "{\"groups\" : [{\"tids\" : [false], \"stack\" : []}]}";
   s = lp.ParseLine(line);
   ASSERT_TRUE(s.IsInvalidArgument());
   ASSERT_STR_CONTAINS(s.ToString(), "expected 'tids' elements to be numeric");
 
   // A group must have a "stack" field, with value an array of strings.
-  line = "I0220 17:38:09.950546 stacks 1519177089950546 "
-         "{\"groups\" : [{\"tids\" : [], \"stack\" : 5}]}";
+  line =
+      "I0220 17:38:09.950546 stacks 1519177089950546 "
+      "{\"groups\" : [{\"tids\" : [], \"stack\" : 5}]}";
   s = lp.ParseLine(line);
   ASSERT_TRUE(s.IsInvalidArgument());
   ASSERT_STR_CONTAINS(s.ToString(), "expected 'stack' to be an array");
 
-  line = "I0220 17:38:09.950546 stacks 1519177089950546 "
-         "{\"groups\" : [{\"tids\" : [], \"stack\" : [5]}]}";
+  line =
+      "I0220 17:38:09.950546 stacks 1519177089950546 "
+      "{\"groups\" : [{\"tids\" : [], \"stack\" : [5]}]}";
   s = lp.ParseLine(line);
   ASSERT_TRUE(s.IsInvalidArgument());
   ASSERT_STR_CONTAINS(s.ToString(), "expected 'stack' elements to be strings");
 
   // Happy cases with and without a "reason" field.
-  line = "I0220 17:38:09.950546 stacks 1519177089950546 "
-         "{\"reason\" : \"test\", \"groups\" : [{\"tids\" : [0], \"stack\" : [\"stack\"]}]}";
+  line =
+      "I0220 17:38:09.950546 stacks 1519177089950546 "
+      "{\"reason\" : \"test\", \"groups\" : [{\"tids\" : [0], \"stack\" : [\"stack\"]}]}";
   ASSERT_OK(lp.ParseLine(line));
 
-  line = "I0220 17:38:09.950546 stacks 1519177089950546 "
-         "{\"groups\" : [{\"tids\" : [0], \"stack\" : [\"stack\"]}]}";
+  line =
+      "I0220 17:38:09.950546 stacks 1519177089950546 "
+      "{\"groups\" : [{\"tids\" : [0], \"stack\" : [\"stack\"]}]}";
   ASSERT_OK(lp.ParseLine(line));
 }
 

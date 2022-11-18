@@ -23,4 +23,4 @@ inline uint64 Hash128to64(const uint128& x) {
   return b;
 }
 
-#endif  // UTIL_HASH_HASH128TO64_H_
+#endif // UTIL_HASH_HASH128TO64_H_

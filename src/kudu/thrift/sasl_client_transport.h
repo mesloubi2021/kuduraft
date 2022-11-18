@@ -51,9 +51,7 @@ namespace thrift {
 class SaslException : public apache::thrift::transport::TTransportException {
  public:
   explicit SaslException(Status status)
-    : TTransportException(status.ToString()),
-      status_(std::move(status)) {
-  }
+      : TTransportException(status.ToString()), status_(std::move(status)) {}
 
   const Status& status() const {
     return status_;
@@ -81,10 +79,11 @@ enum NegotiationStatus {
 class SaslClientTransport
     : public apache::thrift::transport::TVirtualTransport<SaslClientTransport> {
  public:
-  SaslClientTransport(std::string service_principal,
-                      const std::string& server_fqdn,
-                      std::shared_ptr<TTransport> transport,
-                      size_t max_recv_buf_size);
+  SaslClientTransport(
+      std::string service_principal,
+      const std::string& server_fqdn,
+      std::shared_ptr<TTransport> transport,
+      size_t max_recv_buf_size);
 
   ~SaslClientTransport() override = default;
 
@@ -102,11 +101,13 @@ class SaslClientTransport
 
   void flush() override;
 
-  int GetOptionCb(const char* plugin_name, const char* option,
-                  const char** result, unsigned* len);
+  int GetOptionCb(
+      const char* plugin_name,
+      const char* option,
+      const char** result,
+      unsigned* len);
 
  private:
-
   // Runs SASL negotiation with the remote server.
   void Negotiate();
 

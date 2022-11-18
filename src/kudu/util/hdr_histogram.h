@@ -91,24 +91,34 @@ class HdrHistogram {
 
   // Record new data, correcting for "coordinated omission".
   //
-  // See https://groups.google.com/d/msg/mechanical-sympathy/icNZJejUHfE/BfDekfBEs_sJ
+  // See
+  // https://groups.google.com/d/msg/mechanical-sympathy/icNZJejUHfE/BfDekfBEs_sJ
   // for more details.
-  void IncrementWithExpectedInterval(int64_t value,
-                                     int64_t expected_interval_between_samples);
+  void IncrementWithExpectedInterval(
+      int64_t value,
+      int64_t expected_interval_between_samples);
 
   // Fetch configuration params.
-  uint64_t highest_trackable_value() const { return highest_trackable_value_; }
-  int num_significant_digits() const { return num_significant_digits_; }
+  uint64_t highest_trackable_value() const {
+    return highest_trackable_value_;
+  }
+  int num_significant_digits() const {
+    return num_significant_digits_;
+  }
 
   // Get indexes into histogram based on value.
   int BucketIndex(uint64_t value) const;
   int SubBucketIndex(uint64_t value, int bucket_index) const;
 
   // Count of all events recorded.
-  uint64_t TotalCount() const { return base::subtle::NoBarrier_Load(&total_count_); }
+  uint64_t TotalCount() const {
+    return base::subtle::NoBarrier_Load(&total_count_);
+  }
 
   // Sum of all events recorded.
-  uint64_t TotalSum() const { return base::subtle::NoBarrier_Load(&total_sum_); }
+  uint64_t TotalSum() const {
+    return base::subtle::NoBarrier_Load(&total_sum_);
+  }
 
   // Return number of items at index.
   uint64_t CountAt(int bucket_index, int sub_bucket_index) const;
@@ -158,7 +168,7 @@ class HdrHistogram {
   // Get the value at a given percentile.
   // This is a percentile in percents, i.e. 99.99 percentile.
   uint64_t ValueAtPercentile(double percentile) const;
-  
+
   // Reset the underlying histogram values.
   void ResetHistogram();
 
@@ -169,7 +179,7 @@ class HdrHistogram {
   // Get the count of recorded values within a range of value levels.
   // (inclusive to within the histogram's resolution)
   // TODO: implement
-  //uint64_t CountBetweenValues(uint64_t low_value, uint64_t high_value) const;
+  // uint64_t CountBetweenValues(uint64_t low_value, uint64_t high_value) const;
 
  private:
   friend class AbstractHistogramIterator;
@@ -200,21 +210,21 @@ class HdrHistogram {
   base::subtle::Atomic64 max_value_;
   gscoped_array<base::subtle::Atomic64> counts_;
 
-  HdrHistogram& operator=(const HdrHistogram& other); // Disable assignment operator.
+  HdrHistogram& operator=(
+      const HdrHistogram& other); // Disable assignment operator.
 };
 
 // Value returned from iterators.
 struct HistogramIterationValue {
   HistogramIterationValue()
-    : value_iterated_to(0),
-      value_iterated_from(0),
-      count_at_value_iterated_to(0),
-      count_added_in_this_iteration_step(0),
-      total_count_to_this_value(0),
-      total_value_to_this_value(0),
-      percentile(0.0),
-      percentile_level_iterated_to(0.0) {
-  }
+      : value_iterated_to(0),
+        value_iterated_from(0),
+        count_at_value_iterated_to(0),
+        count_added_in_this_iteration_step(0),
+        total_count_to_this_value(0),
+        total_value_to_this_value(0),
+        percentile(0.0),
+        percentile_level_iterated_to(0.0) {}
 
   void Reset() {
     value_iterated_to = 0;
@@ -248,8 +258,7 @@ class AbstractHistogramIterator {
   // Create iterator with new histogram.
   // The histogram must not be mutated while the iterator is in use.
   explicit AbstractHistogramIterator(const HdrHistogram* histogram);
-  virtual ~AbstractHistogramIterator() {
-  }
+  virtual ~AbstractHistogramIterator() {}
 
   // Returns true if the iteration has more elements.
   virtual bool HasNext() const;
@@ -332,8 +341,9 @@ class RecordedValuesIterator : public AbstractHistogramIterator {
 class PercentileIterator : public AbstractHistogramIterator {
  public:
   // TODO: Explain percentile_ticks_per_half_distance.
-  PercentileIterator(const HdrHistogram* histogram,
-                     int percentile_ticks_per_half_distance);
+  PercentileIterator(
+      const HdrHistogram* histogram,
+      int percentile_ticks_per_half_distance);
   virtual bool HasNext() const override;
   virtual double PercentileIteratedTo() const override;
   virtual double PercentileIteratedFrom() const override;

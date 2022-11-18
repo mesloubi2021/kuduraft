@@ -62,17 +62,17 @@ namespace kudu {
 // the collected stack trace.
 class rw_semaphore {
  public:
-  rw_semaphore() : state_(0) {
-  }
+  rw_semaphore() : state_(0) {}
   ~rw_semaphore() {}
 
   void lock_shared() {
     int loop_count = 0;
     Atomic32 cur_state = base::subtle::NoBarrier_Load(&state_);
     while (true) {
-      Atomic32 expected = cur_state & kNumReadersMask;   // I expect no write lock
-      Atomic32 try_new_state = expected + 1;          // Add me as reader
-      cur_state = base::subtle::Acquire_CompareAndSwap(&state_, expected, try_new_state);
+      Atomic32 expected = cur_state & kNumReadersMask; // I expect no write lock
+      Atomic32 try_new_state = expected + 1; // Add me as reader
+      cur_state = base::subtle::Acquire_CompareAndSwap(
+          &state_, expected, try_new_state);
       if (cur_state == expected)
         break;
       // Either was already locked by someone else, or CAS failed.
@@ -85,10 +85,11 @@ class rw_semaphore {
     Atomic32 cur_state = base::subtle::NoBarrier_Load(&state_);
     while (true) {
       DCHECK_GT(cur_state & kNumReadersMask, 0)
-        << "unlock_shared() called when there are no shared locks held";
-      Atomic32 expected = cur_state;           // I expect a write lock and other readers
-      Atomic32 try_new_state = expected - 1;   // Drop me as reader
-      cur_state = base::subtle::Release_CompareAndSwap(&state_, expected, try_new_state);
+          << "unlock_shared() called when there are no shared locks held";
+      Atomic32 expected = cur_state; // I expect a write lock and other readers
+      Atomic32 try_new_state = expected - 1; // Drop me as reader
+      cur_state = base::subtle::Release_CompareAndSwap(
+          &state_, expected, try_new_state);
       if (cur_state == expected)
         break;
       // Either was already locked by someone else, or CAS failed.
@@ -106,9 +107,12 @@ class rw_semaphore {
       if (cur_state & kWriteFlag)
         return false;
 
-      Atomic32 expected = cur_state & kNumReadersMask;   // I expect some 0+ readers
-      Atomic32 try_new_state = kWriteFlag | expected;    // I want to lock the other writers
-      cur_state = base::subtle::Acquire_CompareAndSwap(&state_, expected, try_new_state);
+      Atomic32 expected =
+          cur_state & kNumReadersMask; // I expect some 0+ readers
+      Atomic32 try_new_state =
+          kWriteFlag | expected; // I want to lock the other writers
+      cur_state = base::subtle::Acquire_CompareAndSwap(
+          &state_, expected, try_new_state);
       if (cur_state == expected)
         break;
       // Either was already locked by someone else, or CAS failed.
@@ -124,11 +128,14 @@ class rw_semaphore {
     int loop_count = 0;
     Atomic32 cur_state = base::subtle::NoBarrier_Load(&state_);
     while (true) {
-      Atomic32 expected = cur_state & kNumReadersMask;   // I expect some 0+ readers
-      Atomic32 try_new_state = kWriteFlag | expected;    // I want to lock the other writers
-      // Note: we use NoBarrier here because we'll do the Acquire barrier down below
-      // in WaitPendingReaders
-      cur_state = base::subtle::NoBarrier_CompareAndSwap(&state_, expected, try_new_state);
+      Atomic32 expected =
+          cur_state & kNumReadersMask; // I expect some 0+ readers
+      Atomic32 try_new_state =
+          kWriteFlag | expected; // I want to lock the other writers
+      // Note: we use NoBarrier here because we'll do the Acquire barrier down
+      // below in WaitPendingReaders
+      cur_state = base::subtle::NoBarrier_CompareAndSwap(
+          &state_, expected, try_new_state);
       if (cur_state == expected)
         break;
       // Either was already locked by someone else, or CAS failed.
@@ -137,7 +144,7 @@ class rw_semaphore {
 
     WaitPendingReaders();
 
-#ifdef FB_DO_NOT_REMOVE  // #ifndef NDEBUG
+#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
     writer_tid_ = Thread::CurrentThreadId();
 #endif // NDEBUG
     RecordLockHolderStack();
@@ -147,7 +154,7 @@ class rw_semaphore {
     // I expect to be the only writer
     DCHECK_EQ(base::subtle::NoBarrier_Load(&state_), kWriteFlag);
 
-#ifdef FB_DO_NOT_REMOVE  // #ifndef NDEBUG
+#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
     writer_tid_ = -1; // Invalid tid.
 #endif // NDEBUG
 
@@ -182,10 +189,8 @@ class rw_semaphore {
     writer_stack_.Reset();
   }
 #else
-  void RecordLockHolderStack() {
-  }
-  void ResetLockHolderStack() {
-  }
+  void RecordLockHolderStack() {}
+  void ResetLockHolderStack() {}
 #endif
 
   void WaitPendingReaders() {
@@ -197,7 +202,7 @@ class rw_semaphore {
 
  private:
   volatile Atomic32 state_;
-#ifdef FB_DO_NOT_REMOVE  // #ifndef NDEBUG
+#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
   int64_t writer_tid_;
 #endif // NDEBUG
 };

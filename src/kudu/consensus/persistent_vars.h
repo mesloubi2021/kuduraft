@@ -37,18 +37,14 @@ class Status;
 namespace consensus {
 
 class PersistentVarsManager; // IWYU pragma: keep
-class PersistentVarsTest;    // IWYU pragma: keep
+class PersistentVarsTest; // IWYU pragma: keep
 
 // Provides methods to read and write persistent variables.
 // This class is not thread-safe and requires external synchronization.
 class PersistentVars : public RefCountedThreadSafe<PersistentVars> {
  public:
-
   // Specify whether we are allowed to overwrite an existing file when flushing.
-  enum FlushMode {
-    OVERWRITE,
-    NO_OVERWRITE
-  };
+  enum FlushMode { OVERWRITE, NO_OVERWRITE };
 
   // Accessor for whether starting elections is allowed
   bool is_start_election_allowed() const;
@@ -73,24 +69,27 @@ class PersistentVars : public RefCountedThreadSafe<PersistentVars> {
   friend class RefCountedThreadSafe<PersistentVars>;
   friend class PersistentVarsManager;
 
-  PersistentVars(FsManager* fs_manager,
-                 std::string tablet_id,
-                 std::string peer_uuid);
+  PersistentVars(
+      FsManager* fs_manager,
+      std::string tablet_id,
+      std::string peer_uuid);
 
   // Create a PersistentVars object; the encoded PB is flushed to disk before
   // returning
-  static Status Create(FsManager* fs_manager,
-                       const std::string& tablet_id,
-                       const std::string& peer_uuid,
-                       scoped_refptr<PersistentVars>* persistent_vars_out = nullptr);
+  static Status Create(
+      FsManager* fs_manager,
+      const std::string& tablet_id,
+      const std::string& peer_uuid,
+      scoped_refptr<PersistentVars>* persistent_vars_out = nullptr);
 
   // Load a PersistentVars object from disk.
   // Returns Status::NotFound if the file could not be found. May return other
   // Status codes if unable to read the file.
-  static Status Load(FsManager* fs_manager,
-                     const std::string& tablet_id,
-                     const std::string& peer_uuid,
-                     scoped_refptr<PersistentVars>* persistent_vars_out = nullptr);
+  static Status Load(
+      FsManager* fs_manager,
+      const std::string& tablet_id,
+      const std::string& peer_uuid,
+      scoped_refptr<PersistentVars>* persistent_vars_out = nullptr);
 
   // Check whether the persistent_vars file exists for the given tablet
   static bool FileExists(FsManager* fs_manager, const std::string& tablet_id);

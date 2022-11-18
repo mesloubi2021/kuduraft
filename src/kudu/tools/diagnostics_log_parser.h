@@ -35,11 +35,7 @@ namespace tools {
 
 // One of the record types from the log.
 // TODO(KUDU-2353) support metrics records.
-enum class RecordType {
-  kSymbols,
-  kStacks,
-  kUnknown
-};
+enum class RecordType { kSymbols, kStacks, kUnknown };
 
 const char* RecordTypeToString(RecordType r);
 
@@ -69,7 +65,9 @@ struct StacksRecord {
 class LogVisitor {
  public:
   virtual ~LogVisitor() {}
-  virtual void VisitSymbol(const std::string& addr, const std::string& symbol) = 0;
+  virtual void VisitSymbol(
+      const std::string& addr,
+      const std::string& symbol) = 0;
   virtual void VisitStacksRecord(const StacksRecord& sr) = 0;
 };
 
@@ -97,7 +95,9 @@ class ParsedLine {
   // Parse a line from the diagnostics log.
   Status Parse(std::string line);
 
-  RecordType type() const { return type_; }
+  RecordType type() const {
+    return type_;
+  }
 
   const rapidjson::Value* json() const {
     CHECK(json_);
@@ -123,8 +123,8 @@ class ParsedLine {
 //
 // Each line should be fed to LogParser::ParseLine().
 //
-// This instance follows a 'SAX' model. As records are available, the appropriate
-// functions are invoked on the visitor provided in the constructor.
+// This instance follows a 'SAX' model. As records are available, the
+// appropriate functions are invoked on the visitor provided in the constructor.
 class LogParser {
  public:
   explicit LogParser(LogVisitor* visitor);
@@ -136,8 +136,9 @@ class LogParser {
  private:
   Status ParseSymbols(const ParsedLine& lf);
 
-  static Status ParseStackGroup(const rapidjson::Value& group_json,
-                                StacksRecord::Group* group);
+  static Status ParseStackGroup(
+      const rapidjson::Value& group_json,
+      StacksRecord::Group* group);
 
   Status ParseStacks(const ParsedLine& lf);
 

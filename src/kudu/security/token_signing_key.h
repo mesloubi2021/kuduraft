@@ -66,9 +66,10 @@ class TokenSigningPublicKey {
 class TokenSigningPrivateKey {
  public:
   explicit TokenSigningPrivateKey(const TokenSigningPrivateKeyPB& pb);
-  TokenSigningPrivateKey(int64_t key_seq_num,
-                         int64_t expire_time,
-                         std::unique_ptr<PrivateKey> key);
+  TokenSigningPrivateKey(
+      int64_t key_seq_num,
+      int64_t expire_time,
+      std::unique_ptr<PrivateKey> key);
   ~TokenSigningPrivateKey();
 
   // Sign a token, and store the signature and signing key's sequence number.
@@ -80,8 +81,12 @@ class TokenSigningPrivateKey {
   // Export the public-key portion of this signing key.
   void ExportPublicKeyPB(TokenSigningPublicKeyPB* pb) const;
 
-  int64_t key_seq_num() const { return key_seq_num_; }
-  int64_t expire_time() const { return expire_time_; }
+  int64_t key_seq_num() const {
+    return key_seq_num_;
+  }
+  int64_t expire_time() const {
+    return expire_time_;
+  }
 
  private:
   FRIEND_TEST(TokenTest, TestAddKeyConstraints);

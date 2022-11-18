@@ -18,7 +18,7 @@
 #include "kudu/tools/tool_replica_util.h"
 
 #include <cstdint>
-#include <fstream>  // IWYU pragma: keep
+#include <fstream> // IWYU pragma: keep
 #include <iostream>
 #include <memory>
 #include <string>
@@ -63,8 +63,8 @@ using kudu::consensus::GetLastOpIdResponsePB;
 using kudu::consensus::LeaderStepDownMode;
 using kudu::consensus::MODIFY_PEER;
 using kudu::consensus::OpId;
-using kudu::consensus::REMOVE_PEER;
 using kudu::consensus::RaftPeerPB;
+using kudu::consensus::REMOVE_PEER;
 using kudu::consensus::ReplicaManagementInfoPB;
 using kudu::rpc::RpcController;
 using std::cerr;
@@ -82,11 +82,12 @@ namespace tools {
 
 namespace {
 
-Status GetLastCommittedOpId(const string& tablet_id,
-                            const string& replica_uuid,
-                            const HostPort& replica_hp,
-                            const MonoDelta& timeout,
-                            OpId* opid) {
+Status GetLastCommittedOpId(
+    const string& tablet_id,
+    const string& replica_uuid,
+    const HostPort& replica_hp,
+    const MonoDelta& timeout,
+    OpId* opid) {
   GetLastOpIdRequestPB req;
   GetLastOpIdResponsePB resp;
   RpcController controller;
@@ -104,12 +105,13 @@ Status GetLastCommittedOpId(const string& tablet_id,
 
 } // anonymous namespace
 
-Status GetConsensusState(const unique_ptr<ConsensusServiceProxy>& proxy,
-                         const string& tablet_id,
-                         const string& replica_uuid,
-                         const MonoDelta& timeout,
-                         ConsensusStatePB* consensus_state,
-                         bool* is_3_4_3_replication) {
+Status GetConsensusState(
+    const unique_ptr<ConsensusServiceProxy>& proxy,
+    const string& tablet_id,
+    const string& replica_uuid,
+    const MonoDelta& timeout,
+    ConsensusStatePB* consensus_state,
+    bool* is_3_4_3_replication) {
   GetConsensusStateRequestPB req;
   GetConsensusStateResponsePB resp;
   RpcController controller;
@@ -128,18 +130,20 @@ Status GetConsensusState(const unique_ptr<ConsensusServiceProxy>& proxy,
     *consensus_state = resp.tablets(0).cstate();
   }
   if (is_3_4_3_replication) {
-    *is_3_4_3_replication = resp.replica_management_info().replacement_scheme() ==
+    *is_3_4_3_replication =
+        resp.replica_management_info().replacement_scheme() ==
         ReplicaManagementInfoPB::PREPARE_REPLACEMENT_BEFORE_EVICTION;
   }
   return Status::OK();
 }
 
-Status DoLeaderStepDown(const string& tablet_id,
-                        const string& leader_uuid,
-                        const HostPort& leader_hp,
-                        LeaderStepDownMode mode,
-                        const boost::optional<string>& new_leader_uuid,
-                        const MonoDelta& timeout) {
+Status DoLeaderStepDown(
+    const string& tablet_id,
+    const string& leader_uuid,
+    const HostPort& leader_hp,
+    LeaderStepDownMode mode,
+    const boost::optional<string>& new_leader_uuid,
+    const MonoDelta& timeout) {
   if (mode == LeaderStepDownMode::ABRUPT && new_leader_uuid) {
     return Status::InvalidArgument(
         "cannot specify a new leader uuid for an abrupt stepdown");
@@ -166,11 +170,12 @@ Status DoLeaderStepDown(const string& tablet_id,
   return Status::OK();
 }
 
-Status GetTabletLeader(const client::sp::shared_ptr<KuduClient>& client,
-                       const string& tablet_id,
-                       string* leader_uuid,
-                       HostPort* leader_hp,
-                       bool* is_no_leader) {
+Status GetTabletLeader(
+    const client::sp::shared_ptr<KuduClient>& client,
+    const string& tablet_id,
+    string* leader_uuid,
+    HostPort* leader_hp,
+    bool* is_no_leader) {
   KuduTablet* tablet_raw = nullptr;
   RETURN_NOT_OK(client->GetTablet(tablet_id, &tablet_raw));
   unique_ptr<KuduTablet> tablet(tablet_raw);
@@ -187,8 +192,8 @@ Status GetTabletLeader(const client::sp::shared_ptr<KuduClient>& client,
     *is_no_leader = true;
   }
 
-  return Status::NotFound(Substitute("No leader replica found for tablet $0",
-                                     tablet_id));
+  return Status::NotFound(
+      Substitute("No leader replica found for tablet $0", tablet_id));
 }
 
 // For the target (i.e. newly added replica) we have the following options:
@@ -204,13 +209,14 @@ Status GetTabletLeader(const client::sp::shared_ptr<KuduClient>& client,
 // The former case and the absence of the source replica in the configuration
 // signals about successful completion of the replica movement operation.
 // The latter case manifests a failure of the replica movement operation.
-Status CheckCompleteMove(const vector<string>& master_addresses,
-                         const client::sp::shared_ptr<client::KuduClient>& client,
-                         const string& tablet_id,
-                         const string& from_ts_uuid,
-                         const string& to_ts_uuid,
-                         bool* is_complete,
-                         Status* completion_status) {
+Status CheckCompleteMove(
+    const vector<string>& master_addresses,
+    const client::sp::shared_ptr<client::KuduClient>& client,
+    const string& tablet_id,
+    const string& from_ts_uuid,
+    const string& to_ts_uuid,
+    bool* is_complete,
+    Status* completion_status) {
   DCHECK(is_complete);
   DCHECK(completion_status);
   *is_complete = false;
@@ -219,18 +225,23 @@ Status CheckCompleteMove(const vector<string>& master_addresses,
   // outside factors.
   string orig_leader_uuid;
   HostPort orig_leader_hp;
-  RETURN_NOT_OK(GetTabletLeader(client, tablet_id,
-                                &orig_leader_uuid, &orig_leader_hp));
+  RETURN_NOT_OK(
+      GetTabletLeader(client, tablet_id, &orig_leader_uuid, &orig_leader_hp));
   unique_ptr<ConsensusServiceProxy> proxy;
-  RETURN_NOT_OK(BuildProxy(orig_leader_hp.host(), orig_leader_hp.port(), &proxy));
+  RETURN_NOT_OK(
+      BuildProxy(orig_leader_hp.host(), orig_leader_hp.port(), &proxy));
 
   // Check if the replica with UUID 'to_ts_uuid' is in the config, and if it has
   // been promoted to voter.
   ConsensusStatePB cstate;
   bool is_343_scheme;
-  RETURN_NOT_OK(GetConsensusState(proxy, tablet_id, orig_leader_uuid,
-                                  client->default_admin_operation_timeout(),
-                                  &cstate, &is_343_scheme));
+  RETURN_NOT_OK(GetConsensusState(
+      proxy,
+      tablet_id,
+      orig_leader_uuid,
+      client->default_admin_operation_timeout(),
+      &cstate,
+      &is_343_scheme));
   bool to_ts_uuid_in_config = false;
   bool to_ts_uuid_is_a_voter = false;
   for (const auto& peer : cstate.committed_config().peers()) {
@@ -249,7 +260,9 @@ Status CheckCompleteMove(const vector<string>& master_addresses,
     *is_complete = true;
     *completion_status = Status::Incomplete(Substitute(
         "tablet $0, TS $1 -> TS $2 move failed, target replica disappeared",
-        tablet_id, from_ts_uuid, to_ts_uuid));
+        tablet_id,
+        from_ts_uuid,
+        to_ts_uuid));
     return Status::OK();
   }
 
@@ -265,7 +278,8 @@ Status CheckCompleteMove(const vector<string>& master_addresses,
       if (is_343_scheme && !peer.attrs().replace()) {
         return Status::IllegalState(Substitute(
             "$0: source replica $1 does not have REPLACE attribute set",
-            tablet_id, from_ts_uuid));
+            tablet_id,
+            from_ts_uuid));
       }
 
       // Handle the case when the replica-to-be-removed (the one with UUID
@@ -284,13 +298,17 @@ Status CheckCompleteMove(const vector<string>& master_addresses,
       //   and we can proceed to kick out 'from_ts_uuid' once a new leader
       //   is elected.
       if (orig_leader_uuid == from_ts_uuid &&
-          orig_leader_uuid == cstate.leader_uuid() &&
-          to_ts_uuid_is_a_voter &&
-          (is_343_scheme || DoKsckForTablet(master_addresses, tablet_id).ok())) {
+          orig_leader_uuid == cstate.leader_uuid() && to_ts_uuid_is_a_voter &&
+          (is_343_scheme ||
+           DoKsckForTablet(master_addresses, tablet_id).ok())) {
         // The leader is the node we intend to remove; make it step down.
-        ignore_result(DoLeaderStepDown(tablet_id, orig_leader_uuid, orig_leader_hp,
-                                       LeaderStepDownMode::GRACEFUL, boost::none,
-                                       client->default_admin_operation_timeout()));
+        ignore_result(DoLeaderStepDown(
+            tablet_id,
+            orig_leader_uuid,
+            orig_leader_hp,
+            LeaderStepDownMode::GRACEFUL,
+            boost::none,
+            client->default_admin_operation_timeout()));
       }
       from_ts_uuid_in_config = true;
       break;
@@ -316,15 +334,15 @@ Status CheckCompleteMove(const vector<string>& master_addresses,
   // next on the next retry of this function.
   if (from_ts_uuid_in_config &&
       DoKsckForTablet(master_addresses, tablet_id).ok()) {
-
     // Re-find the leader in case it changed (we may have caused it to change).
     string new_leader_uuid;
     HostPort new_leader_hp;
-    RETURN_NOT_OK(GetTabletLeader(client, tablet_id,
-                                  &new_leader_uuid, &new_leader_hp));
+    RETURN_NOT_OK(
+        GetTabletLeader(client, tablet_id, &new_leader_uuid, &new_leader_hp));
     // If leadership changed, we have to rebuild the proxy to the new leader.
     if (new_leader_uuid != orig_leader_uuid) {
-      RETURN_NOT_OK(BuildProxy(new_leader_hp.host(), new_leader_hp.port(), &proxy));
+      RETURN_NOT_OK(
+          BuildProxy(new_leader_hp.host(), new_leader_hp.port(), &proxy));
     }
 
     // We can only act if the leader is not the replica being removed.
@@ -333,10 +351,14 @@ Status CheckCompleteMove(const vector<string>& master_addresses,
       // hasn't yet committed a single operation on its term. Let's make sure
       // the current leader has asserted its leadership.
       ConsensusStatePB cstate;
-      RETURN_NOT_OK(GetConsensusState(proxy, tablet_id, new_leader_uuid,
-                                      client->default_admin_operation_timeout(),
-                                      &cstate));
-      if (!cstate.has_leader_uuid() || cstate.leader_uuid() != new_leader_uuid) {
+      RETURN_NOT_OK(GetConsensusState(
+          proxy,
+          tablet_id,
+          new_leader_uuid,
+          client->default_admin_operation_timeout(),
+          &cstate));
+      if (!cstate.has_leader_uuid() ||
+          cstate.leader_uuid() != new_leader_uuid) {
         // Something has changed in the middle, the caller of this method
         // (i.e. the upper level) will need to retry.
         *is_complete = false;
@@ -347,15 +369,22 @@ Status CheckCompleteMove(const vector<string>& master_addresses,
       // Make sure the current leader has asserted its leadership before sending
       // it the ChangeConfig request.
       OpId opid;
-      RETURN_NOT_OK(GetLastCommittedOpId(tablet_id, new_leader_uuid, new_leader_hp,
-                                         client->default_admin_operation_timeout(),
-                                         &opid));
+      RETURN_NOT_OK(GetLastCommittedOpId(
+          tablet_id,
+          new_leader_uuid,
+          new_leader_hp,
+          client->default_admin_operation_timeout(),
+          &opid));
       if (opid.term() == cstate.current_term()) {
         bool cas_failed = false;
-        const auto s = DoChangeConfig(master_addresses, tablet_id, from_ts_uuid,
-                                      boost::none, REMOVE_PEER,
-                                      cstate.committed_config().opid_index(),
-                                      &cas_failed);
+        const auto s = DoChangeConfig(
+            master_addresses,
+            tablet_id,
+            from_ts_uuid,
+            boost::none,
+            REMOVE_PEER,
+            cstate.committed_config().opid_index(),
+            &cas_failed);
         if (cas_failed) {
           // Something has changed in the configuration, need to retry.
           *is_complete = false;
@@ -377,12 +406,12 @@ Status CheckCompleteMove(const vector<string>& master_addresses,
   return Status::OK();
 }
 
-
-Status ScheduleReplicaMove(const vector<string>& master_addresses,
-                           const client::sp::shared_ptr<client::KuduClient>& client,
-                           const string& tablet_id,
-                           const string& from_ts_uuid,
-                           const string& to_ts_uuid) {
+Status ScheduleReplicaMove(
+    const vector<string>& master_addresses,
+    const client::sp::shared_ptr<client::KuduClient>& client,
+    const string& tablet_id,
+    const string& from_ts_uuid,
+    const string& to_ts_uuid) {
   // Find this tablet's leader replica. We need its UUID and RPC address.
   string leader_uuid;
   HostPort leader_hp;
@@ -394,9 +423,13 @@ Status ScheduleReplicaMove(const vector<string>& master_addresses,
   // on the replication scheme used.
   bool is_343_scheme;
   ConsensusStatePB cstate;
-  RETURN_NOT_OK(GetConsensusState(proxy, tablet_id, leader_uuid,
-                                  client->default_admin_operation_timeout(),
-                                  &cstate, &is_343_scheme));
+  RETURN_NOT_OK(GetConsensusState(
+      proxy,
+      tablet_id,
+      leader_uuid,
+      client->default_admin_operation_timeout(),
+      &cstate,
+      &is_343_scheme));
   // Sanity check: the target replica should not be present in the config.
   // Anyway, ChangeConfig() RPC would return an error in that case, but this
   // pre-condition allows us to short-circuit that.
@@ -412,8 +445,13 @@ Status ScheduleReplicaMove(const vector<string>& master_addresses,
   // The pre- KUDU-1097 way of moving a replica involves first adding a new
   // replica and then evicting the old one.
   if (!is_343_scheme) {
-    return DoChangeConfig(master_addresses, tablet_id, to_ts_uuid,
-                          RaftPeerPB::VOTER, ADD_PEER, cas_opid_idx);
+    return DoChangeConfig(
+        master_addresses,
+        tablet_id,
+        to_ts_uuid,
+        RaftPeerPB::VOTER,
+        ADD_PEER,
+        cas_opid_idx);
   }
 
   // Check whether the REPLACE attribute is already set for the source replica.
@@ -444,7 +482,8 @@ Status ScheduleReplicaMove(const vector<string>& master_addresses,
     change->mutable_peer()->mutable_attrs()->set_promote(true);
     HostPort hp;
     RETURN_NOT_OK(GetRpcAddressForTS(client, to_ts_uuid, &hp));
-    RETURN_NOT_OK(HostPortToPB(hp, change->mutable_peer()->mutable_last_known_addr()));
+    RETURN_NOT_OK(
+        HostPortToPB(hp, change->mutable_peer()->mutable_last_known_addr()));
   }
   req.set_cas_config_opid_index(cas_opid_idx);
 
@@ -460,8 +499,9 @@ Status ScheduleReplicaMove(const vector<string>& master_addresses,
   return Status::OK();
 }
 
-Status DoKsckForTablet(const vector<string>& master_addresses,
-                       const string& tablet_id) {
+Status DoKsckForTablet(
+    const vector<string>& master_addresses,
+    const string& tablet_id) {
   shared_ptr<KsckCluster> cluster;
   RETURN_NOT_OK(RemoteKsckCluster::Build(master_addresses, &cluster));
 
@@ -469,7 +509,7 @@ Status DoKsckForTablet(const vector<string>& master_addresses,
   // See https://stackoverflow.com/questions/8243743.
   std::ofstream null_stream;
   Ksck ksck(cluster, &null_stream);
-  ksck.set_tablet_id_filters({ tablet_id });
+  ksck.set_tablet_id_filters({tablet_id});
   RETURN_NOT_OK(ksck.CheckMasterHealth());
   RETURN_NOT_OK(ksck.CheckMasterConsensus());
   RETURN_NOT_OK(ksck.CheckClusterRunning());
@@ -482,9 +522,10 @@ Status DoKsckForTablet(const vector<string>& master_addresses,
   return ksck.CheckTablesConsistency();
 }
 
-Status GetRpcAddressForTS(const client::sp::shared_ptr<KuduClient>& client,
-                          const string& uuid,
-                          HostPort* hp) {
+Status GetRpcAddressForTS(
+    const client::sp::shared_ptr<KuduClient>& client,
+    const string& uuid,
+    HostPort* hp) {
   vector<KuduTabletServer*> servers;
   ElementDeleter deleter(&servers);
   RETURN_NOT_OK(client->ListTabletServers(&servers));
@@ -500,18 +541,20 @@ Status GetRpcAddressForTS(const client::sp::shared_ptr<KuduClient>& client,
       "server $0 has no RPC address registered with the Master", uuid));
 }
 
-Status DoChangeConfig(const vector<string>& master_addresses,
-                      const string& tablet_id,
-                      const string& replica_uuid,
-                      const boost::optional<RaftPeerPB::MemberType>& member_type,
-                      ChangeConfigType cc_type,
-                      const boost::optional<int64_t>& cas_opid_idx,
-                      bool* cas_failed) {
+Status DoChangeConfig(
+    const vector<string>& master_addresses,
+    const string& tablet_id,
+    const string& replica_uuid,
+    const boost::optional<RaftPeerPB::MemberType>& member_type,
+    ChangeConfigType cc_type,
+    const boost::optional<int64_t>& cas_opid_idx,
+    bool* cas_failed) {
   if (cas_failed) {
     *cas_failed = false;
   }
   if (cc_type == consensus::REMOVE_PEER && member_type) {
-    return Status::InvalidArgument("cannot supply Raft member type when removing a server");
+    return Status::InvalidArgument(
+        "cannot supply Raft member type when removing a server");
   }
   if ((cc_type == consensus::ADD_PEER || cc_type == consensus::MODIFY_PEER) &&
       !member_type) {
@@ -526,9 +569,8 @@ Status DoChangeConfig(const vector<string>& master_addresses,
   }
 
   client::sp::shared_ptr<KuduClient> client;
-  RETURN_NOT_OK(KuduClientBuilder()
-                .master_server_addrs(master_addresses)
-                .Build(&client));
+  RETURN_NOT_OK(
+      KuduClientBuilder().master_server_addrs(master_addresses).Build(&client));
 
   // When adding a new server, we need to provide the server's RPC address.
   if (cc_type == consensus::ADD_PEER) {
@@ -572,13 +614,14 @@ Status DoChangeConfig(const vector<string>& master_addresses,
 // tool would like to be compatible, and this method based on PB fields
 // is less fragile than the string matching required to use GetFlags with old
 // versions.
-Status Is343SchemeCluster(const vector<string>& master_addresses,
-                          const boost::optional<string>& tablet_id_in,
-                          bool* is_343_scheme) {
+Status Is343SchemeCluster(
+    const vector<string>& master_addresses,
+    const boost::optional<string>& tablet_id_in,
+    bool* is_343_scheme) {
   client::sp::shared_ptr<client::KuduClient> client;
   RETURN_NOT_OK(client::KuduClientBuilder()
-                .master_server_addrs(master_addresses)
-                .Build(&client));
+                    .master_server_addrs(master_addresses)
+                    .Build(&client));
   string tablet_id;
   if (tablet_id_in) {
     tablet_id = *tablet_id_in;
@@ -608,11 +651,14 @@ Status Is343SchemeCluster(const vector<string>& master_addresses,
   RETURN_NOT_OK(GetTabletLeader(client, tablet_id, &leader_uuid, &leader_hp));
   unique_ptr<consensus::ConsensusServiceProxy> proxy;
   RETURN_NOT_OK(BuildProxy(leader_hp.host(), leader_hp.port(), &proxy));
-  return GetConsensusState(proxy, tablet_id, leader_uuid,
-                           client->default_admin_operation_timeout(),
-                           nullptr /* consensus_state */, is_343_scheme);
+  return GetConsensusState(
+      proxy,
+      tablet_id,
+      leader_uuid,
+      client->default_admin_operation_timeout(),
+      nullptr /* consensus_state */,
+      is_343_scheme);
 }
 
 } // namespace tools
 } // namespace kudu
-

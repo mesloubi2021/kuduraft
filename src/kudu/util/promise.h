@@ -27,7 +27,7 @@ namespace kudu {
 // to retrieve the produced value.
 //
 // In Guava terms, this is a SettableFuture<T>.
-template<typename T>
+template <typename T>
 class Promise {
  public:
   Promise() : latch_(1) {}

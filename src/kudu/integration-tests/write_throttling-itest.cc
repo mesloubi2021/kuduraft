@@ -37,8 +37,10 @@
 using std::string;
 using std::vector;
 
-DEFINE_int32(throttling_test_time, 3,
-             "Number of seconds to run write throttling test");
+DEFINE_int32(
+    throttling_test_time,
+    3,
+    "Number of seconds to run write throttling test");
 
 namespace kudu {
 namespace tablet {
@@ -65,10 +67,10 @@ class WriteThrottlingTest : public ExternalMiniClusterITestBase {
   void CreateTable() {
     gscoped_ptr<KuduTableCreator> table_creator(client_->NewTableCreator());
     ASSERT_OK(table_creator->table_name(kTableName)
-             .schema(&schema_)
-             .set_range_partition_columns({ "key" })
-             .num_replicas(1)
-             .Create());
+                  .schema(&schema_)
+                  .set_range_partition_columns({"key"})
+                  .num_replicas(1)
+                  .Create());
     ASSERT_OK(client_->OpenTable(kTableName, &table_));
   }
 
@@ -85,8 +87,9 @@ TEST_F(WriteThrottlingTest, ThrottleWriteRpcPerSec) {
   // Normally a single thread session can write at 500 qps,
   // so we throttle at 100 qps.
   const int TARGET_QPS = 100;
-  vector<string> ts_flags = { "--tablet_throttler_rpc_per_sec=100",
-                              "--tablet_throttler_bytes_per_sec=0" };
+  vector<string> ts_flags = {
+      "--tablet_throttler_rpc_per_sec=100",
+      "--tablet_throttler_bytes_per_sec=0"};
   NO_FATALS(StartCluster(ts_flags));
   NO_FATALS(CreateTable());
   string string_val = string(10, 'a');
@@ -117,8 +120,9 @@ TEST_F(WriteThrottlingTest, ThrottleWriteBytesPerSec) {
   // so we throttle at 100 qps * 3000 byte = 300000 byte/s.
   // 8 byte key + 2992 byte string_val, plus other insignificant parts,
   // total bytes is still about 3000+ byte per RPC.
-  vector<string> ts_flags = { "--tablet_throttler_rpc_per_sec=0",
-                              "--tablet_throttler_bytes_per_sec=300000" };
+  vector<string> ts_flags = {
+      "--tablet_throttler_rpc_per_sec=0",
+      "--tablet_throttler_bytes_per_sec=300000"};
   NO_FATALS(StartCluster(ts_flags));
   NO_FATALS(CreateTable());
   string string_val = string(BYTES_PER_RPC - 8, 'a');
@@ -138,7 +142,8 @@ TEST_F(WriteThrottlingTest, ThrottleWriteBytesPerSec) {
     MonoDelta delta = end - begin;
     double qps = TARGET_QPS / delta.ToSeconds();
     double bps = TARGET_QPS * BYTES_PER_RPC / delta.ToSeconds();
-    LOG(INFO) << "Iteration " << t << " qps: " << qps << " " << bps << " byte/s";
+    LOG(INFO) << "Iteration " << t << " qps: " << qps << " " << bps
+              << " byte/s";
     ASSERT_LE(bps, TARGET_QPS * BYTES_PER_RPC * 1.2f);
   }
 }

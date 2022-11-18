@@ -15,8 +15,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#include <cstring>
 #include <cstdint>
+#include <cstring>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -31,7 +31,10 @@ namespace kudu {
 
 // Tests encoding/decoding of input.  If expected_encoded is non-empty, the
 // encoded string is validated against it.
-void TestUrl(const string& input, const string& expected_encoded, bool hive_compat) {
+void TestUrl(
+    const string& input,
+    const string& expected_encoded,
+    bool hive_compat) {
   string intermediate;
   UrlEncode(input, &intermediate, hive_compat);
   string output;
@@ -74,7 +77,8 @@ void TestBase64(const string& input, const string& expected_encoded) {
 // Test URL encoding. Check that the values that are put in are the
 // same that come out.
 TEST(UrlCodingTest, Basic) {
-  string input = "ABCDEFGHIJKLMNOPQRSTUWXYZ1234567890~!@#$%^&*()<>?,./:\";'{}|[]\\_+-=";
+  string input =
+      "ABCDEFGHIJKLMNOPQRSTUWXYZ1234567890~!@#$%^&*()<>?,./:\";'{}|[]\\_+-=";
   TestUrl(input, "", false);
   TestUrl(input, "", true);
 }

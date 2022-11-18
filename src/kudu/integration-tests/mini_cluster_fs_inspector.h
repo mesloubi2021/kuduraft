@@ -52,7 +52,9 @@ class MiniClusterFsInspector {
   std::string WalDirForTS(int ts_idx) const;
 
   // If provided, files are filtered by the glob-style pattern 'pattern'.
-  int CountFilesInDir(const std::string& path, StringPiece pattern = StringPiece());
+  int CountFilesInDir(
+      const std::string& path,
+      StringPiece pattern = StringPiece());
 
   // List all of the tablets with tablet metadata in the cluster.
   std::vector<std::string> ListTablets();
@@ -67,44 +69,61 @@ class MiniClusterFsInspector {
 
   // Returns the number of files in the WAL directory for 'tablet_id' on TS
   // 'ts_idx'. If provided, files are filtered by the glob string 'pattern'.
-  int CountFilesInWALDirForTS(int ts_idx,
-                              const std::string& tablet_id,
-                              StringPiece pattern = StringPiece());
+  int CountFilesInWALDirForTS(
+      int ts_idx,
+      const std::string& tablet_id,
+      StringPiece pattern = StringPiece());
 
-  bool DoesConsensusMetaExistForTabletOnTS(int ts_idx, const std::string& tablet_id);
+  bool DoesConsensusMetaExistForTabletOnTS(
+      int ts_idx,
+      const std::string& tablet_id);
 
   int CountReplicasInMetadataDirs();
   Status CheckNoDataOnTS(int ts_idx);
   Status CheckNoData();
 
-  Status ReadTabletSuperBlockOnTS(int ts_idx, const std::string& tablet_id,
-                                  tablet::TabletSuperBlockPB* sb);
+  Status ReadTabletSuperBlockOnTS(
+      int ts_idx,
+      const std::string& tablet_id,
+      tablet::TabletSuperBlockPB* sb);
 
   // Get the modification time (in micros) of the tablet superblock for the
   // given tablet server ts_idx and tablet ID.
-  int64_t GetTabletSuperBlockMTimeOrDie(int ts_idx, const std::string& tablet_id);
+  int64_t GetTabletSuperBlockMTimeOrDie(
+      int ts_idx,
+      const std::string& tablet_id);
 
-  Status ReadConsensusMetadataOnTS(int ts_idx, const std::string& tablet_id,
-                                   consensus::ConsensusMetadataPB* cmeta_pb);
-  Status WriteConsensusMetadataOnTS(int ts_idx,
-                                    const std::string& tablet_id,
-                                    const consensus::ConsensusMetadataPB& cmeta_pb);
+  Status ReadConsensusMetadataOnTS(
+      int ts_idx,
+      const std::string& tablet_id,
+      consensus::ConsensusMetadataPB* cmeta_pb);
+  Status WriteConsensusMetadataOnTS(
+      int ts_idx,
+      const std::string& tablet_id,
+      const consensus::ConsensusMetadataPB& cmeta_pb);
 
-  Status CheckTabletDataStateOnTS(int ts_idx,
-                                  const std::string& tablet_id,
-                                  const std::vector<tablet::TabletDataState>& allowed_states);
+  Status CheckTabletDataStateOnTS(
+      int ts_idx,
+      const std::string& tablet_id,
+      const std::vector<tablet::TabletDataState>& allowed_states);
 
   Status WaitForNoData(const MonoDelta& timeout = MonoDelta::FromSeconds(30));
-  Status WaitForNoDataOnTS(int ts_idx, const MonoDelta& timeout = MonoDelta::FromSeconds(30));
-  Status WaitForMinFilesInTabletWalDirOnTS(int ts_idx,
-                                           const std::string& tablet_id,
-                                           int count,
-                                           const MonoDelta& timeout = MonoDelta::FromSeconds(60));
-  Status WaitForReplicaCount(int expected, const MonoDelta& timeout = MonoDelta::FromSeconds(30));
-  Status WaitForTabletDataStateOnTS(int ts_idx,
-                                    const std::string& tablet_id,
-                                    const std::vector<tablet::TabletDataState>& expected_states,
-                                    const MonoDelta& timeout = MonoDelta::FromSeconds(30));
+  Status WaitForNoDataOnTS(
+      int ts_idx,
+      const MonoDelta& timeout = MonoDelta::FromSeconds(30));
+  Status WaitForMinFilesInTabletWalDirOnTS(
+      int ts_idx,
+      const std::string& tablet_id,
+      int count,
+      const MonoDelta& timeout = MonoDelta::FromSeconds(60));
+  Status WaitForReplicaCount(
+      int expected,
+      const MonoDelta& timeout = MonoDelta::FromSeconds(30));
+  Status WaitForTabletDataStateOnTS(
+      int ts_idx,
+      const std::string& tablet_id,
+      const std::vector<tablet::TabletDataState>& expected_states,
+      const MonoDelta& timeout = MonoDelta::FromSeconds(30));
 
   // Loop and check for certain filenames in the WAL directory of the specified
   // tablet. This function returns OK if we reach a state where:
@@ -128,12 +147,13 @@ class MiniClusterFsInspector {
   // This includes log ts_idx files (not just segments).
   int CountWALFilesOnTS(int ts_idx);
 
-  std::string GetConsensusMetadataPathOnTS(int ts_idx,
-                                           const std::string& tablet_id) const;
+  std::string GetConsensusMetadataPathOnTS(
+      int ts_idx,
+      const std::string& tablet_id) const;
 
-  std::string GetTabletSuperBlockPathOnTS(int ts_idx,
-                                          const std::string& tablet_id) const;
-
+  std::string GetTabletSuperBlockPathOnTS(
+      int ts_idx,
+      const std::string& tablet_id) const;
 };
 
 } // namespace itest

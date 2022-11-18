@@ -36,7 +36,7 @@ namespace server {
 // The subclass constructor should fill these in with defaults from
 // server-specific flags.
 struct ServerBaseOptions {
-  Env *env;
+  Env* env;
 
   FsManagerOpts fs_opts;
   RpcServerOptions rpc_opts;
@@ -52,7 +52,7 @@ struct ServerBaseOptions {
   std::string metrics_log_dir;
   int32_t metrics_log_interval_ms;
 
-protected:
+ protected:
   ServerBaseOptions();
 };
 

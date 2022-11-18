@@ -27,8 +27,8 @@
 #include <gtest/gtest.h>
 
 using std::map;
-using std::string;
 using std::shared_ptr;
+using std::string;
 using std::unique_ptr;
 
 namespace kudu {
@@ -53,7 +53,7 @@ TEST(FloorTest, TestMapUtil) {
 
 TEST(ComputeIfAbsentTest, TestComputeIfAbsent) {
   map<string, string> my_map;
-  auto result = ComputeIfAbsent(&my_map, "key", []{ return "hello_world"; });
+  auto result = ComputeIfAbsent(&my_map, "key", [] { return "hello_world"; });
   ASSERT_EQ(*result, "hello_world");
   auto result2 = ComputeIfAbsent(&my_map, "key", [] { return "hello_world2"; });
   ASSERT_EQ(*result2, "hello_world");
@@ -61,17 +61,20 @@ TEST(ComputeIfAbsentTest, TestComputeIfAbsent) {
 
 TEST(ComputeIfAbsentTest, TestComputeIfAbsentAndReturnAbsense) {
   map<string, string> my_map;
-  auto result = ComputeIfAbsentReturnAbsense(&my_map, "key", []{ return "hello_world"; });
+  auto result = ComputeIfAbsentReturnAbsense(
+      &my_map, "key", [] { return "hello_world"; });
   ASSERT_TRUE(result.second);
   ASSERT_EQ(*result.first, "hello_world");
-  auto result2 = ComputeIfAbsentReturnAbsense(&my_map, "key", [] { return "hello_world2"; });
+  auto result2 = ComputeIfAbsentReturnAbsense(
+      &my_map, "key", [] { return "hello_world2"; });
   ASSERT_FALSE(result2.second);
   ASSERT_EQ(*result2.first, "hello_world");
 }
 
 TEST(FindPointeeOrNullTest, TestFindPointeeOrNull) {
   map<string, unique_ptr<string>> my_map;
-  auto iter = my_map.emplace("key", unique_ptr<string>(new string("hello_world")));
+  auto iter =
+      my_map.emplace("key", unique_ptr<string>(new string("hello_world")));
   ASSERT_TRUE(iter.second);
   string* value = FindPointeeOrNull(my_map, "key");
   ASSERT_TRUE(value != nullptr);

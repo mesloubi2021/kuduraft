@@ -48,8 +48,7 @@ class RpczStore {
   void AddCall(InboundCall* c);
 
   // Dump all of the collected RPC samples in response to a user query.
-  void DumpPB(const DumpRpczStoreRequestPB& req,
-              DumpRpczStoreResponsePB* resp);
+  void DumpPB(const DumpRpczStoreRequestPB& req, DumpRpczStoreResponsePB* resp);
 
  private:
   // Look up or create the particular MethodSampler instance which should
@@ -65,7 +64,8 @@ class RpczStore {
   percpu_rwlock samplers_lock_;
 
   // Protected by samplers_lock_.
-  std::unordered_map<RpcMethodInfo*, std::unique_ptr<MethodSampler>> method_samplers_;
+  std::unordered_map<RpcMethodInfo*, std::unique_ptr<MethodSampler>>
+      method_samplers_;
 
   DISALLOW_COPY_AND_ASSIGN(RpczStore);
 };

@@ -35,7 +35,7 @@ struct CacheMetrics {
   scoped_refptr<Counter> cache_misses;
   scoped_refptr<Counter> cache_misses_caching;
 
-  scoped_refptr<AtomicGauge<uint64_t> > cache_usage;
+  scoped_refptr<AtomicGauge<uint64_t>> cache_usage;
 };
 
 } // namespace kudu

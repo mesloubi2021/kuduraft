@@ -59,8 +59,9 @@ TEST(RequestTrackerTest, TestSequenceNumberGeneration) {
   ASSERT_EQ(generated_seq_nos[1], tracker_->FirstIncomplete());
 
   // Marking half the rpc as complete should advance FirstIncomplete.
-  // Note that this also tests that RequestTracker::RpcCompleted() is idempotent, i.e. that
-  // marking the same sequence number as complete twice is a no-op.
+  // Note that this also tests that RequestTracker::RpcCompleted() is
+  // idempotent, i.e. that marking the same sequence number as complete twice is
+  // a no-op.
   for (int i = 0; i < MAX / 2; i++) {
     tracker_->RpcCompleted(generated_seq_nos[i]);
   }
@@ -72,8 +73,8 @@ TEST(RequestTrackerTest, TestSequenceNumberGeneration) {
     generated_seq_nos.push_back(seq_no);
   }
 
-  // Marking them all as completed should cause RequestTracker::FirstIncomplete() to return
-  // Status::NotFound() again.
+  // Marking them all as completed should cause
+  // RequestTracker::FirstIncomplete() to return Status::NotFound() again.
   for (auto seq_no : generated_seq_nos) {
     tracker_->RpcCompleted(seq_no);
   }
@@ -83,4 +84,3 @@ TEST(RequestTrackerTest, TestSequenceNumberGeneration) {
 
 } // namespace rpc
 } // namespace kudu
-

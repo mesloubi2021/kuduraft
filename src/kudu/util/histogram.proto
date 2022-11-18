@@ -39,8 +39,8 @@ message HistogramSnapshotPB {
   required uint64 percentile_99_9 = 13;
   required uint64 percentile_99_99 = 14;
   required uint64 max = 15;
-  repeated uint64 values = 16 [packed = true];
-  repeated uint64 counts = 17 [packed = true];
+  repeated uint64 values = 16 [ packed = true ];
+  repeated uint64 counts = 17 [ packed = true ];
 }
 
 message HistogramSnapshotsListPB {

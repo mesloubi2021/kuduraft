@@ -75,37 +75,33 @@ static const int kTestMaxOpenFiles = 100;
 
 template <class FileType>
 class FileCacheStressTest : public KuduTest {
-
 // Like CHECK_OK(), but dumps the contents of the cache before failing.
 //
 // The output of ToDebugString() tends to be long enough that LOG() truncates
 // it, so we must split it ourselves before logging.
-#define TEST_CHECK_OK(to_call) do {                                       \
-    const Status& _s = (to_call);                                         \
-    if (!_s.ok()) {                                                       \
-      LOG(INFO) << "Dumping cache contents";                              \
-      vector<string> lines = strings::Split(cache_->ToDebugString(), "\n",\
-                                            strings::SkipEmpty());        \
-      for (const auto& l : lines) {                                       \
-        LOG(INFO) << l;                                                   \
-      }                                                                   \
-    }                                                                     \
-    CHECK(_s.ok()) << "Bad status: " << _s.ToString();                    \
+#define TEST_CHECK_OK(to_call)                                                 \
+  do {                                                                         \
+    const Status& _s = (to_call);                                              \
+    if (!_s.ok()) {                                                            \
+      LOG(INFO) << "Dumping cache contents";                                   \
+      vector<string> lines =                                                   \
+          strings::Split(cache_->ToDebugString(), "\n", strings::SkipEmpty()); \
+      for (const auto& l : lines) {                                            \
+        LOG(INFO) << l;                                                        \
+      }                                                                        \
+    }                                                                          \
+    CHECK(_s.ok()) << "Bad status: " << _s.ToString();                         \
   } while (0);
 
  public:
   typedef unordered_map<string, unordered_map<string, int>> MetricMap;
 
-  FileCacheStressTest()
-      : rand_(SeedRandom()),
-        running_(1) {
+  FileCacheStressTest() : rand_(SeedRandom()), running_(1) {
     // Use a single shard. Otherwise, the cache can be a little bit "sloppy"
     // depending on the number of CPUs on the system.
     FLAGS_cache_force_single_shard = true;
-    cache_.reset(new FileCache<FileType>("test",
-                                         env_,
-                                         kTestMaxOpenFiles,
-                                         scoped_refptr<MetricEntity>()));
+    cache_.reset(new FileCache<FileType>(
+        "test", env_, kTestMaxOpenFiles, scoped_refptr<MetricEntity>()));
   }
 
   void SetUp() override {
@@ -124,7 +120,8 @@ class FileCacheStressTest : public KuduTest {
         unique_ptr<WritableFile> next_file;
         CHECK_OK(env_->NewWritableFile(next_file_name, &next_file));
         uint8_t buf[rand.Uniform((32 * 1024) - 1) + 1];
-        CHECK_OK(next_file->Append(GenerateRandomChunk(buf, sizeof(buf), &rand)));
+        CHECK_OK(
+            next_file->Append(GenerateRandomChunk(buf, sizeof(buf), &rand)));
         CHECK_OK(next_file->Close());
       }
       {
@@ -199,15 +196,16 @@ class FileCacheStressTest : public KuduTest {
   }
 
  protected:
-  void NotifyThreads() { running_.CountDown(); }
+  void NotifyThreads() {
+    running_.CountDown();
+  }
 
-  const MetricMap& metrics() const { return metrics_; }
+  const MetricMap& metrics() const {
+    return metrics_;
+  }
 
  private:
-  enum GetMode {
-    OPEN,
-    DELETE
-  };
+  enum GetMode { OPEN, DELETE };
 
   // Retrieve a random file name to be either opened or deleted. If deleting,
   // the file name is made inaccessible to future operations.
@@ -246,9 +244,10 @@ class FileCacheStressTest : public KuduTest {
 
   // Reads a random chunk of data from a random file in 'files'. On success,
   // writes to 'metrics'.
-  static Status ReadRandomChunk(const deque<shared_ptr<FileType>>& files,
-                                MetricMap* metrics,
-                                Random* rand) {
+  static Status ReadRandomChunk(
+      const deque<shared_ptr<FileType>>& files,
+      MetricMap* metrics,
+      Random* rand) {
     if (files.empty()) {
       return Status::OK();
     }
@@ -269,11 +268,13 @@ class FileCacheStressTest : public KuduTest {
   // updates 'metrics'.
   //
   // No-op for file implementations that don't support writing.
-  static Status WriteRandomChunk(const deque<shared_ptr<FileType>>& files,
-                                 MetricMap* metrics,
-                                 Random* rand);
+  static Status WriteRandomChunk(
+      const deque<shared_ptr<FileType>>& files,
+      MetricMap* metrics,
+      Random* rand);
 
-  static Slice GenerateRandomChunk(uint8_t* buffer, size_t max_length, Random* rand) {
+  static Slice
+  GenerateRandomChunk(uint8_t* buffer, size_t max_length, Random* rand) {
     size_t len = rand->Uniform(max_length);
     len -= len % sizeof(uint32_t);
     for (int i = 0; i < (len / sizeof(uint32_t)); i += sizeof(uint32_t)) {
@@ -287,7 +288,8 @@ class FileCacheStressTest : public KuduTest {
     std::lock_guard<simple_spinlock> l(lock_);
     for (const auto& file_action_pair : new_metrics) {
       for (const auto& action_count_pair : file_action_pair.second) {
-        metrics_[file_action_pair.first][action_count_pair.first] += action_count_pair.second;
+        metrics_[file_action_pair.first][action_count_pair.first] +=
+            action_count_pair.second;
       }
     }
   }
@@ -354,18 +356,20 @@ TYPED_TEST(FileCacheStressTest, TestStress) {
   // Start the threads.
   PeriodicOpenFdChecker checker(
       this->env_,
-      this->GetTestPath("*"),           // only count within our test dir
-      kTestMaxOpenFiles +               // cache capacity
-      FLAGS_test_num_producer_threads + // files being written
-      FLAGS_test_num_consumer_threads); // files being opened
+      this->GetTestPath("*"), // only count within our test dir
+      kTestMaxOpenFiles + // cache capacity
+          FLAGS_test_num_producer_threads + // files being written
+          FLAGS_test_num_consumer_threads); // files being opened
   checker.Start();
   vector<thread> producers;
   for (int i = 0; i < FLAGS_test_num_producer_threads; i++) {
-    producers.emplace_back(&FileCacheStressTest<TypeParam>::ProducerThread, this);
+    producers.emplace_back(
+        &FileCacheStressTest<TypeParam>::ProducerThread, this);
   }
   vector<thread> consumers;
   for (int i = 0; i < FLAGS_test_num_consumer_threads; i++) {
-    consumers.emplace_back(&FileCacheStressTest<TypeParam>::ConsumerThread, this);
+    consumers.emplace_back(
+        &FileCacheStressTest<TypeParam>::ConsumerThread, this);
   }
 
   // Let the test run.
@@ -385,17 +389,17 @@ TYPED_TEST(FileCacheStressTest, TestStress) {
   unordered_map<string, int> action_counts;
   for (const auto& file_action_pair : this->metrics()) {
     for (const auto& action_count_pair : file_action_pair.second) {
-      VLOG(2) << Substitute("$0: $1: $2",
-                            file_action_pair.first,
-                            action_count_pair.first,
-                            action_count_pair.second);
+      VLOG(2) << Substitute(
+          "$0: $1: $2",
+          file_action_pair.first,
+          action_count_pair.first,
+          action_count_pair.second);
       action_counts[action_count_pair.first] += action_count_pair.second;
     }
   }
   for (const auto& action_count_pair : action_counts) {
-    LOG(INFO) << Substitute("$0: $1",
-                            action_count_pair.first,
-                            action_count_pair.second);
+    LOG(INFO) << Substitute(
+        "$0: $1", action_count_pair.first, action_count_pair.second);
   }
 }
 

@@ -19,7 +19,6 @@
 //
 // All rights reserved.
 
-
 // This module gets enough CPU information to optimize the
 // atomicops module on x86.
 
@@ -43,32 +42,34 @@
 // of the global offset table.  To avoid breaking such executables, this code
 // must preserve that register's value across cpuid instructions.
 #if defined(__i386__)
-#define cpuid(a, b, c, d, inp) \
-  asm("mov %%ebx, %%edi\n"     \
-      "cpuid\n"                \
-      "xchg %%edi, %%ebx\n"    \
-      : "=a" (a), "=D" (b), "=c" (c), "=d" (d) : "a" (inp))
+#define cpuid(a, b, c, d, inp)             \
+  asm("mov %%ebx, %%edi\n"                 \
+      "cpuid\n"                            \
+      "xchg %%edi, %%ebx\n"                \
+      : "=a"(a), "=D"(b), "=c"(c), "=d"(d) \
+      : "a"(inp))
 #elif defined(__x86_64__)
-#define cpuid(a, b, c, d, inp) \
-  asm("mov %%rbx, %%rdi\n"     \
-      "cpuid\n"                \
-      "xchg %%rdi, %%rbx\n"    \
-      : "=a" (a), "=D" (b), "=c" (c), "=d" (d) : "a" (inp))
+#define cpuid(a, b, c, d, inp)             \
+  asm("mov %%rbx, %%rdi\n"                 \
+      "cpuid\n"                            \
+      "xchg %%rdi, %%rbx\n"                \
+      : "=a"(a), "=D"(b), "=c"(c), "=d"(d) \
+      : "a"(inp))
 #endif
 
-#if defined(cpuid)        // initialize the struct only on x86
+#if defined(cpuid) // initialize the struct only on x86
 
 // Set the flags so that code will run correctly and conservatively
 // until InitGoogle() is called.
 struct AtomicOps_x86CPUFeatureStruct AtomicOps_Internalx86CPUFeatures = {
-  false,          // no SSE2
-  false,          // no cmpxchg16b
+    false, // no SSE2
+    false, // no cmpxchg16b
 };
 
 // Initialize the AtomicOps_Internalx86CPUFeatures struct in any compilation
 // unit that links with this one.
-__attribute__((constructor))
-static void AtomicOps_Internalx86CPUFeaturesInit() {
+__attribute__((constructor)) static void
+AtomicOps_Internalx86CPUFeaturesInit() {
   uint32 eax;
   uint32 ebx;
   uint32 ecx;
@@ -85,9 +86,9 @@ static void AtomicOps_Internalx86CPUFeaturesInit() {
   // get feature flags in ecx/edx, and family/model in eax
   cpuid(eax, ebx, ecx, edx, 1);
 
-  int family = (eax >> 8) & 0xf;        // family and model fields
+  int family = (eax >> 8) & 0xf; // family and model fields
   int model = (eax >> 4) & 0xf;
-  if (family == 0xf) {                  // use extended family and model fields
+  if (family == 0xf) { // use extended family and model fields
     family += (eax >> 20) & 0xff;
     model += ((eax >> 16) & 0xf) << 4;
   }
@@ -102,9 +103,8 @@ static void AtomicOps_Internalx86CPUFeaturesInit() {
   // also known as "K8", released in 2003. These processors are old enough
   // that we can just drop support for them instead of trying to work around
   // the above bug.
-  if (strcmp(vendor, "AuthenticAMD") == 0 &&       // AMD
-      family == 15 &&
-      32 <= model && model <= 63) {
+  if (strcmp(vendor, "AuthenticAMD") == 0 && // AMD
+      family == 15 && 32 <= model && model <= 63) {
     LOG(FATAL) << "AMD Family 0fh model 32 through 63 not supported due to "
                << "buggy atomic operations.";
   }
@@ -114,13 +114,11 @@ static void AtomicOps_Internalx86CPUFeaturesInit() {
 
   // ecx bit 13 indicates whether the cmpxchg16b instruction is supported
   AtomicOps_Internalx86CPUFeatures.has_cmpxchg16b = ((ecx >> 13) & 1);
-  VLOG(1) << "vendor " << vendor <<
-             "  family " << family <<
-             "  model " << model <<
-             "  sse2 " << AtomicOps_Internalx86CPUFeatures.has_sse2 <<
-             "  cmpxchg16b " << AtomicOps_Internalx86CPUFeatures.has_cmpxchg16b;
+  VLOG(1) << "vendor " << vendor << "  family " << family << "  model " << model
+          << "  sse2 " << AtomicOps_Internalx86CPUFeatures.has_sse2
+          << "  cmpxchg16b " << AtomicOps_Internalx86CPUFeatures.has_cmpxchg16b;
 }
 
 #endif
 
-#endif  // GUTIL_ATOMICOPS_INTERNALS_X86_H_
+#endif // GUTIL_ATOMICOPS_INTERNALS_X86_H_

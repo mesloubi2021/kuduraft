@@ -26,6 +26,6 @@ namespace rpc {
 typedef boost::function<void()> ResponseCallback;
 
 }
-}
+} // namespace kudu
 
 #endif

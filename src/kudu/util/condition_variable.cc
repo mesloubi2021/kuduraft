@@ -21,8 +21,9 @@ namespace kudu {
 
 ConditionVariable::ConditionVariable(Mutex* user_lock)
     : user_mutex_(&user_lock->native_handle_)
-#ifdef FB_DO_NOT_REMOVE  // #ifndef NDEBUG
-    , user_lock_(user_lock)
+#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
+      ,
+      user_lock_(user_lock)
 #endif
 {
   int rv = 0;
@@ -49,12 +50,12 @@ ConditionVariable::~ConditionVariable() {
 
 void ConditionVariable::Wait() const {
   ThreadRestrictions::AssertWaitAllowed();
-#ifdef FB_DO_NOT_REMOVE  // #ifndef NDEBUG
+#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
   user_lock_->CheckHeldAndUnmark();
 #endif
   int rv = pthread_cond_wait(&condition_, user_mutex_);
   DCHECK_EQ(0, rv);
-#ifdef FB_DO_NOT_REMOVE  // #ifndef NDEBUG
+#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
   user_lock_->CheckUnheldAndMark();
 #endif
 }
@@ -68,7 +69,7 @@ bool ConditionVariable::WaitUntil(const MonoTime& until) const {
     return false;
   }
 
-#ifdef FB_DO_NOT_REMOVE  // #ifndef NDEBUG
+#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
   user_lock_->CheckHeldAndUnmark();
 #endif
 
@@ -87,9 +88,9 @@ bool ConditionVariable::WaitUntil(const MonoTime& until) const {
   int rv = pthread_cond_timedwait(&condition_, user_mutex_, &absolute_time);
 #endif
   DCHECK(rv == 0 || rv == ETIMEDOUT)
-    << "unexpected pthread_cond_timedwait return value: " << rv;
+      << "unexpected pthread_cond_timedwait return value: " << rv;
 
-#ifdef FB_DO_NOT_REMOVE  // #ifndef NDEBUG
+#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
   user_lock_->CheckUnheldAndMark();
 #endif
   return rv == 0;
@@ -104,7 +105,7 @@ bool ConditionVariable::WaitFor(const MonoDelta& delta) const {
     return false;
   }
 
-#ifdef FB_DO_NOT_REMOVE  // #ifndef NDEBUG
+#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
   user_lock_->CheckHeldAndUnmark();
 #endif
 
@@ -122,8 +123,8 @@ bool ConditionVariable::WaitFor(const MonoDelta& delta) const {
 #endif
 
   DCHECK(rv == 0 || rv == ETIMEDOUT)
-    << "unexpected pthread_cond_timedwait return value: " << rv;
-#ifdef FB_DO_NOT_REMOVE  // #ifndef NDEBUG
+      << "unexpected pthread_cond_timedwait return value: " << rv;
+#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
   user_lock_->CheckUnheldAndMark();
 #endif
   return rv == 0;
@@ -139,4 +140,4 @@ void ConditionVariable::Signal() {
   DCHECK_EQ(0, rv);
 }
 
-}  // namespace kudu
+} // namespace kudu

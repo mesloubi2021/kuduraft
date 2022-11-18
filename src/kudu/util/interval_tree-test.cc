@@ -23,7 +23,7 @@
 #include <memory>
 #include <ostream>
 #include <string>
-#include <tuple>  // IWYU pragma: keep
+#include <tuple> // IWYU pragma: keep
 #include <utility>
 #include <vector>
 
@@ -33,8 +33,8 @@
 
 #include "kudu/gutil/stringprintf.h"
 #include "kudu/gutil/strings/substitute.h"
-#include "kudu/util/interval_tree.h"
 #include "kudu/util/interval_tree-inl.h"
+#include "kudu/util/interval_tree.h"
 #include "kudu/util/test_util.h"
 
 using std::pair;
@@ -45,22 +45,19 @@ using strings::Substitute;
 namespace kudu {
 
 // Test harness.
-class TestIntervalTree : public KuduTest {
-};
+class TestIntervalTree : public KuduTest {};
 
 // Simple interval class for integer intervals.
 struct IntInterval {
   IntInterval(int left, int right, int id = -1)
-      : left(left),
-        right(right),
-        id(id) {
-  }
+      : left(left), right(right), id(id) {}
 
   // boost::none means infinity.
   // [left,  right] is closed interval.
   // [lower, upper) is half-open interval, so the upper is exclusive.
-  bool Intersects(const boost::optional<int>& lower,
-                  const boost::optional<int>& upper) const {
+  bool Intersects(
+      const boost::optional<int>& lower,
+      const boost::optional<int>& upper) const {
     if (lower == boost::none && upper == boost::none) {
       //         [left, right]
       //            |     |
@@ -69,21 +66,25 @@ struct IntInterval {
       //         [left, right]
       //            |
       // [-OO,    upper)
-      if (*upper <= this->left) return false;
+      if (*upper <= this->left)
+        return false;
     } else if (upper == boost::none) {
       //         [left, right]
       //                     \
       //                      [lower, +OO)
-      if (*lower > this->right) return false;
+      if (*lower > this->right)
+        return false;
     } else {
       //         [left, right]
       //                     \
       //                      [lower, upper)
-      if (*lower > this->right) return false;
+      if (*lower > this->right)
+        return false;
       //         [left, right]
       //            |
       // [lower,  upper)
-      if (*upper <= this->left) return false;
+      if (*upper <= this->left)
+        return false;
     }
     return true;
   }
@@ -99,10 +100,7 @@ struct IntInterval {
 // but also can keep a counter of how many times it has been compared. Used
 // for TestBigO below.
 struct CountingQueryPoint {
-  explicit CountingQueryPoint(int v)
-      : val(v),
-        count(new int(0)) {
-  }
+  explicit CountingQueryPoint(int v) : val(v), count(new int(0)) {}
 
   int val;
   std::shared_ptr<int> count;
@@ -119,8 +117,10 @@ struct IntTraits {
     return x.right;
   }
   static int compare(int a, int b) {
-    if (a < b) return -1;
-    if (a > b) return 1;
+    if (a < b)
+      return -1;
+    if (a > b)
+      return 1;
     return 0;
   }
 
@@ -132,9 +132,10 @@ struct IntTraits {
     return -compare(b, a);
   }
 
-  static int compare(const boost::optional<int>& a,
-                     const int b,
-                     const EndpointIfNone& type) {
+  static int compare(
+      const boost::optional<int>& a,
+      const int b,
+      const EndpointIfNone& type) {
     if (a == boost::none) {
       return ((POSITIVE_INFINITY == type) ? 1 : -1);
     }
@@ -142,9 +143,10 @@ struct IntTraits {
     return compare(*a, b);
   }
 
-  static int compare(const int a,
-                     const boost::optional<int>& b,
-                     const EndpointIfNone& type) {
+  static int compare(
+      const int a,
+      const boost::optional<int>& b,
+      const EndpointIfNone& type) {
     return -compare(b, a, type);
   }
 };
@@ -154,14 +156,14 @@ struct IntTraits {
 // It's not necessary to define this to use an interval tree.
 static bool CompareIntervals(const IntInterval& a, const IntInterval& b) {
   return std::make_tuple(a.left, a.right, a.id) <
-    std::make_tuple(b.left, b.right, b.id);
+      std::make_tuple(b.left, b.right, b.id);
 }
 
 // Stringify a list of int intervals, for easy test error reporting.
 static string Stringify(const vector<IntInterval>& intervals) {
   string ret;
   bool first = true;
-  for (const IntInterval &interval : intervals) {
+  for (const IntInterval& interval : intervals) {
     if (!first) {
       ret.append(",");
     }
@@ -171,22 +173,24 @@ static string Stringify(const vector<IntInterval>& intervals) {
 }
 
 // Find any intervals in 'intervals' which contain 'query_point' by brute force.
-static void FindContainingBruteForce(const vector<IntInterval>& intervals,
-                                     int query_point,
-                                     vector<IntInterval>* results) {
-  for (const IntInterval &i : intervals) {
+static void FindContainingBruteForce(
+    const vector<IntInterval>& intervals,
+    int query_point,
+    vector<IntInterval>* results) {
+  for (const IntInterval& i : intervals) {
     if (query_point >= i.left && query_point <= i.right) {
       results->push_back(i);
     }
   }
 }
 
-
-// Find any intervals in 'intervals' which intersect 'query_interval' by brute force.
-static void FindIntersectingBruteForce(const vector<IntInterval>& intervals,
-                                       const boost::optional<int>& lower,
-                                       const boost::optional<int>& upper,
-                                       vector<IntInterval>* results) {
+// Find any intervals in 'intervals' which intersect 'query_interval' by brute
+// force.
+static void FindIntersectingBruteForce(
+    const vector<IntInterval>& intervals,
+    const boost::optional<int>& lower,
+    const boost::optional<int>& upper,
+    vector<IntInterval>* results) {
   for (const IntInterval& i : intervals) {
     if (i.Intersects(lower, upper)) {
       results->push_back(i);
@@ -194,12 +198,12 @@ static void FindIntersectingBruteForce(const vector<IntInterval>& intervals,
   }
 }
 
-
-// Verify that IntervalTree::FindContainingPoint yields the same results as the naive
-// brute-force O(n) algorithm.
-static void VerifyFindContainingPoint(const vector<IntInterval>& all_intervals,
-                                      const IntervalTree<IntTraits>& tree,
-                                      int query_point) {
+// Verify that IntervalTree::FindContainingPoint yields the same results as the
+// naive brute-force O(n) algorithm.
+static void VerifyFindContainingPoint(
+    const vector<IntInterval>& all_intervals,
+    const IntervalTree<IntTraits>& tree,
+    int query_point) {
   vector<IntInterval> results;
   tree.FindContainingPoint(query_point, &results);
   std::sort(results.begin(), results.end(), CompareIntervals);
@@ -212,13 +216,14 @@ static void VerifyFindContainingPoint(const vector<IntInterval>& all_intervals,
   EXPECT_EQ(Stringify(brute_force), Stringify(results));
 }
 
-// Verify that IntervalTree::FindIntersectingInterval yields the same results as the naive
-// brute-force O(n) algorithm.
-static void VerifyFindIntersectingInterval(const vector<IntInterval>& all_intervals,
-                                           const IntervalTree<IntTraits>& tree,
-                                           const IntInterval& query_interval) {
-  const auto& Process = [&] (const boost::optional<int>& lower,
-                             const boost::optional<int>& upper) {
+// Verify that IntervalTree::FindIntersectingInterval yields the same results as
+// the naive brute-force O(n) algorithm.
+static void VerifyFindIntersectingInterval(
+    const vector<IntInterval>& all_intervals,
+    const IntervalTree<IntTraits>& tree,
+    const IntInterval& query_interval) {
+  const auto& Process = [&](const boost::optional<int>& lower,
+                            const boost::optional<int>& upper) {
     vector<IntInterval> results;
     tree.FindIntersectingInterval(lower, upper, &results);
     std::sort(results.begin(), results.end(), CompareIntervals);
@@ -233,7 +238,9 @@ static void VerifyFindIntersectingInterval(const vector<IntInterval>& all_interv
     // [lower, upper)
     boost::optional<int> lower = query_interval.left;
     boost::optional<int> upper = query_interval.right;
-    SCOPED_TRACE(Stringify(all_intervals) + StringPrintf(" {q=[%d, %d)}", *lower, *upper));
+    SCOPED_TRACE(
+        Stringify(all_intervals) +
+        StringPrintf(" {q=[%d, %d)}", *lower, *upper));
     Process(lower, upper);
   }
 
@@ -241,7 +248,8 @@ static void VerifyFindIntersectingInterval(const vector<IntInterval>& all_interv
     // [-OO, upper)
     boost::optional<int> lower = boost::none;
     boost::optional<int> upper = query_interval.right;
-    SCOPED_TRACE(Stringify(all_intervals) + StringPrintf(" {q=[-OO, %d)}", *upper));
+    SCOPED_TRACE(
+        Stringify(all_intervals) + StringPrintf(" {q=[-OO, %d)}", *upper));
     Process(lower, upper);
   }
 
@@ -249,7 +257,8 @@ static void VerifyFindIntersectingInterval(const vector<IntInterval>& all_interv
     // [lower, +OO)
     boost::optional<int> lower = query_interval.left;
     boost::optional<int> upper = boost::none;
-    SCOPED_TRACE(Stringify(all_intervals) + StringPrintf(" {q=[%d, +OO)}", *lower));
+    SCOPED_TRACE(
+        Stringify(all_intervals) + StringPrintf(" {q=[%d, +OO)}", *lower));
     Process(lower, upper);
   }
 
@@ -291,7 +300,8 @@ TEST_F(TestIntervalTree, TestBasic) {
 TEST_F(TestIntervalTree, TestRandomized) {
   SeedRandom();
 
-  // Generate 100 random intervals spanning 0-200 and build an interval tree from them.
+  // Generate 100 random intervals spanning 0-200 and build an interval tree
+  // from them.
   vector<IntInterval> intervals = CreateRandomIntervals();
   IntervalTree<IntTraits> t(intervals);
 
@@ -332,11 +342,12 @@ TEST_F(TestIntervalTree, TestBigO) {
       for (int i = 0; i < num_queries; i++) {
         queries.emplace_back(rand() % 100);
       }
-      std::sort(queries.begin(), queries.end(),
-                [](const CountingQueryPoint& a,
-                   const CountingQueryPoint& b) {
-                  return a.val < b.val;
-                });
+      std::sort(
+          queries.begin(),
+          queries.end(),
+          [](const CountingQueryPoint& a, const CountingQueryPoint& b) {
+            return a.val < b.val;
+          });
 
       // Test using batch algorithm.
       int num_results_batch = 0;
@@ -364,8 +375,9 @@ TEST_F(TestIntervalTree, TestBigO) {
       }
       ASSERT_EQ(num_results_simple, num_results_batch);
 
-      LOG(INFO) << num_intervals << "\t" << num_queries << "\t" << num_results_simple << "\t"
-                << num_comparisons_simple << "\t" << num_comparisons_batch;
+      LOG(INFO) << num_intervals << "\t" << num_queries << "\t"
+                << num_results_simple << "\t" << num_comparisons_simple << "\t"
+                << num_comparisons_batch;
     }
   }
 }
@@ -394,8 +406,7 @@ TEST_F(TestIntervalTree, TestMultiQuery) {
 
   vector<pair<string, int>> results_batch;
   t.ForEachIntervalContainingPoints(
-      queries,
-      [&](int query_point, const IntInterval& interval) {
+      queries, [&](int query_point, const IntInterval& interval) {
         results_batch.emplace_back(interval.ToString(), query_point);
       });
 

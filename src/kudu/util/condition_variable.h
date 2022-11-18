@@ -102,17 +102,16 @@ class ConditionVariable {
   void Signal();
 
  private:
-
   mutable pthread_cond_t condition_;
   pthread_mutex_t* user_mutex_;
 
-#ifdef FB_DO_NOT_REMOVE  // #ifndef NDEBUG
-  Mutex* user_lock_;     // Needed to adjust shadow lock state on wait.
+#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
+  Mutex* user_lock_; // Needed to adjust shadow lock state on wait.
 #endif
 
   DISALLOW_COPY_AND_ASSIGN(ConditionVariable);
 };
 
-}  // namespace kudu
+} // namespace kudu
 
-#endif  // BASE_SYNCHRONIZATION_CONDITION_VARIABLE_H_
+#endif // BASE_SYNCHRONIZATION_CONDITION_VARIABLE_H_

@@ -22,7 +22,7 @@
 
 namespace kudu {
 
-void ErrnoToCString(int err, char *buf, size_t buf_len);
+void ErrnoToCString(int err, char* buf, size_t buf_len);
 
 // Return a string representing an errno.
 inline static std::string ErrnoToString(int err) {

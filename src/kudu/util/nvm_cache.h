@@ -26,6 +26,6 @@ class Cache;
 // Create a cache in persistent memory with the given capacity.
 Cache* NewLRUNvmCache(size_t capacity, const std::string& id);
 
-}  // namespace kudu
+} // namespace kudu
 
 #endif

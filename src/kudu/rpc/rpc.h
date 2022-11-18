@@ -57,11 +57,13 @@ struct RetriableRpcStatus {
     // worth retrying the request at a later time.
     SERVICE_UNAVAILABLE,
 
-    // For rpc's that are meant only for the leader of a shared resource, when the server
+    // For rpc's that are meant only for the leader of a shared resource, when
+    // the server
     // we're interacting with is not the leader.
     REPLICA_NOT_LEADER,
 
-    // The server doesn't know the resource we're interacting with. For instance a TabletServer
+    // The server doesn't know the resource we're interacting with. For instance
+    // a TabletServer
     // is not part of the config for the tablet we're trying to write to.
     RESOURCE_NOT_FOUND,
 
@@ -75,33 +77,38 @@ struct RetriableRpcStatus {
   Status status;
 };
 
-// This class picks a server among a possible set of servers serving a given resource.
+// This class picks a server among a possible set of servers serving a given
+// resource.
 //
-// TODO Currently this only picks the leader, though it wouldn't be unfeasible to have this
-// have an enum so that it can pick any server.
+// TODO Currently this only picks the leader, though it wouldn't be unfeasible
+// to have this have an enum so that it can pick any server.
 template <class Server>
 class ServerPicker : public RefCountedThreadSafe<ServerPicker<Server>> {
  public:
   virtual ~ServerPicker() {}
 
-  typedef Callback<void(const Status& status, Server* server)> ServerPickedCallback;
+  typedef Callback<void(const Status& status, Server* server)>
+      ServerPickedCallback;
 
   // Picks the leader among the replicas serving a resource.
   // If the leader was found, it calls the callback with Status::OK() and
   // with 'server' set to the current leader, otherwise calls the callback
   // with 'status' set to the failure reason, and 'server' set to nullptr.
-  // If picking a leader takes longer than 'deadline' the callback is called with
-  // Status::TimedOut().
-  virtual void PickLeader(const ServerPickedCallback& callback, const MonoTime& deadline) = 0;
+  // If picking a leader takes longer than 'deadline' the callback is called
+  // with Status::TimedOut().
+  virtual void PickLeader(
+      const ServerPickedCallback& callback,
+      const MonoTime& deadline) = 0;
 
   // Marks a server as failed/unacessible.
-  virtual void MarkServerFailed(Server *server, const Status &status) = 0;
+  virtual void MarkServerFailed(Server* server, const Status& status) = 0;
 
-  // Marks a server as not the leader of config serving the resource we're trying to interact with.
+  // Marks a server as not the leader of config serving the resource we're
+  // trying to interact with.
   virtual void MarkReplicaNotLeader(Server* replica) = 0;
 
   // Marks a server as not serving the resource we want.
-  virtual void MarkResourceNotFound(Server *replica) = 0;
+  virtual void MarkResourceNotFound(Server* replica) = 0;
 };
 
 // Provides utilities for retrying failed RPCs.
@@ -110,9 +117,7 @@ class ServerPicker : public RefCountedThreadSafe<ServerPicker<Server>> {
 class RpcRetrier {
  public:
   RpcRetrier(MonoTime deadline, std::shared_ptr<rpc::Messenger> messenger)
-      : attempt_num_(1),
-        deadline_(deadline),
-        messenger_(std::move(messenger)) {
+      : attempt_num_(1), deadline_(deadline), messenger_(std::move(messenger)) {
     if (deadline_.Initialized()) {
       controller_.set_deadline(deadline_);
     }
@@ -139,16 +144,24 @@ class RpcRetrier {
   // Callers should ensure that 'rpc' remains alive.
   void DelayedRetry(Rpc* rpc, const Status& why_status);
 
-  RpcController* mutable_controller() { return &controller_; }
-  const RpcController& controller() const { return controller_; }
+  RpcController* mutable_controller() {
+    return &controller_;
+  }
+  const RpcController& controller() const {
+    return controller_;
+  }
 
-  const MonoTime& deadline() const { return deadline_; }
+  const MonoTime& deadline() const {
+    return deadline_;
+  }
 
   const std::shared_ptr<Messenger>& messenger() const {
     return messenger_;
   }
 
-  int attempt_num() const { return attempt_num_; }
+  int attempt_num() const {
+    return attempt_num_;
+  }
 
   // Called when an RPC comes up for retrying. Actually sends the RPC.
   void DelayedRetryCb(Rpc* rpc, const Status& status);
@@ -179,10 +192,8 @@ class RpcRetrier {
 // An in-flight remote procedure call to some server.
 class Rpc {
  public:
-  Rpc(const MonoTime& deadline,
-      std::shared_ptr<rpc::Messenger> messenger)
-      : retrier_(deadline, std::move(messenger)) {
-  }
+  Rpc(const MonoTime& deadline, std::shared_ptr<rpc::Messenger> messenger)
+      : retrier_(deadline, std::move(messenger)) {}
 
   virtual ~Rpc() {}
 
@@ -196,11 +207,17 @@ class Rpc {
 
   // Returns the number of times this RPC has been sent. Will always be at
   // least one.
-  int num_attempts() const { return retrier().attempt_num(); }
+  int num_attempts() const {
+    return retrier().attempt_num();
+  }
 
  protected:
-  const RpcRetrier& retrier() const { return retrier_; }
-  RpcRetrier* mutable_retrier() { return &retrier_; }
+  const RpcRetrier& retrier() const {
+    return retrier_;
+  }
+  RpcRetrier* mutable_retrier() {
+    return &retrier_;
+  }
 
  private:
   friend class RpcRetrier;

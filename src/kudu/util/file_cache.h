@@ -100,10 +100,11 @@ class FileCache {
   // The 'cache_name' is used to disambiguate amongst other file cache
   // instances. The cache will use 'max_open_files' as a soft upper bound on
   // the number of files open at any given time.
-  FileCache(const std::string& cache_name,
-            Env* env,
-            int max_open_files,
-            const scoped_refptr<MetricEntity>& entity);
+  FileCache(
+      const std::string& cache_name,
+      Env* env,
+      int max_open_files,
+      const scoped_refptr<MetricEntity>& entity);
 
   // Destroys the file cache.
   ~FileCache();
@@ -120,8 +121,9 @@ class FileCache {
   // The descriptor is opened immediately to verify that the on-disk file can
   // be opened, but may be closed later if the cache reaches its upper bound on
   // the number of open files.
-  Status OpenExistingFile(const std::string& file_name,
-                          std::shared_ptr<FileType>* file);
+  Status OpenExistingFile(
+      const std::string& file_name,
+      std::shared_ptr<FileType>* file);
 
   // Deletes a file by name through the cache.
   //
@@ -134,8 +136,8 @@ class FileCache {
   // path from the cache, and invalidates any previously-opened descriptors
   // associated with this file.
   //
-  // If a file with the same path is opened again, the actual path will be opened from
-  // disk.
+  // If a file with the same path is opened again, the actual path will be
+  // opened from disk.
   //
   // This operation should be used during 'rename-to-replace' patterns, eg:
   //
@@ -164,7 +166,7 @@ class FileCache {
  private:
   friend class internal::BaseDescriptor<FileType>;
 
-  template<class FileType2>
+  template <class FileType2>
   FRIEND_TEST(FileCacheTest, TestBasicOperations);
 
   // Looks up a descriptor by file name.
@@ -194,8 +196,8 @@ class FileCache {
   mutable simple_spinlock lock_;
 
   // Maps filenames to descriptors.
-  std::unordered_map<std::string,
-                     std::weak_ptr<internal::Descriptor<FileType>>> descriptors_;
+  std::unordered_map<std::string, std::weak_ptr<internal::Descriptor<FileType>>>
+      descriptors_;
 
   // Calls RunDescriptorExpiry() in a loop until 'running_' isn't set.
   scoped_refptr<Thread> descriptor_expiry_thread_;

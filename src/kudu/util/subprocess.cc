@@ -75,9 +75,9 @@ static double kProcessWaitTimeoutSeconds = 5.0;
 
 static const char* kProcSelfFd =
 #if defined(__APPLE__)
-  "/dev/fd";
+    "/dev/fd";
 #else
-  "/proc/self/fd";
+    "/proc/self/fd";
 #endif // defined(__APPLE__)
 
 #if defined(__linux__)
@@ -93,8 +93,10 @@ static const char* kProcSelfFd =
 Status OpenProcFdDir(DIR** dir) {
   *dir = opendir(kProcSelfFd);
   if (PREDICT_FALSE(dir == nullptr)) {
-    return Status::IOError(Substitute("opendir(\"$0\") failed", kProcSelfFd),
-                           ErrnoToString(errno), errno);
+    return Status::IOError(
+        Substitute("opendir(\"$0\") failed", kProcSelfFd),
+        ErrnoToString(errno),
+        errno);
   }
   return Status::OK();
 }
@@ -104,8 +106,11 @@ Status OpenProcFdDir(DIR** dir) {
 void CloseProcFdDir(DIR* dir) {
   if (PREDICT_FALSE(closedir(dir) == -1)) {
     LOG(WARNING) << "Unable to close fd dir: "
-                 << Status::IOError(Substitute("closedir(\"$0\") failed", kProcSelfFd),
-                                    ErrnoToString(errno), errno).ToString();
+                 << Status::IOError(
+                        Substitute("closedir(\"$0\") failed", kProcSelfFd),
+                        ErrnoToString(errno),
+                        errno)
+                        .ToString();
   }
 }
 
@@ -140,11 +145,10 @@ void CloseNonStandardFDs(DIR* fd_dir) {
   // dir->lock, so seems not worth the added complexity in lifecycle & plumbing.
   while ((ent = READDIR(fd_dir)) != nullptr) {
     uint32_t fd;
-    if (!safe_strtou32(ent->d_name, &fd)) continue;
-    if (!(fd == STDIN_FILENO  ||
-          fd == STDOUT_FILENO ||
-          fd == STDERR_FILENO ||
-          fd == dir_fd))  {
+    if (!safe_strtou32(ent->d_name, &fd))
+      continue;
+    if (!(fd == STDIN_FILENO || fd == STDOUT_FILENO || fd == STDERR_FILENO ||
+          fd == dir_fd)) {
       int ret;
       RETRY_ON_EINTR(ret, close(fd));
     }
@@ -189,7 +193,7 @@ class ReadFdsFullyHelper {
     watcher_.start();
   }
 
-  void operator() (ev::io &w, int revents) {
+  void operator()(ev::io& w, int revents) {
     DCHECK_EQ(ev::READ, revents);
 
     char buf[1024];
@@ -200,8 +204,8 @@ class ReadFdsFullyHelper {
       w.stop();
     } else if (n < 0) {
       // A fatal error. Store it and stop watching.
-      status_ = Status::IOError("IO error reading from " + progname_,
-                                ErrnoToString(errno), errno);
+      status_ = Status::IOError(
+          "IO error reading from " + progname_, ErrnoToString(errno), errno);
       w.stop();
     } else {
       // Add our bytes and keep watching.
@@ -209,8 +213,12 @@ class ReadFdsFullyHelper {
     }
   }
 
-  const Status& status() const { return status_; }
-  const string& output() const { return output_; }
+  const Status& status() const {
+    return status_;
+  }
+  const string& output() const {
+    return output_;
+  }
 
  private:
   const string progname_;
@@ -223,9 +231,10 @@ class ReadFdsFullyHelper {
 // Reads from all descriptors in 'fds' until EOF on all of them. If any read
 // yields an error, it is returned. Otherwise, 'out' contains the bytes read
 // for each fd, in the same order as was in 'fds'.
-Status ReadFdsFully(const string& progname,
-                    const vector<int>& fds,
-                    vector<string>* out) {
+Status ReadFdsFully(
+    const string& progname,
+    const vector<int>& fds,
+    vector<string>* out) {
   ev::dynamic_loop loop;
 
   // Set up a watcher for each fd.
@@ -264,10 +273,10 @@ Subprocess::Subprocess(vector<string> argv, int sig_on_destruct)
   // By convention, the first argument in argv is the base name of the program.
   argv_[0] = BaseName(argv_[0]);
 
-  fd_state_[STDIN_FILENO]   = PIPED;
-  fd_state_[STDOUT_FILENO]  = SHARED;
-  fd_state_[STDERR_FILENO]  = SHARED;
-  child_fds_[STDIN_FILENO]  = -1;
+  fd_state_[STDIN_FILENO] = PIPED;
+  fd_state_[STDOUT_FILENO] = SHARED;
+  fd_state_[STDERR_FILENO] = SHARED;
+  child_fds_[STDIN_FILENO] = -1;
   child_fds_[STDOUT_FILENO] = -1;
   child_fds_[STDERR_FILENO] = -1;
 }
@@ -276,10 +285,12 @@ Subprocess::~Subprocess() {
   if (state_ == kRunning) {
     LOG(WARNING) << Substitute(
         "Child process $0 ($1) was orphaned. Sending signal $2...",
-        child_pid_, JoinStrings(argv_, " "), sig_on_destruct_);
-    WARN_NOT_OK(KillAndWait(sig_on_destruct_),
-                Substitute("Failed to KillAndWait() with signal $0",
-                           sig_on_destruct_));
+        child_pid_,
+        JoinStrings(argv_, " "),
+        sig_on_destruct_);
+    WARN_NOT_OK(
+        KillAndWait(sig_on_destruct_),
+        Substitute("Failed to KillAndWait() with signal $0", sig_on_destruct_));
   }
 
   for (int i = 0; i < 3; ++i) {
@@ -361,8 +372,8 @@ Status Subprocess::Start() {
 
   DIR* fd_dir = nullptr;
   RETURN_NOT_OK_PREPEND(OpenProcFdDir(&fd_dir), "Unable to open fd dir");
-  unique_ptr<DIR, std::function<void(DIR*)>> fd_dir_closer(fd_dir,
-                                                           CloseProcFdDir);
+  unique_ptr<DIR, std::function<void(DIR*)>> fd_dir_closer(
+      fd_dir, CloseProcFdDir);
   int ret;
   RETRY_ON_EINTR(ret, fork());
   if (ret == -1) {
@@ -447,7 +458,8 @@ Status Subprocess::Start() {
     // variant of exec to do $PATH searching if the executable specified
     // by the caller isn't an absolute path.
     for (const auto& env : env_) {
-      ignore_result(setenv(env.first.c_str(), env.second.c_str(), 1 /* overwrite */));
+      ignore_result(
+          setenv(env.first.c_str(), env.second.c_str(), 1 /* overwrite */));
     }
 
     execvp(program_.c_str(), &argv_ptrs[0]);
@@ -459,11 +471,14 @@ Status Subprocess::Start() {
     child_pid_ = ret;
     // Close child's side of the pipes
     int close_ret;
-    if (fd_state_[STDIN_FILENO]  == PIPED) RETRY_ON_EINTR(close_ret, close(child_stdin[0]));
-    if (fd_state_[STDOUT_FILENO] == PIPED) RETRY_ON_EINTR(close_ret, close(child_stdout[1]));
-    if (fd_state_[STDERR_FILENO] == PIPED) RETRY_ON_EINTR(close_ret, close(child_stderr[1]));
+    if (fd_state_[STDIN_FILENO] == PIPED)
+      RETRY_ON_EINTR(close_ret, close(child_stdin[0]));
+    if (fd_state_[STDOUT_FILENO] == PIPED)
+      RETRY_ON_EINTR(close_ret, close(child_stdout[1]));
+    if (fd_state_[STDERR_FILENO] == PIPED)
+      RETRY_ON_EINTR(close_ret, close(child_stderr[1]));
     // Keep parent's side of the pipes
-    child_fds_[STDIN_FILENO]  = child_stdin[1];
+    child_fds_[STDIN_FILENO] = child_stdin[1];
     child_fds_[STDOUT_FILENO] = child_stdout[0];
     child_fds_[STDERR_FILENO] = child_stderr[0];
 
@@ -494,8 +509,8 @@ Status Subprocess::Start() {
           break;
         } else if (rc == -1) {
           // Other errors besides EINTR are not expected.
-          return Status::RuntimeError("Unexpected error from the sync pipe",
-                                      ErrnoToString(err), err);
+          return Status::RuntimeError(
+              "Unexpected error from the sync pipe", ErrnoToString(err), err);
         }
         // No data is expected from the sync pipe.
         LOG(FATAL) << Substitute("$0: unexpected data from the sync pipe", rc);
@@ -533,7 +548,8 @@ Status Subprocess::GetProcfsState(int pid, ProcfsState* state) {
   string data_str = data.ToString();
   const char* end_parens = strrchr(data_str.c_str(), ')');
   if (end_parens == nullptr) {
-    return Status::RuntimeError(Substitute("unexpected layout in $0", filename));
+    return Status::RuntimeError(
+        Substitute("unexpected layout in $0", filename));
   }
   char proc_state = end_parens[2];
 
@@ -555,9 +571,7 @@ Status Subprocess::Kill(int signal) {
     return Status::IllegalState(err_str);
   }
   if (kill(child_pid_, signal) != 0) {
-    return Status::RuntimeError("Unable to kill",
-                                ErrnoToString(errno),
-                                errno);
+    return Status::RuntimeError("Unable to kill", ErrnoToString(errno), errno);
   }
 
   // Signal delivery is often asynchronous. For some signals, we try to wait
@@ -597,11 +611,10 @@ Status Subprocess::KillAndWait(int signal) {
   // This is a fatal error because all errors in Kill() are signal-independent,
   // so Kill(SIGKILL) is just as likely to fail if this did.
   RETURN_NOT_OK_PREPEND(
-      Kill(signal), Substitute("Failed to send signal $0 to $1",
-                               signal, procname));
+      Kill(signal),
+      Substitute("Failed to send signal $0 to $1", signal, procname));
   if (signal == SIGKILL) {
-    RETURN_NOT_OK_PREPEND(
-        Wait(), Substitute("Failed to wait on $0", procname));
+    RETURN_NOT_OK_PREPEND(Wait(), Substitute("Failed to wait on $0", procname));
   } else {
     Status s;
     Stopwatch sw;
@@ -611,8 +624,8 @@ Status Subprocess::KillAndWait(int signal) {
       if (s.ok()) {
         break;
       } else if (!s.IsTimedOut()) {
-        // An unexpected error in WaitNoBlock() is likely to manifest repeatedly,
-        // so there's no point in retrying this.
+        // An unexpected error in WaitNoBlock() is likely to manifest
+        // repeatedly, so there's no point in retrying this.
         RETURN_NOT_OK_PREPEND(
             s, Substitute("Unexpected failure while waiting on $0", procname));
       }
@@ -638,8 +651,8 @@ Status Subprocess::GetExitStatus(int* exit_status, string* info_str) const {
     if (status == 0) {
       info = Substitute("$0: process successfully exited", program_);
     } else {
-      info = Substitute("$0: process exited with non-zero status $1",
-                        program_, status);
+      info = Substitute(
+          "$0: process exited with non-zero status $1", program_, status);
     }
   } else if (WIFSIGNALED(wait_status_)) {
     // Using signal number as exit status.
@@ -652,8 +665,10 @@ Status Subprocess::GetExitStatus(int* exit_status, string* info_str) const {
 #endif
   } else {
     status = -1;
-    info = Substitute("$0: process reported unexpected wait status $1",
-                      program_, wait_status_);
+    info = Substitute(
+        "$0: process reported unexpected wait status $1",
+        program_,
+        wait_status_);
     LOG(DFATAL) << info;
   }
   if (exit_status) {
@@ -670,10 +685,11 @@ Status Subprocess::Call(const string& arg_str) {
   return Call(argv, "", nullptr, nullptr);
 }
 
-Status Subprocess::Call(const vector<string>& argv,
-                        const string& stdin_in,
-                        string* stdout_out,
-                        string* stderr_out) {
+Status Subprocess::Call(
+    const vector<string>& argv,
+    const string& stdin_in,
+    string* stdout_out,
+    string* stderr_out) {
   Subprocess p(argv);
 
   if (stdout_out) {
@@ -682,22 +698,26 @@ Status Subprocess::Call(const vector<string>& argv,
   if (stderr_out) {
     p.ShareParentStderr(false);
   }
-  RETURN_NOT_OK_PREPEND(p.Start(),
-                        "Unable to fork " + argv[0]);
+  RETURN_NOT_OK_PREPEND(p.Start(), "Unable to fork " + argv[0]);
 
   if (!stdin_in.empty()) {
     ssize_t written;
-    RETRY_ON_EINTR(written, write(p.to_child_stdin_fd(), stdin_in.data(), stdin_in.size()));
+    RETRY_ON_EINTR(
+        written,
+        write(p.to_child_stdin_fd(), stdin_in.data(), stdin_in.size()));
     if (written < stdin_in.size()) {
-      return Status::IOError("Unable to write to child process stdin",
-                             ErrnoToString(errno), errno);
+      return Status::IOError(
+          "Unable to write to child process stdin",
+          ErrnoToString(errno),
+          errno);
     }
   }
 
   int err;
   RETRY_ON_EINTR(err, close(p.ReleaseChildStdinFd()));
   if (PREDICT_FALSE(err != 0)) {
-    return Status::IOError("Unable to close child process stdin", ErrnoToString(errno), errno);
+    return Status::IOError(
+        "Unable to close child process stdin", ErrnoToString(errno), errno);
   }
 
   vector<int> fds;
@@ -754,8 +774,8 @@ Status Subprocess::DoWait(int* wait_status, WaitMode mode) {
   int rc;
   RETRY_ON_EINTR(rc, waitpid(child_pid_, &status, options));
   if (rc == -1) {
-    return Status::RuntimeError("Unable to wait on child",
-                                ErrnoToString(errno), errno);
+    return Status::RuntimeError(
+        "Unable to wait on child", ErrnoToString(errno), errno);
   }
   if (mode == NON_BLOCKING && rc == 0) {
     return Status::TimedOut("");

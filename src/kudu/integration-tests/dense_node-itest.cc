@@ -49,18 +49,30 @@ METRIC_DECLARE_gauge_uint64(log_block_manager_containers);
 METRIC_DECLARE_gauge_uint64(log_block_manager_full_containers);
 METRIC_DECLARE_gauge_uint64(threads_running);
 
-DEFINE_bool(measure_startup_drop_caches, false,
-            "Whether to drop kernel caches before measuring startup time. Must be root");
-DEFINE_bool(measure_startup_sync, false,
-            "Whether to call sync() before measuring startup time");
-DEFINE_bool(measure_startup_wait_for_bootstrap, false,
-            "Whether to wait for all tablets to finish bootstrapping when measuring startup time");
+DEFINE_bool(
+    measure_startup_drop_caches,
+    false,
+    "Whether to drop kernel caches before measuring startup time. Must be root");
+DEFINE_bool(
+    measure_startup_sync,
+    false,
+    "Whether to call sync() before measuring startup time");
+DEFINE_bool(
+    measure_startup_wait_for_bootstrap,
+    false,
+    "Whether to wait for all tablets to finish bootstrapping when measuring startup time");
 DEFINE_int32(num_columns, 100, "Number of columns in each tablet");
 DEFINE_int32(num_seconds, 10, "Number of seconds to run the test");
 DEFINE_int32(num_tablets, 100, "Number of tablets to create");
-DEFINE_int32(max_blocks_per_container, 8, "Block number limit for each LBM container");
-DEFINE_bool(enable_fsync, false, "Whether to enable fsync (disabled by default "
-            "for all ExternalMiniCluster tests)");
+DEFINE_int32(
+    max_blocks_per_container,
+    8,
+    "Block number limit for each LBM container");
+DEFINE_bool(
+    enable_fsync,
+    false,
+    "Whether to enable fsync (disabled by default "
+    "for all ExternalMiniCluster tests)");
 
 namespace kudu {
 
@@ -74,8 +86,7 @@ using std::unique_ptr;
 using std::vector;
 using strings::Substitute;
 
-class DenseNodeTest : public ExternalMiniClusterITestBase {
-};
+class DenseNodeTest : public ExternalMiniClusterITestBase {};
 
 // Integration test that simulates "dense" Kudu nodes.
 //
@@ -104,8 +115,8 @@ TEST_F(DenseNodeTest, RunTest) {
 
       // Drastically increase the number of LBM containers by limiting the
       // number of blocks in each.
-      Substitute("--log_container_max_blocks=$0",
-                 FLAGS_max_blocks_per_container),
+      Substitute(
+          "--log_container_max_blocks=$0", FLAGS_max_blocks_per_container),
 
       // UNDO delta block GC runs a lot to eagerly open newly created cfiles.
       // Disable it so we can maximize flushes and compactions.
@@ -121,14 +132,12 @@ TEST_F(DenseNodeTest, RunTest) {
       // The tserver sometimes crashes with a SIGSEGV in the metrics logging
       // thread while trying to unwind a stack from within tcmalloc. It's
       // unclear as to why, but disabling the logging appears to fix it.
-      "--metrics_log_interval_ms=0"
-  };
+      "--metrics_log_interval_ms=0"};
 
   opts.extra_master_flags = {
       // The number of columns requested may be over the max. In case it is,
       // adjust the max upwards.
-      Substitute("--max_num_columns=$0", FLAGS_num_columns)
-  };
+      Substitute("--max_num_columns=$0", FLAGS_num_columns)};
 
   if (FLAGS_enable_fsync) {
     opts.extra_tserver_flags.emplace_back("--never_fsync=false");
@@ -138,8 +147,8 @@ TEST_F(DenseNodeTest, RunTest) {
   // With the amount of data we're going to write, we need to make sure the
   // tserver has enough time to start back up (startup is only considered to be
   // "complete" when the tserver has loaded all fs metadata from disk).
-  opts.start_process_timeout = MonoDelta::FromSeconds(
-      std::max(FLAGS_num_seconds * 10.0, opts.start_process_timeout.ToSeconds()));
+  opts.start_process_timeout = MonoDelta::FromSeconds(std::max(
+      FLAGS_num_seconds * 10.0, opts.start_process_timeout.ToSeconds()));
 
   NO_FATALS(StartClusterWithOpts(std::move(opts)));
 
@@ -176,15 +185,20 @@ TEST_F(DenseNodeTest, RunTest) {
   // Collect some interesting metrics. The cluster is shut down before the
   // metrics are logged so that they're easier to find in the log output.
   vector<pair<string, int64_t>> metrics;
-  for (const auto* m : { &METRIC_log_block_manager_blocks_under_management,
-                         &METRIC_log_block_manager_bytes_under_management,
-                         &METRIC_log_block_manager_containers,
-                         &METRIC_log_block_manager_full_containers,
-                         &METRIC_threads_running }) {
+  for (const auto* m :
+       {&METRIC_log_block_manager_blocks_under_management,
+        &METRIC_log_block_manager_bytes_under_management,
+        &METRIC_log_block_manager_containers,
+        &METRIC_log_block_manager_full_containers,
+        &METRIC_threads_running}) {
     int64_t value;
     ASSERT_OK(itest::GetInt64Metric(
-        cluster_->tablet_server(0)->bound_http_hostport(), &METRIC_ENTITY_server,
-        "kudu.tabletserver", m, "value", &value));
+        cluster_->tablet_server(0)->bound_http_hostport(),
+        &METRIC_ENTITY_server,
+        "kudu.tabletserver",
+        m,
+        "value",
+        &value));
     metrics.emplace_back(m->name(), value);
   }
   cluster_->Shutdown();
@@ -219,9 +233,10 @@ TEST_F(DenseNodeTest, RunTest) {
   if (FLAGS_measure_startup_wait_for_bootstrap) {
     LOG_TIMING(INFO, "bootstrapping tablets") {
       LOG(INFO) << "waiting for tablets running";
-      cluster_->WaitForTabletsRunning(cluster_->tablet_server(0),
-                                      FLAGS_num_tablets,
-                                      MonoDelta::FromSeconds(3600));
+      cluster_->WaitForTabletsRunning(
+          cluster_->tablet_server(0),
+          FLAGS_num_tablets,
+          MonoDelta::FromSeconds(3600));
     }
   } else {
     LOG(INFO) << "not waiting for bootstrapping tablets (flag disabled)";

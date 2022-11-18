@@ -32,10 +32,7 @@ namespace kudu {
 class Cache;
 class MetricEntity;
 
-enum CacheType {
-  DRAM_CACHE,
-  NVM_CACHE
-};
+enum CacheType { DRAM_CACHE, NVM_CACHE };
 
 // Create a new cache with a fixed size capacity.  This implementation
 // of Cache uses a least-recently-used eviction policy.
@@ -51,14 +48,14 @@ class Cache {
     virtual ~EvictionCallback() {}
   };
 
-  Cache() { }
+  Cache() {}
 
   // Destroys all existing entries by calling the "deleter"
   // function that was passed to the constructor.
   virtual ~Cache();
 
   // Opaque handle to an entry stored in the cache.
-  struct Handle { };
+  struct Handle {};
 
   // Custom handle "deleter", primarily intended for use with std::unique_ptr.
   //
@@ -83,9 +80,7 @@ class Cache {
   //
   class HandleDeleter {
    public:
-    explicit HandleDeleter(Cache* c)
-        : c_(c) {
-    }
+    explicit HandleDeleter(Cache* c) : c_(c) {}
 
     void operator()(Cache::Handle* h) const {
       c_->Release(h);
@@ -96,15 +91,12 @@ class Cache {
   };
   typedef std::unique_ptr<Handle, HandleDeleter> UniqueHandle;
 
-  // Passing EXPECT_IN_CACHE will increment the hit/miss metrics that track the number of times
-  // blocks were requested that the users were hoping to get the block from the cache, along with
-  // with the basic metrics.
-  // Passing NO_EXPECT_IN_CACHE will only increment the basic metrics.
-  // This helps in determining if we are effectively caching the blocks that matter the most.
-  enum CacheBehavior {
-    EXPECT_IN_CACHE,
-    NO_EXPECT_IN_CACHE
-  };
+  // Passing EXPECT_IN_CACHE will increment the hit/miss metrics that track the
+  // number of times blocks were requested that the users were hoping to get the
+  // block from the cache, along with with the basic metrics. Passing
+  // NO_EXPECT_IN_CACHE will only increment the basic metrics. This helps in
+  // determining if we are effectively caching the blocks that matter the most.
+  enum CacheBehavior { EXPECT_IN_CACHE, NO_EXPECT_IN_CACHE };
 
   // If the cache has no mapping for "key", returns NULL.
   //
@@ -136,10 +128,11 @@ class Cache {
   // Insertion path
   // ------------------------------------------------------------
   //
-  // Because some cache implementations (eg NVM) manage their own memory, and because we'd
-  // like to read blocks directly into cache-managed memory rather than causing an extra
-  // memcpy, the insertion of a new element into the cache requires two phases. First, a
-  // PendingHandle is allocated with space for the value, and then it is later inserted.
+  // Because some cache implementations (eg NVM) manage their own memory, and
+  // because we'd like to read blocks directly into cache-managed memory rather
+  // than causing an extra memcpy, the insertion of a new element into the cache
+  // requires two phases. First, a PendingHandle is allocated with space for the
+  // value, and then it is later inserted.
   //
   // For example:
   //
@@ -155,7 +148,7 @@ class Cache {
 
   // Opaque handle to an entry which is being prepared to be added to
   // the cache.
-  struct PendingHandle { };
+  struct PendingHandle {};
 
   // Indicates that the charge of an item in the cache should be calculated
   // based on its memory consumption.
@@ -167,16 +160,17 @@ class Cache {
   // The allocated handle has enough space such that the value can
   // be written into cache_->MutableValue(handle).
   //
-  // If 'charge' is not 'kAutomaticCharge', then the cache capacity will be charged
-  // the explicit amount. This is useful when caching items that are small but need to
-  // maintain a bounded count (eg file descriptors) rather than caring about their actual
-  // memory usage.
+  // If 'charge' is not 'kAutomaticCharge', then the cache capacity will be
+  // charged the explicit amount. This is useful when caching items that are
+  // small but need to maintain a bounded count (eg file descriptors) rather
+  // than caring about their actual memory usage.
   //
   // Note that this does not mutate the cache itself: lookups will
   // not be able to find the provided key until it is inserted.
   //
-  // It is possible that this will return NULL if the cache is above its capacity
-  // and eviction fails to free up enough space for the requested allocation.
+  // It is possible that this will return NULL if the cache is above its
+  // capacity and eviction fails to free up enough space for the requested
+  // allocation.
   //
   // NOTE: the returned memory is not automatically freed by the cache: the
   // caller must either free it using Free(), or insert it using Insert().
@@ -202,7 +196,9 @@ class Cache {
   //
   // If 'eviction_callback' is non-NULL, then it will be called when the
   // entry is later evicted or when the cache shuts down.
-  virtual Handle* Insert(PendingHandle* pending, EvictionCallback* eviction_callback) = 0;
+  virtual Handle* Insert(
+      PendingHandle* pending,
+      EvictionCallback* eviction_callback) = 0;
 
   // Free 'ptr', which must have been previously allocated using 'Allocate'.
   virtual void Free(PendingHandle* ptr) = 0;
@@ -211,6 +207,6 @@ class Cache {
   DISALLOW_COPY_AND_ASSIGN(Cache);
 };
 
-}  // namespace kudu
+} // namespace kudu
 
 #endif

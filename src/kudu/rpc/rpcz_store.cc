@@ -17,7 +17,7 @@
 
 #include "kudu/rpc/rpcz_store.h"
 
-#include <algorithm>  // IWYU pragma: keep
+#include <algorithm> // IWYU pragma: keep
 #include <array>
 #include <cstdint>
 #include <mutex> // for unique_lock
@@ -45,22 +45,26 @@
 #include "kudu/util/trace.h"
 #include "kudu/util/trace_metrics.h"
 
-DEFINE_bool(rpc_dump_all_traces, false,
-            "If true, dump all RPC traces at INFO level");
+DEFINE_bool(
+    rpc_dump_all_traces,
+    false,
+    "If true, dump all RPC traces at INFO level");
 TAG_FLAG(rpc_dump_all_traces, advanced);
 TAG_FLAG(rpc_dump_all_traces, runtime);
 
-DEFINE_int32(rpc_duration_too_long_ms, 1000,
-             "Threshold (in milliseconds) above which a RPC is considered too long and its "
-             "duration and method name are logged at INFO level. The time measured is between "
-             "when a RPC is accepted and when its call handler completes.");
+DEFINE_int32(
+    rpc_duration_too_long_ms,
+    1000,
+    "Threshold (in milliseconds) above which a RPC is considered too long and its "
+    "duration and method name are logged at INFO level. The time measured is between "
+    "when a RPC is accepted and when its call handler completes.");
 TAG_FLAG(rpc_duration_too_long_ms, advanced);
 TAG_FLAG(rpc_duration_too_long_ms, runtime);
 
 using std::pair;
 using std::string;
-using std::vector;
 using std::unique_ptr;
+using std::vector;
 
 namespace kudu {
 namespace rpc {
@@ -91,9 +95,10 @@ class MethodSampler {
   // Convert the trace metrics from 't' into protobuf entries in 'sample_pb'.
   // This function recurses through the parent-child relationship graph,
   // keeping the current tree path in 'child_path' (empty at the root).
-  static void GetTraceMetrics(const Trace& t,
-                              const string& child_path,
-                              RpczSamplePB* sample_pb);
+  static void GetTraceMetrics(
+      const Trace& t,
+      const string& child_path,
+      RpczSamplePB* sample_pb);
 
   // An individual recorded sample.
   struct Sample {
@@ -147,7 +152,7 @@ void MethodSampler::SampleCall(InboundCall* call) {
   int duration_ms = call->timing().TotalDuration().ToMilliseconds();
 
   SampleBucket* bucket = &buckets_[kNumBuckets - 1];
-  for (int i = 0 ; i < kNumBuckets - 1; i++) {
+  for (int i = 0; i < kNumBuckets - 1; i++) {
     if (duration_ms < kBucketThresholdsMs[i]) {
       bucket = &buckets_[i];
       break;
@@ -159,7 +164,8 @@ void MethodSampler::SampleCall(InboundCall* call) {
   if (us_since_trace > kSampleIntervalMs * 1000) {
     Sample new_sample = {call->header(), call->trace(), duration_ms};
     {
-      std::unique_lock<simple_spinlock> lock(bucket->sample_lock, std::try_to_lock);
+      std::unique_lock<simple_spinlock> lock(
+          bucket->sample_lock, std::try_to_lock);
       // If another thread is already taking a sample, it's not worth waiting.
       if (!lock.owns_lock()) {
         return;
@@ -171,9 +177,10 @@ void MethodSampler::SampleCall(InboundCall* call) {
   }
 }
 
-void MethodSampler::GetTraceMetrics(const Trace& t,
-                                    const string& child_path,
-                                    RpczSamplePB* sample_pb) {
+void MethodSampler::GetTraceMetrics(
+    const Trace& t,
+    const string& child_path,
+    RpczSamplePB* sample_pb) {
   auto m = t.metrics().Get();
   for (const auto& e : m) {
     auto* pb = sample_pb->add_metrics();
@@ -196,12 +203,14 @@ void MethodSampler::GetTraceMetrics(const Trace& t,
 
 void MethodSampler::GetSamplePBs(RpczMethodPB* method_pb) {
   for (auto& bucket : buckets_) {
-    if (bucket.last_sample_time.Load() == 0) continue;
+    if (bucket.last_sample_time.Load() == 0)
+      continue;
 
     std::unique_lock<simple_spinlock> lock(bucket.sample_lock);
     auto* sample_pb = method_pb->add_samples();
     sample_pb->mutable_header()->CopyFrom(bucket.sample.header);
-    sample_pb->set_trace(bucket.sample.trace->DumpToString(Trace::INCLUDE_TIME_DELTAS));
+    sample_pb->set_trace(
+        bucket.sample.trace->DumpToString(Trace::INCLUDE_TIME_DELTAS));
 
     GetTraceMetrics(*bucket.sample.trace.get(), "", sample_pb);
     sample_pb->set_duration_ms(bucket.sample.duration_ms);
@@ -214,13 +223,15 @@ RpczStore::~RpczStore() {}
 void RpczStore::AddCall(InboundCall* call) {
   LogTrace(call);
   auto* sampler = SamplerForCall(call);
-  if (PREDICT_FALSE(!sampler)) return;
+  if (PREDICT_FALSE(!sampler))
+    return;
 
   sampler->SampleCall(call);
 }
 
-void RpczStore::DumpPB(const DumpRpczStoreRequestPB& req,
-                       DumpRpczStoreResponsePB* resp) {
+void RpczStore::DumpPB(
+    const DumpRpczStoreRequestPB& req,
+    DumpRpczStoreResponsePB* resp) {
   vector<pair<RpcMethodInfo*, MethodSampler*>> samplers;
   {
     shared_lock<rw_spinlock> l(samplers_lock_.get_lock());
@@ -244,16 +255,22 @@ void RpczStore::DumpPB(const DumpRpczStoreRequestPB& req,
 void RpczStore::LogTrace(InboundCall* call) {
   int duration_ms = call->timing().TotalDuration().ToMilliseconds();
 
-  if (call->header_.has_timeout_millis() && call->header_.timeout_millis() > 0) {
+  if (call->header_.has_timeout_millis() &&
+      call->header_.timeout_millis() > 0) {
     double log_threshold = call->header_.timeout_millis() * 0.75f;
     if (duration_ms > log_threshold) {
       // TODO: consider pushing this onto another thread since it may be slow.
       // The traces may also be too large to fit in a log message.
       int64_t timeout_ms = call->header_.timeout_millis();
       LOG(WARNING) << call->ToString() << " took " << duration_ms << " ms "
-                   << "(" << HumanReadableElapsedTime::ToShortString(duration_ms * .001) << "). "
+                   << "("
+                   << HumanReadableElapsedTime::ToShortString(
+                          duration_ms * .001)
+                   << "). "
                    << "Client timeout " << timeout_ms << " ms "
-                   << "(" << HumanReadableElapsedTime::ToShortString(timeout_ms * .001) << ")";
+                   << "("
+                   << HumanReadableElapsedTime::ToShortString(timeout_ms * .001)
+                   << ")";
       string s = call->trace()->DumpToString();
       if (!s.empty()) {
         LOG(WARNING) << "Trace:\n" << s;
@@ -270,7 +287,6 @@ void RpczStore::LogTrace(InboundCall* call) {
               << "Request Metrics: " << call->trace()->MetricsAsJSON();
   }
 }
-
 
 } // namespace rpc
 } // namespace kudu

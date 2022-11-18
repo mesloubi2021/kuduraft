@@ -57,37 +57,42 @@ extern const char kSignatureLongSHA512[];
 
 // Creates a matching SSL certificate and unencrypted private key file in 'dir',
 // returning their paths in '*cert_file' and '*key_file'.
-Status CreateTestSSLCertWithPlainKey(const std::string& dir,
-                                     std::string* cert_file,
-                                     std::string* key_file);
+Status CreateTestSSLCertWithPlainKey(
+    const std::string& dir,
+    std::string* cert_file,
+    std::string* key_file);
 
 // Same as the CreateTestSSLCertWithPlainKey() except that the private key is
 // encrypted with a password that is returned in 'key_password'.
-Status CreateTestSSLCertWithEncryptedKey(const std::string& dir,
-                                         std::string* cert_file,
-                                         std::string* key_file,
-                                         std::string* key_password);
+Status CreateTestSSLCertWithEncryptedKey(
+    const std::string& dir,
+    std::string* cert_file,
+    std::string* key_file,
+    std::string* key_password);
 
 // Same as the CreateTestSSLCertWithPlainKey() except that the 'cert_file' is
 // signed by a CA chain ('ca_cert_file' is a chain of certificates).
-Status CreateTestSSLCertSignedByChain(const std::string& dir,
-                                      std::string* cert_file,
-                                      std::string* key_file,
-                                      std::string* ca_cert_file);
+Status CreateTestSSLCertSignedByChain(
+    const std::string& dir,
+    std::string* cert_file,
+    std::string* key_file,
+    std::string* ca_cert_file);
 
 // Same as the CreateTestSSLCertWithPlainKey() except that the 'cert_file' is
 // a chain signed by a root CA ('ca_cert_file' is only the root CA).
-Status CreateTestSSLCertWithChainSignedByRoot(const std::string& dir,
-                                              std::string* cert_file,
-                                              std::string* key_file,
-                                              std::string* ca_cert_file);
+Status CreateTestSSLCertWithChainSignedByRoot(
+    const std::string& dir,
+    std::string* cert_file,
+    std::string* key_file,
+    std::string* ca_cert_file);
 
-Status CreateTestSSLCertForClientAndServer(const std::string& dir,
-                                      std::string* client_cert_file,
-                                      std::string* client_key_file,
-                                      std::string* server_cert_file,
-                                      std::string* server_key_file,
-                                      std::string* ca_cert_file);
+Status CreateTestSSLCertForClientAndServer(
+    const std::string& dir,
+    std::string* client_cert_file,
+    std::string* client_key_file,
+    std::string* server_cert_file,
+    std::string* server_key_file,
+    std::string* ca_cert_file);
 
 } // namespace security
 } // namespace kudu

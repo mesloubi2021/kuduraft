@@ -14,9 +14,8 @@ namespace kudu {
 
 bool RefCountedMemory::Equals(
     const scoped_refptr<RefCountedMemory>& other) const {
-  return other.get() &&
-         size() == other->size() &&
-         (memcmp(front(), other->front(), size()) == 0);
+  return other.get() && size() == other->size() &&
+      (memcmp(front(), other->front(), size()) == 0);
 }
 
 RefCountedMemory::RefCountedMemory() {}
@@ -72,16 +71,15 @@ RefCountedString* RefCountedString::TakeString(std::string* to_destroy) {
 }
 
 const unsigned char* RefCountedString::front() const {
-  return data_.empty() ? nullptr :
-         reinterpret_cast<const unsigned char*>(data_.data());
+  return data_.empty() ? nullptr
+                       : reinterpret_cast<const unsigned char*>(data_.data());
 }
 
 size_t RefCountedString::size() const {
   return data_.size();
 }
 
-RefCountedMallocedMemory::RefCountedMallocedMemory(
-    void* data, size_t length)
+RefCountedMallocedMemory::RefCountedMallocedMemory(void* data, size_t length)
     : data_(reinterpret_cast<unsigned char*>(data)), length_(length) {
   DCHECK(data || length == 0);
 }
@@ -98,4 +96,4 @@ RefCountedMallocedMemory::~RefCountedMallocedMemory() {
   free(data_);
 }
 
-}  //  namespace kudu
+} //  namespace kudu

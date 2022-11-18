@@ -12,7 +12,7 @@
 // Replacement strto[u]l functions that have identical overflow and underflow
 // characteristics for both ILP-32 and LP-64 platforms, including errno
 // preservation for error-free calls.
-int32 strto32_adapter(const char *nptr, char **endptr, int base) {
+int32 strto32_adapter(const char* nptr, char** endptr, int base) {
   const int saved_errno = errno;
   errno = 0;
   const long result = strtol(nptr, endptr, base);
@@ -32,7 +32,7 @@ int32 strto32_adapter(const char *nptr, char **endptr, int base) {
   return static_cast<int32>(result);
 }
 
-uint32 strtou32_adapter(const char *nptr, char **endptr, int base) {
+uint32 strtou32_adapter(const char* nptr, char** endptr, int base) {
   const int saved_errno = errno;
   errno = 0;
   const unsigned long result = strtoul(nptr, endptr, base);

@@ -23,7 +23,7 @@
 #include <gtest/gtest.h>
 
 #include "kudu/util/knapsack_solver.h"
-#include "kudu/util/stopwatch.h"  // IWYU pragma: keep
+#include "kudu/util/stopwatch.h" // IWYU pragma: keep
 #include "kudu/util/test_util.h"
 
 using std::string;
@@ -31,16 +31,13 @@ using std::vector;
 
 namespace kudu {
 
-class TestKnapsack : public KuduTest {
-};
+class TestKnapsack : public KuduTest {};
 
 // A simple test item for use with the knapsack solver.
 // The real code will be solving knapsack over RowSet objects --
 // using simple value/weight pairs in the tests makes it standalone.
 struct TestItem {
-  TestItem(double v, int w)
-    : value(v), weight(w) {
-  }
+  TestItem(double v, int w) : value(v), weight(w) {}
 
   double value;
   int weight;
@@ -50,17 +47,17 @@ struct TestItem {
 struct TestItemTraits {
   typedef TestItem item_type;
   typedef double value_type;
-  static int get_weight(const TestItem &item) {
+  static int get_weight(const TestItem& item) {
     return item.weight;
   }
-  static value_type get_value(const TestItem &item) {
+  static value_type get_value(const TestItem& item) {
     return item.value;
   }
 };
 
 // Generate random items into the provided vector.
-static void GenerateRandomItems(int n_items, int max_weight,
-                                vector<TestItem> *out) {
+static void
+GenerateRandomItems(int n_items, int max_weight, vector<TestItem>* out) {
   for (int i = 0; i < n_items; i++) {
     double value = 10000.0 / (random() % 10000 + 1);
     int weight = random() % max_weight;
@@ -69,7 +66,7 @@ static void GenerateRandomItems(int n_items, int max_weight,
 }
 
 // Join and stringify the given list of ints.
-static string JoinInts(const vector<int> &ints) {
+static string JoinInts(const vector<int>& ints) {
   string ret;
   for (int i = 0; i < ints.size(); i++) {
     if (i > 0) {

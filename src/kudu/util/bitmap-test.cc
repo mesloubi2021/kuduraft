@@ -27,12 +27,10 @@
 
 namespace kudu {
 
-static int ReadBackBitmap(uint8_t *bm, size_t bits,
-                           std::vector<size_t> *result) {
+static int
+ReadBackBitmap(uint8_t* bm, size_t bits, std::vector<size_t>* result) {
   int iters = 0;
-  for (TrueBitIterator iter(bm, bits);
-       !iter.done();
-       ++iter) {
+  for (TrueBitIterator iter(bm, bits); !iter.done(); ++iter) {
     size_t val = *iter;
     result->push_back(val);
 
@@ -51,16 +49,16 @@ TEST(TestBitMap, TestIteration) {
   BitmapSet(bm, 33);
   BitmapSet(bm, 63);
 
-  EXPECT_EQ("   0: 10000000 10000000 00000000 00000001 11000000 00000000 00000000 00000001 \n",
-            BitmapToString(bm, sizeof(bm) * 8));
+  EXPECT_EQ(
+      "   0: 10000000 10000000 00000000 00000001 11000000 00000000 00000000 00000001 \n",
+      BitmapToString(bm, sizeof(bm) * 8));
 
   std::vector<size_t> read_back;
 
-  int iters = ReadBackBitmap(bm, sizeof(bm)*8, &read_back);
+  int iters = ReadBackBitmap(bm, sizeof(bm) * 8, &read_back);
   ASSERT_EQ(6, iters);
   ASSERT_EQ("0,8,31,32,33,63", JoinElements(read_back, ","));
 }
-
 
 TEST(TestBitMap, TestIteration2) {
   uint8_t bm[1];
@@ -98,13 +96,15 @@ TEST(TestBitMap, TestSetAndTestBits) {
   // Set the other bit: 01010101
   for (size_t i = 0; i < num_bits; ++i) {
     ASSERT_FALSE(BitmapTest(bm, i));
-    if (i & 1) BitmapSet(bm, i);
+    if (i & 1)
+      BitmapSet(bm, i);
   }
 
   // Check and Clear the other bit: 0000000
   for (size_t i = 0; i < num_bits; ++i) {
     ASSERT_EQ(!!(i & 1), BitmapTest(bm, i));
-    if (i & 1) BitmapClear(bm, i);
+    if (i & 1)
+      BitmapClear(bm, i);
   }
 
   // Check if bits are zero and change the other to one
@@ -191,7 +191,8 @@ TEST(TestBitMap, TestFindBit) {
 
       // Find a zero bit
       res = BitmapFindFirstZero(bm, offset, num_bits, &idx);
-      size_t expected_zero_idx = offset + ((offset & 3) ? (4 - (offset & 3)) : 0);
+      size_t expected_zero_idx =
+          offset + ((offset & 3) ? (4 - (offset & 3)) : 0);
       bool expect_zero_found = (expected_zero_idx < num_bits);
       ASSERT_EQ(expect_zero_found, res);
       if (expect_zero_found) {
@@ -229,14 +230,15 @@ TEST(TestBitMap, TestBitmapIteration) {
 }
 
 TEST(TestBitMap, TestEquals) {
-  uint8_t bm1[8] = { 0 };
-  uint8_t bm2[8] = { 0 };
+  uint8_t bm1[8] = {0};
+  uint8_t bm2[8] = {0};
   size_t num_bits = sizeof(bm1) * 8;
   ASSERT_TRUE(BitmapEquals(bm1, bm2, num_bits));
 
   // Loop over each bit starting from the end and going to the beginning. In
   // each iteration, set the bit in one bitmap and verify that although the two
-  // bitmaps aren't equal, if we were to ignore the changed bits, they are still equal.
+  // bitmaps aren't equal, if we were to ignore the changed bits, they are still
+  // equal.
   for (int i = num_bits - 1; i >= 0; i--) {
     SCOPED_TRACE(i);
     BitmapChange(bm1, i, true);
@@ -262,7 +264,7 @@ TEST(TestBitMap, TestEquals) {
   // subsequences of which are considered to be two separate bitmaps).
 
   // Set every third bit; the rest are unset.
-  uint8_t bm3[8] = { 0 };
+  uint8_t bm3[8] = {0};
   for (int i = 0; i < num_bits; i += 3) {
     BitmapChange(bm3, i, true);
   }

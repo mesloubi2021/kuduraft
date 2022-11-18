@@ -40,13 +40,17 @@
 #endif
 
 // Useful in tests that require accurate cache capacity accounting.
-DEFINE_bool(cache_force_single_shard, false,
-            "Override all cache implementations to use just one shard");
+DEFINE_bool(
+    cache_force_single_shard,
+    false,
+    "Override all cache implementations to use just one shard");
 TAG_FLAG(cache_force_single_shard, hidden);
 
-DEFINE_double(cache_memtracker_approximation_ratio, 0.01,
-              "The MemTracker associated with a cache can accumulate error up to "
-              "this ratio to improve performance. For tests.");
+DEFINE_double(
+    cache_memtracker_approximation_ratio,
+    0.01,
+    "The MemTracker associated with a cache can accumulate error up to "
+    "this ratio to improve performance. For tests.");
 TAG_FLAG(cache_memtracker_approximation_ratio, hidden);
 
 using std::atomic;
@@ -56,8 +60,7 @@ using std::vector;
 
 namespace kudu {
 
-Cache::~Cache() {
-}
+Cache::~Cache() {}
 
 namespace {
 
@@ -72,15 +75,15 @@ struct LRUHandle {
   LRUHandle* next_hash;
   LRUHandle* next;
   LRUHandle* prev;
-  size_t charge;      // TODO(opt): Only allow uint32_t?
+  size_t charge; // TODO(opt): Only allow uint32_t?
   uint32_t key_length;
   uint32_t val_length;
   std::atomic<int32_t> refs;
-  uint32_t hash;      // Hash of key(); used for fast sharding and comparisons
+  uint32_t hash; // Hash of key(); used for fast sharding and comparisons
 
   // The storage for the key/value pair itself. The data is stored as:
   //   [key bytes ...] [padding up to 8-byte boundary] [value bytes ...]
-  uint8_t kv_data[1];   // Beginning of key/value pair
+  uint8_t kv_data[1]; // Beginning of key/value pair
 
   Slice key() const {
     return Slice(kv_data, key_length);
@@ -107,8 +110,12 @@ struct LRUHandle {
 // 4.4.3's builtin hashtable.
 class HandleTable {
  public:
-  HandleTable() : length_(0), elems_(0), list_(nullptr) { Resize(); }
-  ~HandleTable() { delete[] list_; }
+  HandleTable() : length_(0), elems_(0), list_(nullptr) {
+    Resize();
+  }
+  ~HandleTable() {
+    delete[] list_;
+  }
 
   LRUHandle* Lookup(const Slice& key, uint32_t hash) {
     return *FindPointer(key, hash);
@@ -152,8 +159,7 @@ class HandleTable {
   // pointer to the trailing slot in the corresponding linked list.
   LRUHandle** FindPointer(const Slice& key, uint32_t hash) {
     LRUHandle** ptr = &list_[hash & (length_ - 1)];
-    while (*ptr != nullptr &&
-           ((*ptr)->hash != hash || key != (*ptr)->key())) {
+    while (*ptr != nullptr && ((*ptr)->hash != hash || key != (*ptr)->key())) {
       ptr = &(*ptr)->next_hash;
     }
     return ptr;
@@ -195,12 +201,17 @@ class LRUCache {
   // Separate from constructor so caller can easily make an array of LRUCache
   void SetCapacity(size_t capacity) {
     capacity_ = capacity;
-    max_deferred_consumption_ = capacity * FLAGS_cache_memtracker_approximation_ratio;
+    max_deferred_consumption_ =
+        capacity * FLAGS_cache_memtracker_approximation_ratio;
   }
 
-  void SetMetrics(CacheMetrics* metrics) { metrics_ = metrics; }
+  void SetMetrics(CacheMetrics* metrics) {
+    metrics_ = metrics;
+  }
 
-  Cache::Handle* Insert(LRUHandle* handle, Cache::EvictionCallback* eviction_callback);
+  Cache::Handle* Insert(
+      LRUHandle* handle,
+      Cache::EvictionCallback* eviction_callback);
   // Like Cache::Lookup, but with an extra "hash" parameter.
   Cache::Handle* Lookup(const Slice& key, uint32_t hash, bool caching);
   void Release(Cache::Handle* handle);
@@ -217,20 +228,23 @@ class LRUCache {
 
   // Update the memtracker's consumption by the given amount.
   //
-  // This "buffers" the updates locally in 'deferred_consumption_' until the amount
-  // of accumulated delta is more than ~1% of the cache capacity. This improves
-  // performance under workloads with high eviction rates for a few reasons:
+  // This "buffers" the updates locally in 'deferred_consumption_' until the
+  // amount of accumulated delta is more than ~1% of the cache capacity. This
+  // improves performance under workloads with high eviction rates for a few
+  // reasons:
   //
   // 1) once the cache reaches its full capacity, we expect it to remain there
-  // in steady state. Each insertion is usually matched by an eviction, and unless
-  // the total size of the evicted item(s) is much different than the size of the
-  // inserted item, each eviction event is unlikely to change the total cache usage
-  // much. So, we expect that the accumulated error will mostly remain around 0
-  // and we can avoid propagating changes to the MemTracker at all.
+  // in steady state. Each insertion is usually matched by an eviction, and
+  // unless the total size of the evicted item(s) is much different than the
+  // size of the inserted item, each eviction event is unlikely to change the
+  // total cache usage much. So, we expect that the accumulated error will
+  // mostly remain around 0 and we can avoid propagating changes to the
+  // MemTracker at all.
   //
-  // 2) because the cache implementation is sharded, we do this tracking in a bunch
-  // of different locations, avoiding bouncing cache-lines between cores. By contrast
-  // the MemTracker is a simple integer, so it doesn't scale as well under concurrency.
+  // 2) because the cache implementation is sharded, we do this tracking in a
+  // bunch of different locations, avoiding bouncing cache-lines between cores.
+  // By contrast the MemTracker is a simple integer, so it doesn't scale as well
+  // under concurrency.
   //
   // Positive delta indicates an increased memory consumption.
   void UpdateMemTracker(int64_t delta);
@@ -249,7 +263,7 @@ class LRUCache {
   HandleTable table_;
 
   MemTracker* mem_tracker_;
-  atomic<int64_t> deferred_consumption_ { 0 };
+  atomic<int64_t> deferred_consumption_{0};
 
   // Initialized based on capacity_ to ensure an upper bound on the error on the
   // MemTracker consumption.
@@ -259,16 +273,14 @@ class LRUCache {
 };
 
 LRUCache::LRUCache(MemTracker* tracker)
- : usage_(0),
-   mem_tracker_(tracker),
-   metrics_(nullptr) {
+    : usage_(0), mem_tracker_(tracker), metrics_(nullptr) {
   // Make empty circular linked list
   lru_.next = &lru_;
   lru_.prev = &lru_;
 }
 
 LRUCache::~LRUCache() {
-  for (LRUHandle* e = lru_.next; e != &lru_; ) {
+  for (LRUHandle* e = lru_.next; e != &lru_;) {
     LRUHandle* next = e->next;
     DCHECK_EQ(e->refs.load(std::memory_order_relaxed), 1)
         << "caller has an unreleased handle";
@@ -295,7 +307,7 @@ void LRUCache::FreeEntry(LRUHandle* e) {
     metrics_->cache_usage->DecrementBy(e->charge);
     metrics_->evictions->Increment();
   }
-  delete [] e;
+  delete[] e;
 }
 
 void LRUCache::UpdateMemTracker(int64_t delta) {
@@ -304,7 +316,8 @@ void LRUCache::UpdateMemTracker(int64_t delta) {
 
   if (new_deferred > max_deferred_consumption_ ||
       new_deferred < -max_deferred_consumption_) {
-    int64_t to_propagate = deferred_consumption_.exchange(0, std::memory_order_relaxed);
+    int64_t to_propagate =
+        deferred_consumption_.exchange(0, std::memory_order_relaxed);
     mem_tracker_->Consume(to_propagate);
   }
 }
@@ -366,12 +379,14 @@ void LRUCache::Release(Cache::Handle* handle) {
   }
 }
 
-Cache::Handle* LRUCache::Insert(LRUHandle* e, Cache::EvictionCallback *eviction_callback) {
-
+Cache::Handle* LRUCache::Insert(
+    LRUHandle* e,
+    Cache::EvictionCallback* eviction_callback) {
   // Set the remaining LRUHandle members which were not already allocated during
   // Allocate().
   e->eviction_callback = eviction_callback;
-  e->refs.store(2, std::memory_order_relaxed);  // One from LRUCache, one for the returned handle
+  e->refs.store(2, std::memory_order_relaxed); // One from LRUCache, one for the
+                                               // returned handle
   UpdateMemTracker(e->charge);
   if (PREDICT_TRUE(metrics_)) {
     metrics_->cache_usage->IncrementBy(e->charge);
@@ -436,8 +451,9 @@ void LRUCache::Erase(const Slice& key, uint32_t hash) {
 // Determine the number of bits of the hash that should be used to determine
 // the cache shard. This, in turn, determines the number of shards.
 int DetermineShardBits() {
-  int bits = PREDICT_FALSE(FLAGS_cache_force_single_shard) ?
-      0 : Bits::Log2Ceiling(base::NumCPUs());
+  int bits = PREDICT_FALSE(FLAGS_cache_force_single_shard)
+      ? 0
+      : Bits::Log2Ceiling(base::NumCPUs());
   VLOG(1) << "Will use " << (1 << bits) << " shards for LRU cache.";
   return bits;
 }
@@ -457,7 +473,7 @@ class ShardedLRUCache : public Cache {
 
   static inline uint32_t HashSlice(const Slice& s) {
     return util_hash::CityHash64(
-      reinterpret_cast<const char *>(s.data()), s.size());
+        reinterpret_cast<const char*>(s.data()), s.size());
   }
 
   uint32_t Shard(uint32_t hash) {
@@ -488,8 +504,9 @@ class ShardedLRUCache : public Cache {
     STLDeleteElements(&shards_);
   }
 
-  virtual Handle* Insert(PendingHandle* handle,
-                         Cache::EvictionCallback* eviction_callback) override {
+  virtual Handle* Insert(
+      PendingHandle* handle,
+      Cache::EvictionCallback* eviction_callback) override {
     LRUHandle* h = reinterpret_cast<LRUHandle*>(DCHECK_NOTNULL(handle));
     return shards_[Shard(h->hash)]->Insert(h, eviction_callback);
   }
@@ -509,10 +526,11 @@ class ShardedLRUCache : public Cache {
     return reinterpret_cast<LRUHandle*>(handle)->value();
   }
   virtual void SetMetrics(const scoped_refptr<MetricEntity>& entity) override {
-    // TODO(KUDU-2165): reuse of the Cache singleton across multiple MiniCluster servers
-    // causes TSAN errors. So, we'll ensure that metrics only get attached once, from
-    // whichever server starts first. This has the downside that, in test builds, we won't
-    // get accurate cache metrics, but that's probably better than spurious failures.
+    // TODO(KUDU-2165): reuse of the Cache singleton across multiple MiniCluster
+    // servers causes TSAN errors. So, we'll ensure that metrics only get
+    // attached once, from whichever server starts first. This has the downside
+    // that, in test builds, we won't get accurate cache metrics, but that's
+    // probably better than spurious failures.
     std::lock_guard<simple_spinlock> l(metrics_lock_);
     if (metrics_) {
       CHECK(IsGTest()) << "Metrics should only be set once per Cache singleton";
@@ -529,14 +547,15 @@ class ShardedLRUCache : public Cache {
     DCHECK_GE(key_len, 0);
     DCHECK_GE(val_len, 0);
     int key_len_padded = KUDU_ALIGN_UP(key_len, sizeof(void*));
-    uint8_t* buf = new uint8_t[sizeof(LRUHandle)
-                               + key_len_padded + val_len // the kv_data VLA data
-                               - 1 // (the VLA has a 1-byte placeholder)
-                               ];
+    uint8_t* buf = new uint8_t
+        [sizeof(LRUHandle) + key_len_padded + val_len // the kv_data VLA data
+         - 1 // (the VLA has a 1-byte placeholder)
+    ];
     LRUHandle* handle = reinterpret_cast<LRUHandle*>(buf);
     handle->key_length = key_len;
     handle->val_length = val_len;
-    handle->charge = (charge == kAutomaticCharge) ? kudu_malloc_usable_size(buf) : charge;
+    handle->charge =
+        (charge == kAutomaticCharge) ? kudu_malloc_usable_size(buf) : charge;
     handle->hash = HashSlice(key);
     memcpy(handle->kv_data, key.data(), key_len);
 
@@ -545,16 +564,15 @@ class ShardedLRUCache : public Cache {
 
   virtual void Free(PendingHandle* h) override {
     uint8_t* data = reinterpret_cast<uint8_t*>(h);
-    delete [] data;
+    delete[] data;
   }
 
   virtual uint8_t* MutableValue(PendingHandle* h) override {
     return reinterpret_cast<LRUHandle*>(h)->mutable_val_ptr();
   }
-
 };
 
-}  // end anonymous namespace
+} // end anonymous namespace
 
 Cache* NewLRUCache(CacheType type, size_t capacity, const string& id) {
   switch (type) {
@@ -569,4 +587,4 @@ Cache* NewLRUCache(CacheType type, size_t capacity, const string& id) {
   }
 }
 
-}  // namespace kudu
+} // namespace kudu

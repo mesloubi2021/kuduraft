@@ -42,7 +42,6 @@
 #include "kudu/util/test_util.h"
 #include "kudu/util/thread.h"
 
-
 DECLARE_bool(inject_unsync_time_errors);
 DECLARE_string(time_source);
 
@@ -54,9 +53,7 @@ namespace clock {
 
 class HybridClockTest : public KuduTest {
  public:
-  HybridClockTest()
-      : clock_(new HybridClock) {
-  }
+  HybridClockTest() : clock_(new HybridClock) {}
 
   virtual void SetUp() override {
     KuduTest::SetUp();
@@ -81,7 +78,8 @@ TEST(MockHybridClockTest, TestMockedSystemClock) {
   clock->NowWithError(&timestamp, &max_error_usec);
   ASSERT_EQ(timestamp.ToUint64(), 0);
   ASSERT_EQ(max_error_usec, 0);
-  // If we read the clock again we should see the logical component be incremented.
+  // If we read the clock again we should see the logical component be
+  // incremented.
   clock->NowWithError(&timestamp, &max_error_usec);
   ASSERT_EQ(timestamp.ToUint64(), 1);
   // Now set an arbitrary time and check that is the time returned by the clock.
@@ -90,19 +88,24 @@ TEST(MockHybridClockTest, TestMockedSystemClock) {
   mock_ntp(clock)->SetMockClockWallTimeForTests(time);
   mock_ntp(clock)->SetMockMaxClockErrorForTests(error);
   clock->NowWithError(&timestamp, &max_error_usec);
-  ASSERT_EQ(timestamp.ToUint64(),
-            HybridClock::TimestampFromMicrosecondsAndLogicalValue(time, 0).ToUint64());
+  ASSERT_EQ(
+      timestamp.ToUint64(),
+      HybridClock::TimestampFromMicrosecondsAndLogicalValue(time, 0)
+          .ToUint64());
   ASSERT_EQ(max_error_usec, error);
-  // Perform another read, we should observe the logical component increment, again.
+  // Perform another read, we should observe the logical component increment,
+  // again.
   clock->NowWithError(&timestamp, &max_error_usec);
-  ASSERT_EQ(timestamp.ToUint64(),
-            HybridClock::TimestampFromMicrosecondsAndLogicalValue(time, 1).ToUint64());
+  ASSERT_EQ(
+      timestamp.ToUint64(),
+      HybridClock::TimestampFromMicrosecondsAndLogicalValue(time, 1)
+          .ToUint64());
 }
 
 // Test that, if the rate at which the clock is read is greater than the maximum
-// resolution of the logical counter (12 bits in our implementation), it properly
-// "overflows" into the physical portion of the clock, and maintains all ordering
-// guarantees even as the physical clock continues to increase.
+// resolution of the logical counter (12 bits in our implementation), it
+// properly "overflows" into the physical portion of the clock, and maintains
+// all ordering guarantees even as the physical clock continues to increase.
 //
 // This is a regression test for KUDU-1345.
 TEST(MockHybridClockTest, TestClockDealsWithWrapping) {
@@ -135,9 +138,9 @@ TEST(MockHybridClockTest, TestClockDealsWithWrapping) {
     // Clock should run strictly forwards.
     ASSERT_GT(now.value(), prev.value());
 
-    // Additionally, once the physical time surpasses the logical time, we should
-    // be running on the physical clock. Otherwise, we should stick with the physical
-    // time we had rolled forward to above.
+    // Additionally, once the physical time surpasses the logical time, we
+    // should be running on the physical clock. Otherwise, we should stick with
+    // the physical time we had rolled forward to above.
     if (time > 1012) {
       ASSERT_EQ(time, HybridClock::GetPhysicalValueMicros(now));
     } else {
@@ -168,15 +171,17 @@ TEST_F(HybridClockTest, TestUpdate_LogicalValueIncreasesByAmount) {
   // one, 200 msecs should be more than enough.
   now_micros += 200000;
 
-  Timestamp now_increased = HybridClock::TimestampFromMicrosecondsAndLogicalValue(now_micros,
-                                                                                  logical);
+  Timestamp now_increased =
+      HybridClock::TimestampFromMicrosecondsAndLogicalValue(
+          now_micros, logical);
 
   ASSERT_OK(clock_->Update(now_increased));
 
   Timestamp now2 = clock_->Now();
   ASSERT_EQ(logical + 1, HybridClock::GetLogicalValue(now2));
-  ASSERT_EQ(HybridClock::GetPhysicalValueMicros(now) + 200000,
-            HybridClock::GetPhysicalValueMicros(now2));
+  ASSERT_EQ(
+      HybridClock::GetPhysicalValueMicros(now) + 200000,
+      HybridClock::GetPhysicalValueMicros(now2));
 }
 
 // Test that the incoming event is in the past, i.e. less than now - max_error
@@ -218,8 +223,7 @@ TEST_F(HybridClockTest, TestWaitUntilAfter_TestCase2) {
   // that we always have to wait.
   past_max_error = std::max(past_max_error, static_cast<uint64_t>(20));
   Timestamp wait_until = HybridClock::AddPhysicalTimeToTimestamp(
-      past_ts,
-      MonoDelta::FromMicroseconds(past_max_error));
+      past_ts, MonoDelta::FromMicroseconds(past_max_error));
 
   Timestamp current_ts;
   uint64_t current_max_error;
@@ -241,9 +245,10 @@ TEST_F(HybridClockTest, TestWaitUntilAfter_TestCase2) {
   MonoTime after = MonoTime::Now();
   MonoDelta delta = after - before;
 
-  // In the common case current_max_error >= past_max_error and we should have waited
-  // 2 * past_max_error, but if the clock's error is reset between the two reads we might
-  // have waited less time, but always more than 'past_max_error'.
+  // In the common case current_max_error >= past_max_error and we should have
+  // waited 2 * past_max_error, but if the clock's error is reset between the
+  // two reads we might have waited less time, but always more than
+  // 'past_max_error'.
   if (current_max_error >= past_max_error) {
     ASSERT_GE(delta.ToMicroseconds(), 2 * past_max_error);
   } else {
@@ -259,7 +264,7 @@ TEST_F(HybridClockTest, TestIsAfter) {
   // handles "IsAfter" properly even when it's running in
   // "logical" mode.
   Timestamp now_increased = HybridClock::TimestampFromMicroseconds(
-    HybridClock::GetPhysicalValueMicros(ts1) + 1 * 1000 * 1000);
+      HybridClock::GetPhysicalValueMicros(ts1) + 1 * 1000 * 1000);
   ASSERT_OK(clock_->Update(now_increased));
   Timestamp ts2 = clock_->Now();
 
@@ -271,7 +276,8 @@ TEST_F(HybridClockTest, TestIsAfter) {
 // into the future.
 void StresserThread(HybridClock* clock, AtomicBool* stop) {
   Random rng(GetRandomSeed32());
-  Timestamp prev(0);;
+  Timestamp prev(0);
+  ;
   while (!stop->Load()) {
     Timestamp t = clock->Now();
     CHECK_GT(t.value(), prev.value());
@@ -287,14 +293,13 @@ void StresserThread(HybridClock* clock, AtomicBool* stop) {
 // Regression test for KUDU-953: if threads are updating and polling the
 // clock concurrently, the clock should still never run backwards.
 TEST_F(HybridClockTest, TestClockDoesntGoBackwardsWithUpdates) {
-  vector<scoped_refptr<kudu::Thread> > threads;
+  vector<scoped_refptr<kudu::Thread>> threads;
 
   AtomicBool stop(false);
   for (int i = 0; i < 4; i++) {
     scoped_refptr<Thread> thread;
-    ASSERT_OK(Thread::Create("test", "stresser",
-                             &StresserThread, clock_.get(), &stop,
-                             &thread));
+    ASSERT_OK(Thread::Create(
+        "test", "stresser", &StresserThread, clock_.get(), &stop, &thread));
     threads.push_back(thread);
   }
 
@@ -306,9 +311,11 @@ TEST_F(HybridClockTest, TestClockDoesntGoBackwardsWithUpdates) {
 }
 
 TEST_F(HybridClockTest, TestGetPhysicalComponentDifference) {
-  Timestamp now1 = HybridClock::TimestampFromMicrosecondsAndLogicalValue(100, 100);
+  Timestamp now1 =
+      HybridClock::TimestampFromMicrosecondsAndLogicalValue(100, 100);
   SleepFor(MonoDelta::FromMilliseconds(1));
-  Timestamp now2 = HybridClock::TimestampFromMicrosecondsAndLogicalValue(200, 0);
+  Timestamp now2 =
+      HybridClock::TimestampFromMicrosecondsAndLogicalValue(200, 0);
   MonoDelta delta = clock_->GetPhysicalComponentDifference(now2, now1);
   MonoDelta negative_delta = clock_->GetPhysicalComponentDifference(now1, now2);
   ASSERT_EQ(100, delta.ToMicroseconds());
@@ -331,15 +338,17 @@ TEST_F(HybridClockTest, TestRideOverNtpInterruption) {
   // The new clock reading should be a second or longer from the
   // first one, since SleepFor guarantees sleeping at least as long
   // as specified.
-  MonoDelta phys_diff = clock_->GetPhysicalComponentDifference(
-      timestamps[1], timestamps[0]);
+  MonoDelta phys_diff =
+      clock_->GetPhysicalComponentDifference(timestamps[1], timestamps[0]);
   ASSERT_GE(phys_diff.ToSeconds(), 1);
 
   // The new clock reading should have higher error than the first.
   // The error should have increased based on the clock skew.
   int64_t error_diff = max_error_usec[1] - max_error_usec[0];
-  ASSERT_NEAR(error_diff, clock_->time_service()->skew_ppm() * phys_diff.ToSeconds(),
-              10);
+  ASSERT_NEAR(
+      error_diff,
+      clock_->time_service()->skew_ppm() * phys_diff.ToSeconds(),
+      10);
 
   // Now restore the ability to read the system clock, and
   // read it again.
@@ -361,5 +370,5 @@ TEST_F(HybridClockTest, TestNtpDiagnostics) {
 }
 #endif
 
-}  // namespace clock
-}  // namespace kudu
+} // namespace clock
+} // namespace kudu

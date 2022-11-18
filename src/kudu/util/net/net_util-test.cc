@@ -27,8 +27,8 @@
 #include "kudu/gutil/strings/join.h"
 #include "kudu/gutil/strings/util.h"
 #include "kudu/util/net/net_util.h"
-#include "kudu/util/net/socket.h"
 #include "kudu/util/net/sockaddr.h"
+#include "kudu/util/net/socket.h"
 #include "kudu/util/status.h"
 #include "kudu/util/test_macros.h"
 #include "kudu/util/test_util.h"
@@ -137,8 +137,8 @@ TEST_F(NetUtilTest, TestReverseLookup) {
   HostPort hp;
   ASSERT_OK(addr.ParseString("[::]:12345", 0));
   EXPECT_EQ(12345, addr.port());
-  //addr.addr().sin6_addr.s6_addr; // 16-element byte array
-  //LOG(INFO) << addr.addr().sin6_addr.s;
+  // addr.addr().sin6_addr.s6_addr; // 16-element byte array
+  // LOG(INFO) << addr.addr().sin6_addr.s;
   ASSERT_OK(HostPortFromSockaddrReplaceWildcard(addr, &hp));
   EXPECT_NE("::", hp.host());
   EXPECT_NE("", hp.host());

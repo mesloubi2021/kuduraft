@@ -45,7 +45,7 @@
 #include "kudu/consensus/log_util.h"
 #include "kudu/consensus/opid.pb.h"
 #include "kudu/consensus/ref_counted_replicate.h"
-#include "kudu/gutil/callback.h"  // IWYU pragma: keep
+#include "kudu/gutil/callback.h" // IWYU pragma: keep
 #include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/macros.h"
 #include "kudu/gutil/ref_counted.h"
@@ -95,8 +95,8 @@ struct ConsensusBootstrapInfo {
 };
 
 struct ReadContext {
-  ReadContext() {};
-  ~ReadContext() {};
+  ReadContext(){};
+  ~ReadContext(){};
 
   const std::string* for_peer_uuid = nullptr;
   const std::string* for_peer_host = nullptr;
@@ -104,7 +104,7 @@ struct ReadContext {
   bool route_via_proxy = false;
 };
 
-}
+} // namespace consensus
 
 namespace log {
 
@@ -115,7 +115,8 @@ class LogEntryBatch;
 class LogIndex;
 class LogReader;
 
-typedef BlockingQueue<LogEntryBatch*, LogEntryBatchLogicalSize> LogEntryBatchQueue;
+typedef BlockingQueue<LogEntryBatch*, LogEntryBatchLogicalSize>
+    LogEntryBatchQueue;
 
 // Log interface, inspired by Raft's (logcabin) Log. Provides durability to
 // Kudu as a normal Write Ahead Log and also plays the role of persistent
@@ -140,15 +141,16 @@ class Log : public RefCountedThreadSafe<Log> {
 
   // Opens or continues a log and sets 'log' to the newly built Log.
   // After a successful Open() the Log is ready to receive entries.
-  static Status Open(const LogOptions &options,
-                     FsManager *fs_manager,
-                     const std::string& tablet_id,
+  static Status Open(
+      const LogOptions& options,
+      FsManager* fs_manager,
+      const std::string& tablet_id,
 #ifdef FB_DO_NOT_REMOVE
-                     const Schema& schema,
-                     uint32_t schema_version,
+      const Schema& schema,
+      uint32_t schema_version,
 #endif
-                     const scoped_refptr<MetricEntity>& metric_entity,
-                     scoped_refptr<Log> *log);
+      const scoped_refptr<MetricEntity>& metric_entity,
+      scoped_refptr<Log>* log);
 
   virtual ~Log();
 
@@ -173,16 +175,17 @@ class Log : public RefCountedThreadSafe<Log> {
   // start the instance from where it crashed. In abstracted logs like
   // MySQL, this bootstrap_info object is populated by log abstraction during
   // Log::Init and plumbed via this function to RaftConsensus::Start
-  virtual void GetRecoveryInfo(consensus::ConsensusBootstrapInfo *bootstrap_info) {
+  virtual void GetRecoveryInfo(
+      consensus::ConsensusBootstrapInfo* bootstrap_info) {
     // In base implementation, we don't override the bootstrap_info
   }
 
   // Append the given commit message, asynchronously.
   //
   // Returns a bad status if the log is already shut down.
-  Status AsyncAppendCommit(gscoped_ptr<consensus::CommitMsg> commit_msg,
-                           const StatusCallback& callback);
-
+  Status AsyncAppendCommit(
+      gscoped_ptr<consensus::CommitMsg> commit_msg,
+      const StatusCallback& callback);
 
   // Blocks the current thread until all the entries in the log queue
   // are flushed and fsynced (if fsync of log entries is enabled).
@@ -190,7 +193,9 @@ class Log : public RefCountedThreadSafe<Log> {
 
   // index_if_truncated - if caller e.g. Log Cache passes in index_if_truncated,
   // the log specialization is expected to return the index of truncation
-  virtual Status TruncateOpsAfter(int64_t index, int64_t *index_if_truncated = nullptr);
+  virtual Status TruncateOpsAfter(
+      int64_t index,
+      int64_t* index_if_truncated = nullptr);
 
   // Kick off an asynchronous task that pre-allocates a new
   // log-segment, setting 'allocation_status_'. To wait for the
@@ -201,21 +206,29 @@ class Log : public RefCountedThreadSafe<Log> {
   void SegmentAllocationTask();
 
   // Return true if there is any on-disk data for the given tablet.
-  static bool HasOnDiskData(FsManager* fs_manager, const std::string& tablet_id);
+  static bool HasOnDiskData(
+      FsManager* fs_manager,
+      const std::string& tablet_id);
 
   // Delete all WAL data from the log associated with this tablet.
   // REQUIRES: The Log must be closed.
-  static Status DeleteOnDiskData(FsManager* fs_manager, const std::string& tablet_id);
+  static Status DeleteOnDiskData(
+      FsManager* fs_manager,
+      const std::string& tablet_id);
 
-  // Removes the recovery directory and all files contained therein, if it exists.
-  // Intended to be invoked after log replay successfully completes.
-  static Status RemoveRecoveryDirIfExists(FsManager* fs_manager, const std::string& tablet_id);
+  // Removes the recovery directory and all files contained therein, if it
+  // exists. Intended to be invoked after log replay successfully completes.
+  static Status RemoveRecoveryDirIfExists(
+      FsManager* fs_manager,
+      const std::string& tablet_id);
 
   // Returns a reader that is able to read through the previous segments,
   // provided the log is initialized and not yet closed. After being closed,
   // this function will return NULL, but existing reader references will
   // remain live.
-  std::shared_ptr<LogReader> reader() const { return reader_; }
+  std::shared_ptr<LogReader> reader() const {
+    return reader_;
+  }
 
   void SetMaxSegmentSizeForTests(uint64_t max_segment_size) {
     max_segment_size_ = max_segment_size;
@@ -252,11 +265,12 @@ class Log : public RefCountedThreadSafe<Log> {
   // This method is thread-safe.
   Status GC(RetentionIndexes retention_indexes, int* num_gced);
 
-  // Computes the amount of bytes that would have been GC'd if Log::GC had been called.
+  // Computes the amount of bytes that would have been GC'd if Log::GC had been
+  // called.
   int64_t GetGCableDataSize(RetentionIndexes retention_indexes) const;
 
-  // Returns a map which can be used to determine the cumulative size of log segments
-  // containing entries at or above any given log index.
+  // Returns a map which can be used to determine the cumulative size of log
+  // segments containing entries at or above any given log index.
   //
   // For example, if the current log segments are:
   //
@@ -299,7 +313,7 @@ class Log : public RefCountedThreadSafe<Log> {
   // Returns this Log's FsManager.
   FsManager* GetFsManager();
 
-  void SetLogFaultHooksForTests(const std::shared_ptr<LogFaultHooks> &hooks) {
+  void SetLogFaultHooksForTests(const std::shared_ptr<LogFaultHooks>& hooks) {
     log_hooks_ = hooks;
   }
 
@@ -331,11 +345,7 @@ class Log : public RefCountedThreadSafe<Log> {
   class AppendThread;
 
   // Log state.
-  enum LogState {
-    kLogInitialized,
-    kLogWriting,
-    kLogClosed
-  };
+  enum LogState { kLogInitialized, kLogWriting, kLogClosed };
 
   // State of segment (pre-) allocation.
   enum SegmentAllocationState {
@@ -344,24 +354,29 @@ class Log : public RefCountedThreadSafe<Log> {
     kAllocationFinished // Next segment ready
   };
 
-  Log(LogOptions options, FsManager* fs_manager, std::string log_path,
+  Log(LogOptions options,
+      FsManager* fs_manager,
+      std::string log_path,
       std::string tablet_id,
 #ifdef FB_DO_NOT_REMOVE
-      const Schema& schema, uint32_t schema_version,
+      const Schema& schema,
+      uint32_t schema_version,
 #endif
       scoped_refptr<MetricEntity> metric_entity);
 
   // Make segments roll over.
   Status RollOver();
 
-  static Status CreateBatchFromPB(LogEntryTypePB type,
-                                  std::unique_ptr<LogEntryBatchPB> entry_batch_pb,
-                                  std::unique_ptr<LogEntryBatch>* entry_batch);
+  static Status CreateBatchFromPB(
+      LogEntryTypePB type,
+      std::unique_ptr<LogEntryBatchPB> entry_batch_pb,
+      std::unique_ptr<LogEntryBatch>* entry_batch);
 
   // Asynchronously appends 'entry_batch' to the log. Once the append
   // completes and is synced, 'callback' will be invoked.
-  Status AsyncAppend(std::unique_ptr<LogEntryBatch> entry_batch,
-                     const StatusCallback& callback);
+  Status AsyncAppend(
+      std::unique_ptr<LogEntryBatch> entry_batch,
+      const StatusCallback& callback);
 
   // Writes the footer and closes the current segment.
   Status CloseCurrentSegment();
@@ -370,9 +385,10 @@ class Log : public RefCountedThreadSafe<Log> {
   // Env::NewTempWritableFile()) for a placeholder segment. Sets
   // 'result_path' to the fully qualified path to the unique filename
   // created for the segment.
-  Status CreatePlaceholderSegment(const WritableFileOptions& opts,
-                                  std::string* result_path,
-                                  std::shared_ptr<WritableFile>* out);
+  Status CreatePlaceholderSegment(
+      const WritableFileOptions& opts,
+      std::string* result_path,
+      std::shared_ptr<WritableFile>* out);
 
   // Creates a new WAL segment on disk, writes the next_segment_header_ to
   // disk as the header, and sets active_segment_ to point to this new segment.
@@ -391,8 +407,7 @@ class Log : public RefCountedThreadSafe<Log> {
   // Update the LogIndex to include entries for the replicate messages found in
   // 'batch'. The index entry points to the offset 'start_offset' in the current
   // log segment.
-  Status UpdateIndexForBatch(const LogEntryBatch& batch,
-                             int64_t start_offset);
+  Status UpdateIndexForBatch(const LogEntryBatch& batch, int64_t start_offset);
 
   // Replaces the last "empty" segment in 'log_reader_', i.e. the one currently
   // being written to, by the same segment once properly closed.
@@ -400,9 +415,11 @@ class Log : public RefCountedThreadSafe<Log> {
 
   Status Sync();
 
-  // Helper method to get the segment sequence to GC based on the provided 'retention' struct.
-  Status GetSegmentsToGCUnlocked(RetentionIndexes retention_indexes,
-                                 SegmentSequence* segments_to_gc) const;
+  // Helper method to get the segment sequence to GC based on the provided
+  // 'retention' struct.
+  Status GetSegmentsToGCUnlocked(
+      RetentionIndexes retention_indexes,
+      SegmentSequence* segments_to_gc) const;
 
   LogEntryBatchQueue* entry_queue() {
     return &entry_batch_queue_;
@@ -416,7 +433,7 @@ class Log : public RefCountedThreadSafe<Log> {
   std::string LogPrefix() const;
 
   LogOptions options_;
-  FsManager *fs_manager_;
+  FsManager* fs_manager_;
   std::string log_dir_;
 
   // The ID of the tablet this log is dedicated to.
@@ -496,7 +513,8 @@ class Log : public RefCountedThreadSafe<Log> {
 
   std::shared_ptr<LogFaultHooks> log_hooks_;
 
-  // The cached on-disk size of the log, used to track its size even if it has been closed.
+  // The cached on-disk size of the log, used to track its size even if it has
+  // been closed.
   std::atomic<int64_t> on_disk_size_;
 
   DISALLOW_COPY_AND_ASSIGN(Log);
@@ -508,13 +526,15 @@ class Log : public RefCountedThreadSafe<Log> {
 // the LogFactory class to create the derived log implementation
 // object.
 class LogFactory {
-public:
+ public:
   virtual ~LogFactory() {}
-  virtual Status createLog(LogOptions options,
-      FsManager* fs_manager, std::string log_path,
+  virtual Status createLog(
+      LogOptions options,
+      FsManager* fs_manager,
+      std::string log_path,
       std::string tablet_id,
       scoped_refptr<MetricEntity> metric_entity,
-      scoped_refptr<Log> *new_log);
+      scoped_refptr<Log>* new_log);
 };
 
 // Indicates which log indexes should be retained for different purposes.
@@ -522,9 +542,10 @@ public:
 // When default-constructed, starts with maximum indexes, indicating no
 // logs need to be retained for either purposes.
 struct RetentionIndexes {
-  explicit RetentionIndexes(int64_t durability = std::numeric_limits<int64_t>::max(),
-                            int64_t peers = std::numeric_limits<int64_t>::max(),
-                            int64_t region_durability = std::numeric_limits<int64_t>::max())
+  explicit RetentionIndexes(
+      int64_t durability = std::numeric_limits<int64_t>::max(),
+      int64_t peers = std::numeric_limits<int64_t>::max(),
+      int64_t region_durability = std::numeric_limits<int64_t>::max())
       : for_durability(durability),
         for_peers(peers),
         for_region_durability(region_durability) {}
@@ -548,7 +569,6 @@ struct RetentionIndexes {
   int64_t for_region_durability;
 };
 
-
 // This class represents a batch of operations to be written and
 // synced to the log. It is opaque to the user and is managed by the
 // Log class.
@@ -568,9 +588,10 @@ class LogEntryBatch {
   friend struct LogEntryBatchLogicalSize;
   friend class MultiThreadedLogTest;
 
-  LogEntryBatch(LogEntryTypePB type,
-                std::unique_ptr<LogEntryBatchPB> entry_batch_pb,
-                size_t count);
+  LogEntryBatch(
+      LogEntryTypePB type,
+      std::unique_ptr<LogEntryBatchPB> entry_batch_pb,
+      size_t count);
 
   // Serializes contents of the entry to an internal buffer.
   void Serialize();
@@ -587,14 +608,15 @@ class LogEntryBatch {
     return callback_;
   }
 
-
   // Returns a Slice representing the serialized contents of the
   // entry.
   Slice data() const {
     return Slice(buffer_);
   }
 
-  size_t count() const { return count_; }
+  size_t count() const {
+    return count_;
+  }
 
   // Returns the total size in bytes of the object.
   size_t total_size_bytes() const {
@@ -610,7 +632,8 @@ class LogEntryBatch {
     return entry_batch_pb_->entry(idx).replicate().id();
   }
 
-  void SetReplicates(const std::vector<consensus::ReplicateRefPtr>& replicates) {
+  void SetReplicates(
+      const std::vector<consensus::ReplicateRefPtr>& replicates) {
     replicates_ = replicates;
   }
 
@@ -620,7 +643,7 @@ class LogEntryBatch {
   // Contents of the log entries that will be written to disk.
   std::unique_ptr<LogEntryBatchPB> entry_batch_pb_;
 
-   // Total size in bytes of all entries
+  // Total size in bytes of all entries
   const uint32_t total_size_bytes_;
 
   // Number of entries in 'entry_batch_pb_'
@@ -652,24 +675,33 @@ struct LogEntryBatchLogicalSize {
 
 class Log::LogFaultHooks {
  public:
-
   // Executed immediately before returning from Log::Sync() at *ALL*
   // times.
-  virtual Status PostSync() { return Status::OK(); }
+  virtual Status PostSync() {
+    return Status::OK();
+  }
 
   // Iff fsync is enabled, executed immediately after call to fsync.
-  virtual Status PostSyncIfFsyncEnabled() { return Status::OK(); }
+  virtual Status PostSyncIfFsyncEnabled() {
+    return Status::OK();
+  }
 
   // Emulate a slow disk where the filesystem has decided to synchronously
   // flush a full buffer.
-  virtual Status PostAppend() { return Status::OK(); }
+  virtual Status PostAppend() {
+    return Status::OK();
+  }
 
-  virtual Status PreClose() { return Status::OK(); }
-  virtual Status PostClose() { return Status::OK(); }
+  virtual Status PreClose() {
+    return Status::OK();
+  }
+  virtual Status PostClose() {
+    return Status::OK();
+  }
 
   virtual ~LogFaultHooks() {}
 };
 
-}  // namespace log
-}  // namespace kudu
+} // namespace log
+} // namespace kudu
 #endif /* KUDU_CONSENSUS_LOG_H_ */

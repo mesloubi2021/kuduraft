@@ -29,8 +29,7 @@ using std::vector;
 
 namespace kudu {
 
-class TestSortedDisjointIntervalList : public KuduTest {
-};
+class TestSortedDisjointIntervalList : public KuduTest {};
 
 typedef int PointType;
 typedef std::pair<PointType, PointType> ClosedInterval;
@@ -67,24 +66,21 @@ TEST_F(TestSortedDisjointIntervalList, TestOverlappedIntervals) {
   vector<ClosedInterval> expected = {{3, 9}};
   ASSERT_EQ(expected, intervals);
 
-  intervals = {{4, 7}, {3, 9}, {-23, 1},
-               {4, 350}, {369, 400}};
+  intervals = {{4, 7}, {3, 9}, {-23, 1}, {4, 350}, {369, 400}};
   ASSERT_OK(CoalesceIntervals<PointType>(&intervals));
   expected = {{-23, 1}, {3, 350}, {369, 400}};
   ASSERT_EQ(expected, intervals);
 }
 
 TEST_F(TestSortedDisjointIntervalList, TestDuplicateIntervals) {
-  vector<ClosedInterval> intervals = {{1, 2}, {4, 7},
-                                      {1, 2}, {1, 2}};
+  vector<ClosedInterval> intervals = {{1, 2}, {4, 7}, {1, 2}, {1, 2}};
   ASSERT_OK(CoalesceIntervals<PointType>(&intervals));
   const vector<ClosedInterval> expected = {{1, 2}, {4, 7}};
   ASSERT_EQ(expected, intervals);
 }
 
 TEST_F(TestSortedDisjointIntervalList, TestInvalidIntervals) {
-  vector<ClosedInterval> intervals = {{1, 2}, {10, 2},
-                                      {4, 7}, {40, 7}};
+  vector<ClosedInterval> intervals = {{1, 2}, {10, 2}, {4, 7}, {40, 7}};
   ASSERT_TRUE(CoalesceIntervals<PointType>(&intervals).IsInvalidArgument());
 }
 

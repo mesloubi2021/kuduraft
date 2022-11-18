@@ -15,7 +15,6 @@
 // specific language governing permissions and limitations
 // under the License.
 
-
 #include <cstdint>
 #include <ostream>
 #include <vector>
@@ -32,8 +31,9 @@
 #include "kudu/util/test_util.h"
 #include "kudu/util/thread.h"
 
-// These flags are used by the multi-threaded tests, can be used for microbenchmarking.
-DEFINE_int32(num_operations, 10*1000, "Number of operations to perform");
+// These flags are used by the multi-threaded tests, can be used for
+// microbenchmarking.
+DEFINE_int32(num_operations, 10 * 1000, "Number of operations to perform");
 DEFINE_int32(num_threads, 2, "Number of worker threads");
 
 namespace kudu {
@@ -57,12 +57,10 @@ TEST(Striped64Test, TestBasic) {
 template <class Adder>
 class MultiThreadTest {
  public:
-  typedef std::vector<scoped_refptr<Thread> > thread_vec_t;
+  typedef std::vector<scoped_refptr<Thread>> thread_vec_t;
 
   MultiThreadTest(int64_t num_operations, int64_t num_threads)
-   :  num_operations_(num_operations),
-      num_threads_(num_threads) {
-  }
+      : num_operations_(num_operations), num_threads_(num_threads) {}
 
   void IncrementerThread(const int64_t num) {
     for (int i = 0; i < num; i++) {
@@ -80,24 +78,34 @@ class MultiThreadTest {
     // Increment
     for (int i = 0; i < num_threads_; i++) {
       scoped_refptr<Thread> ref;
-      Thread::Create("Striped64", "Incrementer", &MultiThreadTest::IncrementerThread, this,
-                     num_operations_, &ref);
+      Thread::Create(
+          "Striped64",
+          "Incrementer",
+          &MultiThreadTest::IncrementerThread,
+          this,
+          num_operations_,
+          &ref);
       threads_.push_back(ref);
     }
-    for (const scoped_refptr<Thread> &t : threads_) {
+    for (const scoped_refptr<Thread>& t : threads_) {
       t->Join();
     }
-    ASSERT_EQ(num_threads_*num_operations_, adder_.Value());
+    ASSERT_EQ(num_threads_ * num_operations_, adder_.Value());
     threads_.clear();
 
     // Decrement back to zero
     for (int i = 0; i < num_threads_; i++) {
       scoped_refptr<Thread> ref;
-      Thread::Create("Striped64", "Decrementer", &MultiThreadTest::DecrementerThread, this,
-                     num_operations_, &ref);
+      Thread::Create(
+          "Striped64",
+          "Decrementer",
+          &MultiThreadTest::DecrementerThread,
+          this,
+          num_operations_,
+          &ref);
       threads_.push_back(ref);
     }
-    for (const scoped_refptr<Thread> &t : threads_) {
+    for (const scoped_refptr<Thread>& t : threads_) {
       t->Join();
     }
     ASSERT_EQ(0, adder_.Value());
@@ -115,10 +123,19 @@ class MultiThreadTest {
 class BasicAdder {
  public:
   BasicAdder() : value_(0) {}
-  void IncrementBy(int64_t x) { value_.IncrementBy(x); }
-  inline void Increment() { IncrementBy(1); }
-  inline void Decrement() { IncrementBy(-1); }
-  int64_t Value() { return value_.Load(); }
+  void IncrementBy(int64_t x) {
+    value_.IncrementBy(x);
+  }
+  inline void Increment() {
+    IncrementBy(1);
+  }
+  inline void Decrement() {
+    IncrementBy(-1);
+  }
+  int64_t Value() {
+    return value_.Load();
+  }
+
  private:
   AtomicInt<int64_t> value_;
 };
@@ -137,7 +154,8 @@ void RunMultiTest(int64_t num_operations, int64_t num_threads) {
   LOG(INFO) << "Striped counter took " << striped.ToMilliseconds() << "ms.";
 }
 
-// Compare a single-thread workload. Demonstrates the overhead of LongAdder over AtomicInt.
+// Compare a single-thread workload. Demonstrates the overhead of LongAdder over
+// AtomicInt.
 TEST(Striped64Test, TestSingleIncrDecr) {
   OverrideFlagForSlowTests(
       "num_operations",
@@ -151,8 +169,7 @@ TEST(Striped64Test, TestMultiIncrDecr) {
       "num_operations",
       strings::Substitute("$0", (FLAGS_num_operations * 100)));
   OverrideFlagForSlowTests(
-      "num_threads",
-      strings::Substitute("$0", (FLAGS_num_threads * 4)));
+      "num_threads", strings::Substitute("$0", (FLAGS_num_threads * 4)));
   RunMultiTest(FLAGS_num_operations, FLAGS_num_threads);
 }
 
@@ -160,4 +177,4 @@ TEST(Striped64Test, TestSize) {
   ASSERT_EQ(16, sizeof(LongAdder));
 }
 
-}  // namespace kudu
+} // namespace kudu

@@ -6,8 +6,8 @@
 #ifndef STRINGS_NUMBERS_H_
 #define STRINGS_NUMBERS_H_
 
-#include <cstddef>
 #include <cinttypes>
+#include <cstddef>
 #include <ctime>
 #include <functional>
 #include <limits>
@@ -68,10 +68,16 @@ bool safe_strto64_base(const std::string& str, int64* value, int base);
 bool safe_strtou32_base(const std::string& str, uint32* value, int base);
 bool safe_strtou64_base(const std::string& str, uint64* value, int base);
 
-bool safe_strto32_base(const char* startptr, int buffer_size,
-                       int32* value, int base);
-bool safe_strto64_base(const char* startptr, int buffer_size,
-                       int64* value, int base);
+bool safe_strto32_base(
+    const char* startptr,
+    int buffer_size,
+    int32* value,
+    int base);
+bool safe_strto64_base(
+    const char* startptr,
+    int buffer_size,
+    int64* value,
+    int base);
 
 // u64tostr_base36()
 //    The inverse of safe_strtou64_base, converts the number agument to
@@ -84,7 +90,9 @@ size_t u64tostr_base36(uint64 number, size_t buf_size, char* buffer);
 
 // Similar to atoi(s), except s could be like "16k", "32M", "2G", "4t".
 uint64 atoi_kmgt(const char* s);
-inline uint64 atoi_kmgt(const std::string& s) { return atoi_kmgt(s.c_str()); }
+inline uint64 atoi_kmgt(const std::string& s) {
+  return atoi_kmgt(s.c_str());
+}
 
 // ----------------------------------------------------------------------
 // FastIntToBuffer()
@@ -136,12 +144,14 @@ char* FastHex32ToBuffer(uint32 i, char* buffer);
 
 // at least 22 bytes long
 inline char* FastIntToBuffer(int i, char* buffer) {
-  return (sizeof(i) == 4 ?
-          FastInt32ToBuffer(i, buffer) : FastInt64ToBuffer(i, buffer));
+  return (
+      sizeof(i) == 4 ? FastInt32ToBuffer(i, buffer)
+                     : FastInt64ToBuffer(i, buffer));
 }
 inline char* FastUIntToBuffer(unsigned int i, char* buffer) {
-  return (sizeof(i) == 4 ?
-          FastUInt32ToBuffer(i, buffer) : FastUInt64ToBuffer(i, buffer));
+  return (
+      sizeof(i) == 4 ? FastUInt32ToBuffer(i, buffer)
+                     : FastUInt64ToBuffer(i, buffer));
 }
 
 // ----------------------------------------------------------------------
@@ -162,10 +172,10 @@ inline char* FastUIntToBuffer(unsigned int i, char* buffer) {
 // terminating the string).
 // ----------------------------------------------------------------------
 
-char* FastInt32ToBufferLeft(int32 i, char* buffer);    // at least 12 bytes
-char* FastUInt32ToBufferLeft(uint32 i, char* buffer);    // at least 12 bytes
-char* FastInt64ToBufferLeft(int64 i, char* buffer);    // at least 22 bytes
-char* FastUInt64ToBufferLeft(uint64 i, char* buffer);    // at least 22 bytes
+char* FastInt32ToBufferLeft(int32 i, char* buffer); // at least 12 bytes
+char* FastUInt32ToBufferLeft(uint32 i, char* buffer); // at least 12 bytes
+char* FastInt64ToBufferLeft(int64 i, char* buffer); // at least 22 bytes
+char* FastUInt64ToBufferLeft(uint64 i, char* buffer); // at least 22 bytes
 char* FastInt128ToBufferLeft(__int128 i, char* buffer);
 char* FastUInt128ToBufferLeft(unsigned __int128 i, char* buffer);
 
@@ -322,39 +332,44 @@ inline bool ParseLeadingBoolValue(const std::string& str, bool deflt) {
 //    strict mode, but "01" == "1" otherwise.
 // ----------------------------------------------------------------------
 
-int AutoDigitStrCmp(const char* a, int alen,
-                    const char* b, int blen,
-                    bool strict);
+int AutoDigitStrCmp(
+    const char* a,
+    int alen,
+    const char* b,
+    int blen,
+    bool strict);
 
-bool AutoDigitLessThan(const char* a, int alen,
-                       const char* b, int blen);
+bool AutoDigitLessThan(const char* a, int alen, const char* b, int blen);
 
-bool StrictAutoDigitLessThan(const char* a, int alen,
-                             const char* b, int blen);
+bool StrictAutoDigitLessThan(const char* a, int alen, const char* b, int blen);
 
 struct autodigit_less
-  : public std::binary_function<const std::string&, const std::string&, bool> {
+    : public std::
+          binary_function<const std::string&, const std::string&, bool> {
   bool operator()(const std::string& a, const std::string& b) const {
     return AutoDigitLessThan(a.data(), a.size(), b.data(), b.size());
   }
 };
 
 struct autodigit_greater
-  : public std::binary_function<const std::string&, const std::string&, bool> {
+    : public std::
+          binary_function<const std::string&, const std::string&, bool> {
   bool operator()(const std::string& a, const std::string& b) const {
     return AutoDigitLessThan(b.data(), b.size(), a.data(), a.size());
   }
 };
 
 struct strict_autodigit_less
-  : public std::binary_function<const std::string&, const std::string&, bool> {
+    : public std::
+          binary_function<const std::string&, const std::string&, bool> {
   bool operator()(const std::string& a, const std::string& b) const {
     return StrictAutoDigitLessThan(a.data(), a.size(), b.data(), b.size());
   }
 };
 
 struct strict_autodigit_greater
-  : public std::binary_function<const std::string&, const std::string&, bool> {
+    : public std::
+          binary_function<const std::string&, const std::string&, bool> {
   bool operator()(const std::string& a, const std::string& b) const {
     return StrictAutoDigitLessThan(b.data(), b.size(), a.data(), a.size());
   }
@@ -368,34 +383,34 @@ struct strict_autodigit_greater
 //    Return value: string
 // ----------------------------------------------------------------------
 inline std::string SimpleItoa(int32 i) {
-  char buf[16];  // Longest is -2147483648
+  char buf[16]; // Longest is -2147483648
   return std::string(buf, FastInt32ToBufferLeft(i, buf));
 }
 
 // We need this overload because otherwise SimpleItoa(5U) wouldn't compile.
 inline std::string SimpleItoa(uint32 i) {
-  char buf[16];  // Longest is 4294967295
+  char buf[16]; // Longest is 4294967295
   return std::string(buf, FastUInt32ToBufferLeft(i, buf));
 }
 
 inline std::string SimpleItoa(int64 i) {
-  char buf[32];  // Longest is -9223372036854775808
+  char buf[32]; // Longest is -9223372036854775808
   return std::string(buf, FastInt64ToBufferLeft(i, buf));
 }
 
 // We need this overload because otherwise SimpleItoa(5ULL) wouldn't compile.
 inline std::string SimpleItoa(uint64 i) {
-  char buf[32];  // Longest is 18446744073709551615
+  char buf[32]; // Longest is 18446744073709551615
   return std::string(buf, FastUInt64ToBufferLeft(i, buf));
 }
 
 inline std::string SimpleItoa(__int128 i) {
-  char buf[64];  // Longest is -170141183460469231731687303715884105728
+  char buf[64]; // Longest is -170141183460469231731687303715884105728
   return std::string(buf, FastInt128ToBufferLeft(i, buf));
 }
 
 inline std::string SimpleItoa(unsigned __int128 i) {
-  char buf[64];  // Longest is 340282366920938463463374607431768211455
+  char buf[64]; // Longest is 340282366920938463463374607431768211455
   return std::string(buf, FastUInt128ToBufferLeft(i, buf));
 }
 
@@ -409,18 +424,18 @@ inline std::string SimpleItoa(unsigned __int128 i) {
 template <typename int_type>
 bool MUST_USE_RESULT SimpleAtoi(const char* s, int_type* out) {
   // Must be of integer type (not pointer type), with more than 16-bitwidth.
-  KUDU_COMPILE_ASSERT(sizeof(*out) == 4 || sizeof(*out) == 8,
-                 SimpleAtoiWorksWith32Or64BitInts);
-  if (std::numeric_limits<int_type>::is_signed) {  // Signed
-    if (sizeof(*out) == 64 / 8) {  // 64-bit
+  KUDU_COMPILE_ASSERT(
+      sizeof(*out) == 4 || sizeof(*out) == 8, SimpleAtoiWorksWith32Or64BitInts);
+  if (std::numeric_limits<int_type>::is_signed) { // Signed
+    if (sizeof(*out) == 64 / 8) { // 64-bit
       return safe_strto64(s, reinterpret_cast<int64*>(out));
-    } else {  // 32-bit
+    } else { // 32-bit
       return safe_strto32(s, reinterpret_cast<int32*>(out));
     }
-  } else {  // Unsigned
-    if (sizeof(*out) == 64 / 8) {  // 64-bit
+  } else { // Unsigned
+    if (sizeof(*out) == 64 / 8) { // 64-bit
       return safe_strtou64(s, reinterpret_cast<uint64*>(out));
-    } else {  // 32-bit
+    } else { // 32-bit
       return safe_strtou32(s, reinterpret_cast<uint32*>(out));
     }
   }
@@ -536,9 +551,14 @@ struct DoubleRangeOptions {
 // This instruction is needed to expose global functions that are not
 // within a namespace.
 //
-bool ParseDoubleRange(const char* text, int len, const char** end,
-                      double* from, double* to, bool* is_currency,
-                      const DoubleRangeOptions& opts);
+bool ParseDoubleRange(
+    const char* text,
+    int len,
+    const char** end,
+    double* from,
+    double* to,
+    bool* is_currency,
+    const DoubleRangeOptions& opts);
 
 // END DOXYGEN SplitFunctions grouping
 /* @} */
@@ -578,4 +598,4 @@ inline std::string UInt64ToString(uint64 ui64) {
   return StringPrintf("%7" PRIu64, ui64);
 }
 
-#endif  // STRINGS_NUMBERS_H_
+#endif // STRINGS_NUMBERS_H_

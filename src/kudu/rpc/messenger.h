@@ -27,8 +27,8 @@
 #include <boost/optional/optional.hpp>
 #include <gtest/gtest_prod.h>
 
-#include "kudu/gutil/macros.h"
 #include "kudu/gutil/gscoped_ptr.h"
+#include "kudu/gutil/macros.h"
 #include "kudu/gutil/ref_counted.h"
 #include "kudu/rpc/connection_direction.h"
 #include "kudu/security/security_flags.h"
@@ -52,7 +52,7 @@ class ThreadPool;
 namespace security {
 class TlsContext;
 class TokenVerifier;
-}
+} // namespace security
 
 namespace rpc {
 
@@ -90,75 +90,85 @@ class MessengerBuilder {
 
   explicit MessengerBuilder(std::string name);
 
-  // Set the length of time we will keep a TCP connection will alive with no traffic.
-  MessengerBuilder &set_connection_keepalive_time(const MonoDelta &keepalive);
+  // Set the length of time we will keep a TCP connection will alive with no
+  // traffic.
+  MessengerBuilder& set_connection_keepalive_time(const MonoDelta& keepalive);
 
   // Set the number of reactor threads that will be used for sending and
   // receiving.
-  MessengerBuilder &set_num_reactors(int num_reactors);
+  MessengerBuilder& set_num_reactors(int num_reactors);
 
   // Set the minimum number of connection-negotiation threads that will be used
   // to handle the blocking connection-negotiation step.
-  MessengerBuilder &set_min_negotiation_threads(int min_negotiation_threads);
+  MessengerBuilder& set_min_negotiation_threads(int min_negotiation_threads);
 
   // Set the maximum number of connection-negotiation threads that will be used
   // to handle the blocking connection-negotiation step.
-  MessengerBuilder &set_max_negotiation_threads(int max_negotiation_threads);
+  MessengerBuilder& set_max_negotiation_threads(int max_negotiation_threads);
 
   // Set the granularity with which connections are checked for keepalive.
-  MessengerBuilder &set_coarse_timer_granularity(const MonoDelta &granularity);
+  MessengerBuilder& set_coarse_timer_granularity(const MonoDelta& granularity);
 
   // Set metric entity for use by RPC systems.
-  MessengerBuilder &set_metric_entity(const scoped_refptr<MetricEntity>& metric_entity);
+  MessengerBuilder& set_metric_entity(
+      const scoped_refptr<MetricEntity>& metric_entity);
 
-  // Set the time in milliseconds after which an idle connection from a client will be
-  // disconnected by the server.
-  MessengerBuilder &set_connection_keep_alive_time(int32_t time_in_ms);
+  // Set the time in milliseconds after which an idle connection from a client
+  // will be disconnected by the server.
+  MessengerBuilder& set_connection_keep_alive_time(int32_t time_in_ms);
 
   // Set the timeout for negotiating an RPC connection.
-  MessengerBuilder &set_rpc_negotiation_timeout_ms(int64_t time_in_ms);
+  MessengerBuilder& set_rpc_negotiation_timeout_ms(int64_t time_in_ms);
 
   // Set the SASL protocol name that is used for the SASL negotiation.
-  MessengerBuilder &set_sasl_proto_name(const std::string& sasl_proto_name);
+  MessengerBuilder& set_sasl_proto_name(const std::string& sasl_proto_name);
 
-  // Set the state of authentication required. If 'optional', authentication will be used when
-  // the remote end supports it. If 'required', connections which are not able to authenticate
-  // (because the remote end lacks support) are rejected.
-  MessengerBuilder &set_rpc_authentication(const std::string& rpc_authentication);
+  // Set the state of authentication required. If 'optional', authentication
+  // will be used when the remote end supports it. If 'required', connections
+  // which are not able to authenticate (because the remote end lacks support)
+  // are rejected.
+  MessengerBuilder& set_rpc_authentication(
+      const std::string& rpc_authentication);
 
-  // Set the state of encryption required. If 'optional', encryption will be used when the
-  // remote end supports it. If 'required', connections which are not able to use encryption
-  // (because the remote end lacks support) are rejected. If 'disabled', encryption will not
-  // be used, and RPC authentication (--rpc_authentication) must also be disabled as well.
-  MessengerBuilder &set_rpc_encryption(const std::string& rpc_encryption);
+  // Set the state of encryption required. If 'optional', encryption will be
+  // used when the remote end supports it. If 'required', connections which are
+  // not able to use encryption (because the remote end lacks support) are
+  // rejected. If 'disabled', encryption will not be used, and RPC
+  // authentication (--rpc_authentication) must also be disabled as well.
+  MessengerBuilder& set_rpc_encryption(const std::string& rpc_encryption);
 
-  // Set the cipher suite preferences to use for TLS-secured RPC connections. Uses the OpenSSL
-  // cipher preference list format. See man (1) ciphers for more information.
-  MessengerBuilder &set_rpc_tls_ciphers(const std::string& rpc_tls_ciphers);
+  // Set the cipher suite preferences to use for TLS-secured RPC connections.
+  // Uses the OpenSSL cipher preference list format. See man (1) ciphers for
+  // more information.
+  MessengerBuilder& set_rpc_tls_ciphers(const std::string& rpc_tls_ciphers);
 
-  // Set the minimum protocol version to allow when for securing RPC connections with TLS. May be
-  // one of 'TLSv1', 'TLSv1.1', or 'TLSv1.2'.
-  MessengerBuilder &set_rpc_tls_min_protocol(const std::string& rpc_tls_min_protocol);
+  // Set the minimum protocol version to allow when for securing RPC connections
+  // with TLS. May be one of 'TLSv1', 'TLSv1.1', or 'TLSv1.2'.
+  MessengerBuilder& set_rpc_tls_min_protocol(
+      const std::string& rpc_tls_min_protocol);
 
-  // Set the TLS server certificate and private key files paths. If this is set in conjunction
-  // with enable_inbound_tls(), internal PKI will not be used for encrypted communication and
-  // external PKI will be used instead.
-  MessengerBuilder &set_epki_cert_key_files(
-      const std::string& cert, const std::string& private_key);
-
-  // Set the TLS Certificate Authority file path. Must always be set with set_epki_cert_key_files().
-  // If this is set in conjunction with enable_inbound_tls(), internal PKI will not be used for
+  // Set the TLS server certificate and private key files paths. If this is set
+  // in conjunction with enable_inbound_tls(), internal PKI will not be used for
   // encrypted communication and external PKI will be used instead.
-  MessengerBuilder &set_epki_certificate_authority_file(const std::string& ca);
+  MessengerBuilder& set_epki_cert_key_files(
+      const std::string& cert,
+      const std::string& private_key);
 
-  // Set a Unix command whose output returns the password used to decrypt the RPC server's private
-  // key file specified via set_epki_cert_key_files(). If the .PEM key file is not
-  // password-protected, this flag does not need to be set. Trailing whitespace will be trimmed
-  // before it is used to decrypt the private key.
-  MessengerBuilder &set_epki_private_password_key_cmd(const std::string& cmd);
+  // Set the TLS Certificate Authority file path. Must always be set with
+  // set_epki_cert_key_files(). If this is set in conjunction with
+  // enable_inbound_tls(), internal PKI will not be used for encrypted
+  // communication and external PKI will be used instead.
+  MessengerBuilder& set_epki_certificate_authority_file(const std::string& ca);
+
+  // Set a Unix command whose output returns the password used to decrypt the
+  // RPC server's private key file specified via set_epki_cert_key_files(). If
+  // the .PEM key file is not password-protected, this flag does not need to be
+  // set. Trailing whitespace will be trimmed before it is used to decrypt the
+  // private key.
+  MessengerBuilder& set_epki_private_password_key_cmd(const std::string& cmd);
 
   // Set the path to the Kerberos Keytab file for this server.
-  MessengerBuilder &set_keytab_file(const std::string& keytab_file);
+  MessengerBuilder& set_keytab_file(const std::string& keytab_file);
 
   // Configure the messenger to enable TLS encryption on inbound connections.
   MessengerBuilder& enable_inbound_tls();
@@ -166,15 +176,17 @@ class MessengerBuilder {
   // Configure the messenger to set the SO_REUSEPORT socket option.
   MessengerBuilder& set_reuseport();
 
-  // Configure the messanger to set the SO_SNDBUF socket option for outbound sockets.
-  // 0 turns off the socket option. Values below kMinTcpBuf are treated as 0.
+  // Configure the messanger to set the SO_SNDBUF socket option for outbound
+  // sockets. 0 turns off the socket option. Values below kMinTcpBuf are treated
+  // as 0.
   MessengerBuilder& set_send_buf(int send_buf);
 
-  // Configure the messanger to set the SO_RCVBUF socket option for inbound sockets.
-  // 0 turns off the socket option. Values below kMinTcpBuf are treated as 0.
+  // Configure the messanger to set the SO_RCVBUF socket option for inbound
+  // sockets. 0 turns off the socket option. Values below kMinTcpBuf are treated
+  // as 0.
   MessengerBuilder& set_receive_buf(int receive_buf);
 
-  Status Build(std::shared_ptr<Messenger> *msgr);
+  Status Build(std::shared_ptr<Messenger>* msgr);
 
  private:
   const std::string name_;
@@ -203,9 +215,9 @@ class MessengerBuilder {
 
 // A Messenger is a container for the reactor threads which run event loops
 // for the RPC services. If the process is a server, a Messenger can also have
-// one or more attached AcceptorPools which accept RPC connections. In this case,
-// calls received over the connection are enqueued into the messenger's service_queue
-// for processing by a ServicePool.
+// one or more attached AcceptorPools which accept RPC connections. In this
+// case, calls received over the connection are enqueued into the messenger's
+// service_queue for processing by a ServicePool.
 //
 // Users do not typically interact with the Messenger directly except to create
 // one as a singleton, and then make calls using Proxy objects.
@@ -217,8 +229,9 @@ class Messenger {
   friend class Proxy;
   friend class Reactor;
   friend class ReactorThread;
-  typedef std::vector<std::shared_ptr<AcceptorPool> > acceptor_vec_t;
-  typedef std::unordered_map<std::string, scoped_refptr<RpcService> > RpcServicesMap;
+  typedef std::vector<std::shared_ptr<AcceptorPool>> acceptor_vec_t;
+  typedef std::unordered_map<std::string, scoped_refptr<RpcService>>
+      RpcServicesMap;
 
   static const uint64_t UNKNOWN_CALL_ID = 0;
 
@@ -245,14 +258,16 @@ class Messenger {
   // If Kerberos is enabled, this also runs a pre-flight check that makes
   // sure the environment is appropriately configured to authenticate
   // clients via Kerberos. If not, this returns a RuntimeError.
-  Status AddAcceptorPool(const Sockaddr &accept_addr,
-                         std::shared_ptr<AcceptorPool>* pool);
+  Status AddAcceptorPool(
+      const Sockaddr& accept_addr,
+      std::shared_ptr<AcceptorPool>* pool);
 
   // Register a new RpcService to handle inbound requests.
   //
   // Returns an error if a service with the same name is already registered.
-  Status RegisterService(const std::string& service_name,
-                         const scoped_refptr<RpcService>& service);
+  Status RegisterService(
+      const std::string& service_name,
+      const scoped_refptr<RpcService>& service);
 
   // Unregister an RpcService by name.
   //
@@ -264,20 +279,21 @@ class Messenger {
 
   // Queue a call for transmission. This will pick the appropriate reactor,
   // and enqueue a task on that reactor to assign and send the call.
-  void QueueOutboundCall(const std::shared_ptr<OutboundCall> &call);
+  void QueueOutboundCall(const std::shared_ptr<OutboundCall>& call);
 
   // Enqueue a call for processing on the server.
   void QueueInboundCall(gscoped_ptr<InboundCall> call);
 
   // Queue a cancellation for the given outbound call.
-  void QueueCancellation(const std::shared_ptr<OutboundCall> &call);
+  void QueueCancellation(const std::shared_ptr<OutboundCall>& call);
 
   // Take ownership of the socket via Socket::Release
-  void RegisterInboundSocket(Socket *new_socket, const Sockaddr &remote);
+  void RegisterInboundSocket(Socket* new_socket, const Sockaddr& remote);
 
   // Dump the current RPCs into the given protobuf.
-  Status DumpRunningRpcs(const DumpRunningRpcsRequestPB& req,
-                         DumpRunningRpcsResponsePB* resp);
+  Status DumpRunningRpcs(
+      const DumpRunningRpcsRequestPB& req,
+      DumpRunningRpcsResponsePB* resp);
 
   // Enqueue a call to reset the connections on all reactors
   void QueueResetConnections();
@@ -286,14 +302,23 @@ class Messenger {
   //
   // The status argument conveys whether 'func' was run correctly (i.e.
   // after the elapsed time) or not.
-  void ScheduleOnReactor(const boost::function<void(const Status&)>& func,
-                         MonoDelta when);
+  void ScheduleOnReactor(
+      const boost::function<void(const Status&)>& func,
+      MonoDelta when);
 
-  const security::TlsContext& tls_context() const { return *tls_context_; }
-  security::TlsContext* mutable_tls_context() { return tls_context_.get(); }
+  const security::TlsContext& tls_context() const {
+    return *tls_context_;
+  }
+  security::TlsContext* mutable_tls_context() {
+    return tls_context_.get();
+  }
 
-  const security::TokenVerifier& token_verifier() const { return *token_verifier_; }
-  security::TokenVerifier* mutable_token_verifier() { return token_verifier_.get(); }
+  const security::TokenVerifier& token_verifier() const {
+    return *token_verifier_;
+  }
+  security::TokenVerifier* mutable_token_verifier() {
+    return token_verifier_.get();
+  }
   std::shared_ptr<security::TokenVerifier> shared_token_verifier() const {
     return token_verifier_;
   }
@@ -307,14 +332,22 @@ class Messenger {
     authn_token_ = token;
   }
 
-  RpcAuthentication authentication() const { return authentication_; }
-  RpcEncryption encryption() const { return encryption_; }
+  RpcAuthentication authentication() const {
+    return authentication_;
+  }
+  RpcEncryption encryption() const {
+    return encryption_;
+  }
 
   ThreadPool* negotiation_pool(ConnectionDirection dir);
 
-  RpczStore* rpcz_store() { return rpcz_store_.get(); }
+  RpczStore* rpcz_store() {
+    return rpcz_store_.get();
+  }
 
-  int num_reactors() const { return reactors_.size(); }
+  int num_reactors() const {
+    return reactors_.size();
+  }
 
   const std::string& name() const {
     return name_;
@@ -325,25 +358,32 @@ class Messenger {
     return closing_;
   }
 
-  scoped_refptr<MetricEntity> metric_entity() const { return metric_entity_; }
+  scoped_refptr<MetricEntity> metric_entity() const {
+    return metric_entity_;
+  }
 
-  const int64_t rpc_negotiation_timeout_ms() const { return rpc_negotiation_timeout_ms_; }
+  const int64_t rpc_negotiation_timeout_ms() const {
+    return rpc_negotiation_timeout_ms_;
+  }
 
   const std::string& sasl_proto_name() const {
     return sasl_proto_name_;
   }
 
-  const std::string& keytab_file() const { return keytab_file_; }
+  const std::string& keytab_file() const {
+    return keytab_file_;
+  }
 
-  const scoped_refptr<RpcService> rpc_service(const std::string& service_name) const;
+  const scoped_refptr<RpcService> rpc_service(
+      const std::string& service_name) const;
 
-  int get_send_buffer() const{
+  int get_send_buffer() const {
     return send_buf_;
   }
 
   void set_send_buffer(int send_buf);
 
-  int get_receive_buffer() const{
+  int get_receive_buffer() const {
     return receive_buf_;
   }
 
@@ -358,9 +398,9 @@ class Messenger {
   FRIEND_TEST(TestRpc, TestCallWithNormalTLSOnServerOnly);
   FRIEND_TEST(TestRpc, TestCallWithNormalTLSOnBothClientAndServer);
 
-  explicit Messenger(const MessengerBuilder &bld);
+  explicit Messenger(const MessengerBuilder& bld);
 
-  Reactor* RemoteToReactor(const Sockaddr &remote);
+  Reactor* RemoteToReactor(const Sockaddr& remote);
   Status Init();
   void RunTimeoutThread();
   void UpdateCurTime();
@@ -387,8 +427,8 @@ class Messenger {
 
   // Whether to require authentication and encryption on the connections managed
   // by this messenger.
-  // TODO(KUDU-1928): scope these to individual proxies, so that messengers can be
-  // reused by different clients.
+  // TODO(KUDU-1928): scope these to individual proxies, so that messengers can
+  // be reused by different clients.
   RpcAuthentication authentication_;
   RpcEncryption encryption_;
 
@@ -403,8 +443,8 @@ class Messenger {
 
   std::vector<Reactor*> reactors_;
 
-  // Separate client and server negotiation pools to avoid possibility of distributed
-  // deadlock. See KUDU-2041.
+  // Separate client and server negotiation pools to avoid possibility of
+  // distributed deadlock. See KUDU-2041.
   gscoped_ptr<ThreadPool> client_negotiation_pool_;
   gscoped_ptr<ThreadPool> server_negotiation_pool_;
 
@@ -421,7 +461,8 @@ class Messenger {
 
   scoped_refptr<MetricEntity> metric_entity_;
 
-  // Timeout in milliseconds after which an incomplete connection negotiation will timeout.
+  // Timeout in milliseconds after which an incomplete connection negotiation
+  // will timeout.
   const int64_t rpc_negotiation_timeout_ms_;
 
   // The SASL protocol name that is used for the SASL negotiation.
@@ -433,8 +474,8 @@ class Messenger {
   // Whether to set SO_REUSEPORT on the listening sockets.
   bool reuseport_;
 
-  // The value to set for SO_SNDBUF, the size of the tcp send buffer for outbound
-  // sockets. 0 or negative values will skip setting the option.
+  // The value to set for SO_SNDBUF, the size of the tcp send buffer for
+  // outbound sockets. 0 or negative values will skip setting the option.
   int send_buf_;
   // The value to set for SO_RCVBUF, the size of the tcp receive buffer for
   // inbound sockets. 0 or negative values will skip setting the option.
@@ -470,11 +511,14 @@ class Messenger {
   //    Messenger::AllExternalReferencesDropped. This drops retain_self_
   //    and results in object destruction.
   // Option 2): User drops all of its shared_ptr[1] references
-  //  - Though the Reactors still reference the Messenger, AllExternalReferencesDropped
+  //  - Though the Reactors still reference the Messenger,
+  //  AllExternalReferencesDropped
   //    will get called, which triggers Messenger::Shutdown.
   //  - AllExternalReferencesDropped drops retain_self_, so the only remaining
-  //    references are from Reactor threads. But the reactor threads are shutting down.
-  //  - When the last Reactor thread dies, there will be no more shared_ptr[1] references
+  //    references are from Reactor threads. But the reactor threads are
+  //    shutting down.
+  //  - When the last Reactor thread dies, there will be no more shared_ptr[1]
+  //  references
   //    and the Messenger will be destroyed.
   //
   // The main goal of all of this confusion is that when using option 2, the

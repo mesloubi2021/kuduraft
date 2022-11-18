@@ -45,18 +45,22 @@
 // - super-sensitive applications can devote an SSD to the WAL.
 // - users could always change this to "never", which slows down
 //   throughput but may improve write latency.
-DEFINE_string(block_manager_preflush_control, "finalize",
-              "Controls when to pre-flush a block. Valid values are 'finalize', "
-              "'close', or 'never'. If 'finalize', blocks will be pre-flushed "
-              "when writing is finished. If 'close', blocks will be pre-flushed "
-              "when their transaction is committed. If 'never', blocks will "
-              "never be pre-flushed but still be flushed when closed.");
+DEFINE_string(
+    block_manager_preflush_control,
+    "finalize",
+    "Controls when to pre-flush a block. Valid values are 'finalize', "
+    "'close', or 'never'. If 'finalize', blocks will be pre-flushed "
+    "when writing is finished. If 'close', blocks will be pre-flushed "
+    "when their transaction is committed. If 'never', blocks will "
+    "never be pre-flushed but still be flushed when closed.");
 TAG_FLAG(block_manager_preflush_control, experimental);
 
-DEFINE_int64(block_manager_max_open_files, -1,
-             "Maximum number of open file descriptors to be used for data "
-             "blocks. If -1, Kudu will automatically calculate this value. "
-             "This is a soft limit. It is an error to use a value of 0.");
+DEFINE_int64(
+    block_manager_max_open_files,
+    -1,
+    "Maximum number of open file descriptors to be used for data "
+    "blocks. If -1, Kudu will automatically calculate this value. "
+    "This is a soft limit. It is an error to use a value of 0.");
 TAG_FLAG(block_manager_max_open_files, advanced);
 TAG_FLAG(block_manager_max_open_files, evolving);
 
@@ -74,8 +78,7 @@ using strings::Substitute;
 namespace kudu {
 namespace fs {
 
-BlockManagerOptions::BlockManagerOptions()
-  : read_only(false) {}
+BlockManagerOptions::BlockManagerOptions() : read_only(false) {}
 
 int64_t GetFileCacheCapacityForBlockManager(Env* env) {
   // Maximize this process' open file limit first, if possible.
@@ -100,11 +103,11 @@ int64_t GetFileCacheCapacityForBlockManager(Env* env) {
     // cap rlimit just in case it's too large.
     return std::min((2 * rlimit) / 5, static_cast<uint64_t>(kint64max));
   }
-  LOG_IF(FATAL, FLAGS_block_manager_max_open_files > rlimit) <<
-      Substitute(
-          "Configured open file limit (block_manager_max_open_files) $0 "
-          "exceeds process open file limit (ulimit) $1",
-          FLAGS_block_manager_max_open_files, rlimit);
+  LOG_IF(FATAL, FLAGS_block_manager_max_open_files > rlimit) << Substitute(
+      "Configured open file limit (block_manager_max_open_files) $0 "
+      "exceeds process open file limit (ulimit) $1",
+      FLAGS_block_manager_max_open_files,
+      rlimit);
   return FLAGS_block_manager_max_open_files;
 }
 

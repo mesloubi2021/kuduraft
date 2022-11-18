@@ -19,8 +19,8 @@
 #include <mutex>
 #include <ostream>
 #include <string>
-#include <vector>
 #include <unordered_set>
+#include <vector>
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
@@ -62,8 +62,7 @@ typedef simple_spinlock CounterLockType;
 // The methods are only thread-safe if the calling thread holds the lock.
 class CounterRegistry {
  public:
-  CounterRegistry() {
-  }
+  CounterRegistry() {}
 
   RegistryLockType* get_lock() const {
     return &lock_;
@@ -93,16 +92,18 @@ class CounterRegistry {
 class Counter {
  public:
   Counter(CounterRegistry* registry, int val)
-    : tid_(Env::Default()->gettid()),
-      registry_(CHECK_NOTNULL(registry)),
-      val_(val) {
-    LOG(INFO) << "Counter::~Counter(): tid = " << tid_ << ", addr = " << this << ", val = " << val_;
+      : tid_(Env::Default()->gettid()),
+        registry_(CHECK_NOTNULL(registry)),
+        val_(val) {
+    LOG(INFO) << "Counter::~Counter(): tid = " << tid_ << ", addr = " << this
+              << ", val = " << val_;
     std::lock_guard<RegistryLockType> reg_lock(*registry_->get_lock());
     CHECK(registry_->RegisterUnlocked(this));
   }
 
   ~Counter() {
-    LOG(INFO) << "Counter::~Counter(): tid = " << tid_ << ", addr = " << this << ", val = " << val_;
+    LOG(INFO) << "Counter::~Counter(): tid = " << tid_ << ", addr = " << this
+              << ", val = " << val_;
     std::lock_guard<RegistryLockType> reg_lock(*registry_->get_lock());
     std::lock_guard<CounterLockType> self_lock(lock_);
     LOG(INFO) << tid_ << ": deleting self from registry...";
@@ -142,11 +143,12 @@ class Counter {
 };
 
 // Create a new THREAD_LOCAL Counter and loop an increment operation on it.
-static void RegisterCounterAndLoopIncr(CounterRegistry* registry,
-                                       CountDownLatch* counters_ready,
-                                       CountDownLatch* reader_ready,
-                                       CountDownLatch* counters_done,
-                                       CountDownLatch* reader_done) {
+static void RegisterCounterAndLoopIncr(
+    CounterRegistry* registry,
+    CountDownLatch* counters_ready,
+    CountDownLatch* reader_ready,
+    CountDownLatch* counters_done,
+    CountDownLatch* reader_done) {
   BLOCK_STATIC_THREAD_LOCAL(Counter, counter, registry, 0);
   // Inform the reader that we are alive.
   counters_ready->CountDown();
@@ -175,7 +177,8 @@ static uint64_t Iterate(CounterRegistry* registry, int expected_counters) {
       std::lock_guard<CounterLockType> l(*counter->get_lock());
       value = counter->GetValueUnlocked();
     }
-    LOG(INFO) << "tid " << counter->tid() << " (counter " << counter << "): " << value;
+    LOG(INFO) << "tid " << counter->tid() << " (counter " << counter
+              << "): " << value;
     sum += value;
     seen_counters++;
   }
@@ -183,9 +186,11 @@ static uint64_t Iterate(CounterRegistry* registry, int expected_counters) {
   return sum;
 }
 
-static void TestThreadLocalCounters(CounterRegistry* registry, const int num_threads) {
+static void TestThreadLocalCounters(
+    CounterRegistry* registry,
+    const int num_threads) {
   LOG(INFO) << "Starting threads...";
-  vector<scoped_refptr<kudu::Thread> > threads;
+  vector<scoped_refptr<kudu::Thread>> threads;
 
   CountDownLatch counters_ready(num_threads);
   CountDownLatch reader_ready(1);
@@ -193,9 +198,16 @@ static void TestThreadLocalCounters(CounterRegistry* registry, const int num_thr
   CountDownLatch reader_done(1);
   for (int i = 0; i < num_threads; i++) {
     scoped_refptr<kudu::Thread> new_thread;
-    CHECK_OK(kudu::Thread::Create("test", strings::Substitute("t$0", i),
-        &RegisterCounterAndLoopIncr, registry, &counters_ready, &reader_ready,
-        &counters_done, &reader_done, &new_thread));
+    CHECK_OK(kudu::Thread::Create(
+        "test",
+        strings::Substitute("t$0", i),
+        &RegisterCounterAndLoopIncr,
+        registry,
+        &counters_ready,
+        &reader_ready,
+        &counters_done,
+        &reader_done,
+        &new_thread));
     threads.push_back(new_thread);
   }
 
@@ -243,9 +255,9 @@ class ThreadLocalString {
  public:
   static void set(std::string value);
   static const std::string& get();
+
  private:
-  ThreadLocalString() {
-  }
+  ThreadLocalString() {}
   DECLARE_STATIC_THREAD_LOCAL(std::string, value_);
   DISALLOW_COPY_AND_ASSIGN(ThreadLocalString);
 };
@@ -262,12 +274,13 @@ const std::string& ThreadLocalString::get() {
   return *value_;
 }
 
-static void RunAndAssign(CountDownLatch* writers_ready,
-                         CountDownLatch *readers_ready,
-                         CountDownLatch *all_done,
-                         CountDownLatch *threads_exiting,
-                         const std::string& in,
-                         std::string* out) {
+static void RunAndAssign(
+    CountDownLatch* writers_ready,
+    CountDownLatch* readers_ready,
+    CountDownLatch* all_done,
+    CountDownLatch* threads_exiting,
+    const std::string& in,
+    std::string* out) {
   writers_ready->Wait();
   // Ensure it starts off as an empty string.
   CHECK_EQ("", ThreadLocalString::get());
@@ -285,7 +298,7 @@ TEST_F(ThreadLocalTest, TestTLSMember) {
   vector<CountDownLatch*> writers_ready;
   vector<CountDownLatch*> readers_ready;
   vector<std::string*> out_strings;
-  vector<scoped_refptr<kudu::Thread> > threads;
+  vector<scoped_refptr<kudu::Thread>> threads;
 
   ElementDeleter writers_deleter(&writers_ready);
   ElementDeleter readers_deleter(&readers_ready);
@@ -300,9 +313,17 @@ TEST_F(ThreadLocalTest, TestTLSMember) {
     readers_ready.push_back(new CountDownLatch(1));
     out_strings.push_back(new std::string());
     scoped_refptr<kudu::Thread> new_thread;
-    CHECK_OK(kudu::Thread::Create("test", strings::Substitute("t$0", i),
-        &RunAndAssign, writers_ready[i], readers_ready[i],
-        &all_done, &threads_exiting, Substitute("$0", i), out_strings[i], &new_thread));
+    CHECK_OK(kudu::Thread::Create(
+        "test",
+        strings::Substitute("t$0", i),
+        &RunAndAssign,
+        writers_ready[i],
+        readers_ready[i],
+        &all_done,
+        &threads_exiting,
+        Substitute("$0", i),
+        out_strings[i],
+        &new_thread));
     threads.push_back(new_thread);
   }
 
@@ -338,7 +359,7 @@ TEST_F(ThreadLocalTest, TestThreadLocalCache) {
 
   // Insert more items than the cache capacity.
   const int kLastItem = TLC::kItemCapacity * 2;
-  for (int i = 1; i <= kLastItem ; i++) {
+  for (int i = 1; i <= kLastItem; i++) {
     auto* item = tlc->EmplaceNew(i);
     ASSERT_NE(nullptr, item);
     *item = Substitute("item $0", i);

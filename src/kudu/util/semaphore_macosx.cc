@@ -26,8 +26,7 @@
 
 namespace kudu {
 
-Semaphore::Semaphore(int capacity)
-  : count_(capacity) {
+Semaphore::Semaphore(int capacity) : count_(capacity) {
   DCHECK_GE(capacity, 0);
   sem_ = dispatch_semaphore_create(capacity);
   CHECK_NOTNULL(sem_);

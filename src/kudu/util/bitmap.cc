@@ -26,7 +26,11 @@
 
 namespace kudu {
 
-void BitmapChangeBits(uint8_t *bitmap, size_t offset, size_t num_bits, bool value) {
+void BitmapChangeBits(
+    uint8_t* bitmap,
+    size_t offset,
+    size_t num_bits,
+    bool value) {
   DCHECK_GT(num_bits, 0);
 
   size_t start_byte = (offset >> 3);
@@ -50,7 +54,7 @@ void BitmapChangeBits(uint8_t *bitmap, size_t offset, size_t num_bits, bool valu
 
   // change the middle bits
   if (end_byte > start_byte) {
-    const uint8_t pattern8[2] = { 0x00, 0xff };
+    const uint8_t pattern8[2] = {0x00, 0xff};
     memset(bitmap + start_byte, pattern8[value], end_byte - start_byte);
   }
 
@@ -64,16 +68,20 @@ void BitmapChangeBits(uint8_t *bitmap, size_t offset, size_t num_bits, bool valu
   }
 }
 
-bool BitmapFindFirst(const uint8_t *bitmap, size_t offset, size_t bitmap_size,
-                     bool value, size_t *idx) {
-  const uint64_t pattern64[2] = { 0xffffffffffffffff, 0x0000000000000000 };
-  const uint8_t pattern8[2] = { 0xff, 0x00 };
+bool BitmapFindFirst(
+    const uint8_t* bitmap,
+    size_t offset,
+    size_t bitmap_size,
+    bool value,
+    size_t* idx) {
+  const uint64_t pattern64[2] = {0xffffffffffffffff, 0x0000000000000000};
+  const uint8_t pattern8[2] = {0xff, 0x00};
   size_t bit;
 
   DCHECK_LE(offset, bitmap_size);
 
   // Jump to the byte at specified offset
-  const uint8_t *p = bitmap + (offset >> 3);
+  const uint8_t* p = bitmap + (offset >> 3);
   size_t num_bits = bitmap_size - offset;
 
   // Find a 'value' bit at the end of the first byte
@@ -91,14 +99,14 @@ bool BitmapFindFirst(const uint8_t *bitmap, size_t offset, size_t bitmap_size,
   }
 
   // check 64bit at the time for a 'value' bit
-  const uint64_t *u64 = (const uint64_t *)p;
+  const uint64_t* u64 = (const uint64_t*)p;
   while (num_bits >= 64 && *u64 == pattern64[value]) {
     num_bits -= 64;
     u64++;
   }
 
   // check 8bit at the time for a 'value' bit
-  p = (const uint8_t *)u64;
+  p = (const uint8_t*)u64;
   while (num_bits >= 8 && *p == pattern8[value]) {
     num_bits -= 8;
     p++;
@@ -116,7 +124,7 @@ bool BitmapFindFirst(const uint8_t *bitmap, size_t offset, size_t bitmap_size,
   return false;
 }
 
-std::string BitmapToString(const uint8_t *bitmap, size_t num_bits) {
+std::string BitmapToString(const uint8_t* bitmap, size_t num_bits) {
   std::string s;
   size_t index = 0;
   while (index < num_bits) {

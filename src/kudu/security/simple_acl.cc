@@ -34,23 +34,22 @@ using std::vector;
 namespace kudu {
 namespace security {
 
-SimpleAcl::SimpleAcl() {
-}
+SimpleAcl::SimpleAcl() {}
 
-SimpleAcl::~SimpleAcl() {
-}
+SimpleAcl::~SimpleAcl() {}
 
 Status SimpleAcl::ParseFlag(const string& flag) {
-  vector<StringPiece> fields = strings::Split(flag, ",", strings::SkipWhitespace());
+  vector<StringPiece> fields =
+      strings::Split(flag, ",", strings::SkipWhitespace());
   set<string> users;
   for (const auto& field : fields) {
-    if (field.empty()) continue;
+    if (field.empty())
+      continue;
     // if any field is a wildcard, no need to include the rest.
     if (flag == "*") {
       Reset({"*"});
       return Status::OK();
     }
-
 
     // Leave open the use of various special characters at the start of each
     // username. We reserve some special characters that might be useful in
@@ -65,8 +64,7 @@ Status SimpleAcl::ParseFlag(const string& flag) {
     // <quote characters>: in case we want to add quoted strings
     // whitespace: down right confusing
     static const char* kReservedStartingCharacters = "!@#$%*-=+'\"";
-    if (strchr(kReservedStartingCharacters, field[0]) ||
-        isspace(field[0])) {
+    if (strchr(kReservedStartingCharacters, field[0]) || isspace(field[0])) {
       return Status::NotSupported("invalid username", field.ToString());
     }
 

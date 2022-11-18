@@ -45,8 +45,8 @@ DECLARE_bool(helpxml);
 DECLARE_string(helpmatch);
 DECLARE_string(helpon);
 
-using std::cout;
 using std::cerr;
+using std::cout;
 using std::deque;
 using std::endl;
 using std::string;
@@ -60,7 +60,8 @@ namespace tools {
 
 unique_ptr<Mode> RootMode(const string& name) {
   return ModeBuilder(name)
-      .Description("Kudu Command Line Tools") // root mode description isn't printed
+      .Description(
+          "Kudu Command Line Tools") // root mode description isn't printed
       //.AddMode(BuildClusterMode())
       //.AddMode(BuildDiagnoseMode())
       //.AddMode(BuildFsMode())
@@ -78,17 +79,19 @@ unique_ptr<Mode> RootMode(const string& name) {
       .Build();
 }
 
-Status MarshalArgs(const vector<Mode*>& chain,
-                   Action* action,
-                   deque<string> input,
-                   unordered_map<string, string>* required,
-                   vector<string>* variadic) {
+Status MarshalArgs(
+    const vector<Mode*>& chain,
+    Action* action,
+    deque<string> input,
+    unordered_map<string, string>* required,
+    vector<string>* variadic) {
   const ActionArgsDescriptor& args = action->args();
 
   // Marshal the required arguments from the command line.
   for (const auto& a : args.required) {
     if (input.empty()) {
-      return Status::InvalidArgument(Substitute("must provide positional argument $0", a.name));
+      return Status::InvalidArgument(
+          Substitute("must provide positional argument $0", a.name));
     }
     InsertOrDie(required, a.name, input.front());
     input.pop_front();
@@ -98,8 +101,8 @@ Status MarshalArgs(const vector<Mode*>& chain,
   if (args.variadic) {
     const ActionArgsDescriptor::Arg& a = args.variadic.get();
     if (input.empty()) {
-      return Status::InvalidArgument(Substitute("must provide variadic positional argument $0",
-                                                a.name));
+      return Status::InvalidArgument(
+          Substitute("must provide variadic positional argument $0", a.name));
     }
 
     variadic->assign(input.begin(), input.end());
@@ -109,20 +112,22 @@ Status MarshalArgs(const vector<Mode*>& chain,
   // There should be no unparsed arguments left.
   if (!input.empty()) {
     DCHECK(!chain.empty());
-    return Status::InvalidArgument(
-        Substitute("too many arguments: '$0'\n$1",
-                   JoinStrings(input, " "), action->BuildHelp(chain)));
+    return Status::InvalidArgument(Substitute(
+        "too many arguments: '$0'\n$1",
+        JoinStrings(input, " "),
+        action->BuildHelp(chain)));
   }
   return Status::OK();
 }
 
-int DispatchCommand(const vector<Mode*>& chain,
-                    Action* action,
-                    const deque<string>& remaining_args) {
+int DispatchCommand(
+    const vector<Mode*>& chain,
+    Action* action,
+    const deque<string>& remaining_args) {
   unordered_map<string, string> required_args;
   vector<string> variadic_args;
-  Status s = MarshalArgs(chain, action, remaining_args,
-                         &required_args, &variadic_args);
+  Status s = MarshalArgs(
+      chain, action, remaining_args, &required_args, &variadic_args);
   if (!s.ok()) {
     cerr << s.ToString() << endl;
     cerr << endl;
@@ -148,7 +153,7 @@ void DumpToolXML(const string& path) {
   cout << "<?xml version=\"1.0\"?>";
   cout << "<AllModes>";
   for (const auto& mode : root->modes()) {
-    vector<Mode*> chain = { root.get(), mode.get() };
+    vector<Mode*> chain = {root.get(), mode.get()};
     cout << mode->BuildHelpXML(chain);
   }
   cout << "</AllModes>" << endl;
@@ -157,7 +162,7 @@ void DumpToolXML(const string& path) {
 int RunTool(int argc, char** argv, bool show_help) {
   unique_ptr<Mode> root = RootMode(argv[0]);
   // Initialize arg parsing state.
-  vector<Mode*> chain = { root.get() };
+  vector<Mode*> chain = {root.get()};
 
   // Parse the arguments, matching each to a mode or action.
   for (int i = 1; i < argc; i++) {
@@ -227,11 +232,8 @@ bool ParseCommandLineFlags(const char* prog_name) {
   }
 
   bool show_help = false;
-  if (FLAGS_help ||
-      FLAGS_helpshort ||
-      !FLAGS_helpon.empty() ||
-      !FLAGS_helpmatch.empty() ||
-      FLAGS_helppackage) {
+  if (FLAGS_help || FLAGS_helpshort || !FLAGS_helpon.empty() ||
+      !FLAGS_helpmatch.empty() || FLAGS_helppackage) {
     FLAGS_help = false;
     FLAGS_helpshort = false;
     FLAGS_helpon = "";
@@ -244,14 +246,17 @@ bool ParseCommandLineFlags(const char* prog_name) {
 }
 
 int ToolMain(int argc, char** argv) {
-  // Disable redaction by default so that user data printed to the console will be shown
-  // in full.
-  CHECK_NE("",  gflags::SetCommandLineOptionWithMode(
-      "redact", "", gflags::SET_FLAGS_DEFAULT));
+  // Disable redaction by default so that user data printed to the console will
+  // be shown in full.
+  CHECK_NE(
+      "",
+      gflags::SetCommandLineOptionWithMode(
+          "redact", "", gflags::SET_FLAGS_DEFAULT));
 
   // Hide the regular gflags help unless --helpfull is used.
   //
-  // Inspired by https://github.com/gflags/gflags/issues/43#issuecomment-168280647.
+  // Inspired by
+  // https://github.com/gflags/gflags/issues/43#issuecomment-168280647.
   gflags::ParseCommandLineNonHelpFlags(&argc, &argv, true);
 
   FLAGS_logtostderr = true;

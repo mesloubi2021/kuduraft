@@ -53,7 +53,7 @@
 // This will not evaluate 'status_expr' if 'fraction_flag' is zero.
 #define MAYBE_RETURN_FAILURE(fraction_flag, status_expr) \
   if (kudu::fault_injection::MaybeTrue(fraction_flag)) { \
-    RETURN_NOT_OK((status_expr)); \
+    RETURN_NOT_OK((status_expr));                        \
   }
 
 // Implementation details below.
@@ -73,25 +73,28 @@ void DoInjectFixedLatency(int32_t latency_ms);
 bool DoMaybeTrue(double fraction);
 
 inline bool MaybeTrue(double fraction) {
-  if (PREDICT_TRUE(fraction <= 0)) return false;
+  if (PREDICT_TRUE(fraction <= 0))
+    return false;
   return DoMaybeTrue(fraction);
 }
 
 inline void MaybeFault(const char* fault_str, double fraction) {
-  if (PREDICT_TRUE(fraction <= 0)) return;
+  if (PREDICT_TRUE(fraction <= 0))
+    return;
   DoMaybeFault(fault_str, fraction);
 }
 
 inline void MaybeInjectRandomLatency(double max_latency) {
-  if (PREDICT_TRUE(max_latency <= 0)) return;
+  if (PREDICT_TRUE(max_latency <= 0))
+    return;
   DoInjectRandomLatency(max_latency);
 }
 
 inline void MaybeInjectFixedLatency(int32_t latency) {
-  if (PREDICT_TRUE(latency <= 0)) return;
+  if (PREDICT_TRUE(latency <= 0))
+    return;
   DoInjectFixedLatency(latency);
 }
-
 
 } // namespace fault_injection
 } // namespace kudu

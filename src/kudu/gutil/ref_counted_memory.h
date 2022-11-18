@@ -11,8 +11,8 @@
 #include <vector>
 
 #include "kudu/gutil/macros.h"
-#include "kudu/gutil/ref_counted.h"
 #include "kudu/gutil/port.h"
+#include "kudu/gutil/ref_counted.h"
 #include "kudu/gutil/threading/thread_collision_warner.h"
 
 #ifndef BASE_EXPORT
@@ -38,7 +38,8 @@ class BASE_EXPORT RefCountedMemory
   bool Equals(const scoped_refptr<RefCountedMemory>& other) const;
 
   // Handy method to simplify calling front() with a reinterpret_cast.
-  template<typename T> const T* front_as() const {
+  template <typename T>
+  const T* front_as() const {
     return reinterpret_cast<const T*>(front());
   }
 
@@ -52,8 +53,7 @@ class BASE_EXPORT RefCountedMemory
 // matter.
 class BASE_EXPORT RefCountedStaticMemory : public RefCountedMemory {
  public:
-  RefCountedStaticMemory()
-      : data_(NULL), length_(0) {}
+  RefCountedStaticMemory() : data_(NULL), length_(0) {}
   RefCountedStaticMemory(const void* data, size_t length)
       : data_(static_cast<const unsigned char*>(length ? data : NULL)),
         length_(length) {}
@@ -91,8 +91,12 @@ class BASE_EXPORT RefCountedBytes : public RefCountedMemory {
   virtual const unsigned char* front() const override;
   virtual size_t size() const override;
 
-  const std::vector<unsigned char>& data() const { return data_; }
-  std::vector<unsigned char>& data() { return data_; }
+  const std::vector<unsigned char>& data() const {
+    return data_;
+  }
+  std::vector<unsigned char>& data() {
+    return data_;
+  }
 
  private:
   virtual ~RefCountedBytes();
@@ -117,8 +121,12 @@ class BASE_EXPORT RefCountedString : public RefCountedMemory {
   virtual const unsigned char* front() const override;
   virtual size_t size() const override;
 
-  const std::string& data() const { return data_; }
-  std::string& data() { return data_; }
+  const std::string& data() const {
+    return data_;
+  }
+  std::string& data() {
+    return data_;
+  }
 
  private:
   virtual ~RefCountedString();
@@ -148,6 +156,6 @@ class BASE_EXPORT RefCountedMallocedMemory : public RefCountedMemory {
   DISALLOW_COPY_AND_ASSIGN(RefCountedMallocedMemory);
 };
 
-}  // namespace kudu
+} // namespace kudu
 
-#endif  // KUDU_GUTIL_REF_COUNTED_MEMORY_H_
+#endif // KUDU_GUTIL_REF_COUNTED_MEMORY_H_

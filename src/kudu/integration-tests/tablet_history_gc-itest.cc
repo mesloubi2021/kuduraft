@@ -32,15 +32,15 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-#include "kudu/clock/clock.h"
-#include "kudu/clock/hybrid_clock.h"
-#include "kudu/clock/mock_ntp.h"
-#include "kudu/clock/time_service.h"
 #include "kudu/client/client-test-util.h"
 #include "kudu/client/client.h"
 #include "kudu/client/scan_batch.h"
 #include "kudu/client/shared_ptr.h"
 #include "kudu/client/write_op.h"
+#include "kudu/clock/clock.h"
+#include "kudu/clock/hybrid_clock.h"
+#include "kudu/clock/mock_ntp.h"
+#include "kudu/clock/time_service.h"
 #include "kudu/common/partial_row.h"
 #include "kudu/common/schema.h"
 #include "kudu/common/timestamp.h"
@@ -96,8 +96,11 @@ DECLARE_int32(scanner_ttl_ms);
 DECLARE_int32(tablet_history_max_age_sec);
 DECLARE_int32(undo_delta_block_gc_init_budget_millis);
 
-DEFINE_int32(test_num_rounds, 200, "Number of rounds to loop "
-                                   "RandomizedTabletHistoryGcITest.TestRandomHistoryGCWorkload");
+DEFINE_int32(
+    test_num_rounds,
+    200,
+    "Number of rounds to loop "
+    "RandomizedTabletHistoryGcITest.TestRandomHistoryGCWorkload");
 
 namespace kudu {
 
@@ -132,15 +135,19 @@ TEST_F(TabletHistoryGcITest, TestSnapshotScanBeforeAHM) {
   ASSERT_OK(scanner.SetReadMode(KuduScanner::READ_AT_SNAPSHOT));
   Status s = scanner.Open();
   ASSERT_TRUE(s.IsInvalidArgument()) << s.ToString();
-  ASSERT_STR_CONTAINS(s.ToString(), "Snapshot timestamp is earlier than the ancient history mark");
+  ASSERT_STR_CONTAINS(
+      s.ToString(),
+      "Snapshot timestamp is earlier than the ancient history mark");
 }
 
-// Check that the maintenance manager op to delete undo deltas actually deletes them.
+// Check that the maintenance manager op to delete undo deltas actually deletes
+// them.
 TEST_F(TabletHistoryGcITest, TestUndoDeltaBlockGc) {
   FLAGS_time_source = "mock"; // Allow moving the clock.
   FLAGS_tablet_history_max_age_sec = 1000;
   FLAGS_flush_threshold_secs = 0; // Flush as aggressively as possible.
-  FLAGS_maintenance_manager_polling_interval_ms = 1; // Spin on MM for a quick test.
+  FLAGS_maintenance_manager_polling_interval_ms =
+      1; // Spin on MM for a quick test.
   FLAGS_maintenance_manager_num_threads = 4; // Encourage concurrency.
 
   NO_FATALS(StartCluster(1)); // Single-node cluster.
@@ -189,7 +196,8 @@ TEST_F(TabletHistoryGcITest, TestUndoDeltaBlockGc) {
     VLOG(1) << "Number of redo deltas: " << tablet->CountRedoDeltasForTests();
 
     // Only break out of the loop once we have undos.
-    if (tablet->CountUndoDeltasForTests() > 0) break;
+    if (tablet->CountUndoDeltasForTests() > 0)
+      break;
 
     SleepFor(MonoDelta::FromMilliseconds(5));
     row_value++;
@@ -201,16 +209,15 @@ TEST_F(TabletHistoryGcITest, TestUndoDeltaBlockGc) {
   ASSERT_OK(tablet->FlushAllDMSForTests());
 
   uint64_t measured_size_before_gc = 0;
-  ASSERT_OK(Env::Default()->GetFileSizeOnDiskRecursively(cluster_->GetTabletServerFsRoot(0),
-                                                         &measured_size_before_gc));
+  ASSERT_OK(Env::Default()->GetFileSizeOnDiskRecursively(
+      cluster_->GetTabletServerFsRoot(0), &measured_size_before_gc));
 
   // Move the clock so all operations are in the past. Then wait until we have
   // no more undo deltas.
   HybridClock* c = down_cast<HybridClock*>(tablet->clock().get());
-  AddTimeToHybridClock(c, MonoDelta::FromSeconds(FLAGS_tablet_history_max_age_sec));
-  ASSERT_EVENTUALLY([&] {
-    ASSERT_EQ(0, tablet->CountUndoDeltasForTests());
-  });
+  AddTimeToHybridClock(
+      c, MonoDelta::FromSeconds(FLAGS_tablet_history_max_age_sec));
+  ASSERT_EVENTUALLY([&] { ASSERT_EQ(0, tablet->CountUndoDeltasForTests()); });
 
   // Verify that the latest values are still there.
   KuduScanner scanner(table.get());
@@ -234,29 +241,33 @@ TEST_F(TabletHistoryGcITest, TestUndoDeltaBlockGc) {
 
   // Check that the tablet metrics have reasonable values.
   ASSERT_EVENTUALLY([&] {
-    ASSERT_GT(tablet->metrics()->undo_delta_block_gc_init_duration->TotalCount(), 0);
-    ASSERT_GT(tablet->metrics()->undo_delta_block_gc_delete_duration->TotalCount(), 0);
-    ASSERT_GT(tablet->metrics()->undo_delta_block_gc_perform_duration->TotalCount(), 0);
+    ASSERT_GT(
+        tablet->metrics()->undo_delta_block_gc_init_duration->TotalCount(), 0);
+    ASSERT_GT(
+        tablet->metrics()->undo_delta_block_gc_delete_duration->TotalCount(),
+        0);
+    ASSERT_GT(
+        tablet->metrics()->undo_delta_block_gc_perform_duration->TotalCount(),
+        0);
     ASSERT_EQ(0, tablet->metrics()->undo_delta_block_gc_running->value());
     ASSERT_GT(tablet->metrics()->undo_delta_block_gc_bytes_deleted->value(), 0);
-    ASSERT_EQ(0, tablet->metrics()->undo_delta_block_estimated_retained_bytes->value());
+    ASSERT_EQ(
+        0,
+        tablet->metrics()->undo_delta_block_estimated_retained_bytes->value());
 
     // Check that we are now using less space.
     // We manually flush the tablet metadata here because the list of orphaned
     // blocks may take up space.
     ASSERT_OK(tablet->metadata()->Flush());
     uint64_t measured_size_after_gc = 0;
-    ASSERT_OK(Env::Default()->GetFileSizeOnDiskRecursively(cluster_->GetTabletServerFsRoot(0),
-                                                           &measured_size_after_gc));
+    ASSERT_OK(Env::Default()->GetFileSizeOnDiskRecursively(
+        cluster_->GetTabletServerFsRoot(0), &measured_size_after_gc));
     ASSERT_LT(measured_size_after_gc, measured_size_before_gc);
   });
 }
 
 // Whether a MaterializedTestRow is deleted or not.
-enum IsDeleted {
-  NOT_DELETED,
-  DELETED
-};
+enum IsDeleted { NOT_DELETED, DELETED };
 
 // Test row. Schema follows SimpleTestSchema.
 struct MaterializedTestRow {
@@ -308,16 +319,22 @@ class RandomizedTabletHistoryGcITest : public TabletHistoryGcITest {
   using ScannerMap = std::multimap<int, ScannerTSPair>;
 
   string StringifyTestRow(const MaterializedTestRow& row) {
-    return Substitute("{ $0, $1, $2, $3 }", row.key, row.int_val, row.string_val,
-                      (row.is_deleted == DELETED) ? "DELETED" : "NOT_DELETED");
+    return Substitute(
+        "{ $0, $1, $2, $3 }",
+        row.key,
+        row.int_val,
+        row.string_val,
+        (row.is_deleted == DELETED) ? "DELETED" : "NOT_DELETED");
   }
 
   string StringifyTimestamp(const Timestamp& ts) {
-    return Substitute("$0 ($1)", HybridClock::StringifyTimestamp(ts), ts.ToString());
+    return Substitute(
+        "$0 ($1)", HybridClock::StringifyTimestamp(ts), ts.ToString());
   }
 
   MaterializedTestTable CloneLatestSnapshot() {
-    return snapshots_[latest_snapshot_ts_.ToUint64()]; // Will auto-vivify on first pass.
+    return snapshots_[latest_snapshot_ts_.ToUint64()]; // Will auto-vivify on
+                                                       // first pass.
   }
 
   MaterializedTestTable* GetPtrToLatestSnapshot() {
@@ -338,8 +355,10 @@ class RandomizedTabletHistoryGcITest : public TabletHistoryGcITest {
     latest_snapshot_ts_ = ts;
   }
 
-  void RegisterScanner(unique_ptr<client::KuduScanner> scanner, Timestamp snap_ts,
-                       int verify_round) {
+  void RegisterScanner(
+      unique_ptr<client::KuduScanner> scanner,
+      Timestamp snap_ts,
+      int verify_round) {
     CHECK_GE(verify_round, cur_round_);
     if (verify_round == cur_round_) {
       NO_FATALS(VerifySnapshotScan(std::move(scanner), snap_ts, verify_round));
@@ -350,7 +369,9 @@ class RandomizedTabletHistoryGcITest : public TabletHistoryGcITest {
     scanners_.insert(std::move(entry));
   }
 
-  void VerifyAndRemoveScanners(ScannerMap::iterator begin, ScannerMap::iterator end) {
+  void VerifyAndRemoveScanners(
+      ScannerMap::iterator begin,
+      ScannerMap::iterator end) {
     auto iter = begin;
     while (iter != end) {
       int verify_round = iter->first;
@@ -373,11 +394,15 @@ class RandomizedTabletHistoryGcITest : public TabletHistoryGcITest {
     NO_FATALS(VerifyAndRemoveScanners(scanners_.begin(), scanners_.end()));
   }
 
-  void VerifySnapshotScan(unique_ptr<client::KuduScanner> scanner, Timestamp snap_ts, int round) {
+  void VerifySnapshotScan(
+      unique_ptr<client::KuduScanner> scanner,
+      Timestamp snap_ts,
+      int round) {
     LOG(INFO) << "Round " << round << ": Verifying snapshot scan for timestamp "
               << StringifyTimestamp(snap_ts);
     MaterializedTestTable* snap = GetPtrToSnapshotForTS(snap_ts);
-    ASSERT_NE(snap, nullptr) << "Could not find snapshot to match timestamp " << snap_ts.ToString();
+    ASSERT_NE(snap, nullptr)
+        << "Could not find snapshot to match timestamp " << snap_ts.ToString();
     int32_t rows_seen = 0;
     auto snap_iter = snap->cbegin();
     // Maintain a summary of mismatched keys for use in debugging.
@@ -390,7 +415,8 @@ class RandomizedTabletHistoryGcITest : public TabletHistoryGcITest {
         // Deleted rows will show up in our verification snapshot, but not the
         // tablet scanner.
         if (snap_iter->second.is_deleted == DELETED) {
-          VLOG(4) << "Row " << snap_iter->second.key << " is DELETED in our historical snapshot";
+          VLOG(4) << "Row " << snap_iter->second.key
+                  << " is DELETED in our historical snapshot";
           ++snap_iter;
           continue;
         }
@@ -402,9 +428,11 @@ class RandomizedTabletHistoryGcITest : public TabletHistoryGcITest {
         ASSERT_OK_FAST((*scan_iter).GetString(2, &string_val));
         // We attempt to compare both snapshots fully, even in the case of
         // failure, to help us understand what's going on when problems occur.
-        EXPECT_EQ(snap_iter->second.key, key) << "Mismatch at result row number " << rows_seen;
+        EXPECT_EQ(snap_iter->second.key, key)
+            << "Mismatch at result row number " << rows_seen;
         EXPECT_EQ(snap_iter->second.int_val, int_val) << "at row key " << key;
-        EXPECT_EQ(snap_iter->second.string_val, string_val.ToString()) << "at row key " << key;
+        EXPECT_EQ(snap_iter->second.string_val, string_val.ToString())
+            << "at row key " << key;
         ++rows_seen;
         if (key == snap_iter->second.key) {
           // Move both (the normal case)
@@ -454,9 +482,7 @@ class RandomizedTabletHistoryGcITest : public TabletHistoryGcITest {
 class ReupdateHooks : public Tablet::FlushCompactCommonHooks {
  public:
   ReupdateHooks(Tablet* tablet, const Schema& schema)
-      : tablet_(tablet),
-        client_schema_(schema) {
-  }
+      : tablet_(tablet), client_schema_(schema) {}
 
   Status PostWriteSnapshot() override {
     tablet::LocalTabletWriter writer(tablet_, &client_schema_);
@@ -513,13 +539,13 @@ class ReupdateHooks : public Tablet::FlushCompactCommonHooks {
 TEST_F(RandomizedTabletHistoryGcITest, TestRandomHistoryGCWorkload) {
   const int kSessionTimeoutMillis = 20000;
 
-  OverrideFlagForSlowTests("test_num_rounds",
-                           Substitute("$0", FLAGS_test_num_rounds * 5));
+  OverrideFlagForSlowTests(
+      "test_num_rounds", Substitute("$0", FLAGS_test_num_rounds * 5));
 
   LOG(INFO) << "Running " << FLAGS_test_num_rounds << " rounds";
 
-  // Set high scanner TTL, since this test opens scanners and then waits for some
-  // time before reading from them.
+  // Set high scanner TTL, since this test opens scanners and then waits for
+  // some time before reading from them.
   FLAGS_scanner_ttl_ms = 1000 * 60 * 60 * 24;
 
   StartCluster(1); // Start InternalMiniCluster with a single tablet server.
@@ -569,19 +595,23 @@ TEST_F(RandomizedTabletHistoryGcITest, TestRandomHistoryGCWorkload) {
       case kInsert: {
         int32_t num_rows_to_insert = random.Uniform(1000);
         VLOG(1) << "Inserting " << num_rows_to_insert << " rows";
-        if (num_rows_to_insert == 0) continue;
+        if (num_rows_to_insert == 0)
+          continue;
         MaterializedTestTable snapshot = CloneLatestSnapshot();
 
-        client::sp::shared_ptr<client::KuduSession> session = client_->NewSession();
+        client::sp::shared_ptr<client::KuduSession> session =
+            client_->NewSession();
         session->SetTimeoutMillis(kSessionTimeoutMillis);
-        ASSERT_OK_FAST(session->SetFlushMode(client::KuduSession::MANUAL_FLUSH));
+        ASSERT_OK_FAST(
+            session->SetFlushMode(client::KuduSession::MANUAL_FLUSH));
 
         for (int32_t i = 0; i < num_rows_to_insert; i++) {
           int32_t row_key = rows_inserted;
-          MaterializedTestRow test_row = { row_key,
-                                           static_cast<int32_t>(random.Next()),
-                                           Substitute("$0", random.Next()),
-                                           NOT_DELETED };
+          MaterializedTestRow test_row = {
+              row_key,
+              static_cast<int32_t>(random.Next()),
+              Substitute("$0", random.Next()),
+              NOT_DELETED};
           unique_ptr<client::KuduInsert> insert(table->NewInsert());
           KuduPartialRow* row = insert->mutable_row();
           ASSERT_OK_FAST(row->SetInt32(0, test_row.key));
@@ -598,10 +628,13 @@ TEST_F(RandomizedTabletHistoryGcITest, TestRandomHistoryGCWorkload) {
         break;
       }
       case kUpdate: {
-        if (rows_inserted == 0) continue;
-        int32_t num_rows_to_update = random.Uniform(std::min(rows_inserted, 1000));
+        if (rows_inserted == 0)
+          continue;
+        int32_t num_rows_to_update =
+            random.Uniform(std::min(rows_inserted, 1000));
         VLOG(1) << "Updating up to " << num_rows_to_update << " rows";
-        if (num_rows_to_update == 0) continue;
+        if (num_rows_to_update == 0)
+          continue;
 
         MaterializedTestTable snapshot = CloneLatestSnapshot();
 
@@ -615,9 +648,11 @@ TEST_F(RandomizedTabletHistoryGcITest, TestRandomHistoryGCWorkload) {
         for (int i = 0; i < num_rows_to_update; i++) {
           int32_t row_key = random.Uniform(rows_inserted);
           MaterializedTestRow* test_row = &snapshot[row_key];
-          ASSERT_EQ(row_key, test_row->key) << "Rows inserted: " << rows_inserted
+          ASSERT_EQ(row_key, test_row->key)
+              << "Rows inserted: " << rows_inserted
               << ", row: " << StringifyTestRow(*test_row);
-          if (test_row->is_deleted == DELETED) continue;
+          if (test_row->is_deleted == DELETED)
+            continue;
 
           test_row->int_val = random.Next();
           test_row->string_val = Substitute("$0", random.Next());
@@ -627,7 +662,8 @@ TEST_F(RandomizedTabletHistoryGcITest, TestRandomHistoryGCWorkload) {
         }
 
         int rows_updated = updates.size();
-        if (rows_updated == 0) continue;
+        if (rows_updated == 0)
+          continue;
 
         if (force_reupdate_missed_deltas) {
           std::shared_ptr<ReupdateHooks> hooks =
@@ -635,11 +671,14 @@ TEST_F(RandomizedTabletHistoryGcITest, TestRandomHistoryGCWorkload) {
           hooks->set_updates(std::move(updates));
           tablet->SetFlushCompactCommonHooksForTests(hooks);
           ASSERT_OK(tablet->Compact(Tablet::FORCE_COMPACT_ALL));
-          tablet->SetFlushCompactCommonHooksForTests(nullptr); // Clear the hook.
+          tablet->SetFlushCompactCommonHooksForTests(
+              nullptr); // Clear the hook.
         } else {
-          client::sp::shared_ptr<client::KuduSession> session = client_->NewSession();
+          client::sp::shared_ptr<client::KuduSession> session =
+              client_->NewSession();
           session->SetTimeoutMillis(kSessionTimeoutMillis);
-          ASSERT_OK_FAST(session->SetFlushMode(client::KuduSession::MANUAL_FLUSH));
+          ASSERT_OK_FAST(
+              session->SetFlushMode(client::KuduSession::MANUAL_FLUSH));
 
           for (const MaterializedTestRow& test_row : updates) {
             unique_ptr<client::KuduUpdate> update(table->NewUpdate());
@@ -656,10 +695,13 @@ TEST_F(RandomizedTabletHistoryGcITest, TestRandomHistoryGCWorkload) {
         break;
       }
       case kDelete: {
-        if (rows_inserted == 0) continue;
-        int32_t num_rows_to_delete = random.Uniform(std::min(rows_inserted, 1000));
+        if (rows_inserted == 0)
+          continue;
+        int32_t num_rows_to_delete =
+            random.Uniform(std::min(rows_inserted, 1000));
         VLOG(1) << "Deleting up to " << num_rows_to_delete << " rows";
-        if (num_rows_to_delete == 0) continue;
+        if (num_rows_to_delete == 0)
+          continue;
 
         MaterializedTestTable snapshot = CloneLatestSnapshot();
 
@@ -686,7 +728,8 @@ TEST_F(RandomizedTabletHistoryGcITest, TestRandomHistoryGCWorkload) {
         }
 
         int rows_deleted = deletes.size();
-        if (rows_deleted == 0) continue;
+        if (rows_deleted == 0)
+          continue;
 
         deleted_rows_.insert(deletes.begin(), deletes.end());
 
@@ -696,11 +739,14 @@ TEST_F(RandomizedTabletHistoryGcITest, TestRandomHistoryGCWorkload) {
           hooks->set_deletes(std::move(deletes));
           tablet->SetFlushCompactCommonHooksForTests(hooks);
           ASSERT_OK(tablet->Compact(Tablet::FORCE_COMPACT_ALL));
-          tablet->SetFlushCompactCommonHooksForTests(nullptr); // Clear the hook.
+          tablet->SetFlushCompactCommonHooksForTests(
+              nullptr); // Clear the hook.
         } else {
-          client::sp::shared_ptr<client::KuduSession> session = client_->NewSession();
+          client::sp::shared_ptr<client::KuduSession> session =
+              client_->NewSession();
           session->SetTimeoutMillis(kSessionTimeoutMillis);
-          ASSERT_OK_FAST(session->SetFlushMode(client::KuduSession::MANUAL_FLUSH));
+          ASSERT_OK_FAST(
+              session->SetFlushMode(client::KuduSession::MANUAL_FLUSH));
 
           for (int32_t row_key : deletes) {
             unique_ptr<client::KuduDelete> del(table->NewDelete());
@@ -715,13 +761,16 @@ TEST_F(RandomizedTabletHistoryGcITest, TestRandomHistoryGCWorkload) {
         break;
       }
       case kReinsert: {
-        if (rows_inserted == 0) continue;
-        int32_t max_rows_to_reinsert = random.Uniform(std::min(rows_inserted, 1000));
+        if (rows_inserted == 0)
+          continue;
+        int32_t max_rows_to_reinsert =
+            random.Uniform(std::min(rows_inserted, 1000));
         VLOG(1) << "Reinserting up to " << max_rows_to_reinsert << " rows";
-        if (max_rows_to_reinsert == 0) continue;
+        if (max_rows_to_reinsert == 0)
+          continue;
         int num_deleted_rows = deleted_rows_.size();
-        if (num_deleted_rows == 0) continue;
-
+        if (num_deleted_rows == 0)
+          continue;
 
         // 5% chance to reupdate while also forcing a full compaction.
         bool force_reupdate_missed_deltas = random.OneIn(20);
@@ -733,8 +782,8 @@ TEST_F(RandomizedTabletHistoryGcITest, TestRandomHistoryGCWorkload) {
 
         vector<MaterializedTestRow> reinserts;
         for (int i = 0; i < max_rows_to_reinsert; i++) {
-          const int32_t row_key = *std::next(deleted_rows_.begin(),
-                                             random.Uniform(num_deleted_rows));
+          const int32_t row_key = *std::next(
+              deleted_rows_.begin(), random.Uniform(num_deleted_rows));
           MaterializedTestRow* test_row = &snapshot[row_key];
           ASSERT_EQ(row_key, test_row->key);
 
@@ -751,7 +800,8 @@ TEST_F(RandomizedTabletHistoryGcITest, TestRandomHistoryGCWorkload) {
           reinserts.push_back(*test_row);
         }
 
-        if (reinserts.empty()) continue;
+        if (reinserts.empty())
+          continue;
 
         for (const MaterializedTestRow& test_row : reinserts) {
           deleted_rows_.erase(test_row.key);
@@ -765,11 +815,14 @@ TEST_F(RandomizedTabletHistoryGcITest, TestRandomHistoryGCWorkload) {
           hooks->set_reinserts(std::move(reinserts));
           tablet->SetFlushCompactCommonHooksForTests(hooks);
           ASSERT_OK(tablet->Compact(Tablet::FORCE_COMPACT_ALL));
-          tablet->SetFlushCompactCommonHooksForTests(nullptr); // Clear the hook.
+          tablet->SetFlushCompactCommonHooksForTests(
+              nullptr); // Clear the hook.
         } else {
-          client::sp::shared_ptr<client::KuduSession> session = client_->NewSession();
+          client::sp::shared_ptr<client::KuduSession> session =
+              client_->NewSession();
           session->SetTimeoutMillis(kSessionTimeoutMillis);
-          ASSERT_OK_FAST(session->SetFlushMode(client::KuduSession::MANUAL_FLUSH));
+          ASSERT_OK_FAST(
+              session->SetFlushMode(client::KuduSession::MANUAL_FLUSH));
 
           for (const MaterializedTestRow& test_row : reinserts) {
             unique_ptr<client::KuduInsert> reinsert(table->NewInsert());
@@ -804,18 +857,23 @@ TEST_F(RandomizedTabletHistoryGcITest, TestRandomHistoryGCWorkload) {
       case kRedoDeltaCompaction: {
         // TODO: Randomize which deltas / projections get compacted.
         bool major = random.OneIn(2);
-        VLOG(1) << "Running " << (major ? "major" : "minor") << " delta compaction";
-        ASSERT_OK(tablet->CompactWorstDeltas(major ? tablet::RowSet::MAJOR_DELTA_COMPACTION :
-                                                     tablet::RowSet::MINOR_DELTA_COMPACTION));
+        VLOG(1) << "Running " << (major ? "major" : "minor")
+                << " delta compaction";
+        ASSERT_OK(tablet->CompactWorstDeltas(
+            major ? tablet::RowSet::MAJOR_DELTA_COMPACTION
+                  : tablet::RowSet::MINOR_DELTA_COMPACTION));
         break;
       }
       case kUndoDeltaBlockGc: {
         VLOG(1) << "Running UNDO delta block GC";
         ASSERT_OK(tablet->InitAncientUndoDeltas(
-            MonoDelta::FromMilliseconds(FLAGS_undo_delta_block_gc_init_budget_millis), nullptr));
+            MonoDelta::FromMilliseconds(
+                FLAGS_undo_delta_block_gc_init_budget_millis),
+            nullptr));
         int64_t blocks_deleted;
         int64_t bytes_deleted;
-        ASSERT_OK(tablet->DeleteAncientUndoDeltas(&blocks_deleted, &bytes_deleted));
+        ASSERT_OK(
+            tablet->DeleteAncientUndoDeltas(&blocks_deleted, &bytes_deleted));
         // If one of these equals zero, both should equal zero.
         if (blocks_deleted == 0 || bytes_deleted == 0) {
           ASSERT_EQ(0, blocks_deleted);
@@ -838,11 +896,11 @@ TEST_F(RandomizedTabletHistoryGcITest, TestRandomHistoryGCWorkload) {
         if (time_travel) {
           seconds_in_past = random.Uniform(FLAGS_tablet_history_max_age_sec);
         }
-        Timestamp snapshot_ts =
-            HybridClock::AddPhysicalTimeToTimestamp(clock_->Now(),
-                                                    MonoDelta::FromSeconds(-1L * seconds_in_past));
-        VLOG(1) << "Round " << cur_round_ << ": Starting snapshot scan for " << seconds_in_past
-                << " seconds in the past at " << StringifyTimestamp(snapshot_ts)
+        Timestamp snapshot_ts = HybridClock::AddPhysicalTimeToTimestamp(
+            clock_->Now(), MonoDelta::FromSeconds(-1L * seconds_in_past));
+        VLOG(1) << "Round " << cur_round_ << ": Starting snapshot scan for "
+                << seconds_in_past << " seconds in the past at "
+                << StringifyTimestamp(snapshot_ts)
                 << ") and scheduling the read for round " << read_round;
 
         unique_ptr<client::KuduScanner> scanner(new KuduScanner(table.get()));

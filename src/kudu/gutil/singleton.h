@@ -66,10 +66,12 @@
 
 namespace util {
 namespace gtl {
-template <typename SingletonType> class ScopedSingletonOverride;
-template <typename SingletonType> class ScopedSingletonOverrideNoDelete;
-}  // namespace gtl
-}  // namespace util
+template <typename SingletonType>
+class ScopedSingletonOverride;
+template <typename SingletonType>
+class ScopedSingletonOverrideNoDelete;
+} // namespace gtl
+} // namespace util
 
 template <typename Type>
 class Singleton {
@@ -84,7 +86,7 @@ class Singleton {
   static void UnsafeReset() {
     delete instance_;
     instance_ = NULL;
-    once_.state = GOOGLE_ONCE_INTERNAL_INIT;  // This is the bad part!
+    once_.state = GOOGLE_ONCE_INTERNAL_INIT; // This is the bad part!
   }
 
   // This function is used to replace the instance used by
@@ -98,7 +100,7 @@ class Singleton {
   static void InjectInstance(Type* instance) {
     injected_instance_ = instance;
     GoogleOnceInit(&once_, &Singleton<Type>::Inject);
-    injected_instance_ = NULL;  // Helps detect leaks in the unittest.
+    injected_instance_ = NULL; // Helps detect leaks in the unittest.
     if (instance_ != instance) {
       LOG(DFATAL) << "(jyasskin) InjectInstance() must be called at most once"
                   << " at the start of the program, before the Singleton has"
@@ -150,4 +152,4 @@ Type* Singleton<Type>::instance_ = NULL;
 template <typename Type>
 Type* Singleton<Type>::injected_instance_ = NULL;
 
-#endif  // UTIL_GTL_SINGLETON_H__
+#endif // UTIL_GTL_SINGLETON_H__

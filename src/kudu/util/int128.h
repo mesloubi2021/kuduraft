@@ -22,8 +22,7 @@
 
 // __int128 is not supported before gcc 4.6
 #if defined(__clang__) || \
-  (defined(__GNUC__) && \
-  (__GNUC__ * 10000 + __GNUC_MINOR__ * 100) >= 40600)
+    (defined(__GNUC__) && (__GNUC__ * 10000 + __GNUC_MINOR__ * 100) >= 40600)
 #define KUDU_INT128_SUPPORTED 1
 #else
 #define KUDU_INT128_SUPPORTED 0
@@ -37,8 +36,8 @@ typedef signed __int128 int128_t;
 
 // Note: We don't use numeric_limits because it can give incorrect
 // values for __int128 and unsigned __int128.
-static const uint128_t UINT128_MIN = (uint128_t) 0;
-static const uint128_t UINT128_MAX = ((uint128_t) -1);
+static const uint128_t UINT128_MIN = (uint128_t)0;
+static const uint128_t UINT128_MAX = ((uint128_t)-1);
 static const int128_t INT128_MAX = ((int128_t)(UINT128_MAX >> 1));
 static const int128_t INT128_MIN = (-INT128_MAX - 1);
 

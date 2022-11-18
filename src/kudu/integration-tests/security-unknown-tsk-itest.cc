@@ -95,7 +95,6 @@ class SecurityUnknownTskTest : public KuduTest {
       : num_tablet_servers_(3),
         heartbeat_interval_ms_(100),
         schema_(client::KuduSchemaFromSchema(CreateKeyValueTestSchema())) {
-
     // Make the ts->master heartbeat interval shorter to run the test faster.
     FLAGS_heartbeat_interval_ms = heartbeat_interval_ms_;
 
@@ -103,9 +102,9 @@ class SecurityUnknownTskTest : public KuduTest {
     // idle connection to the server and open a new one upon making another call
     // to the same server. This is to force authn token verification at each RPC
     // call: the authn token is verified by the server side during connection
-    // negotiation. This test uses the in-process InternalMiniCluster, this affects Kudu
-    // clients and the server components. In the context of this test, that's
-    // crucial only for the Kudu clients used in the tests.
+    // negotiation. This test uses the in-process InternalMiniCluster, this
+    // affects Kudu clients and the server components. In the context of this
+    // test, that's crucial only for the Kudu clients used in the tests.
     FLAGS_rpc_reopen_outbound_connections = true;
   }
 
@@ -138,21 +137,24 @@ class SecurityUnknownTskTest : public KuduTest {
 
   // Generate authn token signed by the specified TSK. Use current client's
   // authn token as a 'template' for the new one signed by the specified TSK.
-  Status GenerateAuthnToken(const shared_ptr<KuduClient>& client,
-                            const TokenSigningPrivateKeyPB& tsk,
-                            SignedTokenPB* new_signed_token) {
+  Status GenerateAuthnToken(
+      const shared_ptr<KuduClient>& client,
+      const TokenSigningPrivateKeyPB& tsk,
+      SignedTokenPB* new_signed_token) {
     // Should be already connected to the cluster.
-    boost::optional<SignedTokenPB> authn_token = client->data_->messenger_->authn_token();
+    boost::optional<SignedTokenPB> authn_token =
+        client->data_->messenger_->authn_token();
     if (authn_token == boost::none) {
       return Status::RuntimeError("client authn token is not set");
     }
 
-    // 'Copy' the token data. The idea to is remove the signature from the signed
-    // token and sign the token with our custom TSK (see below).
+    // 'Copy' the token data. The idea to is remove the signature from the
+    // signed token and sign the token with our custom TSK (see below).
     TokenSigner* signer = cluster_->mini_master()->master()->token_signer();
     TokenPB token;
     const TokenVerifier& verifier = signer->verifier();
-    if (verifier.VerifyTokenSignature(*authn_token, &token) != VerificationResult::VALID) {
+    if (verifier.VerifyTokenSignature(*authn_token, &token) !=
+        VerificationResult::VALID) {
       return Status::RuntimeError("current client authn token is not valid");
     }
 
@@ -162,7 +164,7 @@ class SecurityUnknownTskTest : public KuduTest {
     }
 
     TokenSigner forger(1, 1);
-    RETURN_NOT_OK(forger.ImportKeys({ tsk }));
+    RETURN_NOT_OK(forger.ImportKeys({tsk}));
     return forger.SignToken(new_signed_token);
   }
 
@@ -177,7 +179,7 @@ class SecurityUnknownTskTest : public KuduTest {
   // they receive TSK from the master with tserver-->master heartbeat response.
   Status ImportTsk(const TokenSigningPrivateKeyPB& tsk) {
     TokenSigner* signer = cluster_->mini_master()->master()->token_signer();
-    return signer->ImportKeys({ tsk });
+    return signer->ImportKeys({tsk});
   }
 
  protected:
@@ -186,7 +188,6 @@ class SecurityUnknownTskTest : public KuduTest {
   const KuduSchema schema_;
   unique_ptr<InternalMiniCluster> cluster_;
 };
-
 
 // Tablet server sends back ERROR_UNAVAILABLE error code upon connection
 // negotiation if it does not recognize the TSK which the client's authn token
@@ -201,8 +202,9 @@ TEST_F(SecurityUnknownTskTest, ErrorUnavailableCommonOperations) {
   shared_ptr<KuduClient> client;
   ASSERT_OK(cluster_->CreateClient(
       &KuduClientBuilder()
-          .default_admin_operation_timeout(MonoDelta::FromSeconds(timeout_seconds))
-          .default_rpc_timeout(MonoDelta::FromSeconds(timeout_seconds)),
+           .default_admin_operation_timeout(
+               MonoDelta::FromSeconds(timeout_seconds))
+           .default_rpc_timeout(MonoDelta::FromSeconds(timeout_seconds)),
       &client));
 
   // Generate our custom TSK.
@@ -220,11 +222,11 @@ TEST_F(SecurityUnknownTskTest, ErrorUnavailableCommonOperations) {
   gscoped_ptr<KuduTableCreator> table_creator(client->NewTableCreator());
   shared_ptr<KuduTable> table;
   ASSERT_OK(table_creator->table_name(table_name)
-      .set_range_partition_columns({ "key" })
-      .add_hash_partitions({ "key" }, num_tablet_servers_)
-      .schema(&schema_)
-      .num_replicas(1)
-      .Create());
+                .set_range_partition_columns({"key"})
+                .add_hash_partitions({"key"}, num_tablet_servers_)
+                .schema(&schema_)
+                .num_replicas(1)
+                .Create());
   ASSERT_OK(client->OpenTable(table_name, &table));
 
   shared_ptr<KuduSession> session = client->NewSession();
@@ -254,15 +256,16 @@ TEST_F(SecurityUnknownTskTest, ErrorUnavailableCommonOperations) {
   // authn token has been replaced (but not because the table already exists).
   {
     const Status s = table_creator->table_name(table_name)
-        .set_range_partition_columns({ "key" })
-        .schema(&schema_)
-        .num_replicas(1)
-        .Create();
+                         .set_range_partition_columns({"key"})
+                         .schema(&schema_)
+                         .num_replicas(1)
+                         .Create();
     // The client automatically retries on getting ServiceUnavailable from the
     // master. It will retry in vain until the operation times out.
     const string err_msg = s.ToString();
     ASSERT_TRUE(s.IsTimedOut()) << err_msg;
-    ASSERT_STR_CONTAINS(err_msg, "CreateTable timed out after deadline expired");
+    ASSERT_STR_CONTAINS(
+        err_msg, "CreateTable timed out after deadline expired");
   }
 
   {
@@ -270,7 +273,8 @@ TEST_F(SecurityUnknownTskTest, ErrorUnavailableCommonOperations) {
     const Status s = client->OpenTable(table_name, &table);
     const string err_msg = s.ToString();
     ASSERT_TRUE(s.IsTimedOut()) << err_msg;
-    ASSERT_STR_CONTAINS(err_msg, "GetTableSchema timed out after deadline expired");
+    ASSERT_STR_CONTAINS(
+        err_msg, "GetTableSchema timed out after deadline expired");
   }
 
   // Try to insert the same data which has been successfully inserted prior to
@@ -317,16 +321,13 @@ TEST_F(SecurityUnknownTskTest, ErrorUnavailableCommonOperations) {
   // In a separate thread, import our TSK into the master's TokenSigner. After
   // importing, the TSK should propagate to the tablet servers and the client
   // should be able to authenticate using its custom authn token.
-  thread importer(
-    [&]() {
-      SleepFor(MonoDelta::FromMilliseconds(timeout_seconds * 1000 / 5));
-      CHECK_OK(ImportTsk(tsk));
-    });
+  thread importer([&]() {
+    SleepFor(MonoDelta::FromMilliseconds(timeout_seconds * 1000 / 5));
+    CHECK_OK(ImportTsk(tsk));
+  });
 
   // An automatic clean-up to handle failure cases in the code below.
-  SCOPED_CLEANUP({
-      importer.join();
-    });
+  SCOPED_CLEANUP({ importer.join(); });
 
   // The client should retry its operations until the masters and tablet servers
   // get the necessary token verification key to verify our custom authn token.
@@ -369,58 +370,60 @@ TEST_F(SecurityUnknownTskTest, ErrorUnavailableDuringWorkload) {
 
     auto client = w.CreateClient();
     atomic<bool> importer_do_run(true);
-    thread importer(
-      [&]() {
-        // See below for the explanation.
-        MonoTime sync_point = MonoTime::Now();
+    thread importer([&]() {
+      // See below for the explanation.
+      MonoTime sync_point = MonoTime::Now();
 
-        while (importer_do_run) {
-          // Generate our custom TSK.
-          TokenSigningPrivateKeyPB tsk;
+      while (importer_do_run) {
+        // Generate our custom TSK.
+        TokenSigningPrivateKeyPB tsk;
 
-          // The master's TokenSigner might be generating TSKs in the background
-          // according to its own schedule. The master's TokenSigner increments
-          // the sequence number by 1 for every new TSK generated. To avoid TSK
-          // sequence number collisions, it's necessary to increment the sequence
-          // number for our custom TSKs more aggressively.
-          tsk_seq_num += 10;
-          CHECK_OK(GenerateTsk(&tsk, tsk_seq_num));
+        // The master's TokenSigner might be generating TSKs in the background
+        // according to its own schedule. The master's TokenSigner increments
+        // the sequence number by 1 for every new TSK generated. To avoid TSK
+        // sequence number collisions, it's necessary to increment the sequence
+        // number for our custom TSKs more aggressively.
+        tsk_seq_num += 10;
+        CHECK_OK(GenerateTsk(&tsk, tsk_seq_num));
 
-          // Create new authn token, signing it with the custom TSK.
-          SignedTokenPB new_signed_token;
-          CHECK_OK(GenerateAuthnToken(client, tsk, &new_signed_token));
+        // Create new authn token, signing it with the custom TSK.
+        SignedTokenPB new_signed_token;
+        CHECK_OK(GenerateAuthnToken(client, tsk, &new_signed_token));
 
-          ReplaceAuthnToken(client.get(), new_signed_token);
-          // From now till the call of ImportTsk() the system is unaware of the
-          // custom TSK key and the token signed with it cannot be verified.
-          SleepFor(MonoDelta::FromMilliseconds(rand() % 5 + 5));
-          CHECK_OK(ImportTsk(tsk));
+        ReplaceAuthnToken(client.get(), new_signed_token);
+        // From now till the call of ImportTsk() the system is unaware of the
+        // custom TSK key and the token signed with it cannot be verified.
+        SleepFor(MonoDelta::FromMilliseconds(rand() % 5 + 5));
+        CHECK_OK(ImportTsk(tsk));
 
-          // After the ImportTsk() call, the public part of the TSK needs to
-          // reach tablet servers so they could verify the custom authn token.
-          // The delay is more than the minimum required heartbeat_inteval_ms_
-          // to allow for completion of pending operations when retrying with
-          // the 'exponential back-off' policy. In addition, some clients might
-          // be long in the retry sequence, not being able to catch up with the
-          // rate of the token replacement: they need to wake up and make the
-          // retry call when current TSK is known to the system. Due to the
-          // exponential back-off algorithm of the retry sequence, there might
-          // be some clients sleeping for up to ~5 seconds between retries.
-          // To avoid timing out in such situations, every timeout interval
-          // a 'sync point' happens, so the long-sleeping clients are able to
-          // complete their operations. The kSyncSleepIntervalMs is little over
-          // the necessary ~5 seconds to avoid test flakiness on slow VMs.
-          static const int64_t kSyncSleepIntervalMs = 7500;
-          bool is_sync_point = (sync_point + MonoDelta::FromMilliseconds(
-              kTimeoutMs - kSyncSleepIntervalMs) <= MonoTime::Now());
-          const int64_t sleep_time_ms = is_sync_point
-              ? kSyncSleepIntervalMs : 5 * heartbeat_interval_ms_;
-          SleepFor(MonoDelta::FromMilliseconds(sleep_time_ms));
-          if (is_sync_point) {
-            sync_point = MonoTime::Now();
-          }
+        // After the ImportTsk() call, the public part of the TSK needs to
+        // reach tablet servers so they could verify the custom authn token.
+        // The delay is more than the minimum required heartbeat_inteval_ms_
+        // to allow for completion of pending operations when retrying with
+        // the 'exponential back-off' policy. In addition, some clients might
+        // be long in the retry sequence, not being able to catch up with the
+        // rate of the token replacement: they need to wake up and make the
+        // retry call when current TSK is known to the system. Due to the
+        // exponential back-off algorithm of the retry sequence, there might
+        // be some clients sleeping for up to ~5 seconds between retries.
+        // To avoid timing out in such situations, every timeout interval
+        // a 'sync point' happens, so the long-sleeping clients are able to
+        // complete their operations. The kSyncSleepIntervalMs is little over
+        // the necessary ~5 seconds to avoid test flakiness on slow VMs.
+        static const int64_t kSyncSleepIntervalMs = 7500;
+        bool is_sync_point =
+            (sync_point +
+                 MonoDelta::FromMilliseconds(
+                     kTimeoutMs - kSyncSleepIntervalMs) <=
+             MonoTime::Now());
+        const int64_t sleep_time_ms =
+            is_sync_point ? kSyncSleepIntervalMs : 5 * heartbeat_interval_ms_;
+        SleepFor(MonoDelta::FromMilliseconds(sleep_time_ms));
+        if (is_sync_point) {
+          sync_point = MonoTime::Now();
         }
-      });
+      }
+    });
 
     w.Setup();
     w.Start();

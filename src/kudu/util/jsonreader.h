@@ -48,38 +48,47 @@ class JsonReader {
   // 'field' is NULL, will try to convert 'object' directly into the
   // desire type.
 
-  Status ExtractBool(const rapidjson::Value* object,
-                     const char* field,
-                     bool* result) const;
+  Status ExtractBool(
+      const rapidjson::Value* object,
+      const char* field,
+      bool* result) const;
 
-  Status ExtractInt32(const rapidjson::Value* object,
-                      const char* field,
-                      int32_t* result) const;
+  Status ExtractInt32(
+      const rapidjson::Value* object,
+      const char* field,
+      int32_t* result) const;
 
-  Status ExtractInt64(const rapidjson::Value* object,
-                      const char* field,
-                      int64_t* result) const;
+  Status ExtractInt64(
+      const rapidjson::Value* object,
+      const char* field,
+      int64_t* result) const;
 
-  Status ExtractString(const rapidjson::Value* object,
-                       const char* field,
-                       std::string* result) const;
+  Status ExtractString(
+      const rapidjson::Value* object,
+      const char* field,
+      std::string* result) const;
 
   // 'result' is only valid for as long as JsonReader is alive.
-  Status ExtractObject(const rapidjson::Value* object,
-                       const char* field,
-                       const rapidjson::Value** result) const;
+  Status ExtractObject(
+      const rapidjson::Value* object,
+      const char* field,
+      const rapidjson::Value** result) const;
 
   // 'result' is only valid for as long as JsonReader is alive.
-  Status ExtractObjectArray(const rapidjson::Value* object,
-                            const char* field,
-                            std::vector<const rapidjson::Value*>* result) const;
+  Status ExtractObjectArray(
+      const rapidjson::Value* object,
+      const char* field,
+      std::vector<const rapidjson::Value*>* result) const;
 
-  const rapidjson::Value* root() const { return &document_; }
+  const rapidjson::Value* root() const {
+    return &document_;
+  }
 
  private:
-  Status ExtractField(const rapidjson::Value* object,
-                      const char* field,
-                      const rapidjson::Value** result) const;
+  Status ExtractField(
+      const rapidjson::Value* object,
+      const char* field,
+      const rapidjson::Value** result) const;
 
   std::string text_;
   rapidjson::Document document_;

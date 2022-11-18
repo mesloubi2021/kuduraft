@@ -59,28 +59,28 @@ using cluster::MiniCluster;
 const char* const TestWorkload::kDefaultTableName = "test-workload";
 
 TestWorkload::TestWorkload(MiniCluster* cluster)
-  : cluster_(cluster),
-    rng_(SeedRandom()),
-    num_write_threads_(4),
-    num_read_threads_(0),
-    // Set a high scanner timeout so that we're likely to have a chance to scan, even in
-    // high-stress workloads.
-    read_timeout_millis_(60000),
-    write_batch_size_(50),
-    write_timeout_millis_(20000),
-    timeout_allowed_(false),
-    not_found_allowed_(false),
-    network_error_allowed_(false),
-    remote_error_allowed_(false),
-    schema_(KuduSchemaFromSchema(GetSimpleTestSchema())),
-    num_replicas_(3),
-    num_tablets_(1),
-    table_name_(kDefaultTableName),
-    start_latch_(0),
-    should_run_(false),
-    rows_inserted_(0),
-    batches_completed_(0),
-    sequential_key_gen_(0) {
+    : cluster_(cluster),
+      rng_(SeedRandom()),
+      num_write_threads_(4),
+      num_read_threads_(0),
+      // Set a high scanner timeout so that we're likely to have a chance to
+      // scan, even in high-stress workloads.
+      read_timeout_millis_(60000),
+      write_batch_size_(50),
+      write_timeout_millis_(20000),
+      timeout_allowed_(false),
+      not_found_allowed_(false),
+      network_error_allowed_(false),
+      remote_error_allowed_(false),
+      schema_(KuduSchemaFromSchema(GetSimpleTestSchema())),
+      num_replicas_(3),
+      num_tablets_(1),
+      table_name_(kDefaultTableName),
+      start_latch_(0),
+      should_run_(false),
+      rows_inserted_(0),
+      batches_completed_(0),
+      sequential_key_gen_(0) {
   // Make the default write pattern random row inserts.
   set_write_pattern(INSERT_RANDOM_ROWS);
 }
@@ -120,12 +120,12 @@ void TestWorkload::OpenTable(shared_ptr<KuduTable>* table) {
     CHECK_OK(s);
   }
 
-  // Wait for all of the workload threads to be ready to go. This maximizes the chance
-  // that they all send a flood of requests at exactly the same time.
+  // Wait for all of the workload threads to be ready to go. This maximizes the
+  // chance that they all send a flood of requests at exactly the same time.
   //
   // This also minimizes the chance that we see failures to call OpenTable() if
-  // a late-starting thread overlaps with the flood of traffic from the ones that are
-  // already writing/reading data.
+  // a late-starting thread overlaps with the flood of traffic from the ones
+  // that are already writing/reading data.
   start_latch_.CountDown();
   start_latch_.Wait();
 }
@@ -216,7 +216,8 @@ void TestWorkload::ReadThread() {
   OpenTable(&table);
 
   while (should_run_.Load()) {
-    // Slow the scanners down to avoid imposing too much stress on already stressful tests.
+    // Slow the scanners down to avoid imposing too much stress on already
+    // stressful tests.
     SleepFor(MonoDelta::FromMilliseconds(150));
 
     KuduScanner scanner(table.get());
@@ -255,7 +256,8 @@ void TestWorkload::Setup() {
   Status s;
   while (true) {
     s = client_->TableExists(table_name_, &table_exists);
-    if (s.ok() || MonoTime::Now() > deadline) break;
+    if (s.ok() || MonoTime::Now() > deadline)
+      break;
     SleepFor(MonoDelta::FromMilliseconds(10));
   }
   CHECK_OK(s);
@@ -265,18 +267,19 @@ void TestWorkload::Setup() {
     std::vector<const KuduPartialRow*> splits;
     for (int i = 1; i < num_tablets_; i++) {
       KuduPartialRow* r = schema_.NewRow();
-      CHECK_OK(r->SetInt32("key", MathLimits<int32_t>::kMax / num_tablets_ * i));
+      CHECK_OK(
+          r->SetInt32("key", MathLimits<int32_t>::kMax / num_tablets_ * i));
       splits.push_back(r);
     }
 
     // Create the table.
     gscoped_ptr<KuduTableCreator> table_creator(client_->NewTableCreator());
     Status s = table_creator->table_name(table_name_)
-        .schema(&schema_)
-        .num_replicas(num_replicas_)
-        .set_range_partition_columns({ "key" })
-        .split_rows(splits)
-        .Create();
+                   .schema(&schema_)
+                   .num_replicas(num_replicas_)
+                   .set_range_partition_columns({"key"})
+                   .split_rows(splits)
+                   .Create();
     if (!s.ok()) {
       if (!s.IsAlreadyPresent() && !s.IsServiceUnavailable()) {
         // TODO(KUDU-1537): Should be fixed with Exactly Once semantics.
@@ -285,10 +288,12 @@ void TestWorkload::Setup() {
 
       // If Create() failed in a non-fatal way, we still need to wait for the
       // table to finish creating.
-      MonoTime deadline(MonoTime::Now() + client_->default_admin_operation_timeout());
+      MonoTime deadline(
+          MonoTime::Now() + client_->default_admin_operation_timeout());
       while (true) {
         bool still_creating;
-        CHECK_OK(client_->IsCreateTableInProgress(table_name_, &still_creating));
+        CHECK_OK(
+            client_->IsCreateTableInProgress(table_name_, &still_creating));
         if (!still_creating) {
           break;
         }
@@ -306,7 +311,6 @@ void TestWorkload::Setup() {
     LOG(INFO) << "TestWorkload: Skipping table creation because table "
               << table_name_ << " already exists";
   }
-
 
   if (write_pattern_ == UPDATE_ONE_ROW) {
     shared_ptr<KuduSession> session = client_->NewSession();
@@ -330,8 +334,8 @@ void TestWorkload::Start() {
   for (int i = 0; i < num_write_threads_; i++) {
     threads_.emplace_back(&TestWorkload::WriteThread, this);
   }
-  // Start the read threads. Order matters here, the read threads are last so that
-  // we'll have a chance to do some scans after all writers are done.
+  // Start the read threads. Order matters here, the read threads are last so
+  // that we'll have a chance to do some scans after all writers are done.
   for (int i = 0; i < num_read_threads_; i++) {
     threads_.emplace_back(&TestWorkload::ReadThread, this);
   }

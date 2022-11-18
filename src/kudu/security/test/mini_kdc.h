@@ -34,7 +34,6 @@ namespace kudu {
 class Subprocess;
 
 struct MiniKdcOptions {
-
   // Kerberos Realm.
   //
   // Default: "KRBTEST.COM".
@@ -108,8 +107,8 @@ class MiniKdc {
   Status Klist(std::string* output) WARN_UNUSED_RESULT;
 
   // Call the 'klist' utility to list the contents of a specific keytab.
-  Status KlistKeytab(const std::string& keytab_path,
-                     std::string* output) WARN_UNUSED_RESULT;
+  Status KlistKeytab(const std::string& keytab_path, std::string* output)
+      WARN_UNUSED_RESULT;
 
   // Sets the environment variables used by the krb5 library
   // in the current process. This points the SASL library at the
@@ -121,7 +120,6 @@ class MiniKdc {
   std::map<std::string, std::string> GetEnvVars() const;
 
  private:
-
   // Prepends required Kerberos environment variables to the process arguments.
   std::vector<std::string> MakeArgv(const std::vector<std::string>& in_argv);
 

@@ -41,7 +41,7 @@ void unlock_rwlock(pthread_rwlock_t* rwlock) {
 namespace kudu {
 
 RWMutex::RWMutex()
-#ifdef FB_DO_NOT_REMOVE  // #ifndef NDEBUG
+#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
     : writer_tid_(0)
 #endif
 {
@@ -49,7 +49,7 @@ RWMutex::RWMutex()
 }
 
 RWMutex::RWMutex(Priority prio)
-#ifdef FB_DO_NOT_REMOVE  // #ifndef NDEBUG
+#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
     : writer_tid_(0)
 #endif
 {
@@ -138,12 +138,13 @@ bool RWMutex::TryWriteLock() {
   return true;
 }
 
-#ifdef FB_DO_NOT_REMOVE  // #ifndef NDEBUG
+#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
 
 void RWMutex::AssertAcquired() const {
   lock_guard<simple_spinlock> l(tid_lock_);
-  CHECK(ContainsKey(reader_tids_, Env::Default()->gettid()) ||
-        Env::Default()->gettid() == writer_tid_);
+  CHECK(
+      ContainsKey(reader_tids_, Env::Default()->gettid()) ||
+      Env::Default()->gettid() == writer_tid_);
 }
 
 void RWMutex::AssertAcquiredForReading() const {

@@ -35,7 +35,7 @@
 #include "kudu/util/logging_test_util.h"
 #include "kudu/util/monotime.h"
 #include "kudu/util/stopwatch.h"
-#include "kudu/util/test_macros.h"  // IWYU pragma: keep
+#include "kudu/util/test_macros.h" // IWYU pragma: keep
 #include "kudu/util/test_util.h"
 
 using std::string;
@@ -51,15 +51,19 @@ TEST(LoggingTest, TestThrottledLogging) {
   for (int i = 0; i < 10000; i++) {
     KLOG_EVERY_N_SECS(INFO, 1) << "test" << THROTTLE_MSG;
     SleepFor(MonoDelta::FromMilliseconds(1));
-    if (sink.logged_msgs().size() >= 2) break;
+    if (sink.logged_msgs().size() >= 2)
+      break;
   }
   const vector<string>& msgs = sink.logged_msgs();
   ASSERT_GE(msgs.size(), 2);
 
   // The first log line shouldn't have a suppression count.
   EXPECT_THAT(msgs[0], testing::ContainsRegex("test$"));
-  // The second one should have suppressed at least three digits worth of log messages.
-  EXPECT_THAT(msgs[1], testing::ContainsRegex("\\[suppressed [0-9]{3,} similar messages\\]"));
+  // The second one should have suppressed at least three digits worth of log
+  // messages.
+  EXPECT_THAT(
+      msgs[1],
+      testing::ContainsRegex("\\[suppressed [0-9]{3,} similar messages\\]"));
 }
 
 TEST(LoggingTest, TestAdvancedThrottling) {
@@ -70,25 +74,34 @@ TEST(LoggingTest, TestAdvancedThrottling) {
 
   // First, log only using a single tag and throttler.
   for (int i = 0; i < 100000; i++) {
-    KLOG_EVERY_N_SECS_THROTTLER(INFO, 1, throttle_a, "tag_a") << "test" << THROTTLE_MSG;
+    KLOG_EVERY_N_SECS_THROTTLER(INFO, 1, throttle_a, "tag_a")
+        << "test" << THROTTLE_MSG;
     SleepFor(MonoDelta::FromMilliseconds(1));
-    if (sink.logged_msgs().size() >= 2) break;
+    if (sink.logged_msgs().size() >= 2)
+      break;
   }
   auto& msgs = sink.logged_msgs();
   ASSERT_GE(msgs.size(), 2);
 
   // The first log line shouldn't have a suppression count.
   EXPECT_THAT(msgs[0], testing::ContainsRegex("test$"));
-  // The second one should have suppressed at least three digits worth of log messages.
-  EXPECT_THAT(msgs[1], testing::ContainsRegex("\\[suppressed [0-9]{3,} similar messages\\]"));
+  // The second one should have suppressed at least three digits worth of log
+  // messages.
+  EXPECT_THAT(
+      msgs[1],
+      testing::ContainsRegex("\\[suppressed [0-9]{3,} similar messages\\]"));
   msgs.clear();
 
-  // Now, try logging using two different tags in rapid succession. This should not
-  // throttle, because the tag is switching.
-  KLOG_EVERY_N_SECS_THROTTLER(INFO, 1, throttle_a, "tag_b") << "test b" << THROTTLE_MSG;
-  KLOG_EVERY_N_SECS_THROTTLER(INFO, 1, throttle_a, "tag_b") << "test b" << THROTTLE_MSG;
-  KLOG_EVERY_N_SECS_THROTTLER(INFO, 1, throttle_a, "tag_c") << "test c" << THROTTLE_MSG;
-  KLOG_EVERY_N_SECS_THROTTLER(INFO, 1, throttle_a, "tag_b") << "test b" << THROTTLE_MSG;
+  // Now, try logging using two different tags in rapid succession. This should
+  // not throttle, because the tag is switching.
+  KLOG_EVERY_N_SECS_THROTTLER(INFO, 1, throttle_a, "tag_b")
+      << "test b" << THROTTLE_MSG;
+  KLOG_EVERY_N_SECS_THROTTLER(INFO, 1, throttle_a, "tag_b")
+      << "test b" << THROTTLE_MSG;
+  KLOG_EVERY_N_SECS_THROTTLER(INFO, 1, throttle_a, "tag_c")
+      << "test c" << THROTTLE_MSG;
+  KLOG_EVERY_N_SECS_THROTTLER(INFO, 1, throttle_a, "tag_b")
+      << "test b" << THROTTLE_MSG;
   ASSERT_EQ(msgs.size(), 3);
   EXPECT_THAT(msgs[0], testing::ContainsRegex("test b$"));
   EXPECT_THAT(msgs[1], testing::ContainsRegex("test c$"));
@@ -103,10 +116,11 @@ TEST(LoggingTest, TestAdvancedThrottling) {
 // thhread.
 class CountingLogger : public google::base::Logger {
  public:
-  void Write(bool force_flush,
-             time_t /*timestamp*/,
-             const char* /*message*/,
-             int /*message_len*/) override {
+  void Write(
+      bool force_flush,
+      time_t /*timestamp*/,
+      const char* /*message*/,
+      int /*message_len*/) override {
     message_count_++;
     if (force_flush) {
       Flush();
@@ -140,21 +154,21 @@ TEST(LoggingTest, TestAsyncLogger) {
   // Start some threads writing log messages.
   for (int i = 0; i < kNumThreads; i++) {
     threads.emplace_back([&]() {
-        go_barrier.Wait();
-        for (int m = 0; m < kNumMessages; m++) {
-          async.Write(true, m, "x", 1);
-        }
-      });
+      go_barrier.Wait();
+      for (int m = 0; m < kNumMessages; m++) {
+        async.Write(true, m, "x", 1);
+      }
+    });
   }
 
   // And a thread calling Flush().
   threads.emplace_back([&]() {
-      go_barrier.Wait();
-      for (int i = 0; i < 10; i++) {
-        async.Flush();
-        SleepFor(MonoDelta::FromMilliseconds(3));
-      }
-    });
+    go_barrier.Wait();
+    for (int i = 0; i < 10; i++) {
+      async.Flush();
+      SleepFor(MonoDelta::FromMilliseconds(3));
+    }
+  });
 
   for (auto& t : threads) {
     t.join();
@@ -183,8 +197,8 @@ TEST(LoggingTest, TestAsyncLoggerAutoFlush) {
   // The flush wait timeout might take a little bit of time to run.
   ASSERT_EVENTUALLY([&]() {
     ASSERT_EQ(base.message_count_, 2);
-    // The AsyncLogger should have flushed at least once by the timer automatically
-    // so there should be no more messages in the buffer.
+    // The AsyncLogger should have flushed at least once by the timer
+    // automatically so there should be no more messages in the buffer.
     ASSERT_GT(base.flush_count_, 0);
   });
   async.Stop();
@@ -205,19 +219,23 @@ TEST(LoggingTest, TestRedactionBasic) {
 // are not. This shows an example of a such a function, which will behave
 // differently based on whether the calling scope has explicitly disabled
 // redaction.
-string SomeComplexStringify(const string& public_data, const string& private_data) {
-  return strings::Substitute("public=$0, private=$1",
-                             public_data,
-                             KUDU_REDACT(private_data));
+string SomeComplexStringify(
+    const string& public_data,
+    const string& private_data) {
+  return strings::Substitute(
+      "public=$0, private=$1", public_data, KUDU_REDACT(private_data));
 }
 
 TEST(LoggingTest, TestRedactionIllustrateUsage) {
   // By default, the private data will be redacted.
-  ASSERT_EQ("public=abc, private=<redacted>", SomeComplexStringify("abc", "def"));
+  ASSERT_EQ(
+      "public=abc, private=<redacted>", SomeComplexStringify("abc", "def"));
 
   // We can wrap the expression in KUDU_DISABLE_REDACTION(...) to evaluate it
   // with redaction temporarily disabled.
-  ASSERT_EQ("public=abc, private=def", KUDU_DISABLE_REDACTION(SomeComplexStringify("abc", "def")));
+  ASSERT_EQ(
+      "public=abc, private=def",
+      KUDU_DISABLE_REDACTION(SomeComplexStringify("abc", "def")));
 
   // Or we can execute an entire scope with redaction disabled.
   KUDU_DISABLE_REDACTION({
@@ -225,18 +243,14 @@ TEST(LoggingTest, TestRedactionIllustrateUsage) {
   });
 }
 
-
 TEST(LoggingTest, TestLogTiming) {
-  LOG_TIMING(INFO, "foo") {
-  }
-  {
+  LOG_TIMING(INFO, "foo"){} {
     SCOPED_LOG_TIMING(INFO, "bar");
   }
-  LOG_SLOW_EXECUTION(INFO, 1, "baz") {
-  }
+  LOG_SLOW_EXECUTION(INFO, 1, "baz") {}
 
-  // Previous implementations of the above macro confused clang-tidy's use-after-move
-  // check and generated false positives.
+  // Previous implementations of the above macro confused clang-tidy's
+  // use-after-move check and generated false positives.
   string s1 = "hello";
   string s2;
   LOG_SLOW_EXECUTION(INFO, 1, "baz") {

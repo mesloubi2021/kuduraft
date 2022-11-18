@@ -34,15 +34,15 @@
 
 #include <errno.h>
 #if defined(HAVE_SCHED_H) || defined(__APPLE__)
-#include <sched.h>      /* For sched_yield() */
+#include <sched.h> /* For sched_yield() */
 #endif
-#include <time.h>       /* For nanosleep() */
+#include <time.h> /* For nanosleep() */
 
 namespace base {
 namespace internal {
 namespace kudu {
 
-void SpinLockDelay(volatile Atomic32 *w, int32 value, int loop) {
+void SpinLockDelay(volatile Atomic32* w, int32 value, int loop) {
   int save_errno = errno;
   if (loop == 0) {
   } else if (loop == 1) {
@@ -56,8 +56,7 @@ void SpinLockDelay(volatile Atomic32 *w, int32 value, int loop) {
   errno = save_errno;
 }
 
-void SpinLockWake(volatile Atomic32 *w, bool all) {
-}
+void SpinLockWake(volatile Atomic32* w, bool all) {}
 
 } // namespace kudu
 } // namespace internal

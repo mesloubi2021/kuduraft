@@ -64,11 +64,10 @@ struct KsckChecksumOptions;
 // This implementation connects to a master via RPC.
 class RemoteKsckMaster : public KsckMaster {
  public:
-  RemoteKsckMaster(const std::string& address,
-                   std::shared_ptr<rpc::Messenger> messenger)
-      : KsckMaster(address),
-        messenger_(std::move(messenger)) {
-  }
+  RemoteKsckMaster(
+      const std::string& address,
+      std::shared_ptr<rpc::Messenger> messenger)
+      : KsckMaster(address), messenger_(std::move(messenger)) {}
 
   // Resolves the host/port and sets up proxies.
   // Must be called before FetchInfo() or FetchConsensusState();
@@ -88,16 +87,17 @@ class RemoteKsckMaster : public KsckMaster {
 };
 
 // This implementation connects to a tablet server via RPC.
-class RemoteKsckTabletServer : public KsckTabletServer,
-                               public std::enable_shared_from_this<RemoteKsckTabletServer> {
+class RemoteKsckTabletServer
+    : public KsckTabletServer,
+      public std::enable_shared_from_this<RemoteKsckTabletServer> {
  public:
-  explicit RemoteKsckTabletServer(const std::string& id,
-                                  HostPort host_port,
-                                  std::shared_ptr<rpc::Messenger> messenger)
+  explicit RemoteKsckTabletServer(
+      const std::string& id,
+      HostPort host_port,
+      std::shared_ptr<rpc::Messenger> messenger)
       : KsckTabletServer(id),
         host_port_(std::move(host_port)),
-        messenger_(std::move(messenger)) {
-  }
+        messenger_(std::move(messenger)) {}
 
   // Resolves the host/port and sets up proxies.
   // Must be called after constructing.
@@ -126,7 +126,8 @@ class RemoteKsckTabletServer : public KsckTabletServer,
   // A callback to update the timestamp from the remote server.
   struct ServerClockResponseCallback {
    public:
-    explicit ServerClockResponseCallback(std::shared_ptr<RemoteKsckTabletServer> ts)
+    explicit ServerClockResponseCallback(
+        std::shared_ptr<RemoteKsckTabletServer> ts)
         : ts(std::move(ts)) {}
 
     void Run();
@@ -151,8 +152,9 @@ class RemoteKsckTabletServer : public KsckTabletServer,
 // A KsckCluster that connects to a cluster via RPC.
 class RemoteKsckCluster : public KsckCluster {
  public:
-  static Status Build(const std::vector<std::string>& master_addresses,
-                      std::shared_ptr<KsckCluster>* cluster);
+  static Status Build(
+      const std::vector<std::string>& master_addresses,
+      std::shared_ptr<KsckCluster>* cluster);
 
   virtual Status Connect() override;
 
@@ -160,15 +162,17 @@ class RemoteKsckCluster : public KsckCluster {
 
   virtual Status RetrieveTablesList() override;
 
-  virtual Status RetrieveTabletsList(const std::shared_ptr<KsckTable>& table) override;
+  virtual Status RetrieveTabletsList(
+      const std::shared_ptr<KsckTable>& table) override;
 
   std::shared_ptr<rpc::Messenger> messenger() const override {
     return messenger_;
   }
 
  private:
-  RemoteKsckCluster(std::vector<std::string> master_addresses,
-                    std::shared_ptr<rpc::Messenger> messenger)
+  RemoteKsckCluster(
+      std::vector<std::string> master_addresses,
+      std::shared_ptr<rpc::Messenger> messenger)
       : master_addresses_(std::move(master_addresses)),
         messenger_(std::move(messenger)) {
     for (const std::string& master_addr : master_addresses_) {

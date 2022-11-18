@@ -33,9 +33,9 @@
  */
 
 #include <errno.h>
+#include <limits.h>
 #include <sched.h>
 #include <time.h>
-#include <limits.h>
 #include "kudu/gutil/linux_syscall_support.h"
 
 #define FUTEX_WAIT 0
@@ -54,22 +54,24 @@ static struct InitModule {
     int x = 0;
     // futexes are ints, so we can use them only when
     // that's the same size as the lockword_ in SpinLock.
-    have_futex = (sizeof (Atomic32) == sizeof (int) &&
-                  sys_futex(&x, FUTEX_WAKE, 1, nullptr, nullptr, 0) >= 0);
+    have_futex =
+        (sizeof(Atomic32) == sizeof(int) &&
+         sys_futex(&x, FUTEX_WAKE, 1, nullptr, nullptr, 0) >= 0);
     if (have_futex &&
-        sys_futex(&x, FUTEX_WAKE | futex_private_flag, 1, nullptr, nullptr, 0) < 0) {
+        sys_futex(&x, FUTEX_WAKE | futex_private_flag, 1, nullptr, nullptr, 0) <
+            0) {
       futex_private_flag = 0;
     }
   }
 } init_module;
 
-}  // anonymous namespace
+} // anonymous namespace
 
 namespace base {
 namespace internal {
 namespace kudu {
 
-void SpinLockDelay(volatile Atomic32 *w, int32 value, int loop) {
+void SpinLockDelay(volatile Atomic32* w, int32 value, int loop) {
   if (loop != 0) {
     int save_errno = errno;
     struct timespec tm;
@@ -77,14 +79,17 @@ void SpinLockDelay(volatile Atomic32 *w, int32 value, int loop) {
     if (have_futex) {
       tm.tv_nsec = base::internal::kudu::SuggestedDelayNS(loop);
     } else {
-      tm.tv_nsec = 2000001;   // above 2ms so linux 2.4 doesn't spin
+      tm.tv_nsec = 2000001; // above 2ms so linux 2.4 doesn't spin
     }
     if (have_futex) {
-      tm.tv_nsec *= 16;  // increase the delay; we expect explicit wakeups
-      sys_futex(reinterpret_cast<int *>(const_cast<Atomic32 *>(w)),
-                FUTEX_WAIT | futex_private_flag,
-                value, reinterpret_cast<struct kernel_timespec *>(&tm),
-                nullptr, 0);
+      tm.tv_nsec *= 16; // increase the delay; we expect explicit wakeups
+      sys_futex(
+          reinterpret_cast<int*>(const_cast<Atomic32*>(w)),
+          FUTEX_WAIT | futex_private_flag,
+          value,
+          reinterpret_cast<struct kernel_timespec*>(&tm),
+          nullptr,
+          0);
     } else {
       nanosleep(&tm, nullptr);
     }
@@ -92,11 +97,15 @@ void SpinLockDelay(volatile Atomic32 *w, int32 value, int loop) {
   }
 }
 
-void SpinLockWake(volatile Atomic32 *w, bool all) {
+void SpinLockWake(volatile Atomic32* w, bool all) {
   if (have_futex) {
-    sys_futex(reinterpret_cast<int *>(const_cast<Atomic32 *>(w)),
-              FUTEX_WAKE | futex_private_flag, all? INT_MAX : 1,
-              nullptr, nullptr, 0);
+    sys_futex(
+        reinterpret_cast<int*>(const_cast<Atomic32*>(w)),
+        FUTEX_WAKE | futex_private_flag,
+        all ? INT_MAX : 1,
+        nullptr,
+        nullptr,
+        0);
   }
 }
 

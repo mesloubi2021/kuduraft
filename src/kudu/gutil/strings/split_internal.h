@@ -21,14 +21,14 @@
 #include <map>
 #include <vector>
 
-#include "kudu/gutil/port.h"  // for LANG_CXX11
+#include "kudu/gutil/port.h" // for LANG_CXX11
 #include "kudu/gutil/strings/stringpiece.h"
 
 #ifdef LANG_CXX11
 // This must be included after "kudu/gutil/port.h", which defines LANG_CXX11.
 #include <array>
 #include <initializer_list>
-#endif  // LANG_CXX11
+#endif // LANG_CXX11
 
 namespace strings {
 
@@ -87,8 +87,12 @@ class SplitIterator
     ++(*this);
   }
 
-  StringPiece operator*() { return curr_piece_; }
-  StringPiece* operator->() { return &curr_piece_; }
+  StringPiece operator*() {
+    return curr_piece_;
+  }
+  StringPiece* operator->() {
+    return &curr_piece_;
+  }
 
   SplitIterator& operator++() {
     do {
@@ -124,11 +128,10 @@ class SplitIterator
     // predicate_ fields need not be checked here because they're template
     // parameters that are already part of the SplitIterator's type.
     return (is_end_ && other.is_end_) ||
-           (is_end_ == other.is_end_ &&
-            text_ == other.text_ &&
-            text_.data() == other.text_.data() &&
-            curr_piece_ == other.curr_piece_ &&
-            curr_piece_.data() == other.curr_piece_.data());
+        (is_end_ == other.is_end_ && text_ == other.text_ &&
+         text_.data() == other.text_.data() &&
+         curr_piece_ == other.curr_piece_ &&
+         curr_piece_.data() == other.curr_piece_.data());
   }
 
   bool operator!=(const SplitIterator& other) const {
@@ -183,8 +186,8 @@ struct IsNotInitializerList {
   typedef void type;
 };
 template <typename T>
-struct IsNotInitializerList<std::initializer_list<T> > {};
-#endif  // LANG_CXX11
+struct IsNotInitializerList<std::initializer_list<T>> {};
+#endif // LANG_CXX11
 
 // This class implements the behavior of the split API by giving callers access
 // to the underlying split substrings in various convenient ways, such as
@@ -207,8 +210,7 @@ class Splitter {
  public:
   typedef internal::SplitIterator<Delimiter, Predicate> Iterator;
 
-  Splitter(StringPiece text, Delimiter d)
-      : begin_(text, d), end_(d) {}
+  Splitter(StringPiece text, Delimiter d) : begin_(text, d), end_(d) {}
 
   Splitter(StringPiece text, Delimiter d, Predicate p)
       : begin_(text, d, p), end_(d, p) {}
@@ -220,8 +222,12 @@ class Splitter {
   //   for (StringPiece sp : my_splitter) {
   //     DoWork(sp);
   //   }
-  const Iterator& begin() const { return begin_; }
-  const Iterator& end() const { return end_; }
+  const Iterator& begin() const {
+    return begin_;
+  }
+  const Iterator& end() const {
+    return end_;
+  }
 
 #ifdef LANG_CXX11
 // Support for default template arguments for function templates was added in
@@ -247,11 +253,11 @@ class Splitter {
   // either a vector<T> or an initializer_list<T>).
   //
   // This trick was taken from util/gtl/container_literal.h
-  template <typename Container,
-            typename IsNotInitializerListChecker =
-                typename IsNotInitializerList<Container>::type,
-            typename ContainerChecker =
-                typename Container::const_iterator>
+  template <
+      typename Container,
+      typename IsNotInitializerListChecker =
+          typename IsNotInitializerList<Container>::type,
+      typename ContainerChecker = typename Container::const_iterator>
   operator Container() {
     return SelectContainer<Container, is_map<Container>::value>()(this);
   }
@@ -271,7 +277,7 @@ class Splitter {
   operator Container() {
     return SelectContainer<Container, is_map<Container>::value>()(this);
   }
-#endif  // LANG_CXX11
+#endif // LANG_CXX11
 
   template <typename First, typename Second>
   operator std::pair<First, Second>() {
@@ -284,8 +290,10 @@ class Splitter {
   // implicit conversion operator (above).
   template <typename T>
   struct is_map {
-    template <typename U> static base::big_ test(typename U::mapped_type*);
-    template <typename> static base::small_ test(...);
+    template <typename U>
+    static base::big_ test(typename U::mapped_type*);
+    template <typename>
+    static base::small_ test(...);
     static const bool value = (sizeof(test<T>(0)) == sizeof(base::big_));
   };
 
@@ -400,7 +408,8 @@ class Splitter {
   // iterator, rather than a pair<iterator, bool> like map's.
   template <typename Map>
   typename Map::iterator InsertInMap(
-      const typename Map::value_type& value, Map* map) {
+      const typename Map::value_type& value,
+      Map* map) {
     return map->insert(value).first;
   }
 
@@ -423,8 +432,8 @@ class Splitter {
   const Iterator end_;
 };
 
-}  // namespace internal
+} // namespace internal
 
-}  // namespace strings
+} // namespace strings
 
-#endif  // STRINGS_SPLIT_INTERNAL_H_
+#endif // STRINGS_SPLIT_INTERNAL_H_

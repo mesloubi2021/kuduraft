@@ -17,10 +17,10 @@
 
 #include "kudu/security/tls_handshake.h"
 
-#include <algorithm>
 #include <pthread.h>
 #include <sched.h>
 #include <sys/uio.h>
+#include <algorithm>
 
 #include <atomic>
 #include <csignal>
@@ -92,17 +92,20 @@ Status DoNegotiationSide(Socket* sock, TlsHandshake* tls, const char* side) {
     if (!to_send.empty()) {
       size_t nwritten;
       auto deadline = MonoTime::Now() + MonoDelta::FromSeconds(10);
-      RETURN_NOT_OK_PREPEND(sock->BlockingWrite(
-          reinterpret_cast<const uint8_t*>(to_send.data()),
-          to_send.size(), &nwritten, deadline),
-                            "error sending");
+      RETURN_NOT_OK_PREPEND(
+          sock->BlockingWrite(
+              reinterpret_cast<const uint8_t*>(to_send.data()),
+              to_send.size(),
+              &nwritten,
+              deadline),
+          "error sending");
     }
 
     if (!done) {
       uint8_t buf[1024];
       int32_t n = 0;
-      RETURN_NOT_OK_PREPEND(sock->Recv(buf, arraysize(buf), &n),
-                            "error receiving");
+      RETURN_NOT_OK_PREPEND(
+          sock->Recv(buf, arraysize(buf), &n), "error receiving");
       received = string(reinterpret_cast<char*>(&buf[0]), n);
     }
   }
@@ -110,7 +113,9 @@ Status DoNegotiationSide(Socket* sock, TlsHandshake* tls, const char* side) {
   return Status::OK();
 }
 
-void TlsSocketTest::ConnectClient(const Sockaddr& addr, unique_ptr<Socket>* sock) {
+void TlsSocketTest::ConnectClient(
+    const Sockaddr& addr,
+    unique_ptr<Socket>* sock) {
   unique_ptr<Socket> client_sock(new Socket());
   ASSERT_OK(client_sock->Init(0));
   ASSERT_OK(client_sock->Connect(addr));
@@ -124,9 +129,7 @@ void TlsSocketTest::ConnectClient(const Sockaddr& addr, unique_ptr<Socket>* sock
 
 class EchoServer {
  public:
-  EchoServer()
-      : pthread_sync_(1) {
-  }
+  EchoServer() : pthread_sync_(1) {}
   ~EchoServer() {
     Stop();
     Join();
@@ -141,40 +144,43 @@ class EchoServer {
     ASSERT_OK(listener_.GetSocketAddress(&listen_addr_));
 
     thread_ = thread([&] {
-        pthread_ = pthread_self();
-        pthread_sync_.CountDown();
-        unique_ptr<Socket> sock(new Socket());
-        Sockaddr remote;
-        CHECK_OK(listener_.Accept(sock.get(), &remote, /*flags=*/0));
+      pthread_ = pthread_self();
+      pthread_sync_.CountDown();
+      unique_ptr<Socket> sock(new Socket());
+      Sockaddr remote;
+      CHECK_OK(listener_.Accept(sock.get(), &remote, /*flags=*/0));
 
-        TlsHandshake server;
-        CHECK_OK(server_tls_.InitiateHandshake(TlsHandshakeType::SERVER, &server));
-        CHECK_OK(DoNegotiationSide(sock.get(), &server, "server"));
-        CHECK_OK(server.Finish(&sock));
+      TlsHandshake server;
+      CHECK_OK(
+          server_tls_.InitiateHandshake(TlsHandshakeType::SERVER, &server));
+      CHECK_OK(DoNegotiationSide(sock.get(), &server, "server"));
+      CHECK_OK(server.Finish(&sock));
 
-        CHECK_OK(sock->SetRecvTimeout(kTimeout));
-        unique_ptr<uint8_t[]> buf(new uint8_t[kEchoChunkSize]);
-        // An "echo" loop for kEchoChunkSize byte buffers.
-        while (!stop_) {
-          size_t n;
-          Status s = sock->BlockingRecv(buf.get(), kEchoChunkSize, &n, MonoTime::Now() + kTimeout);
-          if (!s.ok()) {
-            CHECK(stop_) << "unexpected error reading: " << s.ToString();
-          }
-
-          LOG(INFO) << "server echoing " << n << " bytes";
-          size_t written;
-          s = sock->BlockingWrite(buf.get(), n, &written, MonoTime::Now() + kTimeout);
-          if (!s.ok()) {
-            CHECK(stop_) << "unexpected error writing: " << s.ToString();
-          }
-          if (slow_read_) {
-            SleepFor(MonoDelta::FromMilliseconds(10));
-          }
+      CHECK_OK(sock->SetRecvTimeout(kTimeout));
+      unique_ptr<uint8_t[]> buf(new uint8_t[kEchoChunkSize]);
+      // An "echo" loop for kEchoChunkSize byte buffers.
+      while (!stop_) {
+        size_t n;
+        Status s = sock->BlockingRecv(
+            buf.get(), kEchoChunkSize, &n, MonoTime::Now() + kTimeout);
+        if (!s.ok()) {
+          CHECK(stop_) << "unexpected error reading: " << s.ToString();
         }
 
-        CHECK_OK(listener_.Close());
-      });
+        LOG(INFO) << "server echoing " << n << " bytes";
+        size_t written;
+        s = sock->BlockingWrite(
+            buf.get(), n, &written, MonoTime::Now() + kTimeout);
+        if (!s.ok()) {
+          CHECK(stop_) << "unexpected error writing: " << s.ToString();
+        }
+        if (slow_read_) {
+          SleepFor(MonoDelta::FromMilliseconds(10));
+        }
+      }
+
+      CHECK_OK(listener_.Close());
+    });
   }
 
   void EnableSlowRead() {
@@ -208,7 +214,7 @@ class EchoServer {
   thread thread_;
   pthread_t pthread_;
   CountDownLatch pthread_sync_;
-  std::atomic<bool> stop_ { false };
+  std::atomic<bool> stop_{false};
 
   bool slow_read_ = false;
 };
@@ -216,30 +222,32 @@ class EchoServer {
 void handler(int /* signal */) {}
 
 TEST_F(TlsSocketTest, TestRecvFailure) {
-    EchoServer server;
-    server.Start();
-    unique_ptr<Socket> client_sock;
-    NO_FATALS(ConnectClient(server.listen_addr(), &client_sock));
-    unique_ptr<uint8_t[]> buf(new uint8_t[kEchoChunkSize]);
+  EchoServer server;
+  server.Start();
+  unique_ptr<Socket> client_sock;
+  NO_FATALS(ConnectClient(server.listen_addr(), &client_sock));
+  unique_ptr<uint8_t[]> buf(new uint8_t[kEchoChunkSize]);
 
-    SleepFor(MonoDelta::FromMilliseconds(100));
-    server.Stop();
+  SleepFor(MonoDelta::FromMilliseconds(100));
+  server.Stop();
 
-    size_t nwritten;
-    ASSERT_OK(client_sock->BlockingWrite(buf.get(), kEchoChunkSize, &nwritten,
-        MonoTime::Now() + kTimeout));
-    size_t nread;
+  size_t nwritten;
+  ASSERT_OK(client_sock->BlockingWrite(
+      buf.get(), kEchoChunkSize, &nwritten, MonoTime::Now() + kTimeout));
+  size_t nread;
 
-    ASSERT_OK(client_sock->BlockingRecv(buf.get(), kEchoChunkSize, &nread,
-        MonoTime::Now() + kTimeout));
+  ASSERT_OK(client_sock->BlockingRecv(
+      buf.get(), kEchoChunkSize, &nread, MonoTime::Now() + kTimeout));
 
-    Status s = client_sock->BlockingRecv(buf.get(), kEchoChunkSize, &nread,
-        MonoTime::Now() + kTimeout);
+  Status s = client_sock->BlockingRecv(
+      buf.get(), kEchoChunkSize, &nread, MonoTime::Now() + kTimeout);
 
-    ASSERT_TRUE(!s.ok());
-    ASSERT_TRUE(s.IsNetworkError());
-    ASSERT_STR_MATCHES(s.message().ToString(), "BlockingRecv error: failed to read from "
-                                               "TLS socket \\(remote: 127.0.0.1:[0-9]+\\): ");
+  ASSERT_TRUE(!s.ok());
+  ASSERT_TRUE(s.IsNetworkError());
+  ASSERT_STR_MATCHES(
+      s.message().ToString(),
+      "BlockingRecv error: failed to read from "
+      "TLS socket \\(remote: 127.0.0.1:[0-9]+\\): ");
 }
 
 // Test for failures to handle EINTR during TLS connection
@@ -257,11 +265,11 @@ TEST_F(TlsSocketTest, TestTlsSocketInterrupted) {
 
   // Start a thread to send signals to the server thread.
   thread killer([&]() {
-      while (!server.stopped()) {
-        PCHECK(pthread_kill(server.pthread(), SIGUSR2) == 0);
-        SleepFor(MonoDelta::FromMicroseconds(rand() % 10));
-      }
-    });
+    while (!server.stopped()) {
+      PCHECK(pthread_kill(server.pthread(), SIGUSR2) == 0);
+      SleepFor(MonoDelta::FromMicroseconds(rand() % 10));
+    }
+  });
   SCOPED_CLEANUP({ killer.join(); });
 
   unique_ptr<Socket> client_sock;
@@ -271,21 +279,22 @@ TEST_F(TlsSocketTest, TestTlsSocketInterrupted) {
   for (int i = 0; i < 10; i++) {
     SleepFor(MonoDelta::FromMilliseconds(1));
     size_t nwritten;
-    ASSERT_OK(client_sock->BlockingWrite(buf.get(), kEchoChunkSize, &nwritten,
-        MonoTime::Now() + kTimeout));
+    ASSERT_OK(client_sock->BlockingWrite(
+        buf.get(), kEchoChunkSize, &nwritten, MonoTime::Now() + kTimeout));
     size_t n;
-    ASSERT_OK(client_sock->BlockingRecv(buf.get(), kEchoChunkSize, &n,
-        MonoTime::Now() + kTimeout));
+    ASSERT_OK(client_sock->BlockingRecv(
+        buf.get(), kEchoChunkSize, &n, MonoTime::Now() + kTimeout));
   }
   server.Stop();
   ASSERT_OK(client_sock->Close());
   LOG(INFO) << "client done";
 }
 
-// Return an iovec containing the same data as the buffer 'buf' with the length 'len',
-// but split into random-sized chunks. The chunks are sized randomly between 1 and
-// 'max_chunk_size' bytes.
-vector<struct iovec> ChunkIOVec(Random* rng, uint8_t* buf, int len, int max_chunk_size) {
+// Return an iovec containing the same data as the buffer 'buf' with the length
+// 'len', but split into random-sized chunks. The chunks are sized randomly
+// between 1 and 'max_chunk_size' bytes.
+vector<struct iovec>
+ChunkIOVec(Random* rng, uint8_t* buf, int len, int max_chunk_size) {
   vector<struct iovec> ret;
   uint8_t* p = buf;
   int rem = len;
@@ -320,7 +329,8 @@ TEST_F(TlsSocketTest, TestNonBlockingWritev) {
 
     // Prepare an IOV with the input data split into a bunch of randomly-sized
     // chunks.
-    vector<struct iovec> iov = ChunkIOVec(&rng, buf.get(), kEchoChunkSize, 1024 * 1024);
+    vector<struct iovec> iov =
+        ChunkIOVec(&rng, buf.get(), kEchoChunkSize, 1024 * 1024);
 
     // Loop calling writev until the iov is exhausted
     int rem = kEchoChunkSize;
@@ -351,8 +361,8 @@ TEST_F(TlsSocketTest, TestNonBlockingWritev) {
 
     size_t n;
     ASSERT_OK(client_sock->SetNonBlocking(false));
-    ASSERT_OK(client_sock->BlockingRecv(rbuf.get(), kEchoChunkSize, &n,
-        MonoTime::Now() + kTimeout));
+    ASSERT_OK(client_sock->BlockingRecv(
+        rbuf.get(), kEchoChunkSize, &n, MonoTime::Now() + kTimeout));
     LOG(INFO) << "client got response";
 
     ASSERT_EQ(0, memcmp(buf.get(), rbuf.get(), kEchoChunkSize));

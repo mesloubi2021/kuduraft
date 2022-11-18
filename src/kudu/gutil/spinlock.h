@@ -1,11 +1,11 @@
 // -*- Mode: C++; c-basic-offset: 2; indent-tabs-mode: nil -*-
 /* Copyright (c) 2006, Google Inc.
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
  * met:
- * 
+ *
  *     * Redistributions of source code must retain the above copyright
  * notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above
@@ -15,7 +15,7 @@
  *     * Neither the name of Google Inc. nor the names of its
  * contributors may be used to endorse or promote products derived from
  * this software without specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -52,7 +52,7 @@ namespace base {
 
 class LOCKABLE SpinLock {
  public:
-  SpinLock() : lockword_(kSpinLockFree) { }
+  SpinLock() : lockword_(kSpinLockFree) {}
 
   // Special constructor for use with static SpinLock objects.  E.g.,
   //
@@ -71,13 +71,13 @@ class LOCKABLE SpinLock {
   // TODO(csilvers): uncomment the annotation when we figure out how to
   //                 support this macro with 0 args (see thread_annotations.h)
   inline void Lock() /*EXCLUSIVE_LOCK_FUNCTION()*/ {
-    if (base::subtle::Acquire_CompareAndSwap(&lockword_, kSpinLockFree,
-                                             kSpinLockHeld) != kSpinLockFree) {
+    if (base::subtle::Acquire_CompareAndSwap(
+            &lockword_, kSpinLockFree, kSpinLockHeld) != kSpinLockFree) {
       SlowLock();
     }
     ANNOTATE_RWLOCK_ACQUIRED(this, 1);
 #ifdef __aarch64__
-    __asm__ __volatile__ ("dmb ish" ::: "memory");
+    __asm__ __volatile__("dmb ish" ::: "memory");
 #endif //__aarch64__
   }
 
@@ -87,13 +87,13 @@ class LOCKABLE SpinLock {
   // will return true with high probability.
   inline bool TryLock() EXCLUSIVE_TRYLOCK_FUNCTION(true) {
     bool res =
-        (base::subtle::Acquire_CompareAndSwap(&lockword_, kSpinLockFree,
-                                              kSpinLockHeld) == kSpinLockFree);
+        (base::subtle::Acquire_CompareAndSwap(
+             &lockword_, kSpinLockFree, kSpinLockHeld) == kSpinLockFree);
     if (res) {
       ANNOTATE_RWLOCK_ACQUIRED(this, 1);
     }
 #ifdef __aarch64__
-    __asm__ __volatile__ ("dmb ish" ::: "memory");
+    __asm__ __volatile__("dmb ish" ::: "memory");
 #endif //__aarch64__
     return res;
   }
@@ -112,7 +112,7 @@ class LOCKABLE SpinLock {
       SlowUnlock(wait_cycles);
     }
 #ifdef __aarch64__
-    __asm__ __volatile__ ("dmb ish" ::: "memory");
+    __asm__ __volatile__("dmb ish" ::: "memory");
 #endif //__aarch64__
   }
 
@@ -123,7 +123,7 @@ class LOCKABLE SpinLock {
     return base::subtle::NoBarrier_Load(&lockword_) != kSpinLockFree;
   }
 
-  static const base::LinkerInitialized LINKER_INITIALIZED;  // backwards compat
+  static const base::LinkerInitialized LINKER_INITIALIZED; // backwards compat
  private:
   enum { kSpinLockFree = 0 };
   enum { kSpinLockHeld = 1 };
@@ -144,6 +144,7 @@ class LOCKABLE SpinLock {
 class SCOPED_LOCKABLE SpinLockHolder {
  private:
   SpinLock* lock_;
+
  public:
   inline explicit SpinLockHolder(SpinLock* l) EXCLUSIVE_LOCK_FUNCTION(l)
       : lock_(l) {
@@ -151,11 +152,13 @@ class SCOPED_LOCKABLE SpinLockHolder {
   }
   // TODO(csilvers): uncomment the annotation when we figure out how to
   //                 support this macro with 0 args (see thread_annotations.h)
-  inline ~SpinLockHolder() /*UNLOCK_FUNCTION()*/ { lock_->Unlock(); }
+  inline ~SpinLockHolder() /*UNLOCK_FUNCTION()*/ {
+    lock_->Unlock();
+  }
 };
 // Catch bug where variable name is omitted, e.g. SpinLockHolder (&lock);
 #define SpinLockHolder(x) COMPILE_ASSERT(0, spin_lock_decl_missing_var_name)
 
 } // namespace base
 
-#endif  // BASE_SPINLOCK_H_
+#endif // BASE_SPINLOCK_H_

@@ -95,7 +95,6 @@ using kudu::itest::FindTabletFollowers;
 using kudu::itest::FindTabletLeader;
 using kudu::itest::GetConsensusState;
 using kudu::itest::StartElection;
-using kudu::itest::WaitUntilLeader;
 using kudu::itest::TabletServerMap;
 using kudu::itest::TServerDetails;
 using kudu::itest::WAIT_FOR_LEADER;
@@ -103,6 +102,7 @@ using kudu::itest::WaitForReplicasReportedToMaster;
 using kudu::itest::WaitForServersToAgree;
 using kudu::itest::WaitUntilCommittedConfigNumVotersIs;
 using kudu::itest::WaitUntilCommittedOpIdIndexIs;
+using kudu::itest::WaitUntilLeader;
 using kudu::itest::WaitUntilTabletInState;
 using kudu::itest::WaitUntilTabletRunning;
 using kudu::master::VOTER_REPLICA;
@@ -128,8 +128,9 @@ class Schema;
 
 namespace tools {
 
-  // Helper to format info when a tool action fails.
-static string ToolRunInfo(const Status& s, const string& out, const string& err) {
+// Helper to format info when a tool action fails.
+static string
+ToolRunInfo(const Status& s, const string& out, const string& err) {
   ostringstream str;
   str << s.ToString() << endl;
   str << "stdout: " << out << endl;
@@ -145,19 +146,19 @@ static string ToolRunInfo(const Status& s, const string& out, const string& err)
 // also logs the stdout and stderr in case of failure, for easier diagnosis.
 // TODO(wdberkeley): Add a macro to retrieve stdout or stderr, or a macro for
 //                   when one of those should match a string.
-#define ASSERT_TOOL_OK(...) do { \
-  const vector<string>& _args{__VA_ARGS__}; \
-  string _out, _err; \
-  const Status& _s = RunKuduTool(_args, &_out, &_err); \
-  if (_s.ok()) { \
-    SUCCEED(); \
-  } else { \
-    FAIL() << ToolRunInfo(_s, _out, _err); \
-  } \
-} while (0);
+#define ASSERT_TOOL_OK(...)                              \
+  do {                                                   \
+    const vector<string>& _args{__VA_ARGS__};            \
+    string _out, _err;                                   \
+    const Status& _s = RunKuduTool(_args, &_out, &_err); \
+    if (_s.ok()) {                                       \
+      SUCCEED();                                         \
+    } else {                                             \
+      FAIL() << ToolRunInfo(_s, _out, _err);             \
+    }                                                    \
+  } while (0);
 
-class AdminCliTest : public tserver::TabletServerIntegrationTestBase {
-};
+class AdminCliTest : public tserver::TabletServerIntegrationTestBase {};
 
 // Test config change while running a workload.
 // 1. Instantiate external mini cluster with 3 TS.
@@ -167,16 +168,16 @@ class AdminCliTest : public tserver::TabletServerIntegrationTestBase {
 // 5. Profit!
 TEST_F(AdminCliTest, TestChangeConfig) {
   const vector<string> kMasterFlags = {
-    "--catalog_manager_wait_for_new_tablets_to_elect_leader=false",
-    "--allow_unsafe_replication_factor=true",
+      "--catalog_manager_wait_for_new_tablets_to_elect_leader=false",
+      "--allow_unsafe_replication_factor=true",
 
-    // If running with the 3-4-3 replication scheme, the catalog manager removes
-    // excess replicas, so it's necessary to disable that default behavior
-    // since this test manages replicas on its own.
-    "--catalog_manager_evict_excess_replicas=false",
+      // If running with the 3-4-3 replication scheme, the catalog manager
+      // removes excess replicas, so it's necessary to disable that default
+      // behavior since this test manages replicas on its own.
+      "--catalog_manager_evict_excess_replicas=false",
   };
   const vector<string> kTserverFlags = {
-    "--enable_leader_failure_detection=false",
+      "--enable_leader_failure_detection=false",
   };
 
   FLAGS_num_tablet_servers = 3;
@@ -205,8 +206,8 @@ TEST_F(AdminCliTest, TestChangeConfig) {
 
   // Elect the leader (still only a consensus config size of 2).
   ASSERT_OK(StartElection(leader, tablet_id_, MonoDelta::FromSeconds(10)));
-  ASSERT_OK(WaitForServersToAgree(MonoDelta::FromSeconds(30), active_tablet_servers,
-                                  tablet_id_, 1));
+  ASSERT_OK(WaitForServersToAgree(
+      MonoDelta::FromSeconds(30), active_tablet_servers, tablet_id_, 1));
 
   TestWorkload workload(cluster_.get());
   workload.set_table_name(kTableId);
@@ -223,22 +224,23 @@ TEST_F(AdminCliTest, TestChangeConfig) {
   ASSERT_OK(GetLeaderReplicaWithRetries(tablet_id_, &master_observed_leader));
   ASSERT_EQ(leader->uuid(), master_observed_leader->uuid());
 
-  LOG(INFO) << "Adding replica at tserver with UUID "
-            << new_node->uuid() << " as VOTER...";
+  LOG(INFO) << "Adding replica at tserver with UUID " << new_node->uuid()
+            << " as VOTER...";
   ASSERT_TOOL_OK(
-    "tablet",
-    "change_config",
-    "add_replica",
-    cluster_->master()->bound_rpc_addr().ToString(),
-    tablet_id_,
-    new_node->uuid(),
-    "VOTER"
-  );
+      "tablet",
+      "change_config",
+      "add_replica",
+      cluster_->master()->bound_rpc_addr().ToString(),
+      tablet_id_,
+      new_node->uuid(),
+      "VOTER");
 
   InsertOrDie(&active_tablet_servers, new_node->uuid(), new_node);
-  ASSERT_OK(WaitUntilCommittedConfigNumVotersIs(active_tablet_servers.size(),
-                                                leader, tablet_id_,
-                                                MonoDelta::FromSeconds(10)));
+  ASSERT_OK(WaitUntilCommittedConfigNumVotersIs(
+      active_tablet_servers.size(),
+      leader,
+      tablet_id_,
+      MonoDelta::FromSeconds(10)));
 
   workload.StopAndJoin();
   int num_batches = workload.batches_completed();
@@ -249,33 +251,37 @@ TEST_F(AdminCliTest, TestChangeConfig) {
   // plus the initial leader's no-op, plus 1 for
   // the added replica for a total == #rows + 2.
   int min_log_index = num_batches + 2;
-  ASSERT_OK(WaitForServersToAgree(MonoDelta::FromSeconds(30),
-                                  active_tablet_servers, tablet_id_,
-                                  min_log_index));
+  ASSERT_OK(WaitForServersToAgree(
+      MonoDelta::FromSeconds(30),
+      active_tablet_servers,
+      tablet_id_,
+      min_log_index));
 
   int rows_inserted = workload.rows_inserted();
   LOG(INFO) << "Number of rows inserted: " << rows_inserted;
 
   ClusterVerifier v(cluster_.get());
   NO_FATALS(v.CheckCluster());
-  NO_FATALS(v.CheckRowCount(kTableId, ClusterVerifier::AT_LEAST, rows_inserted));
+  NO_FATALS(
+      v.CheckRowCount(kTableId, ClusterVerifier::AT_LEAST, rows_inserted));
 
   // Now remove the server.
-  LOG(INFO) << "Removing replica at tserver with UUID "
-            << new_node->uuid() << " from the config...";
+  LOG(INFO) << "Removing replica at tserver with UUID " << new_node->uuid()
+            << " from the config...";
   ASSERT_TOOL_OK(
-    "tablet",
-    "change_config",
-    "remove_replica",
-    cluster_->master()->bound_rpc_addr().ToString(),
-    tablet_id_,
-    new_node->uuid()
-  );
+      "tablet",
+      "change_config",
+      "remove_replica",
+      cluster_->master()->bound_rpc_addr().ToString(),
+      tablet_id_,
+      new_node->uuid());
 
   ASSERT_EQ(1, active_tablet_servers.erase(new_node->uuid()));
-  ASSERT_OK(WaitUntilCommittedConfigNumVotersIs(active_tablet_servers.size(),
-                                                leader, tablet_id_,
-                                                MonoDelta::FromSeconds(10)));
+  ASSERT_OK(WaitUntilCommittedConfigNumVotersIs(
+      active_tablet_servers.size(),
+      leader,
+      tablet_id_,
+      MonoDelta::FromSeconds(10)));
 }
 
 enum class Kudu1097 {
@@ -288,10 +294,9 @@ enum class DownTS {
   // Regression case for KUDU-2331.
   UninvolvedTS,
 };
-class MoveTabletParamTest :
-    public AdminCliTest,
-    public ::testing::WithParamInterface<tuple<Kudu1097, DownTS>> {
-};
+class MoveTabletParamTest
+    : public AdminCliTest,
+      public ::testing::WithParamInterface<tuple<Kudu1097, DownTS>> {};
 
 TEST_P(MoveTabletParamTest, Test) {
   const MonoDelta timeout = MonoDelta::FromSeconds(30);
@@ -303,9 +308,9 @@ TEST_P(MoveTabletParamTest, Test) {
   FLAGS_num_replicas = 3;
 
   vector<string> ts_flags, master_flags;
-  ts_flags = master_flags = {
-      Substitute("--raft_prepare_replacement_before_eviction=$0",
-                 enable_kudu_1097 == Kudu1097::Enable) };
+  ts_flags = master_flags = {Substitute(
+      "--raft_prepare_replacement_before_eviction=$0",
+      enable_kudu_1097 == Kudu1097::Enable)};
   NO_FATALS(BuildAndStart(ts_flags, master_flags));
 
   vector<string> tservers;
@@ -313,7 +318,9 @@ TEST_P(MoveTabletParamTest, Test) {
   ASSERT_EQ(FLAGS_num_tablet_servers, tservers.size());
 
   deque<string> active_tservers;
-  for (auto iter = tablet_replicas_.find(tablet_id_); iter != tablet_replicas_.cend(); ++iter) {
+  for (auto iter = tablet_replicas_.find(tablet_id_);
+       iter != tablet_replicas_.cend();
+       ++iter) {
     active_tservers.push_back(iter->second->uuid());
   }
   ASSERT_EQ(FLAGS_num_replicas, active_tservers.size());
@@ -321,10 +328,14 @@ TEST_P(MoveTabletParamTest, Test) {
   deque<string> inactive_tservers;
   std::sort(tservers.begin(), tservers.end());
   std::sort(active_tservers.begin(), active_tservers.end());
-  std::set_difference(tservers.cbegin(), tservers.cend(),
-                      active_tservers.cbegin(), active_tservers.cend(),
-                      std::back_inserter(inactive_tservers));
-  ASSERT_EQ(FLAGS_num_tablet_servers - FLAGS_num_replicas, inactive_tservers.size());
+  std::set_difference(
+      tservers.cbegin(),
+      tservers.cend(),
+      active_tservers.cbegin(),
+      active_tservers.cend(),
+      std::back_inserter(inactive_tservers));
+  ASSERT_EQ(
+      FLAGS_num_tablet_servers - FLAGS_num_replicas, inactive_tservers.size());
 
   // The workload is light (1 thread, 1 op batches) so that new replicas
   // bootstrap and converge quickly.
@@ -340,27 +351,31 @@ TEST_P(MoveTabletParamTest, Test) {
   if (downTS == DownTS::TabletPeer) {
     // To test that the move fails if any peer is down, when downTS is
     // 'TabletPeer', shut down a server besides 'add' that hosts a replica.
-    NO_FATALS(cluster_->tablet_server_by_uuid(active_tservers.back())->Shutdown());
+    NO_FATALS(
+        cluster_->tablet_server_by_uuid(active_tservers.back())->Shutdown());
   } else if (downTS == DownTS::UninvolvedTS) {
-    // Regression case for KUDU-2331, where move_replica would fail if any tablet
-    // server is down, even if that tablet server was not involved in the move.
-    NO_FATALS(cluster_->tablet_server_by_uuid(inactive_tservers.back())->Shutdown());
+    // Regression case for KUDU-2331, where move_replica would fail if any
+    // tablet server is down, even if that tablet server was not involved in the
+    // move.
+    NO_FATALS(
+        cluster_->tablet_server_by_uuid(inactive_tservers.back())->Shutdown());
   }
 
   // If we're not bringing down a tablet server, do 3 moves.
-  // Assuming no ad hoc leadership changes, 3 guarantees the leader is moved at least once.
+  // Assuming no ad hoc leadership changes, 3 guarantees the leader is moved at
+  // least once.
   int num_moves = AllowSlowTests() && (downTS == DownTS::None) ? 3 : 1;
   for (int i = 0; i < num_moves; i++) {
     const string remove = active_tservers.front();
     const string add = inactive_tservers.front();
     vector<string> tool_command = {
-      "tablet",
-      "change_config",
-      "move_replica",
-      cluster_->master()->bound_rpc_addr().ToString(),
-      tablet_id_,
-      remove,
-      add,
+        "tablet",
+        "change_config",
+        "move_replica",
+        cluster_->master()->bound_rpc_addr().ToString(),
+        tablet_id_,
+        remove,
+        add,
     };
 
     string stdout, stderr;
@@ -377,19 +392,23 @@ TEST_P(MoveTabletParamTest, Test) {
     inactive_tservers.pop_front();
     inactive_tservers.push_back(remove);
 
-    // Allow the added server time to catch up so it applies the newest configuration.
-    // If we don't wait, the initial ksck of move_tablet can fail with consensus conflict.
+    // Allow the added server time to catch up so it applies the newest
+    // configuration. If we don't wait, the initial ksck of move_tablet can fail
+    // with consensus conflict.
     TabletServerMap active_tservers_map;
     for (const string& uuid : active_tservers) {
       InsertOrDie(&active_tservers_map, uuid, tablet_servers_[uuid]);
     }
-    ASSERT_OK(WaitUntilCommittedConfigNumVotersIs(/*num_voters=*/ FLAGS_num_replicas,
-                                                  active_tservers_map[add],
-                                                  tablet_id_, timeout));
-    NO_FATALS(WaitUntilCommittedConfigNumMembersIs(/*num_members=*/ FLAGS_num_replicas,
-                                                   active_tservers_map[add],
-                                                   tablet_id_, timeout));
-
+    ASSERT_OK(WaitUntilCommittedConfigNumVotersIs(
+        /*num_voters=*/FLAGS_num_replicas,
+        active_tservers_map[add],
+        tablet_id_,
+        timeout));
+    NO_FATALS(WaitUntilCommittedConfigNumMembersIs(
+        /*num_members=*/FLAGS_num_replicas,
+        active_tservers_map[add],
+        tablet_id_,
+        timeout));
   }
   workload.StopAndJoin();
   NO_FATALS(cluster_->AssertNoCrashes());
@@ -401,31 +420,36 @@ TEST_P(MoveTabletParamTest, Test) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(EnableKudu1097AndDownTS, MoveTabletParamTest,
-                        ::testing::Combine(::testing::Values(Kudu1097::Disable,
-                                                             Kudu1097::Enable),
-                                           ::testing::Values(DownTS::None,
-                                                             DownTS::TabletPeer,
-                                                             DownTS::UninvolvedTS)));
+INSTANTIATE_TEST_CASE_P(
+    EnableKudu1097AndDownTS,
+    MoveTabletParamTest,
+    ::testing::Combine(
+        ::testing::Values(Kudu1097::Disable, Kudu1097::Enable),
+        ::testing::Values(
+            DownTS::None,
+            DownTS::TabletPeer,
+            DownTS::UninvolvedTS)));
 
-Status RunUnsafeChangeConfig(const string& tablet_id,
-                             const string& dst_host,
-                             const vector<string>& peer_uuid_list) {
+Status RunUnsafeChangeConfig(
+    const string& tablet_id,
+    const string& dst_host,
+    const vector<string>& peer_uuid_list) {
   vector<string> command_args = {
-      "remote_replica",
-      "unsafe_change_config",
-      dst_host,
-      tablet_id
-  };
-  copy(peer_uuid_list.begin(), peer_uuid_list.end(), back_inserter(command_args));
+      "remote_replica", "unsafe_change_config", dst_host, tablet_id};
+  copy(
+      peer_uuid_list.begin(),
+      peer_uuid_list.end(),
+      back_inserter(command_args));
   return RunKuduTool(command_args);
 }
 
 // Test unsafe config change when there is one follower survivor in the cluster.
-// 1. Instantiate external mini cluster with 1 tablet having 3 replicas and 5 TS.
+// 1. Instantiate external mini cluster with 1 tablet having 3 replicas and 5
+// TS.
 // 2. Shut down leader and follower1.
 // 3. Trigger unsafe config change on follower2 having follower2 in the config.
-// 4. Wait until the new config is populated on follower2(new leader) and master.
+// 4. Wait until the new config is populated on follower2(new leader) and
+// master.
 // 5. Bring up leader and follower1 and verify replicas are deleted.
 // 6. Verify that new config doesn't contain old leader and follower1.
 TEST_F(AdminCliTest, TestUnsafeChangeConfigOnSingleFollower) {
@@ -450,21 +474,28 @@ TEST_F(AdminCliTest, TestUnsafeChangeConfigOnSingleFollower) {
   LOG(INFO) << "Waiting for Master to see the current replicas...";
   master::TabletLocationsPB tablet_locations;
   bool has_leader;
-  ASSERT_OK(WaitForReplicasReportedToMaster(cluster_->master_proxy(),
-                                            3, tablet_id, kTimeout,
-                                            WAIT_FOR_LEADER,
-                                            VOTER_REPLICA,
-                                            &has_leader, &tablet_locations));
+  ASSERT_OK(WaitForReplicasReportedToMaster(
+      cluster_->master_proxy(),
+      3,
+      tablet_id,
+      kTimeout,
+      WAIT_FOR_LEADER,
+      VOTER_REPLICA,
+      &has_leader,
+      &tablet_locations));
   LOG(INFO) << "Tablet locations:\n" << SecureDebugString(tablet_locations);
   ASSERT_TRUE(has_leader) << SecureDebugString(tablet_locations);
 
   // Wait for initial NO_OP to be committed by the leader.
   TServerDetails* leader_ts;
   vector<TServerDetails*> followers;
-  ASSERT_OK(FindTabletLeader(active_tablet_servers, tablet_id, kTimeout, &leader_ts));
-  ASSERT_OK(FindTabletFollowers(active_tablet_servers, tablet_id, kTimeout, &followers));
+  ASSERT_OK(
+      FindTabletLeader(active_tablet_servers, tablet_id, kTimeout, &leader_ts));
+  ASSERT_OK(FindTabletFollowers(
+      active_tablet_servers, tablet_id, kTimeout, &followers));
   OpId opid;
-  ASSERT_OK(WaitForOpFromCurrentTerm(leader_ts, tablet_id, COMMITTED_OPID, kTimeout, &opid));
+  ASSERT_OK(WaitForOpFromCurrentTerm(
+      leader_ts, tablet_id, COMMITTED_OPID, kTimeout, &opid));
 
   // Shut down master so it doesn't interfere while we shut down the leader and
   // one of the other followers.
@@ -472,26 +503,38 @@ TEST_F(AdminCliTest, TestUnsafeChangeConfigOnSingleFollower) {
   cluster_->tablet_server_by_uuid(leader_ts->uuid())->Shutdown();
   cluster_->tablet_server_by_uuid(followers[1]->uuid())->Shutdown();
 
-
-  LOG(INFO) << "Forcing unsafe config change on remaining follower " << followers[0]->uuid();
+  LOG(INFO) << "Forcing unsafe config change on remaining follower "
+            << followers[0]->uuid();
   const string& follower0_addr =
-      cluster_->tablet_server_by_uuid(followers[0]->uuid())->bound_rpc_addr().ToString();
-  ASSERT_OK(RunUnsafeChangeConfig(tablet_id, follower0_addr, { followers[0]->uuid() }));
+      cluster_->tablet_server_by_uuid(followers[0]->uuid())
+          ->bound_rpc_addr()
+          .ToString();
+  ASSERT_OK(
+      RunUnsafeChangeConfig(tablet_id, follower0_addr, {followers[0]->uuid()}));
   ASSERT_OK(WaitUntilLeader(followers[0], tablet_id, kTimeout));
-  ASSERT_OK(WaitUntilCommittedConfigNumVotersIs(1, followers[0], tablet_id, kTimeout));
+  ASSERT_OK(WaitUntilCommittedConfigNumVotersIs(
+      1, followers[0], tablet_id, kTimeout));
 
   LOG(INFO) << "Restarting master...";
 
-  // Restart master so it can re-replicate the tablet to remaining tablet servers.
+  // Restart master so it can re-replicate the tablet to remaining tablet
+  // servers.
   ASSERT_OK(cluster_->master()->Restart());
 
   // Wait for master to re-replicate.
-  ASSERT_OK(WaitUntilCommittedConfigNumVotersIs(3, followers[0], tablet_id, kTimeout));
-  ASSERT_OK(WaitForReplicasReportedToMaster(cluster_->master_proxy(),
-                                            3, tablet_id, kTimeout,
-                                            WAIT_FOR_LEADER, VOTER_REPLICA,
-                                            &has_leader, &tablet_locations));
-  ASSERT_OK(WaitForOpFromCurrentTerm(followers[0], tablet_id, COMMITTED_OPID, kTimeout, &opid));
+  ASSERT_OK(WaitUntilCommittedConfigNumVotersIs(
+      3, followers[0], tablet_id, kTimeout));
+  ASSERT_OK(WaitForReplicasReportedToMaster(
+      cluster_->master_proxy(),
+      3,
+      tablet_id,
+      kTimeout,
+      WAIT_FOR_LEADER,
+      VOTER_REPLICA,
+      &has_leader,
+      &tablet_locations));
+  ASSERT_OK(WaitForOpFromCurrentTerm(
+      followers[0], tablet_id, COMMITTED_OPID, kTimeout, &opid));
 
   active_tablet_servers.clear();
   std::unordered_set<string> replica_uuids;
@@ -499,12 +542,13 @@ TEST_F(AdminCliTest, TestUnsafeChangeConfigOnSingleFollower) {
     const string& uuid = loc.ts_info().permanent_uuid();
     InsertOrDie(&active_tablet_servers, uuid, tablet_servers_[uuid]);
   }
-  ASSERT_OK(WaitForServersToAgree(kTimeout, active_tablet_servers, tablet_id, opid.index()));
+  ASSERT_OK(WaitForServersToAgree(
+      kTimeout, active_tablet_servers, tablet_id, opid.index()));
 
   // Verify that two new servers are part of new config and old
   // servers are gone.
   for (const master::TabletLocationsPB_ReplicaPB& replica :
-      tablet_locations.replicas()) {
+       tablet_locations.replicas()) {
     ASSERT_NE(replica.ts_info().permanent_uuid(), followers[1]->uuid());
     ASSERT_NE(replica.ts_info().permanent_uuid(), leader_ts->uuid());
   }
@@ -513,12 +557,15 @@ TEST_F(AdminCliTest, TestUnsafeChangeConfigOnSingleFollower) {
   // we should see the tablet in TOMBSTONED state on these servers.
   ASSERT_OK(cluster_->tablet_server_by_uuid(leader_ts->uuid())->Restart());
   ASSERT_OK(cluster_->tablet_server_by_uuid(followers[1]->uuid())->Restart());
-  ASSERT_OK(WaitUntilTabletInState(leader_ts, tablet_id, tablet::STOPPED, kTimeout));
-  ASSERT_OK(WaitUntilTabletInState(followers[1], tablet_id, tablet::STOPPED, kTimeout));
+  ASSERT_OK(
+      WaitUntilTabletInState(leader_ts, tablet_id, tablet::STOPPED, kTimeout));
+  ASSERT_OK(WaitUntilTabletInState(
+      followers[1], tablet_id, tablet::STOPPED, kTimeout));
 }
 
 // Test unsafe config change when there is one leader survivor in the cluster.
-// 1. Instantiate external mini cluster with 1 tablet having 3 replicas and 5 TS.
+// 1. Instantiate external mini cluster with 1 tablet having 3 replicas and 5
+// TS.
 // 2. Shut down both followers.
 // 3. Trigger unsafe config change on leader having leader in the config.
 // 4. Wait until the new config is populated on leader and master.
@@ -540,19 +587,26 @@ TEST_F(AdminCliTest, TestUnsafeChangeConfigOnSingleLeader) {
   LOG(INFO) << "Waiting for Master to see the current replicas...";
   master::TabletLocationsPB tablet_locations;
   bool has_leader;
-  ASSERT_OK(WaitForReplicasReportedToMaster(cluster_->master_proxy(),
-                                            3, tablet_id_, kTimeout,
-                                            WAIT_FOR_LEADER, VOTER_REPLICA,
-                                            &has_leader, &tablet_locations));
+  ASSERT_OK(WaitForReplicasReportedToMaster(
+      cluster_->master_proxy(),
+      3,
+      tablet_id_,
+      kTimeout,
+      WAIT_FOR_LEADER,
+      VOTER_REPLICA,
+      &has_leader,
+      &tablet_locations));
   LOG(INFO) << "Tablet locations:\n" << SecureDebugString(tablet_locations);
   ASSERT_TRUE(has_leader) << SecureDebugString(tablet_locations);
 
   // Wait for initial NO_OP to be committed by the leader.
   TServerDetails* leader_ts;
-  ASSERT_OK(FindTabletLeader(active_tablet_servers, tablet_id_, kTimeout, &leader_ts));
+  ASSERT_OK(FindTabletLeader(
+      active_tablet_servers, tablet_id_, kTimeout, &leader_ts));
   ASSERT_OK(WaitUntilCommittedOpIdIndexIs(1, leader_ts, tablet_id_, kTimeout));
   vector<TServerDetails*> followers;
-  ASSERT_OK(FindTabletFollowers(active_tablet_servers, tablet_id_, kTimeout, &followers));
+  ASSERT_OK(FindTabletFollowers(
+      active_tablet_servers, tablet_id_, kTimeout, &followers));
 
   // Shut down servers follower1 and follower2,
   // so that we can force new config on remaining leader.
@@ -564,17 +618,18 @@ TEST_F(AdminCliTest, TestUnsafeChangeConfigOnSingleLeader) {
   ASSERT_OK(cluster_->master()->Restart());
 
   LOG(INFO) << "Forcing unsafe config change on tserver " << leader_ts->uuid();
-  const string& leader_addr = Substitute("$0:$1",
-                                         leader_ts->registration.rpc_addresses(0).host(),
-                                         leader_ts->registration.rpc_addresses(0).port());
-  const vector<string> peer_uuid_list = { leader_ts->uuid() };
+  const string& leader_addr = Substitute(
+      "$0:$1",
+      leader_ts->registration.rpc_addresses(0).host(),
+      leader_ts->registration.rpc_addresses(0).port());
+  const vector<string> peer_uuid_list = {leader_ts->uuid()};
   ASSERT_OK(RunUnsafeChangeConfig(tablet_id_, leader_addr, peer_uuid_list));
 
   // Check that new config is populated to a new follower.
   vector<TServerDetails*> all_tservers;
-  TServerDetails *new_follower = nullptr;
+  TServerDetails* new_follower = nullptr;
   AppendValuesFromMap(tablet_servers_, &all_tservers);
-  for (const auto& ts :all_tservers) {
+  for (const auto& ts : all_tservers) {
     if (!ContainsKey(active_tablet_servers, ts->uuid())) {
       new_follower = ts;
       break;
@@ -582,19 +637,26 @@ TEST_F(AdminCliTest, TestUnsafeChangeConfigOnSingleLeader) {
   }
   ASSERT_TRUE(new_follower != nullptr);
 
-  // Master may try to add the servers which are down until tserver_unresponsive_timeout_ms,
-  // so it is safer to wait until consensus metadata has 3 voters on new_follower.
-  ASSERT_OK(WaitUntilCommittedConfigNumVotersIs(3, new_follower, tablet_id_, kTimeout));
+  // Master may try to add the servers which are down until
+  // tserver_unresponsive_timeout_ms, so it is safer to wait until consensus
+  // metadata has 3 voters on new_follower.
+  ASSERT_OK(WaitUntilCommittedConfigNumVotersIs(
+      3, new_follower, tablet_id_, kTimeout));
 
   // Wait for the master to be notified of the config change.
   LOG(INFO) << "Waiting for Master to see new config...";
-  ASSERT_OK(WaitForReplicasReportedToMaster(cluster_->master_proxy(),
-                                            3, tablet_id_, kTimeout,
-                                            WAIT_FOR_LEADER, VOTER_REPLICA,
-                                            &has_leader, &tablet_locations));
+  ASSERT_OK(WaitForReplicasReportedToMaster(
+      cluster_->master_proxy(),
+      3,
+      tablet_id_,
+      kTimeout,
+      WAIT_FOR_LEADER,
+      VOTER_REPLICA,
+      &has_leader,
+      &tablet_locations));
   LOG(INFO) << "Tablet locations:\n" << SecureDebugString(tablet_locations);
   for (const master::TabletLocationsPB_ReplicaPB& replica :
-      tablet_locations.replicas()) {
+       tablet_locations.replicas()) {
     ASSERT_NE(replica.ts_info().permanent_uuid(), followers[0]->uuid());
     ASSERT_NE(replica.ts_info().permanent_uuid(), followers[1]->uuid());
   }
@@ -603,7 +665,8 @@ TEST_F(AdminCliTest, TestUnsafeChangeConfigOnSingleLeader) {
 // Test unsafe config change when the unsafe config contains 2 nodes.
 // 1. Instantiate external minicluster with 1 tablet having 3 replicas and 5 TS.
 // 2. Shut down leader.
-// 3. Trigger unsafe config change on follower1 having follower1 and follower2 in the config.
+// 3. Trigger unsafe config change on follower1 having follower1 and follower2
+// in the config.
 // 4. Wait until the new config is populated on new_leader and master.
 // 5. Verify that new config does not contain old leader.
 TEST_F(AdminCliTest, TestUnsafeChangeConfigForConfigWithTwoNodes) {
@@ -623,19 +686,26 @@ TEST_F(AdminCliTest, TestUnsafeChangeConfigForConfigWithTwoNodes) {
   LOG(INFO) << "Waiting for Master to see the current replicas...";
   master::TabletLocationsPB tablet_locations;
   bool has_leader;
-  ASSERT_OK(WaitForReplicasReportedToMaster(cluster_->master_proxy(),
-                                            3, tablet_id_, kTimeout,
-                                            WAIT_FOR_LEADER, VOTER_REPLICA,
-                                            &has_leader, &tablet_locations));
+  ASSERT_OK(WaitForReplicasReportedToMaster(
+      cluster_->master_proxy(),
+      3,
+      tablet_id_,
+      kTimeout,
+      WAIT_FOR_LEADER,
+      VOTER_REPLICA,
+      &has_leader,
+      &tablet_locations));
   LOG(INFO) << "Tablet locations:\n" << SecureDebugString(tablet_locations);
   ASSERT_TRUE(has_leader) << SecureDebugString(tablet_locations);
 
   // Wait for initial NO_OP to be committed by the leader.
   TServerDetails* leader_ts;
-  ASSERT_OK(FindTabletLeader(active_tablet_servers, tablet_id_, kTimeout, &leader_ts));
+  ASSERT_OK(FindTabletLeader(
+      active_tablet_servers, tablet_id_, kTimeout, &leader_ts));
   ASSERT_OK(WaitUntilCommittedOpIdIndexIs(1, leader_ts, tablet_id_, kTimeout));
   vector<TServerDetails*> followers;
-  ASSERT_OK(FindTabletFollowers(active_tablet_servers, tablet_id_, kTimeout, &followers));
+  ASSERT_OK(FindTabletFollowers(
+      active_tablet_servers, tablet_id_, kTimeout, &followers));
 
   // Shut down leader and prepare 2-node config.
   cluster_->tablet_server_by_uuid(leader_ts->uuid())->Shutdown();
@@ -644,12 +714,16 @@ TEST_F(AdminCliTest, TestUnsafeChangeConfigForConfigWithTwoNodes) {
   cluster_->master()->Shutdown();
   ASSERT_OK(cluster_->master()->Restart());
 
-  LOG(INFO) << "Forcing unsafe config change on tserver " << followers[1]->uuid();
-  const string& follower1_addr = Substitute("$0:$1",
-                                            followers[1]->registration.rpc_addresses(0).host(),
-                                            followers[1]->registration.rpc_addresses(0).port());
-  const vector<string> peer_uuid_list = { followers[0]->uuid(),
-                                          followers[1]->uuid(), };
+  LOG(INFO) << "Forcing unsafe config change on tserver "
+            << followers[1]->uuid();
+  const string& follower1_addr = Substitute(
+      "$0:$1",
+      followers[1]->registration.rpc_addresses(0).host(),
+      followers[1]->registration.rpc_addresses(0).port());
+  const vector<string> peer_uuid_list = {
+      followers[0]->uuid(),
+      followers[1]->uuid(),
+  };
   ASSERT_OK(RunUnsafeChangeConfig(tablet_id_, follower1_addr, peer_uuid_list));
 
   // Find a remaining node which will be picked for re-replication.
@@ -664,24 +738,32 @@ TEST_F(AdminCliTest, TestUnsafeChangeConfigForConfigWithTwoNodes) {
   }
   ASSERT_TRUE(new_node != nullptr);
 
-  // Master may try to add the servers which are down until tserver_unresponsive_timeout_ms,
-  // so it is safer to wait until consensus metadata has 3 voters on follower1.
-  ASSERT_OK(WaitUntilCommittedConfigNumVotersIs(3, new_node, tablet_id_, kTimeout));
+  // Master may try to add the servers which are down until
+  // tserver_unresponsive_timeout_ms, so it is safer to wait until consensus
+  // metadata has 3 voters on follower1.
+  ASSERT_OK(
+      WaitUntilCommittedConfigNumVotersIs(3, new_node, tablet_id_, kTimeout));
 
   // Wait for the master to be notified of the config change.
   LOG(INFO) << "Waiting for Master to see new config...";
-  ASSERT_OK(WaitForReplicasReportedToMaster(cluster_->master_proxy(),
-                                            3, tablet_id_, kTimeout,
-                                            WAIT_FOR_LEADER, VOTER_REPLICA,
-                                            &has_leader, &tablet_locations));
+  ASSERT_OK(WaitForReplicasReportedToMaster(
+      cluster_->master_proxy(),
+      3,
+      tablet_id_,
+      kTimeout,
+      WAIT_FOR_LEADER,
+      VOTER_REPLICA,
+      &has_leader,
+      &tablet_locations));
   LOG(INFO) << "Tablet locations:\n" << SecureDebugString(tablet_locations);
   for (const master::TabletLocationsPB_ReplicaPB& replica :
-      tablet_locations.replicas()) {
+       tablet_locations.replicas()) {
     ASSERT_NE(replica.ts_info().permanent_uuid(), leader_ts->uuid());
   }
 }
 
-// Test unsafe config change on a 5-replica tablet when the unsafe config contains 2 nodes.
+// Test unsafe config change on a 5-replica tablet when the unsafe config
+// contains 2 nodes.
 // 1. Instantiate external minicluster with 1 tablet having 5 replicas and 8 TS.
 // 2. Shut down leader and 2 followers.
 // 3. Trigger unsafe config change on a surviving follower with those
@@ -714,19 +796,26 @@ TEST_F(AdminCliTest, TestUnsafeChangeConfigWithFiveReplicaConfig) {
   LOG(INFO) << "Waiting for Master to see the current replicas...";
   master::TabletLocationsPB tablet_locations;
   bool has_leader;
-  ASSERT_OK(WaitForReplicasReportedToMaster(cluster_->master_proxy(),
-                                            5, tablet_id_, kTimeout,
-                                            WAIT_FOR_LEADER, VOTER_REPLICA,
-                                            &has_leader, &tablet_locations));
+  ASSERT_OK(WaitForReplicasReportedToMaster(
+      cluster_->master_proxy(),
+      5,
+      tablet_id_,
+      kTimeout,
+      WAIT_FOR_LEADER,
+      VOTER_REPLICA,
+      &has_leader,
+      &tablet_locations));
   LOG(INFO) << "Tablet locations:\n" << SecureDebugString(tablet_locations);
   ASSERT_TRUE(has_leader) << SecureDebugString(tablet_locations);
 
   // Wait for initial NO_OP to be committed by the leader.
   TServerDetails* leader_ts;
-  ASSERT_OK(FindTabletLeader(active_tablet_servers, tablet_id_, kTimeout, &leader_ts));
+  ASSERT_OK(FindTabletLeader(
+      active_tablet_servers, tablet_id_, kTimeout, &leader_ts));
   ASSERT_OK(WaitUntilCommittedOpIdIndexIs(1, leader_ts, tablet_id_, kTimeout));
   vector<TServerDetails*> followers;
-  ASSERT_OK(FindTabletFollowers(active_tablet_servers, tablet_id_, kTimeout, &followers));
+  ASSERT_OK(FindTabletFollowers(
+      active_tablet_servers, tablet_id_, kTimeout, &followers));
   ASSERT_EQ(followers.size(), 4);
   cluster_->tablet_server_by_uuid(followers[2]->uuid())->Shutdown();
   cluster_->tablet_server_by_uuid(followers[3]->uuid())->Shutdown();
@@ -736,12 +825,16 @@ TEST_F(AdminCliTest, TestUnsafeChangeConfigWithFiveReplicaConfig) {
   cluster_->master()->Shutdown();
   ASSERT_OK(cluster_->master()->Restart());
 
-  LOG(INFO) << "Forcing unsafe config change on tserver " << followers[1]->uuid();
-  const string& follower1_addr = Substitute("$0:$1",
-                                         followers[1]->registration.rpc_addresses(0).host(),
-                                         followers[1]->registration.rpc_addresses(0).port());
-  const vector<string> peer_uuid_list = { followers[0]->uuid(),
-                                          followers[1]->uuid(), };
+  LOG(INFO) << "Forcing unsafe config change on tserver "
+            << followers[1]->uuid();
+  const string& follower1_addr = Substitute(
+      "$0:$1",
+      followers[1]->registration.rpc_addresses(0).host(),
+      followers[1]->registration.rpc_addresses(0).port());
+  const vector<string> peer_uuid_list = {
+      followers[0]->uuid(),
+      followers[1]->uuid(),
+  };
   ASSERT_OK(RunUnsafeChangeConfig(tablet_id_, follower1_addr, peer_uuid_list));
 
   // Find a remaining node which will be picked for re-replication.
@@ -756,29 +849,38 @@ TEST_F(AdminCliTest, TestUnsafeChangeConfigWithFiveReplicaConfig) {
   }
   ASSERT_TRUE(new_node != nullptr);
 
-  // Master may try to add the servers which are down until tserver_unresponsive_timeout_ms,
-  // so it is safer to wait until consensus metadata has 5 voters back on new_node.
-  ASSERT_OK(WaitUntilCommittedConfigNumVotersIs(5, new_node, tablet_id_, kTimeout));
+  // Master may try to add the servers which are down until
+  // tserver_unresponsive_timeout_ms, so it is safer to wait until consensus
+  // metadata has 5 voters back on new_node.
+  ASSERT_OK(
+      WaitUntilCommittedConfigNumVotersIs(5, new_node, tablet_id_, kTimeout));
 
   // Wait for the master to be notified of the config change.
   LOG(INFO) << "Waiting for Master to see new config...";
-  ASSERT_OK(WaitForReplicasReportedToMaster(cluster_->master_proxy(),
-                                            5, tablet_id_, kTimeout,
-                                            WAIT_FOR_LEADER, VOTER_REPLICA,
-                                            &has_leader, &tablet_locations));
+  ASSERT_OK(WaitForReplicasReportedToMaster(
+      cluster_->master_proxy(),
+      5,
+      tablet_id_,
+      kTimeout,
+      WAIT_FOR_LEADER,
+      VOTER_REPLICA,
+      &has_leader,
+      &tablet_locations));
   LOG(INFO) << "Tablet locations:\n" << SecureDebugString(tablet_locations);
   for (const master::TabletLocationsPB_ReplicaPB& replica :
-      tablet_locations.replicas()) {
+       tablet_locations.replicas()) {
     ASSERT_NE(replica.ts_info().permanent_uuid(), leader_ts->uuid());
     ASSERT_NE(replica.ts_info().permanent_uuid(), followers[2]->uuid());
     ASSERT_NE(replica.ts_info().permanent_uuid(), followers[3]->uuid());
   }
 }
 
-// Test unsafe config change when there is a pending config on a surviving leader.
+// Test unsafe config change when there is a pending config on a surviving
+// leader.
 // 1. Instantiate external minicluster with 1 tablet having 3 replicas and 5 TS.
 // 2. Shut down both the followers.
-// 3. Trigger a regular config change on the leader which remains pending on leader.
+// 3. Trigger a regular config change on the leader which remains pending on
+// leader.
 // 4. Trigger unsafe config change on the surviving leader.
 // 5. Wait until the new config is populated on leader and master.
 // 6. Verify that new config does not contain old followers and a standby node
@@ -800,19 +902,26 @@ TEST_F(AdminCliTest, TestUnsafeChangeConfigLeaderWithPendingConfig) {
   LOG(INFO) << "Waiting for Master to see the current replicas...";
   master::TabletLocationsPB tablet_locations;
   bool has_leader;
-  ASSERT_OK(WaitForReplicasReportedToMaster(cluster_->master_proxy(),
-                                            3, tablet_id_, kTimeout,
-                                            WAIT_FOR_LEADER, VOTER_REPLICA,
-                                            &has_leader, &tablet_locations));
+  ASSERT_OK(WaitForReplicasReportedToMaster(
+      cluster_->master_proxy(),
+      3,
+      tablet_id_,
+      kTimeout,
+      WAIT_FOR_LEADER,
+      VOTER_REPLICA,
+      &has_leader,
+      &tablet_locations));
   LOG(INFO) << "Tablet locations:\n" << SecureDebugString(tablet_locations);
   ASSERT_TRUE(has_leader) << SecureDebugString(tablet_locations);
 
   // Wait for initial NO_OP to be committed by the leader.
   TServerDetails* leader_ts;
-  ASSERT_OK(FindTabletLeader(active_tablet_servers, tablet_id_, kTimeout, &leader_ts));
+  ASSERT_OK(FindTabletLeader(
+      active_tablet_servers, tablet_id_, kTimeout, &leader_ts));
   ASSERT_OK(WaitUntilCommittedOpIdIndexIs(1, leader_ts, tablet_id_, kTimeout));
   vector<TServerDetails*> followers;
-  ASSERT_OK(FindTabletFollowers(active_tablet_servers, tablet_id_, kTimeout, &followers));
+  ASSERT_OK(FindTabletFollowers(
+      active_tablet_servers, tablet_id_, kTimeout, &followers));
   ASSERT_EQ(followers.size(), 2);
 
   // Shut down servers follower1 and follower2,
@@ -820,18 +929,19 @@ TEST_F(AdminCliTest, TestUnsafeChangeConfigLeaderWithPendingConfig) {
   cluster_->tablet_server_by_uuid(followers[0]->uuid())->Shutdown();
   cluster_->tablet_server_by_uuid(followers[1]->uuid())->Shutdown();
 
-  // Now try to replicate a ChangeConfig operation. This should get stuck and time out
-  // because the server can't replicate any operations.
-  Status s = RemoveServer(leader_ts, tablet_id_, followers[1],
-                          MonoDelta::FromSeconds(2), -1);
+  // Now try to replicate a ChangeConfig operation. This should get stuck and
+  // time out because the server can't replicate any operations.
+  Status s = RemoveServer(
+      leader_ts, tablet_id_, followers[1], MonoDelta::FromSeconds(2), -1);
   ASSERT_TRUE(s.IsTimedOut());
 
   LOG(INFO) << "Change Config Op timed out, Sending a Replace config "
             << "command when change config op is pending on the leader.";
-  const string& leader_addr = Substitute("$0:$1",
-                                         leader_ts->registration.rpc_addresses(0).host(),
-                                         leader_ts->registration.rpc_addresses(0).port());
-  const vector<string> peer_uuid_list = { leader_ts->uuid() };
+  const string& leader_addr = Substitute(
+      "$0:$1",
+      leader_ts->registration.rpc_addresses(0).host(),
+      leader_ts->registration.rpc_addresses(0).port());
+  const vector<string> peer_uuid_list = {leader_ts->uuid()};
   ASSERT_OK(RunUnsafeChangeConfig(tablet_id_, leader_addr, peer_uuid_list));
 
   // Restart master to cleanup cache of dead servers from its list of candidate
@@ -851,29 +961,39 @@ TEST_F(AdminCliTest, TestUnsafeChangeConfigLeaderWithPendingConfig) {
   }
   ASSERT_TRUE(new_node != nullptr);
 
-  // Master may try to add the servers which are down until tserver_unresponsive_timeout_ms,
-  // so it is safer to wait until consensus metadata has 3 voters on new_node.
-  ASSERT_OK(WaitUntilCommittedConfigNumVotersIs(3, new_node, tablet_id_, kTimeout));
+  // Master may try to add the servers which are down until
+  // tserver_unresponsive_timeout_ms, so it is safer to wait until consensus
+  // metadata has 3 voters on new_node.
+  ASSERT_OK(
+      WaitUntilCommittedConfigNumVotersIs(3, new_node, tablet_id_, kTimeout));
 
   // Wait for the master to be notified of the config change.
   LOG(INFO) << "Waiting for Master to see new config...";
-  ASSERT_OK(WaitForReplicasReportedToMaster(cluster_->master_proxy(),
-                                            3, tablet_id_, kTimeout,
-                                            WAIT_FOR_LEADER, VOTER_REPLICA,
-                                            &has_leader, &tablet_locations));
+  ASSERT_OK(WaitForReplicasReportedToMaster(
+      cluster_->master_proxy(),
+      3,
+      tablet_id_,
+      kTimeout,
+      WAIT_FOR_LEADER,
+      VOTER_REPLICA,
+      &has_leader,
+      &tablet_locations));
   LOG(INFO) << "Tablet locations:\n" << SecureDebugString(tablet_locations);
   for (const master::TabletLocationsPB_ReplicaPB& replica :
-      tablet_locations.replicas()) {
+       tablet_locations.replicas()) {
     ASSERT_NE(replica.ts_info().permanent_uuid(), followers[0]->uuid());
     ASSERT_NE(replica.ts_info().permanent_uuid(), followers[1]->uuid());
   }
 }
 
-// Test unsafe config change when there is a pending config on a surviving follower.
+// Test unsafe config change when there is a pending config on a surviving
+// follower.
 // 1. Instantiate external minicluster with 1 tablet having 3 replicas and 5 TS.
 // 2. Shut down both the followers.
-// 3. Trigger a regular config change on the leader which remains pending on leader.
-// 4. Trigger a leader_step_down command such that leader is forced to become follower.
+// 3. Trigger a regular config change on the leader which remains pending on
+// leader.
+// 4. Trigger a leader_step_down command such that leader is forced to become
+// follower.
 // 5. Trigger unsafe config change on the follower.
 // 6. Wait until the new config is populated on leader and master.
 // 7. Verify that new config does not contain old followers and a standby node
@@ -895,19 +1015,26 @@ TEST_F(AdminCliTest, TestUnsafeChangeConfigFollowerWithPendingConfig) {
   LOG(INFO) << "Waiting for Master to see the current replicas...";
   master::TabletLocationsPB tablet_locations;
   bool has_leader;
-  ASSERT_OK(WaitForReplicasReportedToMaster(cluster_->master_proxy(),
-                                            3, tablet_id_, kTimeout,
-                                            WAIT_FOR_LEADER, VOTER_REPLICA,
-                                            &has_leader, &tablet_locations));
+  ASSERT_OK(WaitForReplicasReportedToMaster(
+      cluster_->master_proxy(),
+      3,
+      tablet_id_,
+      kTimeout,
+      WAIT_FOR_LEADER,
+      VOTER_REPLICA,
+      &has_leader,
+      &tablet_locations));
   LOG(INFO) << "Tablet locations:\n" << SecureDebugString(tablet_locations);
   ASSERT_TRUE(has_leader) << SecureDebugString(tablet_locations);
 
   // Wait for initial NO_OP to be committed by the leader.
   TServerDetails* leader_ts;
-  ASSERT_OK(FindTabletLeader(active_tablet_servers, tablet_id_, kTimeout, &leader_ts));
+  ASSERT_OK(FindTabletLeader(
+      active_tablet_servers, tablet_id_, kTimeout, &leader_ts));
   ASSERT_OK(WaitUntilCommittedOpIdIndexIs(1, leader_ts, tablet_id_, kTimeout));
   vector<TServerDetails*> followers;
-  ASSERT_OK(FindTabletFollowers(active_tablet_servers, tablet_id_, kTimeout, &followers));
+  ASSERT_OK(FindTabletFollowers(
+      active_tablet_servers, tablet_id_, kTimeout, &followers));
 
   // Shut down servers follower1 and follower2,
   // so that leader can't replicate future config change ops.
@@ -918,31 +1045,33 @@ TEST_F(AdminCliTest, TestUnsafeChangeConfigFollowerWithPendingConfig) {
   cluster_->master()->Shutdown();
   ASSERT_OK(cluster_->master()->Restart());
 
-  // Now try to replicate a ChangeConfig operation. This should get stuck and time out
-  // because the server can't replicate any operations.
-  Status s = RemoveServer(leader_ts, tablet_id_, followers[1],
-                          MonoDelta::FromSeconds(2), -1);
+  // Now try to replicate a ChangeConfig operation. This should get stuck and
+  // time out because the server can't replicate any operations.
+  Status s = RemoveServer(
+      leader_ts, tablet_id_, followers[1], MonoDelta::FromSeconds(2), -1);
   ASSERT_TRUE(s.IsTimedOut());
 
   // Force leader to step down, best effort command since the leadership
   // could change anytime during cluster lifetime.
   string stderr;
-  s = RunKuduTool({
-    "tablet",
-    "leader_step_down",
-    cluster_->master()->bound_rpc_addr().ToString(),
-    tablet_id_
-  }, nullptr, &stderr);
-  bool not_currently_leader = stderr.find(
-      Status::IllegalState("").CodeAsString()) != string::npos;
+  s = RunKuduTool(
+      {"tablet",
+       "leader_step_down",
+       cluster_->master()->bound_rpc_addr().ToString(),
+       tablet_id_},
+      nullptr,
+      &stderr);
+  bool not_currently_leader =
+      stderr.find(Status::IllegalState("").CodeAsString()) != string::npos;
   ASSERT_TRUE(s.ok() || not_currently_leader) << "stderr: " << stderr;
 
   LOG(INFO) << "Change Config Op timed out, Sending a Replace config "
             << "command when change config op is pending on the leader.";
-  const string& leader_addr = Substitute("$0:$1",
-                                         leader_ts->registration.rpc_addresses(0).host(),
-                                         leader_ts->registration.rpc_addresses(0).port());
-  const vector<string> peer_uuid_list = { leader_ts->uuid() };
+  const string& leader_addr = Substitute(
+      "$0:$1",
+      leader_ts->registration.rpc_addresses(0).host(),
+      leader_ts->registration.rpc_addresses(0).port());
+  const vector<string> peer_uuid_list = {leader_ts->uuid()};
   ASSERT_OK(RunUnsafeChangeConfig(tablet_id_, leader_addr, peer_uuid_list));
 
   // Find a remaining node which will be picked for re-replication.
@@ -957,32 +1086,42 @@ TEST_F(AdminCliTest, TestUnsafeChangeConfigFollowerWithPendingConfig) {
   }
   ASSERT_TRUE(new_node != nullptr);
 
-  // Master may try to add the servers which are down until tserver_unresponsive_timeout_ms,
-  // so it is safer to wait until consensus metadata has 3 voters on new_node.
-  ASSERT_OK(WaitUntilCommittedConfigNumVotersIs(3, new_node, tablet_id_, kTimeout));
+  // Master may try to add the servers which are down until
+  // tserver_unresponsive_timeout_ms, so it is safer to wait until consensus
+  // metadata has 3 voters on new_node.
+  ASSERT_OK(
+      WaitUntilCommittedConfigNumVotersIs(3, new_node, tablet_id_, kTimeout));
 
   // Wait for the master to be notified of the config change.
   LOG(INFO) << "Waiting for Master to see new config...";
-  ASSERT_OK(WaitForReplicasReportedToMaster(cluster_->master_proxy(),
-                                            3, tablet_id_, kTimeout,
-                                            WAIT_FOR_LEADER, VOTER_REPLICA,
-                                            &has_leader, &tablet_locations));
+  ASSERT_OK(WaitForReplicasReportedToMaster(
+      cluster_->master_proxy(),
+      3,
+      tablet_id_,
+      kTimeout,
+      WAIT_FOR_LEADER,
+      VOTER_REPLICA,
+      &has_leader,
+      &tablet_locations));
   LOG(INFO) << "Tablet locations:\n" << SecureDebugString(tablet_locations);
   for (const master::TabletLocationsPB_ReplicaPB& replica :
-      tablet_locations.replicas()) {
+       tablet_locations.replicas()) {
     ASSERT_NE(replica.ts_info().permanent_uuid(), followers[1]->uuid());
     ASSERT_NE(replica.ts_info().permanent_uuid(), followers[0]->uuid());
   }
 }
 
-// Test unsafe config change when there are back to back pending configs on leader logs.
+// Test unsafe config change when there are back to back pending configs on
+// leader logs.
 // 1. Instantiate external minicluster with 1 tablet having 3 replicas and 5 TS.
 // 2. Shut down both the followers.
-// 3. Trigger a regular config change on the leader which remains pending on leader.
+// 3. Trigger a regular config change on the leader which remains pending on
+// leader.
 // 4. Set a fault crash flag to trigger upon next commit of config change.
 // 5. Trigger unsafe config change on the surviving leader which should trigger
 //    the fault while the old config change is being committed.
-// 6. Shutdown and restart the leader and verify that tablet bootstrapped on leader.
+// 6. Shutdown and restart the leader and verify that tablet bootstrapped on
+// leader.
 // 7. Verify that a new node has populated the new config with 3 voters.
 TEST_F(AdminCliTest, TestUnsafeChangeConfigWithPendingConfigsOnWAL) {
   const MonoDelta kTimeout = MonoDelta::FromSeconds(30);
@@ -1001,37 +1140,45 @@ TEST_F(AdminCliTest, TestUnsafeChangeConfigWithPendingConfigsOnWAL) {
   LOG(INFO) << "Waiting for Master to see the current replicas...";
   master::TabletLocationsPB tablet_locations;
   bool has_leader;
-  ASSERT_OK(WaitForReplicasReportedToMaster(cluster_->master_proxy(),
-                                            3, tablet_id_, kTimeout,
-                                            WAIT_FOR_LEADER, VOTER_REPLICA,
-                                            &has_leader, &tablet_locations));
+  ASSERT_OK(WaitForReplicasReportedToMaster(
+      cluster_->master_proxy(),
+      3,
+      tablet_id_,
+      kTimeout,
+      WAIT_FOR_LEADER,
+      VOTER_REPLICA,
+      &has_leader,
+      &tablet_locations));
   LOG(INFO) << "Tablet locations:\n" << SecureDebugString(tablet_locations);
   ASSERT_TRUE(has_leader) << SecureDebugString(tablet_locations);
 
   // Wait for initial NO_OP to be committed by the leader.
   TServerDetails* leader_ts;
-  ASSERT_OK(FindTabletLeader(active_tablet_servers, tablet_id_, kTimeout, &leader_ts));
+  ASSERT_OK(FindTabletLeader(
+      active_tablet_servers, tablet_id_, kTimeout, &leader_ts));
   ASSERT_OK(WaitUntilCommittedOpIdIndexIs(1, leader_ts, tablet_id_, kTimeout));
   vector<TServerDetails*> followers;
-  ASSERT_OK(FindTabletFollowers(active_tablet_servers, tablet_id_, kTimeout, &followers));
+  ASSERT_OK(FindTabletFollowers(
+      active_tablet_servers, tablet_id_, kTimeout, &followers));
 
   // Shut down servers follower1 and follower2,
   // so that leader can't replicate future config change ops.
   cluster_->tablet_server_by_uuid(followers[0]->uuid())->Shutdown();
   cluster_->tablet_server_by_uuid(followers[1]->uuid())->Shutdown();
 
-  // Now try to replicate a ChangeConfig operation. This should get stuck and time out
-  // because the server can't replicate any operations.
-  Status s = RemoveServer(leader_ts, tablet_id_, followers[1],
-                          MonoDelta::FromSeconds(2), -1);
+  // Now try to replicate a ChangeConfig operation. This should get stuck and
+  // time out because the server can't replicate any operations.
+  Status s = RemoveServer(
+      leader_ts, tablet_id_, followers[1], MonoDelta::FromSeconds(2), -1);
   ASSERT_TRUE(s.IsTimedOut());
 
   LOG(INFO) << "Change Config Op timed out, Sending a Replace config "
             << "command when change config op is pending on the leader.";
-  const string& leader_addr = Substitute("$0:$1",
-                                         leader_ts->registration.rpc_addresses(0).host(),
-                                         leader_ts->registration.rpc_addresses(0).port());
-  const vector<string> peer_uuid_list = { leader_ts->uuid() };
+  const string& leader_addr = Substitute(
+      "$0:$1",
+      leader_ts->registration.rpc_addresses(0).host(),
+      leader_ts->registration.rpc_addresses(0).port());
+  const vector<string> peer_uuid_list = {leader_ts->uuid()};
   ASSERT_OK(RunUnsafeChangeConfig(tablet_id_, leader_addr, peer_uuid_list));
 
   // Inject the crash via fault_crash_before_cmeta_flush flag.
@@ -1039,7 +1186,8 @@ TEST_F(AdminCliTest, TestUnsafeChangeConfigWithPendingConfigsOnWAL) {
   // one from ChangeConfig (RemoveServer) and another from UnsafeChangeConfig.
   ASSERT_OK(cluster_->SetFlag(
       cluster_->tablet_server_by_uuid(leader_ts->uuid()),
-      "fault_crash_before_cmeta_flush", "1.0"));
+      "fault_crash_before_cmeta_flush",
+      "1.0"));
 
   // Find a remaining node which will be picked for re-replication.
   vector<TServerDetails*> all_tservers;
@@ -1057,30 +1205,35 @@ TEST_F(AdminCliTest, TestUnsafeChangeConfigWithPendingConfigsOnWAL) {
   cluster_->master()->Shutdown();
   ASSERT_OK(cluster_->master()->Restart());
 
-  ASSERT_OK(cluster_->tablet_server_by_uuid(
-      leader_ts->uuid())->WaitForInjectedCrash(kTimeout));
+  ASSERT_OK(cluster_->tablet_server_by_uuid(leader_ts->uuid())
+                ->WaitForInjectedCrash(kTimeout));
 
   cluster_->tablet_server_by_uuid(leader_ts->uuid())->Shutdown();
-  ASSERT_OK(cluster_->tablet_server_by_uuid(
-      leader_ts->uuid())->Restart());
+  ASSERT_OK(cluster_->tablet_server_by_uuid(leader_ts->uuid())->Restart());
   ASSERT_OK(WaitForNumTabletsOnTS(leader_ts, 1, kTimeout, nullptr));
-  ASSERT_OK(WaitUntilCommittedConfigNumVotersIs(3, new_node, tablet_id_, kTimeout));
+  ASSERT_OK(
+      WaitUntilCommittedConfigNumVotersIs(3, new_node, tablet_id_, kTimeout));
 
   // Wait for the master to be notified of the config change.
-  ASSERT_OK(WaitForReplicasReportedToMaster(cluster_->master_proxy(),
-                                            3, tablet_id_, kTimeout,
-                                            WAIT_FOR_LEADER, VOTER_REPLICA,
-                                            &has_leader, &tablet_locations));
+  ASSERT_OK(WaitForReplicasReportedToMaster(
+      cluster_->master_proxy(),
+      3,
+      tablet_id_,
+      kTimeout,
+      WAIT_FOR_LEADER,
+      VOTER_REPLICA,
+      &has_leader,
+      &tablet_locations));
   LOG(INFO) << "Tablet locations:\n" << SecureDebugString(tablet_locations);
   for (const master::TabletLocationsPB_ReplicaPB& replica :
-      tablet_locations.replicas()) {
+       tablet_locations.replicas()) {
     ASSERT_NE(replica.ts_info().permanent_uuid(), followers[0]->uuid());
     ASSERT_NE(replica.ts_info().permanent_uuid(), followers[1]->uuid());
   }
 }
 
-// Test unsafe config change on a 5-replica tablet when the mulitple pending configs
-// on the surviving node.
+// Test unsafe config change on a 5-replica tablet when the mulitple pending
+// configs on the surviving node.
 // 1. Instantiate external minicluster with 1 tablet having 5 replicas and 9 TS.
 // 2. Shut down all the followers.
 // 3. Trigger unsafe config changes on the surviving leader with those
@@ -1112,15 +1265,21 @@ TEST_F(AdminCliTest, TestUnsafeChangeConfigWithMultiplePendingConfigs) {
   LOG(INFO) << "Waiting for Master to see the current replicas...";
   master::TabletLocationsPB tablet_locations;
   bool has_leader;
-  ASSERT_OK(WaitForReplicasReportedToMaster(cluster_->master_proxy(),
-                                            5, tablet_id_, kTimeout,
-                                            WAIT_FOR_LEADER, VOTER_REPLICA,
-                                            &has_leader, &tablet_locations));
+  ASSERT_OK(WaitForReplicasReportedToMaster(
+      cluster_->master_proxy(),
+      5,
+      tablet_id_,
+      kTimeout,
+      WAIT_FOR_LEADER,
+      VOTER_REPLICA,
+      &has_leader,
+      &tablet_locations));
   LOG(INFO) << "Tablet locations:\n" << SecureDebugString(tablet_locations);
   ASSERT_TRUE(has_leader) << SecureDebugString(tablet_locations);
 
   TServerDetails* leader_ts;
-  ASSERT_OK(FindTabletLeader(active_tablet_servers, tablet_id_, kTimeout, &leader_ts));
+  ASSERT_OK(FindTabletLeader(
+      active_tablet_servers, tablet_id_, kTimeout, &leader_ts));
   vector<TServerDetails*> followers;
   for (const auto& elem : active_tablet_servers) {
     if (elem.first == leader_ts->uuid()) {
@@ -1132,19 +1291,20 @@ TEST_F(AdminCliTest, TestUnsafeChangeConfigWithMultiplePendingConfigs) {
   ASSERT_EQ(4, followers.size());
 
   // Shutdown master to cleanup cache of dead servers from its list of candidate
-  // servers to trigger placement of new replicas on healthy servers when we restart later.
+  // servers to trigger placement of new replicas on healthy servers when we
+  // restart later.
   cluster_->master()->Shutdown();
 
-  const string& leader_addr = Substitute("$0:$1",
-                                         leader_ts->registration.rpc_addresses(0).host(),
-                                         leader_ts->registration.rpc_addresses(0).port());
+  const string& leader_addr = Substitute(
+      "$0:$1",
+      leader_ts->registration.rpc_addresses(0).host(),
+      leader_ts->registration.rpc_addresses(0).port());
 
   // This should keep the multiple pending configs on the node since we are
-  // adding all the dead followers to the new config, and then eventually we write
-  // just one surviving node to the config.
-  // New config write sequences are: {ABCDE}, {ABCD}, {ABC}, {AB}, {A},
-  // A being the leader node where config is written and rest of the nodes are
-  // dead followers.
+  // adding all the dead followers to the new config, and then eventually we
+  // write just one surviving node to the config. New config write sequences
+  // are: {ABCDE}, {ABCD}, {ABC}, {AB}, {A}, A being the leader node where
+  // config is written and rest of the nodes are dead followers.
   for (int num_replicas = followers.size(); num_replicas >= 0; num_replicas--) {
     vector<string> peer_uuid_list;
     peer_uuid_list.push_back(leader_ts->uuid());
@@ -1154,7 +1314,8 @@ TEST_F(AdminCliTest, TestUnsafeChangeConfigWithMultiplePendingConfigs) {
     ASSERT_OK(RunUnsafeChangeConfig(tablet_id_, leader_addr, peer_uuid_list));
   }
 
-  ASSERT_OK(WaitUntilCommittedConfigNumVotersIs(1, leader_ts, tablet_id_, kTimeout));
+  ASSERT_OK(
+      WaitUntilCommittedConfigNumVotersIs(1, leader_ts, tablet_id_, kTimeout));
   ASSERT_OK(cluster_->master()->Restart());
 
   // Find a remaining node which will be picked for re-replication.
@@ -1169,19 +1330,26 @@ TEST_F(AdminCliTest, TestUnsafeChangeConfigWithMultiplePendingConfigs) {
   }
   ASSERT_TRUE(new_node != nullptr);
 
-  // Master may try to add the servers which are down until tserver_unresponsive_timeout_ms,
-  // so it is safer to wait until consensus metadata has 5 voters on new_node.
-  ASSERT_OK(WaitUntilCommittedConfigNumVotersIs(5, new_node, tablet_id_, kTimeout));
+  // Master may try to add the servers which are down until
+  // tserver_unresponsive_timeout_ms, so it is safer to wait until consensus
+  // metadata has 5 voters on new_node.
+  ASSERT_OK(
+      WaitUntilCommittedConfigNumVotersIs(5, new_node, tablet_id_, kTimeout));
 
   // Wait for the master to be notified of the config change.
   LOG(INFO) << "Waiting for Master to see new config...";
-  ASSERT_OK(WaitForReplicasReportedToMaster(cluster_->master_proxy(),
-                                            5, tablet_id_, kTimeout,
-                                            WAIT_FOR_LEADER, VOTER_REPLICA,
-                                            &has_leader, &tablet_locations));
+  ASSERT_OK(WaitForReplicasReportedToMaster(
+      cluster_->master_proxy(),
+      5,
+      tablet_id_,
+      kTimeout,
+      WAIT_FOR_LEADER,
+      VOTER_REPLICA,
+      &has_leader,
+      &tablet_locations));
   LOG(INFO) << "Tablet locations:\n" << SecureDebugString(tablet_locations);
   for (const master::TabletLocationsPB_ReplicaPB& replica :
-      tablet_locations.replicas()) {
+       tablet_locations.replicas()) {
     // Verify that old followers aren't part of new config.
     for (const auto& old_follower : followers) {
       ASSERT_NE(replica.ts_info().permanent_uuid(), old_follower->uuid());
@@ -1189,14 +1357,18 @@ TEST_F(AdminCliTest, TestUnsafeChangeConfigWithMultiplePendingConfigs) {
   }
 }
 
-Status GetTermFromConsensus(const vector<TServerDetails*>& tservers,
-                            const string& tablet_id,
-                            int64_t *current_term) {
+Status GetTermFromConsensus(
+    const vector<TServerDetails*>& tservers,
+    const string& tablet_id,
+    int64_t* current_term) {
   ConsensusStatePB cstate;
   for (auto& ts : tservers) {
-    RETURN_NOT_OK(
-        GetConsensusState(ts, tablet_id, MonoDelta::FromSeconds(10), EXCLUDE_HEALTH_REPORT,
-                          &cstate));
+    RETURN_NOT_OK(GetConsensusState(
+        ts,
+        tablet_id,
+        MonoDelta::FromSeconds(10),
+        EXCLUDE_HEALTH_REPORT,
+        &cstate));
     if (!cstate.leader_uuid().empty() &&
         IsRaftConfigMember(cstate.leader_uuid(), cstate.committed_config()) &&
         cstate.has_current_term()) {
@@ -1204,17 +1376,17 @@ Status GetTermFromConsensus(const vector<TServerDetails*>& tservers,
       return Status::OK();
     }
   }
-  return Status::NotFound(Substitute(
-      "No leader replica found for tablet $0", tablet_id));
+  return Status::NotFound(
+      Substitute("No leader replica found for tablet $0", tablet_id));
 }
 
 TEST_F(AdminCliTest, TestAbruptLeaderStepDown) {
   const MonoDelta kTimeout = MonoDelta::FromSeconds(10);
   const vector<string> kMasterFlags = {
-    "--catalog_manager_wait_for_new_tablets_to_elect_leader=false",
+      "--catalog_manager_wait_for_new_tablets_to_elect_leader=false",
   };
   const vector<string> kTserverFlags = {
-    "--enable_leader_failure_detection=false",
+      "--enable_leader_failure_detection=false",
   };
   FLAGS_num_tablet_servers = 3;
   FLAGS_num_replicas = 3;
@@ -1231,37 +1403,39 @@ TEST_F(AdminCliTest, TestAbruptLeaderStepDown) {
   // Elect the leader and wait for the tservers and master to see the leader.
   const auto* leader = tservers[0];
   ASSERT_OK(StartElection(leader, tablet_id_, kTimeout));
-  ASSERT_OK(WaitForServersToAgree(kTimeout, tablet_servers_,
-                                  tablet_id_, /*minimum_index=*/1));
+  ASSERT_OK(WaitForServersToAgree(
+      kTimeout, tablet_servers_, tablet_id_, /*minimum_index=*/1));
   TServerDetails* master_observed_leader;
   ASSERT_OK(GetLeaderReplicaWithRetries(tablet_id_, &master_observed_leader));
   ASSERT_EQ(leader->uuid(), master_observed_leader->uuid());
 
   // Ask the leader to step down.
   string stderr;
-  Status s = RunKuduTool({
-    "tablet",
-    "leader_step_down",
-    "--abrupt",
-    cluster_->master()->bound_rpc_addr().ToString(),
-    tablet_id_
-  }, nullptr, &stderr);
+  Status s = RunKuduTool(
+      {"tablet",
+       "leader_step_down",
+       "--abrupt",
+       cluster_->master()->bound_rpc_addr().ToString(),
+       tablet_id_},
+      nullptr,
+      &stderr);
 
   // There shouldn't be a leader now, since failure detection is disabled.
   for (const auto* ts : tservers) {
     s = GetReplicaStatusAndCheckIfLeader(ts, tablet_id_, kTimeout);
     ASSERT_TRUE(s.IsIllegalState()) << "Expected IllegalState because replica "
-      "should not be the leader: " << s.ToString();
+                                       "should not be the leader: "
+                                    << s.ToString();
   }
 }
 
 TEST_F(AdminCliTest, TestGracefulLeaderStepDown) {
   const MonoDelta kTimeout = MonoDelta::FromSeconds(10);
   const vector<string> kMasterFlags = {
-    "--catalog_manager_wait_for_new_tablets_to_elect_leader=false",
+      "--catalog_manager_wait_for_new_tablets_to_elect_leader=false",
   };
   const vector<string> kTserverFlags = {
-    "--enable_leader_failure_detection=false",
+      "--enable_leader_failure_detection=false",
   };
   FLAGS_num_tablet_servers = 3;
   FLAGS_num_replicas = 3;
@@ -1278,8 +1452,8 @@ TEST_F(AdminCliTest, TestGracefulLeaderStepDown) {
   // Elect the leader and wait for the tservers and master to see the leader.
   const auto* leader = tservers[0];
   ASSERT_OK(StartElection(leader, tablet_id_, kTimeout));
-  ASSERT_OK(WaitForServersToAgree(kTimeout, tablet_servers_,
-                                  tablet_id_, /*minimum_index=*/1));
+  ASSERT_OK(WaitForServersToAgree(
+      kTimeout, tablet_servers_, tablet_id_, /*minimum_index=*/1));
   TServerDetails* master_observed_leader;
   ASSERT_OK(GetLeaderReplicaWithRetries(tablet_id_, &master_observed_leader));
   ASSERT_EQ(leader->uuid(), master_observed_leader->uuid());
@@ -1287,13 +1461,14 @@ TEST_F(AdminCliTest, TestGracefulLeaderStepDown) {
   // Ask the leader to transfer leadership to a specific peer.
   const auto new_leader_uuid = tservers[1]->uuid();
   string stderr;
-  Status s = RunKuduTool({
-    "tablet",
-    "leader_step_down",
-    Substitute("--new_leader_uuid=$0", new_leader_uuid),
-    cluster_->master()->bound_rpc_addr().ToString(),
-    tablet_id_
-  }, nullptr, &stderr);
+  Status s = RunKuduTool(
+      {"tablet",
+       "leader_step_down",
+       Substitute("--new_leader_uuid=$0", new_leader_uuid),
+       cluster_->master()->bound_rpc_addr().ToString(),
+       tablet_id_},
+      nullptr,
+      &stderr);
   ASSERT_TRUE(s.ok()) << s.ToString();
 
   // Eventually, the chosen node should become leader.
@@ -1303,20 +1478,22 @@ TEST_F(AdminCliTest, TestGracefulLeaderStepDown) {
   });
 
   // Ask the leader to transfer leadership.
-  s = RunKuduTool({
-    "tablet",
-    "leader_step_down",
-    cluster_->master()->bound_rpc_addr().ToString(),
-    tablet_id_
-  }, nullptr, &stderr);
+  s = RunKuduTool(
+      {"tablet",
+       "leader_step_down",
+       cluster_->master()->bound_rpc_addr().ToString(),
+       tablet_id_},
+      nullptr,
+      &stderr);
   ASSERT_TRUE(s.ok()) << s.ToString();
 
   // Eventually, some other node should become leader.
-  const std::unordered_set<string> possible_new_leaders = { tservers[0]->uuid(),
-                                                            tservers[2]->uuid() };
+  const std::unordered_set<string> possible_new_leaders = {
+      tservers[0]->uuid(), tservers[2]->uuid()};
   ASSERT_EVENTUALLY([&]() {
     ASSERT_OK(GetLeaderReplicaWithRetries(tablet_id_, &master_observed_leader));
-    ASSERT_TRUE(ContainsKey(possible_new_leaders, master_observed_leader->uuid()));
+    ASSERT_TRUE(
+        ContainsKey(possible_new_leaders, master_observed_leader->uuid()));
   });
 }
 
@@ -1327,11 +1504,11 @@ TEST_F(AdminCliTest, TestLeaderTransferToEvictedPeer) {
   // In this test, tablet leadership is manually controlled and the master
   // should not rereplicate.
   const vector<string> kMasterFlags = {
-    "--catalog_manager_wait_for_new_tablets_to_elect_leader=false",
-    "--master_add_server_when_underreplicated=false",
+      "--catalog_manager_wait_for_new_tablets_to_elect_leader=false",
+      "--master_add_server_when_underreplicated=false",
   };
   const vector<string> kTserverFlags = {
-    "--enable_leader_failure_detection=false",
+      "--enable_leader_failure_detection=false",
   };
   FLAGS_num_tablet_servers = 3;
   FLAGS_num_replicas = 3;
@@ -1348,8 +1525,8 @@ TEST_F(AdminCliTest, TestLeaderTransferToEvictedPeer) {
   // Elect the leader and wait for the tservers and master to see the leader.
   const auto* leader = tservers[0];
   ASSERT_OK(StartElection(leader, tablet_id_, kTimeout));
-  ASSERT_OK(WaitForServersToAgree(kTimeout, tablet_servers_,
-                                  tablet_id_, /*minimum_index=*/1));
+  ASSERT_OK(WaitForServersToAgree(
+      kTimeout, tablet_servers_, tablet_id_, /*minimum_index=*/1));
   TServerDetails* master_observed_leader;
   ASSERT_OK(GetLeaderReplicaWithRetries(tablet_id_, &master_observed_leader));
   ASSERT_EQ(leader->uuid(), master_observed_leader->uuid());
@@ -1359,29 +1536,35 @@ TEST_F(AdminCliTest, TestLeaderTransferToEvictedPeer) {
   // Evict the first follower.
   string stderr;
   const auto evicted_uuid = tservers[1]->uuid();
-  Status s = RunKuduTool({
-    "tablet",
-    "change_config",
-    "remove_replica",
-    master_addr,
-    tablet_id_,
-    evicted_uuid,
-  }, nullptr, &stderr);
+  Status s = RunKuduTool(
+      {
+          "tablet",
+          "change_config",
+          "remove_replica",
+          master_addr,
+          tablet_id_,
+          evicted_uuid,
+      },
+      nullptr,
+      &stderr);
   ASSERT_TRUE(s.ok()) << s.ToString() << " stderr: " << stderr;
 
   // Ask the leader to transfer leadership to the evicted peer.
   stderr.clear();
-  s = RunKuduTool({
-    "tablet",
-    "leader_step_down",
-    Substitute("--new_leader_uuid=$0", evicted_uuid),
-    master_addr,
-    tablet_id_
-  }, nullptr, &stderr);
+  s = RunKuduTool(
+      {"tablet",
+       "leader_step_down",
+       Substitute("--new_leader_uuid=$0", evicted_uuid),
+       master_addr,
+       tablet_id_},
+      nullptr,
+      &stderr);
   ASSERT_TRUE(s.IsRuntimeError()) << s.ToString() << " stderr: " << stderr;
-  ASSERT_STR_CONTAINS(stderr,
-                      Substitute("tablet server $0 is not a voter in the active config",
-                                 evicted_uuid));
+  ASSERT_STR_CONTAINS(
+      stderr,
+      Substitute(
+          "tablet server $0 is not a voter in the active config",
+          evicted_uuid));
 }
 
 // Leader should reject requests to transfer leadership to a non-voter of the
@@ -1391,11 +1574,11 @@ TEST_F(AdminCliTest, TestLeaderTransferToNonVoter) {
   // In this test, tablet leadership is manually controlled and the master
   // should not rereplicate.
   const vector<string> kMasterFlags = {
-    "--catalog_manager_wait_for_new_tablets_to_elect_leader=false",
-    "--master_add_server_when_underreplicated=false",
+      "--catalog_manager_wait_for_new_tablets_to_elect_leader=false",
+      "--master_add_server_when_underreplicated=false",
   };
   const vector<string> kTserverFlags = {
-    "--enable_leader_failure_detection=false",
+      "--enable_leader_failure_detection=false",
   };
   FLAGS_num_tablet_servers = 3;
   FLAGS_num_replicas = 3;
@@ -1412,8 +1595,8 @@ TEST_F(AdminCliTest, TestLeaderTransferToNonVoter) {
   // Elect the leader and wait for the tservers and master to see the leader.
   const auto* leader = tservers[0];
   ASSERT_OK(StartElection(leader, tablet_id_, kTimeout));
-  ASSERT_OK(WaitForServersToAgree(kTimeout, tablet_servers_,
-                                  tablet_id_, /*minimum_index=*/1));
+  ASSERT_OK(WaitForServersToAgree(
+      kTimeout, tablet_servers_, tablet_id_, /*minimum_index=*/1));
   TServerDetails* master_observed_leader;
   ASSERT_OK(GetLeaderReplicaWithRetries(tablet_id_, &master_observed_leader));
   ASSERT_EQ(leader->uuid(), master_observed_leader->uuid());
@@ -1423,30 +1606,36 @@ TEST_F(AdminCliTest, TestLeaderTransferToNonVoter) {
   // Demote the first follower to a non-voter.
   string stderr;
   const auto non_voter_uuid = tservers[1]->uuid();
-  Status s = RunKuduTool({
-    "tablet",
-    "change_config",
-    "change_replica_type",
-    master_addr,
-    tablet_id_,
-    non_voter_uuid,
-    "NON_VOTER",
-  }, nullptr, &stderr);
+  Status s = RunKuduTool(
+      {
+          "tablet",
+          "change_config",
+          "change_replica_type",
+          master_addr,
+          tablet_id_,
+          non_voter_uuid,
+          "NON_VOTER",
+      },
+      nullptr,
+      &stderr);
   ASSERT_TRUE(s.ok()) << s.ToString() << " stderr: " << stderr;
 
   // Ask the leader to transfer leadership to the non-voter.
   stderr.clear();
-  s = RunKuduTool({
-    "tablet",
-    "leader_step_down",
-    Substitute("--new_leader_uuid=$0", non_voter_uuid),
-    master_addr,
-    tablet_id_
-  }, nullptr, &stderr);
+  s = RunKuduTool(
+      {"tablet",
+       "leader_step_down",
+       Substitute("--new_leader_uuid=$0", non_voter_uuid),
+       master_addr,
+       tablet_id_},
+      nullptr,
+      &stderr);
   ASSERT_TRUE(s.IsRuntimeError()) << s.ToString() << " stderr: " << stderr;
-  ASSERT_STR_CONTAINS(stderr,
-                      Substitute("tablet server $0 is not a voter in the active config",
-                                 non_voter_uuid));
+  ASSERT_STR_CONTAINS(
+      stderr,
+      Substitute(
+          "tablet server $0 is not a voter in the active config",
+          non_voter_uuid));
 }
 
 // Leader transfer causes the tablet to stop accepting new writes. This test
@@ -1489,73 +1678,63 @@ TEST_F(AdminCliTest, TestSimultaneousLeaderTransferAndAbruptStepdown) {
     // Issue a graceful stepdown and then an abrupt stepdown, every second.
     // The results are ignored because the tools might fail due to the
     // constant leadership changes.
-    ignore_result(RunKuduTool({
-      "tablet",
-      "leader_step_down",
-      master_addr,
-      tablet_id_
-    }));
-    ignore_result(RunKuduTool({
-      "tablet",
-      "leader_step_down",
-      "--abrupt",
-      master_addr,
-      tablet_id_
-    }));
+    ignore_result(
+        RunKuduTool({"tablet", "leader_step_down", master_addr, tablet_id_}));
+    ignore_result(RunKuduTool(
+        {"tablet", "leader_step_down", "--abrupt", master_addr, tablet_id_}));
     SleepFor(MonoDelta::FromMilliseconds(1000));
   }
 }
 
-class TestLeaderStepDown :
-    public AdminCliTest,
-    public ::testing::WithParamInterface<LeaderStepDownMode> {
-};
-INSTANTIATE_TEST_CASE_P(, TestLeaderStepDown,
-                        ::testing::Values(LeaderStepDownMode::ABRUPT,
-                                          LeaderStepDownMode::GRACEFUL));
+class TestLeaderStepDown
+    : public AdminCliTest,
+      public ::testing::WithParamInterface<LeaderStepDownMode> {};
+INSTANTIATE_TEST_CASE_P(
+    ,
+    TestLeaderStepDown,
+    ::testing::Values(
+        LeaderStepDownMode::ABRUPT,
+        LeaderStepDownMode::GRACEFUL));
 TEST_P(TestLeaderStepDown, TestLeaderStepDownWhenNotPresent) {
   FLAGS_num_tablet_servers = 3;
   FLAGS_num_replicas = 3;
   NO_FATALS(BuildAndStart(
-      { "--enable_leader_failure_detection=false" },
-      { "--catalog_manager_wait_for_new_tablets_to_elect_leader=false" }));
+      {"--enable_leader_failure_detection=false"},
+      {"--catalog_manager_wait_for_new_tablets_to_elect_leader=false"}));
   vector<TServerDetails*> tservers;
   AppendValuesFromMap(tablet_servers_, &tservers);
   ASSERT_EQ(FLAGS_num_tablet_servers, tservers.size());
   for (auto& ts : tservers) {
-    ASSERT_OK(WaitUntilTabletRunning(ts,
-                                     tablet_id_,
-                                     MonoDelta::FromSeconds(10)));
+    ASSERT_OK(
+        WaitUntilTabletRunning(ts, tablet_id_, MonoDelta::FromSeconds(10)));
   }
 
   int64_t current_term;
-  ASSERT_TRUE(GetTermFromConsensus(tservers, tablet_id_,
-                                   &current_term).IsNotFound());
+  ASSERT_TRUE(
+      GetTermFromConsensus(tservers, tablet_id_, &current_term).IsNotFound());
   string stdout;
-  ASSERT_OK(RunKuduTool({
-    "tablet",
-    "leader_step_down",
-    Substitute("--abrupt=$0", GetParam() == LeaderStepDownMode::ABRUPT),
-    cluster_->master()->bound_rpc_addr().ToString(),
-    tablet_id_
-  }, &stdout));
-  ASSERT_STR_CONTAINS(stdout,
-                      Substitute("No leader replica found for tablet $0",
-                                 tablet_id_));
+  ASSERT_OK(RunKuduTool(
+      {"tablet",
+       "leader_step_down",
+       Substitute("--abrupt=$0", GetParam() == LeaderStepDownMode::ABRUPT),
+       cluster_->master()->bound_rpc_addr().ToString(),
+       tablet_id_},
+      &stdout));
+  ASSERT_STR_CONTAINS(
+      stdout, Substitute("No leader replica found for tablet $0", tablet_id_));
 }
 
 TEST_P(TestLeaderStepDown, TestRepeatedLeaderStepDown) {
   FLAGS_num_tablet_servers = 3;
   FLAGS_num_replicas = 3;
   // Speed up leader failure detection and shorten the leader transfer period.
-  NO_FATALS(BuildAndStart({ "--raft_heartbeat_interval_ms=50" }));
+  NO_FATALS(BuildAndStart({"--raft_heartbeat_interval_ms=50"}));
   vector<TServerDetails*> tservers;
   AppendValuesFromMap(tablet_servers_, &tservers);
   ASSERT_EQ(FLAGS_num_tablet_servers, tservers.size());
   for (auto& ts : tservers) {
-    ASSERT_OK(WaitUntilTabletRunning(ts,
-                                     tablet_id_,
-                                     MonoDelta::FromSeconds(10)));
+    ASSERT_OK(
+        WaitUntilTabletRunning(ts, tablet_id_, MonoDelta::FromSeconds(10)));
   }
 
   // Start a workload.
@@ -1571,22 +1750,23 @@ TEST_P(TestLeaderStepDown, TestRepeatedLeaderStepDown) {
 
   // Issue stepdown requests repeatedly. If we leave some time for an election,
   // the workload should still make progress.
-  const string abrupt_flag = Substitute("--abrupt=$0",
-                                        GetParam() == LeaderStepDownMode::ABRUPT);
+  const string abrupt_flag =
+      Substitute("--abrupt=$0", GetParam() == LeaderStepDownMode::ABRUPT);
   string stdout;
   string stderr;
   while (workload.rows_inserted() < 2000) {
     stdout.clear();
     stderr.clear();
-    Status s = RunKuduTool({
-      "tablet",
-      "leader_step_down",
-      abrupt_flag,
-      cluster_->master()->bound_rpc_addr().ToString(),
-      tablet_id_
-    }, &stdout, &stderr);
-    bool not_currently_leader = stderr.find(
-        Status::IllegalState("").CodeAsString()) != string::npos;
+    Status s = RunKuduTool(
+        {"tablet",
+         "leader_step_down",
+         abrupt_flag,
+         cluster_->master()->bound_rpc_addr().ToString(),
+         tablet_id_},
+        &stdout,
+        &stderr);
+    bool not_currently_leader =
+        stderr.find(Status::IllegalState("").CodeAsString()) != string::npos;
     ASSERT_TRUE(s.ok() || not_currently_leader) << s.ToString();
     SleepFor(MonoDelta::FromMilliseconds(1000));
   }
@@ -1602,15 +1782,10 @@ TEST_F(AdminCliTest, TestDeleteTable) {
   string master_address = cluster_->master()->bound_rpc_addr().ToString();
   shared_ptr<KuduClient> client;
   ASSERT_OK(KuduClientBuilder()
-            .add_master_server_addr(master_address)
-            .Build(&client));
+                .add_master_server_addr(master_address)
+                .Build(&client));
 
-  ASSERT_TOOL_OK(
-    "table",
-    "delete",
-    master_address,
-    kTableId
-  );
+  ASSERT_TOOL_OK("table", "delete", master_address, kTableId);
 
   vector<string> tables;
   ASSERT_OK(client->ListTables(&tables));
@@ -1624,11 +1799,9 @@ TEST_F(AdminCliTest, TestListTables) {
   NO_FATALS(BuildAndStart());
 
   string stdout;
-  ASSERT_OK(RunKuduTool({
-    "table",
-    "list",
-    cluster_->master()->bound_rpc_addr().ToString()
-  }, &stdout));
+  ASSERT_OK(RunKuduTool(
+      {"table", "list", cluster_->master()->bound_rpc_addr().ToString()},
+      &stdout));
 
   vector<string> stdout_lines = Split(stdout, ",", strings::SkipEmpty());
   ASSERT_EQ(1, stdout_lines.size());
@@ -1646,25 +1819,25 @@ TEST_F(AdminCliTest, TestListTablesDetail) {
   KuduSchema client_schema(client::KuduSchemaFromSchema(schema_));
   gscoped_ptr<KuduTableCreator> table_creator(client_->NewTableCreator());
   ASSERT_OK(table_creator->table_name(kAnotherTableId)
-           .schema(&client_schema)
-           .set_range_partition_columns({ "key" })
-           .num_replicas(FLAGS_num_replicas)
-           .Create());
+                .schema(&client_schema)
+                .set_range_partition_columns({"key"})
+                .num_replicas(FLAGS_num_replicas)
+                .Create());
 
   // Grab list of tablet_ids from any tserver.
   vector<TServerDetails*> tservers;
   vector<string> tablet_ids;
   AppendValuesFromMap(tablet_servers_, &tservers);
-  ListRunningTabletIds(tservers.front(),
-                       MonoDelta::FromSeconds(30), &tablet_ids);
+  ListRunningTabletIds(
+      tservers.front(), MonoDelta::FromSeconds(30), &tablet_ids);
 
   string stdout;
-  ASSERT_OK(RunKuduTool({
-    "table",
-    "list",
-    "--list_tablets",
-    cluster_->master()->bound_rpc_addr().ToString()
-  }, &stdout));
+  ASSERT_OK(RunKuduTool(
+      {"table",
+       "list",
+       "--list_tablets",
+       cluster_->master()->bound_rpc_addr().ToString()},
+      &stdout));
 
   vector<string> stdout_lines = Split(stdout, "\n", strings::SkipEmpty());
 
@@ -1683,7 +1856,7 @@ TEST_F(AdminCliTest, TestListTablesDetail) {
 
 TEST_F(AdminCliTest, RebalancerReportOnly) {
   static const char kReferenceOutput[] =
-    R"***(Per-server replica distribution summary:
+      R"***(Per-server replica distribution summary:
        Statistic       |  Value
 -----------------------+----------
  Minimum Replica Count | 0
@@ -1702,12 +1875,15 @@ Per-table replica distribution summary:
 
   string out;
   string err;
-  Status s = RunKuduTool({
-    "cluster",
-    "rebalance",
-    cluster_->master()->bound_rpc_addr().ToString(),
-    "--report_only",
-  }, &out, &err);
+  Status s = RunKuduTool(
+      {
+          "cluster",
+          "rebalance",
+          cluster_->master()->bound_rpc_addr().ToString(),
+          "--report_only",
+      },
+      &out,
+      &err);
   ASSERT_TRUE(s.ok()) << ToolRunInfo(s, out, err);
   // The rebalancer should report on tablet replica distribution. The output
   // should match the reference report: the distribution of the replicas
@@ -1720,19 +1896,22 @@ Per-table replica distribution summary:
 }
 
 // Make sure the rebalancer doesn't start if a tablet server is down.
-class RebalanceStartCriteriaTest :
-    public AdminCliTest,
-    public ::testing::WithParamInterface<Kudu1097> {
-};
-INSTANTIATE_TEST_CASE_P(, RebalanceStartCriteriaTest,
-                        ::testing::Values(Kudu1097::Disable, Kudu1097::Enable));
+class RebalanceStartCriteriaTest
+    : public AdminCliTest,
+      public ::testing::WithParamInterface<Kudu1097> {};
+INSTANTIATE_TEST_CASE_P(
+    ,
+    RebalanceStartCriteriaTest,
+    ::testing::Values(Kudu1097::Disable, Kudu1097::Enable));
 TEST_P(RebalanceStartCriteriaTest, TabletServerIsDown) {
   const bool is_343_scheme = (GetParam() == Kudu1097::Enable);
   const vector<string> kMasterFlags = {
-    Substitute("--raft_prepare_replacement_before_eviction=$0", is_343_scheme),
+      Substitute(
+          "--raft_prepare_replacement_before_eviction=$0", is_343_scheme),
   };
   const vector<string> kTserverFlags = {
-    Substitute("--raft_prepare_replacement_before_eviction=$0", is_343_scheme),
+      Substitute(
+          "--raft_prepare_replacement_before_eviction=$0", is_343_scheme),
   };
 
   FLAGS_num_tablet_servers = 5;
@@ -1749,11 +1928,10 @@ TEST_P(RebalanceStartCriteriaTest, TabletServerIsDown) {
 
   string out;
   string err;
-  Status s = RunKuduTool({
-    "cluster",
-    "rebalance",
-    cluster_->master()->bound_rpc_addr().ToString()
-  }, &out, &err);
+  Status s = RunKuduTool(
+      {"cluster", "rebalance", cluster_->master()->bound_rpc_addr().ToString()},
+      &out,
+      &err);
   ASSERT_TRUE(s.IsRuntimeError()) << ToolRunInfo(s, out, err);
   const auto err_msg_pattern = Substitute(
       "Illegal state: tablet server .* \\($0\\): "
@@ -1790,17 +1968,17 @@ static Status CreateUnbalancedTables(
     const string table_name = Substitute(table_name_pattern, i);
     unique_ptr<KuduTableCreator> table_creator(client->NewTableCreator());
     RETURN_NOT_OK(table_creator->table_name(table_name)
-                  .schema(&client_schema)
-                  .add_hash_partitions({ "key" }, 3)
-                  .num_replicas(rep_factor)
-                  .Create());
+                      .schema(&client_schema)
+                      .add_hash_partitions({"key"}, 3)
+                      .num_replicas(rep_factor)
+                      .Create());
     RETURN_NOT_OK(RunKuduTool({
-      "perf",
-      "loadgen",
-      cluster->master()->bound_rpc_addr().ToString(),
-      Substitute("--table_name=$0", table_name),
-      Substitute("--table_num_replicas=$0", rep_factor),
-      "--string_fixed=unbalanced_tables_test",
+        "perf",
+        "loadgen",
+        cluster->master()->bound_rpc_addr().ToString(),
+        Substitute("--table_name=$0", table_name),
+        Substitute("--table_num_replicas=$0", rep_factor),
+        "--string_fixed=unbalanced_tables_test",
     }));
   }
 
@@ -1814,13 +1992,15 @@ static Status CreateUnbalancedTables(
 // A test to verify that rebalancing works for both 3-4-3 and 3-2-3 replica
 // management schemes. During replica movement, a light workload is run against
 // every table being rebalanced. This test covers different replication factors.
-class RebalanceParamTest :
-    public AdminCliTest,
-    public ::testing::WithParamInterface<tuple<int, Kudu1097>> {
-};
-INSTANTIATE_TEST_CASE_P(, RebalanceParamTest,
-    ::testing::Combine(::testing::Values(1, 2, 3, 5),
-                       ::testing::Values(Kudu1097::Disable, Kudu1097::Enable)));
+class RebalanceParamTest
+    : public AdminCliTest,
+      public ::testing::WithParamInterface<tuple<int, Kudu1097>> {};
+INSTANTIATE_TEST_CASE_P(
+    ,
+    RebalanceParamTest,
+    ::testing::Combine(
+        ::testing::Values(1, 2, 3, 5),
+        ::testing::Values(Kudu1097::Disable, Kudu1097::Enable)));
 TEST_P(RebalanceParamTest, Rebalance) {
   if (!AllowSlowTests()) {
     LOG(WARNING) << "test is skipped; set KUDU_ALLOW_SLOW_TESTS=1 to run";
@@ -1836,12 +2016,15 @@ TEST_P(RebalanceParamTest, Rebalance) {
   constexpr auto kTserverUnresponsiveMs = 3000;
   const auto timeout = MonoDelta::FromSeconds(30);
   const vector<string> kMasterFlags = {
-    "--allow_unsafe_replication_factor",
-    Substitute("--raft_prepare_replacement_before_eviction=$0", is_343_scheme),
-    Substitute("--tserver_unresponsive_timeout_ms=$0", kTserverUnresponsiveMs),
+      "--allow_unsafe_replication_factor",
+      Substitute(
+          "--raft_prepare_replacement_before_eviction=$0", is_343_scheme),
+      Substitute(
+          "--tserver_unresponsive_timeout_ms=$0", kTserverUnresponsiveMs),
   };
   const vector<string> kTserverFlags = {
-    Substitute("--raft_prepare_replacement_before_eviction=$0", is_343_scheme),
+      Substitute(
+          "--raft_prepare_replacement_before_eviction=$0", is_343_scheme),
   };
 
   FLAGS_num_tablet_servers = kNumTservers;
@@ -1849,8 +2032,15 @@ TEST_P(RebalanceParamTest, Rebalance) {
   NO_FATALS(BuildAndStart(kTserverFlags, kMasterFlags));
 
   ASSERT_OK(CreateUnbalancedTables(
-      cluster_.get(), client_.get(), schema_, table_name_pattern, kNumTables,
-      kRepFactor, kRepFactor + 1, kNumTservers, kTserverUnresponsiveMs));
+      cluster_.get(),
+      client_.get(),
+      schema_,
+      table_name_pattern,
+      kNumTables,
+      kRepFactor,
+      kRepFactor + 1,
+      kNumTservers,
+      kTserverUnresponsiveMs));
 
   // Workloads aren't run for 3-2-3 replica movement with RF = 1 because
   // the tablet is unavailable during the move until the target voter replica
@@ -1860,7 +2050,7 @@ TEST_P(RebalanceParamTest, Rebalance) {
   //
   // TODO(aserbin): clarify why even with 3-4-3 it's a bit flaky now.
   vector<unique_ptr<TestWorkload>> workloads;
-  //if (kRepFactor > 1 || is_343_scheme) {
+  // if (kRepFactor > 1 || is_343_scheme) {
   if (kRepFactor > 1) {
     for (auto i = 0; i < kNumTables; ++i) {
       const string table_name = Substitute(table_name_pattern, i);
@@ -1880,10 +2070,10 @@ TEST_P(RebalanceParamTest, Rebalance) {
   }
 
   const vector<string> tool_args = {
-    "cluster",
-    "rebalance",
-    cluster_->master()->bound_rpc_addr().ToString(),
-    "--move_single_replicas=enabled",
+      "cluster",
+      "rebalance",
+      cluster_->master()->bound_rpc_addr().ToString(),
+      "--move_single_replicas=enabled",
   };
 
   {
@@ -1902,8 +2092,8 @@ TEST_P(RebalanceParamTest, Rebalance) {
     string err;
     const Status s = RunKuduTool(tool_args, &out, &err);
     ASSERT_TRUE(s.ok()) << ToolRunInfo(s, out, err);
-    ASSERT_STR_CONTAINS(out,
-        "rebalancing is complete: cluster is balanced (moved 0 replicas)")
+    ASSERT_STR_CONTAINS(
+        out, "rebalancing is complete: cluster is balanced (moved 0 replicas)")
         << "stderr: " << err;
   }
 
@@ -1933,15 +2123,15 @@ TEST_P(RebalanceParamTest, Rebalance) {
 }
 
 // Common base for the rebalancer-related test below.
-class RebalancingTest :
-    public tserver::TabletServerIntegrationTestBase,
-    public ::testing::WithParamInterface<Kudu1097> {
+class RebalancingTest : public tserver::TabletServerIntegrationTestBase,
+                        public ::testing::WithParamInterface<Kudu1097> {
  public:
-  RebalancingTest(int num_tables = 10,
-                  int rep_factor = 3,
-                  int num_tservers = 8,
-                  int tserver_unresponsive_ms = 3000,
-                  const string& table_name_pattern = "rebalance_test_table_$0")
+  RebalancingTest(
+      int num_tables = 10,
+      int rep_factor = 3,
+      int num_tservers = 8,
+      int tserver_unresponsive_ms = 3000,
+      const string& table_name_pattern = "rebalance_test_table_$0")
       : TabletServerIntegrationTestBase(),
         is_343_scheme_(GetParam() == Kudu1097::Enable),
         num_tables_(num_tables),
@@ -1950,31 +2140,45 @@ class RebalancingTest :
         tserver_unresponsive_ms_(tserver_unresponsive_ms),
         table_name_pattern_(table_name_pattern) {
     master_flags_ = {
-      Substitute("--raft_prepare_replacement_before_eviction=$0", is_343_scheme_),
-      Substitute("--tserver_unresponsive_timeout_ms=$0", tserver_unresponsive_ms_),
+        Substitute(
+            "--raft_prepare_replacement_before_eviction=$0", is_343_scheme_),
+        Substitute(
+            "--tserver_unresponsive_timeout_ms=$0", tserver_unresponsive_ms_),
     };
     tserver_flags_ = {
-      Substitute("--raft_prepare_replacement_before_eviction=$0", is_343_scheme_),
+        Substitute(
+            "--raft_prepare_replacement_before_eviction=$0", is_343_scheme_),
     };
   }
 
  protected:
   static const char* const kExitOnSignalStr;
 
-  void Prepare(const vector<string>& extra_tserver_flags = {},
-               const vector<string>& extra_master_flags = {}) {
-    copy(extra_tserver_flags.begin(), extra_tserver_flags.end(),
-         back_inserter(tserver_flags_));
-    copy(extra_master_flags.begin(), extra_master_flags.end(),
-         back_inserter(master_flags_));
+  void Prepare(
+      const vector<string>& extra_tserver_flags = {},
+      const vector<string>& extra_master_flags = {}) {
+    copy(
+        extra_tserver_flags.begin(),
+        extra_tserver_flags.end(),
+        back_inserter(tserver_flags_));
+    copy(
+        extra_master_flags.begin(),
+        extra_master_flags.end(),
+        back_inserter(master_flags_));
 
     FLAGS_num_tablet_servers = num_tservers_;
     FLAGS_num_replicas = rep_factor_;
     NO_FATALS(BuildAndStart(tserver_flags_, master_flags_));
 
     ASSERT_OK(CreateUnbalancedTables(
-        cluster_.get(), client_.get(), schema_, table_name_pattern_,
-        num_tables_, rep_factor_, rep_factor_ + 1, num_tservers_,
+        cluster_.get(),
+        client_.get(),
+        schema_,
+        table_name_pattern_,
+        num_tables_,
+        rep_factor_,
+        rep_factor_ + 1,
+        num_tservers_,
         tserver_unresponsive_ms_));
   }
 
@@ -1986,11 +2190,13 @@ class RebalancingTest :
   // '--tablet_copy_download_file_inject_latency_ms' flag for tservers.
   bool IsRebalancingInProgress() {
     string out;
-    const auto s = RunKuduTool({
-      "cluster",
-      "ksck",
-      cluster_->master()->bound_rpc_addr().ToString(),
-    }, &out);
+    const auto s = RunKuduTool(
+        {
+            "cluster",
+            "ksck",
+            cluster_->master()->bound_rpc_addr().ToString(),
+        },
+        &out);
     if (s.IsRuntimeError() &&
         out.find("Data state:  TABLET_DATA_COPYING") != string::npos) {
       return true;
@@ -2007,18 +2213,19 @@ class RebalancingTest :
   vector<string> tserver_flags_;
   vector<string> master_flags_;
 };
-const char* const RebalancingTest::kExitOnSignalStr = "kudu: process exited on signal";
+const char* const RebalancingTest::kExitOnSignalStr =
+    "kudu: process exited on signal";
 
 // Make sure the rebalancer is able to do its job if running concurrently
 // with DDL activity on the cluster.
 class DDLDuringRebalancingTest : public RebalancingTest {
  public:
-  DDLDuringRebalancingTest()
-      : RebalancingTest(20 /* num_tables */) {
-  }
+  DDLDuringRebalancingTest() : RebalancingTest(20 /* num_tables */) {}
 };
-INSTANTIATE_TEST_CASE_P(, DDLDuringRebalancingTest,
-                        ::testing::Values(Kudu1097::Disable, Kudu1097::Enable));
+INSTANTIATE_TEST_CASE_P(
+    ,
+    DDLDuringRebalancingTest,
+    ::testing::Values(Kudu1097::Disable, Kudu1097::Enable));
 TEST_P(DDLDuringRebalancingTest, TablesCreatedAndDeletedDuringRebalancing) {
   if (!AllowSlowTests()) {
     LOG(WARNING) << "test is skipped; set KUDU_ALLOW_SLOW_TESTS=1 to run";
@@ -2032,17 +2239,17 @@ TEST_P(DDLDuringRebalancingTest, TablesCreatedAndDeletedDuringRebalancing) {
 
   thread creator([&]() {
     KuduSchema client_schema(client::KuduSchemaFromSchema(schema_));
-    for (auto idx = 0; ; ++idx) {
+    for (auto idx = 0;; ++idx) {
       if (run_latch.WaitFor(MonoDelta::FromMilliseconds(500))) {
         break;
       }
       const string table_name = Substitute("rebalancer_extra_table_$0", idx++);
       unique_ptr<KuduTableCreator> table_creator(client_->NewTableCreator());
       CHECK_OK(table_creator->table_name(table_name)
-               .schema(&client_schema)
-               .add_hash_partitions({ "key" }, 3)
-               .num_replicas(rep_factor_)
-               .Create());
+                   .schema(&client_schema)
+                   .add_hash_partitions({"key"}, 3)
+                   .num_replicas(rep_factor_)
+                   .Create());
     }
   });
   auto creator_cleanup = MakeScopedCleanup([&]() {
@@ -2071,20 +2278,21 @@ TEST_P(DDLDuringRebalancingTest, TablesCreatedAndDeletedDuringRebalancing) {
       {
         KuduSchema schema;
         KuduSchemaBuilder builder;
-        builder.AddColumn("key")->Type(KuduColumnSchema::INT64)->
-            NotNull()->
-            PrimaryKey();
+        builder.AddColumn("key")
+            ->Type(KuduColumnSchema::INT64)
+            ->NotNull()
+            ->PrimaryKey();
         builder.AddColumn("a")->Type(KuduColumnSchema::INT64);
         CHECK_OK(builder.Build(&schema));
         unique_ptr<KuduTableCreator> table_creator(client_->NewTableCreator());
         CHECK_OK(table_creator->table_name(kTableName)
-                 .schema(&schema)
-                 .set_range_partition_columns({})
-                 .num_replicas(rep_factor_)
-                 .Create());
+                     .schema(&schema)
+                     .set_range_partition_columns({})
+                     .num_replicas(rep_factor_)
+                     .Create());
       }
       if (run_latch.WaitFor(MonoDelta::FromMilliseconds(100))) {
-          break;
+        break;
       }
 
       // Drop a column.
@@ -2094,7 +2302,7 @@ TEST_P(DDLDuringRebalancingTest, TablesCreatedAndDeletedDuringRebalancing) {
         CHECK_OK(alt->Alter());
       }
       if (run_latch.WaitFor(MonoDelta::FromMilliseconds(100))) {
-          break;
+        break;
       }
 
       // Add back the column with different type.
@@ -2104,7 +2312,7 @@ TEST_P(DDLDuringRebalancingTest, TablesCreatedAndDeletedDuringRebalancing) {
         CHECK_OK(alt->Alter());
       }
       if (run_latch.WaitFor(MonoDelta::FromMilliseconds(100))) {
-          break;
+        break;
       }
 
       // Rename the table.
@@ -2114,13 +2322,13 @@ TEST_P(DDLDuringRebalancingTest, TablesCreatedAndDeletedDuringRebalancing) {
         CHECK_OK(alt->Alter());
       }
       if (run_latch.WaitFor(MonoDelta::FromMilliseconds(100))) {
-          break;
+        break;
       }
 
       // Drop the renamed table.
       CHECK_OK(client_->DeleteTable(kNewTableName));
       if (run_latch.WaitFor(MonoDelta::FromMilliseconds(100))) {
-          break;
+        break;
       }
     }
   });
@@ -2133,14 +2341,12 @@ TEST_P(DDLDuringRebalancingTest, TablesCreatedAndDeletedDuringRebalancing) {
     SleepFor(MonoDelta::FromSeconds(30));
     run_latch.CountDown();
   });
-  auto timer_cleanup = MakeScopedCleanup([&]() {
-    timer.join();
-  });
+  auto timer_cleanup = MakeScopedCleanup([&]() { timer.join(); });
 
   const vector<string> tool_args = {
-    "cluster",
-    "rebalance",
-    cluster_->master()->bound_rpc_addr().ToString(),
+      "cluster",
+      "rebalance",
+      cluster_->master()->bound_rpc_addr().ToString(),
   };
 
   // Run the rebalancer concurrently with the DDL operations. The second run
@@ -2185,8 +2391,8 @@ TEST_P(DDLDuringRebalancingTest, TablesCreatedAndDeletedDuringRebalancing) {
     string err;
     const auto s = RunKuduTool(tool_args, &out, &err);
     ASSERT_TRUE(s.ok()) << ToolRunInfo(s, out, err);
-    ASSERT_STR_CONTAINS(out,
-        "rebalancing is complete: cluster is balanced (moved 0 replicas)")
+    ASSERT_STR_CONTAINS(
+        out, "rebalancing is complete: cluster is balanced (moved 0 replicas)")
         << "stderr: " << err;
   }
 
@@ -2200,11 +2406,11 @@ TEST_P(DDLDuringRebalancingTest, TablesCreatedAndDeletedDuringRebalancing) {
 // single rebalancer session again should bring the cluster to a balanced state.
 class ConcurrentRebalancersTest : public RebalancingTest {
  public:
-  ConcurrentRebalancersTest()
-      : RebalancingTest(10 /* num_tables */) {
-  }
+  ConcurrentRebalancersTest() : RebalancingTest(10 /* num_tables */) {}
 };
-INSTANTIATE_TEST_CASE_P(, ConcurrentRebalancersTest,
+INSTANTIATE_TEST_CASE_P(
+    ,
+    ConcurrentRebalancersTest,
     ::testing::Values(Kudu1097::Disable, Kudu1097::Enable));
 TEST_P(ConcurrentRebalancersTest, TwoConcurrentRebalancers) {
   if (!AllowSlowTests()) {
@@ -2215,9 +2421,9 @@ TEST_P(ConcurrentRebalancersTest, TwoConcurrentRebalancers) {
   NO_FATALS(Prepare());
 
   const vector<string> tool_args = {
-    "cluster",
-    "rebalance",
-    cluster_->master()->bound_rpc_addr().ToString(),
+      "cluster",
+      "rebalance",
+      cluster_->master()->bound_rpc_addr().ToString(),
   };
 
   const auto runner_func = [&]() {
@@ -2271,8 +2477,8 @@ TEST_P(ConcurrentRebalancersTest, TwoConcurrentRebalancers) {
     string err;
     const auto s = RunKuduTool(tool_args, &out, &err);
     ASSERT_TRUE(s.ok()) << ToolRunInfo(s, out, err);
-    ASSERT_STR_CONTAINS(out,
-        "rebalancing is complete: cluster is balanced (moved 0 replicas)")
+    ASSERT_STR_CONTAINS(
+        out, "rebalancing is complete: cluster is balanced (moved 0 replicas)")
         << "stderr: " << err;
   }
 
@@ -2286,11 +2492,12 @@ TEST_P(ConcurrentRebalancersTest, TwoConcurrentRebalancers) {
 // manager tries to move replicas from the unreachable tablet server).
 class TserverGoesDownDuringRebalancingTest : public RebalancingTest {
  public:
-  TserverGoesDownDuringRebalancingTest() :
-      RebalancingTest(5 /* num_tables */) {
-  }
+  TserverGoesDownDuringRebalancingTest()
+      : RebalancingTest(5 /* num_tables */) {}
 };
-INSTANTIATE_TEST_CASE_P(, TserverGoesDownDuringRebalancingTest,
+INSTANTIATE_TEST_CASE_P(
+    ,
+    TserverGoesDownDuringRebalancingTest,
     ::testing::Values(Kudu1097::Disable, Kudu1097::Enable));
 TEST_P(TserverGoesDownDuringRebalancingTest, TserverDown) {
   if (!AllowSlowTests()) {
@@ -2299,11 +2506,11 @@ TEST_P(TserverGoesDownDuringRebalancingTest, TserverDown) {
   }
 
   const vector<string> kTserverExtraFlags = {
-    // Slow down tablet copy to make rebalancing step running longer
-    // and become observable via tablet data states output by ksck.
-    "--tablet_copy_download_file_inject_latency_ms=1500",
+      // Slow down tablet copy to make rebalancing step running longer
+      // and become observable via tablet data states output by ksck.
+      "--tablet_copy_download_file_inject_latency_ms=1500",
 
-    "--follower_unavailable_considered_failed_sec=30",
+      "--follower_unavailable_considered_failed_sec=30",
   };
   NO_FATALS(Prepare(kTserverExtraFlags));
 
@@ -2311,10 +2518,7 @@ TEST_P(TserverGoesDownDuringRebalancingTest, TserverDown) {
   // shortly after initial setup.
   ASSERT_EVENTUALLY([&]() {
     ASSERT_TOOL_OK(
-      "cluster",
-      "ksck",
-      cluster_->master()->bound_rpc_addr().ToString()
-    )
+        "cluster", "ksck", cluster_->master()->bound_rpc_addr().ToString())
   });
 
   Random r(SeedRandom());
@@ -2338,22 +2542,26 @@ TEST_P(TserverGoesDownDuringRebalancingTest, TserverDown) {
   {
     string out;
     string err;
-    const auto s = RunKuduTool({
-      "cluster",
-      "rebalance",
-      cluster_->master()->bound_rpc_addr().ToString(),
-      // Limiting the number of replicas to move. This is to make the rebalancer
-      // run longer, making sure the rebalancing is in progress when the tablet
-      // server goes down.
-      "--max_moves_per_server=1",
-    }, &out, &err);
+    const auto s = RunKuduTool(
+        {
+            "cluster",
+            "rebalance",
+            cluster_->master()->bound_rpc_addr().ToString(),
+            // Limiting the number of replicas to move. This is to make the
+            // rebalancer run longer, making sure the rebalancing is in progress
+            // when the tablet server goes down.
+            "--max_moves_per_server=1",
+        },
+        &out,
+        &err);
     ASSERT_TRUE(s.IsRuntimeError()) << ToolRunInfo(s, out, err);
 
     // The rebalancer tool should not crash.
     ASSERT_STR_NOT_CONTAINS(s.ToString(), kExitOnSignalStr);
     ASSERT_STR_MATCHES(
-        err, "Illegal state: tablet server .* \\(.*\\): "
-             "unacceptable health status UNAVAILABLE");
+        err,
+        "Illegal state: tablet server .* \\(.*\\): "
+        "unacceptable health status UNAVAILABLE");
   }
 
   run = false;
@@ -2368,11 +2576,11 @@ TEST_P(TserverGoesDownDuringRebalancingTest, TserverDown) {
 // if a new tablet server is added while the cluster is being rebalanced.
 class TserverAddedDuringRebalancingTest : public RebalancingTest {
  public:
-  TserverAddedDuringRebalancingTest()
-      : RebalancingTest(10 /* num_tables */) {
-  }
+  TserverAddedDuringRebalancingTest() : RebalancingTest(10 /* num_tables */) {}
 };
-INSTANTIATE_TEST_CASE_P(, TserverAddedDuringRebalancingTest,
+INSTANTIATE_TEST_CASE_P(
+    ,
+    TserverAddedDuringRebalancingTest,
     ::testing::Values(Kudu1097::Disable, Kudu1097::Enable));
 TEST_P(TserverAddedDuringRebalancingTest, TserverStarts) {
   if (!AllowSlowTests()) {
@@ -2381,18 +2589,18 @@ TEST_P(TserverAddedDuringRebalancingTest, TserverStarts) {
   }
 
   const vector<string> kTserverExtraFlags = {
-    // Slow down tablet copy to make rebalancing step running longer
-    // and become observable via tablet data states output by ksck.
-    "--tablet_copy_download_file_inject_latency_ms=1500",
+      // Slow down tablet copy to make rebalancing step running longer
+      // and become observable via tablet data states output by ksck.
+      "--tablet_copy_download_file_inject_latency_ms=1500",
 
-    "--follower_unavailable_considered_failed_sec=30",
+      "--follower_unavailable_considered_failed_sec=30",
   };
   NO_FATALS(Prepare(kTserverExtraFlags));
 
   const vector<string> tool_args = {
-    "cluster",
-    "rebalance",
-    cluster_->master()->bound_rpc_addr().ToString(),
+      "cluster",
+      "rebalance",
+      cluster_->master()->bound_rpc_addr().ToString(),
   };
 
   atomic<bool> run(true);
@@ -2426,8 +2634,8 @@ TEST_P(TserverAddedDuringRebalancingTest, TserverStarts) {
     string err;
     const auto s = RunKuduTool(tool_args, &out, &err);
     ASSERT_TRUE(s.ok()) << ToolRunInfo(s, out, err);
-    ASSERT_STR_CONTAINS(out,
-        "rebalancing is complete: cluster is balanced (moved 0 replicas)")
+    ASSERT_STR_CONTAINS(
+        out, "rebalancing is complete: cluster is balanced (moved 0 replicas)")
         << "stderr: " << err;
   });
 
@@ -2437,9 +2645,10 @@ TEST_P(TserverAddedDuringRebalancingTest, TserverStarts) {
 
 // Run rebalancer in 'election storms' environment and make sure the rebalancer
 // does not exit prematurely or exhibit any other unexpected behavior.
-class RebalancingDuringElectionStormTest : public RebalancingTest {
-};
-INSTANTIATE_TEST_CASE_P(, RebalancingDuringElectionStormTest,
+class RebalancingDuringElectionStormTest : public RebalancingTest {};
+INSTANTIATE_TEST_CASE_P(
+    ,
+    RebalancingDuringElectionStormTest,
     ::testing::Values(Kudu1097::Disable, Kudu1097::Enable));
 TEST_P(RebalancingDuringElectionStormTest, RoundRobin) {
   if (!AllowSlowTests()) {
@@ -2470,8 +2679,8 @@ TEST_P(RebalancingDuringElectionStormTest, RoundRobin) {
         vector<ListTabletsResponsePB::StatusAndSchemaPB> tablets;
         auto const s = itest::ListTablets(ts, timeout, &tablets);
         if (!s.ok()) {
-          LOG(WARNING) << ts_uuid << ": failed to get tablet list :"
-                       << s.ToString();
+          LOG(WARNING) << ts_uuid
+                       << ": failed to get tablet list :" << s.ToString();
           continue;
         }
         consensus::ConsensusServiceProxy proxy(
@@ -2486,9 +2695,9 @@ TEST_P(RebalancingDuringElectionStormTest, RoundRobin) {
           rpc::RpcController rpc;
           rpc.set_timeout(timeout);
           consensus::RunLeaderElectionResponsePB resp;
-          WARN_NOT_OK(proxy.RunLeaderElection(req, &resp, &rpc),
-                      Substitute("failed to start election for tablet $0",
-                                 tablet_id));
+          WARN_NOT_OK(
+              proxy.RunLeaderElection(req, &resp, &rpc),
+              Substitute("failed to start election for tablet $0", tablet_id));
         }
         if (!elector_run || start_time + timeout <= MonoTime::Now()) {
           break;
@@ -2525,9 +2734,9 @@ TEST_P(RebalancingDuringElectionStormTest, RoundRobin) {
 #endif
 
   const vector<string> tool_args = {
-    "cluster",
-    "rebalance",
-    cluster_->master()->bound_rpc_addr().ToString(),
+      "cluster",
+      "rebalance",
+      cluster_->master()->bound_rpc_addr().ToString(),
   };
 
   while (MonoTime::Now() < start_time + timeout) {
@@ -2561,10 +2770,7 @@ TEST_P(RebalancingDuringElectionStormTest, RoundRobin) {
   // should report no issues.
   ASSERT_EVENTUALLY([&]() {
     ASSERT_TOOL_OK(
-      "cluster",
-      "ksck",
-      cluster_->master()->bound_rpc_addr().ToString()
-    )
+        "cluster", "ksck", cluster_->master()->bound_rpc_addr().ToString())
   });
 
   // The rebalancer should successfully rebalance the cluster after ksck
@@ -2584,13 +2790,15 @@ TEST_P(RebalancingDuringElectionStormTest, RoundRobin) {
 // A test to verify how the rebalancer handles replicas of single-replica
 // tablets in case of various values of the '--move_single_replicas' flag
 // and replica management schemes.
-class RebalancerAndSingleReplicaTablets :
-    public AdminCliTest,
-    public ::testing::WithParamInterface<tuple<string, Kudu1097>> {
-};
-INSTANTIATE_TEST_CASE_P(, RebalancerAndSingleReplicaTablets,
-    ::testing::Combine(::testing::Values("auto", "enabled", "disabled"),
-                       ::testing::Values(Kudu1097::Disable, Kudu1097::Enable)));
+class RebalancerAndSingleReplicaTablets
+    : public AdminCliTest,
+      public ::testing::WithParamInterface<tuple<string, Kudu1097>> {};
+INSTANTIATE_TEST_CASE_P(
+    ,
+    RebalancerAndSingleReplicaTablets,
+    ::testing::Combine(
+        ::testing::Values("auto", "enabled", "disabled"),
+        ::testing::Values(Kudu1097::Disable, Kudu1097::Enable)));
 TEST_P(RebalancerAndSingleReplicaTablets, SingleReplicasStayOrMove) {
   if (!AllowSlowTests()) {
     LOG(WARNING) << "test is skipped; set KUDU_ALLOW_SLOW_TESTS=1 to run";
@@ -2606,11 +2814,14 @@ TEST_P(RebalancerAndSingleReplicaTablets, SingleReplicasStayOrMove) {
   const auto is_343_scheme = (std::get<1>(param) == Kudu1097::Enable);
   const string table_name_pattern = "rebalance_test_table_$0";
   const vector<string> master_flags = {
-    Substitute("--raft_prepare_replacement_before_eviction=$0", is_343_scheme),
-    Substitute("--tserver_unresponsive_timeout_ms=$0", kTserverUnresponsiveMs),
+      Substitute(
+          "--raft_prepare_replacement_before_eviction=$0", is_343_scheme),
+      Substitute(
+          "--tserver_unresponsive_timeout_ms=$0", kTserverUnresponsiveMs),
   };
   const vector<string> tserver_flags = {
-    Substitute("--raft_prepare_replacement_before_eviction=$0", is_343_scheme),
+      Substitute(
+          "--raft_prepare_replacement_before_eviction=$0", is_343_scheme),
   };
 
   FLAGS_num_tablet_servers = kNumTservers;
@@ -2633,19 +2844,18 @@ TEST_P(RebalancerAndSingleReplicaTablets, SingleReplicasStayOrMove) {
     const string table_name = Substitute(table_name_pattern, i);
     unique_ptr<KuduTableCreator> table_creator(client_->NewTableCreator());
     ASSERT_OK(table_creator->table_name(table_name)
-              .schema(&client_schema)
-              .add_hash_partitions({ "key" }, 3)
-              .num_replicas(kRepFactor)
-              .Create());
+                  .schema(&client_schema)
+                  .add_hash_partitions({"key"}, 3)
+                  .num_replicas(kRepFactor)
+                  .Create());
     ASSERT_TOOL_OK(
-      "perf",
-      "loadgen",
-      cluster_->master()->bound_rpc_addr().ToString(),
-      Substitute("--table_name=$0", table_name),
-      // Don't need much data in there.
-      "--num_threads=1",
-      "--num_rows_per_thread=1",
-    );
+        "perf",
+        "loadgen",
+        cluster_->master()->bound_rpc_addr().ToString(),
+        Substitute("--table_name=$0", table_name),
+        // Don't need much data in there.
+        "--num_threads=1",
+        "--num_rows_per_thread=1", );
   }
   for (auto i = kRepFactor + 1; i < kNumTservers; ++i) {
     ASSERT_OK(cluster_->tablet_server(i)->Restart());
@@ -2653,27 +2863,31 @@ TEST_P(RebalancerAndSingleReplicaTablets, SingleReplicasStayOrMove) {
 
   string out;
   string err;
-  const Status s = RunKuduTool({
-    "cluster",
-    "rebalance",
-    cluster_->master()->bound_rpc_addr().ToString(),
-    Substitute("--move_single_replicas=$0", move_single_replica),
-  }, &out, &err);
+  const Status s = RunKuduTool(
+      {
+          "cluster",
+          "rebalance",
+          cluster_->master()->bound_rpc_addr().ToString(),
+          Substitute("--move_single_replicas=$0", move_single_replica),
+      },
+      &out,
+      &err);
   ASSERT_TRUE(s.ok()) << ToolRunInfo(s, out, err);
   ASSERT_STR_CONTAINS(out, "rebalancing is complete: cluster is balanced")
       << "stderr: " << err;
   if (move_single_replica == "enabled" ||
       (move_single_replica == "auto" && is_343_scheme)) {
     // Should move appropriate replicas of single-replica tablets.
-    ASSERT_STR_NOT_CONTAINS(out,
-        "rebalancing is complete: cluster is balanced (moved 0 replicas)")
+    ASSERT_STR_NOT_CONTAINS(
+        out, "rebalancing is complete: cluster is balanced (moved 0 replicas)")
         << "stderr: " << err;
     ASSERT_STR_NOT_CONTAINS(err, "has single replica, skipping");
   } else {
-    ASSERT_STR_CONTAINS(out,
-        "rebalancing is complete: cluster is balanced (moved 0 replicas)")
+    ASSERT_STR_CONTAINS(
+        out, "rebalancing is complete: cluster is balanced (moved 0 replicas)")
         << "stderr: " << err;
-    ASSERT_STR_MATCHES(err, "tablet .* of table '.*' (.*) has single replica, skipping");
+    ASSERT_STR_MATCHES(
+        err, "tablet .* of table '.*' (.*) has single replica, skipping");
   }
 
   NO_FATALS(cluster_->AssertNoCrashes());

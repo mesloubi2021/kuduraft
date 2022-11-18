@@ -32,10 +32,12 @@
 namespace kudu {
 namespace clock {
 
-METRIC_DEFINE_gauge_uint64(server, logical_clock_timestamp,
-                           "Logical Clock Timestamp",
-                           kudu::MetricUnit::kUnits,
-                           "Logical clock timestamp.");
+METRIC_DEFINE_gauge_uint64(
+    server,
+    logical_clock_timestamp,
+    "Logical Clock Timestamp",
+    kudu::MetricUnit::kUnits,
+    "Logical clock timestamp.");
 
 using base::subtle::Atomic64;
 using base::subtle::Barrier_AtomicIncrement;
@@ -58,26 +60,31 @@ Status LogicalClock::Update(const Timestamp& to_update) {
   while (true) {
     Atomic64 current_value = NoBarrier_Load(&now_);
     // if the incoming value is less than the current one, or we've failed the
-    // CAS because the current clock increased to higher than the incoming value,
-    // we can stop the loop now.
-    if (new_value <= current_value) return Status::OK();
+    // CAS because the current clock increased to higher than the incoming
+    // value, we can stop the loop now.
+    if (new_value <= current_value)
+      return Status::OK();
     // otherwise try a CAS
-    if (PREDICT_TRUE(NoBarrier_CompareAndSwap(&now_, current_value, new_value)
-        == current_value))
+    if (PREDICT_TRUE(
+            NoBarrier_CompareAndSwap(&now_, current_value, new_value) ==
+            current_value))
       break;
   }
   return Status::OK();
 }
 
-Status LogicalClock::WaitUntilAfter(const Timestamp& then,
-                                    const MonoTime& /* deadline */) {
+Status LogicalClock::WaitUntilAfter(
+    const Timestamp& then,
+    const MonoTime& /* deadline */) {
   return Status::ServiceUnavailable(
       "Logical clock does not support WaitUntilAfter()");
 }
 
-Status LogicalClock::WaitUntilAfterLocally(const Timestamp& then,
-                                           const MonoTime& /* deadline */) {
-  if (IsAfter(then)) return Status::OK();
+Status LogicalClock::WaitUntilAfterLocally(
+    const Timestamp& then,
+    const MonoTime& /* deadline */) {
+  if (IsAfter(then))
+    return Status::OK();
   return Status::ServiceUnavailable(
       "Logical clock does not support WaitUntilAfterLocally()");
 }
@@ -87,7 +94,8 @@ bool LogicalClock::IsAfter(Timestamp t) {
 }
 
 LogicalClock* LogicalClock::CreateStartingAt(const Timestamp& timestamp) {
-  // initialize at 'timestamp' - 1 so that the  first output value is 'timestamp'.
+  // initialize at 'timestamp' - 1 so that the  first output value is
+  // 'timestamp'.
   return new LogicalClock(timestamp.value() - 1);
 }
 
@@ -96,17 +104,17 @@ uint64_t LogicalClock::GetCurrentTime() {
   return NoBarrier_Load(&now_);
 }
 
-void LogicalClock::RegisterMetrics(const scoped_refptr<MetricEntity>& metric_entity) {
-  METRIC_logical_clock_timestamp.InstantiateFunctionGauge(
-      metric_entity,
-      Bind(&LogicalClock::GetCurrentTime, Unretained(this)))
-    ->AutoDetachToLastValue(&metric_detacher_);
+void LogicalClock::RegisterMetrics(
+    const scoped_refptr<MetricEntity>& metric_entity) {
+  METRIC_logical_clock_timestamp
+      .InstantiateFunctionGauge(
+          metric_entity, Bind(&LogicalClock::GetCurrentTime, Unretained(this)))
+      ->AutoDetachToLastValue(&metric_detacher_);
 }
 
 std::string LogicalClock::Stringify(Timestamp timestamp) {
   return strings::Substitute("L: $0", timestamp.ToUint64());
 }
 
-}  // namespace clock
-}  // namespace kudu
-
+} // namespace clock
+} // namespace kudu

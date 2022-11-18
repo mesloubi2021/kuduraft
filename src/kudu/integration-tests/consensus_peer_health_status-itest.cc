@@ -54,36 +54,38 @@ using std::vector;
 
 namespace kudu {
 
-class ConsensusPeerHealthStatusITest : public RaftConsensusITestBase {
-};
+class ConsensusPeerHealthStatusITest : public RaftConsensusITestBase {};
 
 // This is a functional test that verifies that when a replica goes into a bad
 // state, its health status is detected by the leader replica.
 TEST_F(ConsensusPeerHealthStatusITest, TestPeerHealthStatusTransitions) {
   if (!AllowSlowTests()) {
-    LOG(WARNING) << "Test disabled in fast test mode. Set KUDU_ALLOW_SLOW_TESTS=1 to enable.";
+    LOG(WARNING)
+        << "Test disabled in fast test mode. Set KUDU_ALLOW_SLOW_TESTS=1 to enable.";
     return;
   }
 
   const MonoDelta kTimeout = MonoDelta::FromSeconds(30);
   const vector<string> kMasterFlags = {
-    // Disable re-replication and eviction for this test because we are
-    // verifying that putting a follower into a particular state is detected by
-    // the leader.
-    "--master_add_server_when_underreplicated=false",
-    "--catalog_manager_evict_excess_replicas=false",
-    // Leader elections are handled manually in this test.
-    "--catalog_manager_wait_for_new_tablets_to_elect_leader=false",
+      // Disable re-replication and eviction for this test because we are
+      // verifying that putting a follower into a particular state is detected
+      // by
+      // the leader.
+      "--master_add_server_when_underreplicated=false",
+      "--catalog_manager_evict_excess_replicas=false",
+      // Leader elections are handled manually in this test.
+      "--catalog_manager_wait_for_new_tablets_to_elect_leader=false",
   };
-  vector<string> ts_flags {
-    // Disable failure detection to ensure a stable test environment for health
-    // status testing.
-    "--enable_leader_failure_detection=false",
-    // We want to keep RPC timeouts short, to quickly detect downed servers,
-    // which will put the health status into an UKNOWN state until the point
-    // where they are considered FAILED, which we also control here.
-    "--consensus_rpc_timeout_ms=2000",
-    "--follower_unavailable_considered_failed_sec=6",
+  vector<string> ts_flags{
+      // Disable failure detection to ensure a stable test environment for
+      // health
+      // status testing.
+      "--enable_leader_failure_detection=false",
+      // We want to keep RPC timeouts short, to quickly detect downed servers,
+      // which will put the health status into an UKNOWN state until the point
+      // where they are considered FAILED, which we also control here.
+      "--consensus_rpc_timeout_ms=2000",
+      "--follower_unavailable_considered_failed_sec=6",
   };
   AddFlagsForLogRolls(&ts_flags); // For CauseFollowerToFallBehindLogGC().
   ASSERT_EQ(3, FLAGS_num_tablet_servers);
@@ -94,35 +96,45 @@ TEST_F(ConsensusPeerHealthStatusITest, TestPeerHealthStatusTransitions) {
   AppendValuesFromMap(tablet_servers_, &tservers);
   ASSERT_EQ(3, tservers.size());
 
-  // We'll use TS 0 as the leader and TS 1 as the follower to "abuse" in this test.
+  // We'll use TS 0 as the leader and TS 1 as the follower to "abuse" in this
+  // test.
   TServerDetails* leader_ts = tservers[0];
   TServerDetails* follower_ts = tservers[1];
   const string& follower_uuid = follower_ts->uuid();
 
   // Elect a leader and wait for log index 1 to propagate to all servers.
   ASSERT_OK(StartElection(leader_ts, tablet_id_, kTimeout));
-  ASSERT_OK(WaitForServersToAgree(kTimeout, tablet_servers_, tablet_id_, /*minimum_index=*/ 1));
+  ASSERT_OK(WaitForServersToAgree(
+      kTimeout, tablet_servers_, tablet_id_, /*minimum_index=*/1));
 
   // Wait for the specified follower to get into the specified health state.
-  auto wait_for_health_state = [&](TServerDetails* leader_ts, const string& peer_uuid,
-                                   HealthReportPB::HealthStatus expected_health_status) {
-    ASSERT_EVENTUALLY([&]{
-      ConsensusStatePB cstate;
-      ASSERT_OK(GetConsensusState(leader_ts, tablet_id_, kTimeout, INCLUDE_HEALTH_REPORT, &cstate));
-      bool found_replica = false;
-      for (const auto& peer : cstate.committed_config().peers()) {
-        if (peer.permanent_uuid() != peer_uuid) continue;
-        found_replica = true;
-        ASSERT_TRUE(peer.has_health_report());
-        auto health_status = peer.health_report().overall_health();
-        ASSERT_EQ(expected_health_status, health_status)
-            << "expected: " << HealthReportPB::HealthStatus_Name(expected_health_status) << ", "
-            << "actual: " << HealthReportPB::HealthStatus_Name(health_status);
-        break;
-      }
-      ASSERT_TRUE(found_replica) << "No replica found with UUID " << peer_uuid;
-    });
-  };
+  auto wait_for_health_state =
+      [&](TServerDetails* leader_ts,
+          const string& peer_uuid,
+          HealthReportPB::HealthStatus expected_health_status) {
+        ASSERT_EVENTUALLY([&] {
+          ConsensusStatePB cstate;
+          ASSERT_OK(GetConsensusState(
+              leader_ts, tablet_id_, kTimeout, INCLUDE_HEALTH_REPORT, &cstate));
+          bool found_replica = false;
+          for (const auto& peer : cstate.committed_config().peers()) {
+            if (peer.permanent_uuid() != peer_uuid)
+              continue;
+            found_replica = true;
+            ASSERT_TRUE(peer.has_health_report());
+            auto health_status = peer.health_report().overall_health();
+            ASSERT_EQ(expected_health_status, health_status)
+                << "expected: "
+                << HealthReportPB::HealthStatus_Name(expected_health_status)
+                << ", "
+                << "actual: "
+                << HealthReportPB::HealthStatus_Name(health_status);
+            break;
+          }
+          ASSERT_TRUE(found_replica)
+              << "No replica found with UUID " << peer_uuid;
+        });
+      };
 
   // Convenience constants.
   constexpr auto UNKNOWN = HealthReportPB::UNKNOWN;
@@ -145,14 +157,11 @@ TEST_F(ConsensusPeerHealthStatusITest, TestPeerHealthStatusTransitions) {
 
   LOG(INFO) << "Test: HEALTHY -> UNKNOWN -> FAILED -> HEALTHY";
 
-  enum ErrorType {
-    PAUSE,
-    SHUTDOWN
-  };
+  enum ErrorType { PAUSE, SHUTDOWN };
 
   // Ensure that both SIGSTOP and process shutdown result first in UNKNOWN and
   // then in FAILED states.
-  for (auto error_type : { PAUSE, SHUTDOWN }) {
+  for (auto error_type : {PAUSE, SHUTDOWN}) {
     // Fail the follower. Track the transitions: first through UNKNOWN state,
     // then into FAILED.
     if (error_type == SHUTDOWN) {
@@ -174,8 +183,10 @@ TEST_F(ConsensusPeerHealthStatusITest, TestPeerHealthStatusTransitions) {
 
   LOG(INFO) << "Test: HEALTHY -> FAILED_UNRECOVERABLE";
 
-  NO_FATALS(CauseSpecificFollowerToFallBehindLogGC(tablet_servers_, follower_uuid));
-  NO_FATALS(wait_for_health_state(leader_ts, follower_uuid, FAILED_UNRECOVERABLE));
+  NO_FATALS(
+      CauseSpecificFollowerToFallBehindLogGC(tablet_servers_, follower_uuid));
+  NO_FATALS(
+      wait_for_health_state(leader_ts, follower_uuid, FAILED_UNRECOVERABLE));
 
   LOG(INFO) << "Recovering test replica...";
 
@@ -190,11 +201,14 @@ TEST_F(ConsensusPeerHealthStatusITest, TestPeerHealthStatusTransitions) {
   ASSERT_OK(RemoveServer(leader_ts, tablet_id_, follower_ts, kTimeout));
   ASSERT_EVENTUALLY([&] {
     vector<tserver::ListTabletsResponsePB::StatusAndSchemaPB> tablets;
-    ASSERT_OK(WaitForNumTabletsOnTS(follower_ts, /*count=*/ 1, kTimeout, &tablets));
+    ASSERT_OK(
+        WaitForNumTabletsOnTS(follower_ts, /*count=*/1, kTimeout, &tablets));
     ASSERT_EQ(1, tablets.size());
-    ASSERT_EQ(TABLET_DATA_TOMBSTONED, tablets[0].tablet_status().tablet_data_state());
+    ASSERT_EQ(
+        TABLET_DATA_TOMBSTONED, tablets[0].tablet_status().tablet_data_state());
   });
-  ASSERT_OK(AddServer(leader_ts, tablet_id_, follower_ts, RaftPeerPB::VOTER, kTimeout));
+  ASSERT_OK(AddServer(
+      leader_ts, tablet_id_, follower_ts, RaftPeerPB::VOTER, kTimeout));
   // Make sure the tablet copying (initiated by AddServer() above) finishes.
   // Otherwise, the abandoned tablet copying session at the source tablet server
   // might anchor WAL segments and they would not be GCed as the scneario below
@@ -206,10 +220,14 @@ TEST_F(ConsensusPeerHealthStatusITest, TestPeerHealthStatusTransitions) {
   cluster_->tablet_server_by_uuid(follower_uuid)->Shutdown();
   NO_FATALS(wait_for_health_state(leader_ts, follower_uuid, UNKNOWN));
   NO_FATALS(wait_for_health_state(leader_ts, follower_uuid, FAILED));
-  NO_FATALS(CauseSpecificFollowerToFallBehindLogGC(tablet_servers_, follower_uuid,
-                                                   /*leader_uuid=*/ nullptr, /*orig_term=*/ nullptr,
-                                                   DO_NOT_TAMPER));
-  NO_FATALS(wait_for_health_state(leader_ts, follower_uuid, FAILED_UNRECOVERABLE));
+  NO_FATALS(CauseSpecificFollowerToFallBehindLogGC(
+      tablet_servers_,
+      follower_uuid,
+      /*leader_uuid=*/nullptr,
+      /*orig_term=*/nullptr,
+      DO_NOT_TAMPER));
+  NO_FATALS(
+      wait_for_health_state(leader_ts, follower_uuid, FAILED_UNRECOVERABLE));
 }
 
 } // namespace kudu

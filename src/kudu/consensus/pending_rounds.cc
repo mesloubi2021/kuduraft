@@ -46,13 +46,14 @@ namespace consensus {
 // PendingRounds
 //------------------------------------------------------------
 
-PendingRounds::PendingRounds(string log_prefix, scoped_refptr<ITimeManager> time_manager)
+PendingRounds::PendingRounds(
+    string log_prefix,
+    scoped_refptr<ITimeManager> time_manager)
     : log_prefix_(std::move(log_prefix)),
       last_committed_op_id_(MinimumOpId()),
       time_manager_(std::move(time_manager)) {}
 
-PendingRounds::~PendingRounds() {
-}
+PendingRounds::~PendingRounds() {}
 
 Status PendingRounds::CancelPendingTransactions() {
   ThreadRestrictions::AssertWaitAllowed();
@@ -66,23 +67,24 @@ Status PendingRounds::CancelPendingTransactions() {
     const scoped_refptr<ConsensusRound>& round = txn.second;
     // We cancel only transactions whose applies have not yet been triggered.
     LOG_WITH_PREFIX(INFO) << "Aborting transaction as it isn't in flight: "
-                                   << SecureShortDebugString(*txn.second->replicate_msg());
+                          << SecureShortDebugString(
+                                 *txn.second->replicate_msg());
     round->NotifyReplicationFinished(Status::Aborted("Transaction aborted"));
   }
   return Status::OK();
 }
 
 void PendingRounds::AbortOpsAfter(int64_t index) {
-  LOG_WITH_PREFIX(INFO) << "Aborting all transactions after (but not including) "
-                        << index;
+  LOG_WITH_PREFIX(INFO)
+      << "Aborting all transactions after (but not including) " << index;
 
   DCHECK_GE(index, 0);
   OpId new_preceding;
 
   auto iter = pending_txns_.lower_bound(index);
 
-  // Either the new preceding id is in the pendings set or it must be equal to the
-  // committed index since we can't truncate already committed operations.
+  // Either the new preceding id is in the pendings set or it must be equal to
+  // the committed index since we can't truncate already committed operations.
   if (iter != pending_txns_.end() && (*iter).first == index) {
     new_preceding = (*iter).second->replicate_msg()->id();
     ++iter;
@@ -94,34 +96,40 @@ void PendingRounds::AbortOpsAfter(int64_t index) {
   for (; iter != pending_txns_.end();) {
     const scoped_refptr<ConsensusRound>& round = (*iter).second;
     auto op_type = round->replicate_msg()->op_type();
-    LOG_WITH_PREFIX(INFO)
-        << "Aborting uncommitted " << OperationType_Name(op_type)
-        << " operation due to leader change: " << round->replicate_msg()->id();
+    LOG_WITH_PREFIX(INFO) << "Aborting uncommitted "
+                          << OperationType_Name(op_type)
+                          << " operation due to leader change: "
+                          << round->replicate_msg()->id();
 
-    round->NotifyReplicationFinished(Status::Aborted("Transaction aborted by new leader"));
+    round->NotifyReplicationFinished(
+        Status::Aborted("Transaction aborted by new leader"));
     // Erase the entry from pendings.
     pending_txns_.erase(iter++);
   }
 }
 
-Status PendingRounds::AddPendingOperation(const scoped_refptr<ConsensusRound>& round) {
+Status PendingRounds::AddPendingOperation(
+    const scoped_refptr<ConsensusRound>& round) {
   InsertOrDie(&pending_txns_, round->replicate_msg()->id().index(), round);
   return Status::OK();
 }
 
-scoped_refptr<ConsensusRound> PendingRounds::GetPendingOpByIndexOrNull(int64_t index) {
+scoped_refptr<ConsensusRound> PendingRounds::GetPendingOpByIndexOrNull(
+    int64_t index) {
   return FindPtrOrNull(pending_txns_, index);
 }
 
-bool PendingRounds::IsOpCommittedOrPending(const OpId& op_id, bool* term_mismatch) {
-
+bool PendingRounds::IsOpCommittedOrPending(
+    const OpId& op_id,
+    bool* term_mismatch) {
   *term_mismatch = false;
 
   if (op_id.index() <= GetCommittedIndex()) {
     return true;
   }
 
-  scoped_refptr<ConsensusRound> round = GetPendingOpByIndexOrNull(op_id.index());
+  scoped_refptr<ConsensusRound> round =
+      GetPendingOpByIndexOrNull(op_id.index());
   if (!round) {
     return false;
   }
@@ -134,8 +142,8 @@ bool PendingRounds::IsOpCommittedOrPending(const OpId& op_id, bool* term_mismatc
 }
 
 OpId PendingRounds::GetLastPendingTransactionOpId() const {
-  return pending_txns_.empty()
-      ? MinimumOpId() : (--pending_txns_.end())->second->id();
+  return pending_txns_.empty() ? MinimumOpId()
+                               : (--pending_txns_.end())->second->id();
 }
 
 Status PendingRounds::AdvanceCommittedIndex(int64_t committed_index) {
@@ -144,16 +152,16 @@ Status PendingRounds::AdvanceCommittedIndex(int64_t committed_index) {
   // up in the RPC queue at the same time, and then might get interleaved out
   // of order.
   if (last_committed_op_id_.index() >= committed_index) {
-    VLOG_WITH_PREFIX(1)
-      << "Already marked ops through " << last_committed_op_id_ << " as committed. "
-      << "Now trying to mark " << committed_index << " which would be a no-op.";
+    VLOG_WITH_PREFIX(1) << "Already marked ops through "
+                        << last_committed_op_id_ << " as committed. "
+                        << "Now trying to mark " << committed_index
+                        << " which would be a no-op.";
     return Status::OK();
   }
 
   if (pending_txns_.empty()) {
-    LOG(ERROR) << "Advancing commit index to " << committed_index
-               << " from " << last_committed_op_id_
-               << " we have no pending txns"
+    LOG(ERROR) << "Advancing commit index to " << committed_index << " from "
+               << last_committed_op_id_ << " we have no pending txns"
                << GetStackTrace();
     VLOG_WITH_PREFIX(1) << "No transactions to mark as committed up to: "
                         << committed_index;
@@ -166,9 +174,8 @@ Status PendingRounds::AdvanceCommittedIndex(int64_t committed_index) {
   auto end_iter = pending_txns_.upper_bound(committed_index);
   CHECK(iter != pending_txns_.end());
 
-  VLOG_WITH_PREFIX(1) << "Last triggered apply was: "
-      <<  last_committed_op_id_
-      << " Starting to apply from log index: " << (*iter).first;
+  VLOG_WITH_PREFIX(1) << "Last triggered apply was: " << last_committed_op_id_
+                      << " Starting to apply from log index: " << (*iter).first;
 
   while (iter != end_iter) {
     scoped_refptr<ConsensusRound> round = (*iter).second; // Make a copy.
@@ -197,14 +204,16 @@ Status PendingRounds::SetInitialCommittedOpId(const OpId& committed_op) {
         return Status::Corruption(Substitute(
             "pending operations should start at first operation "
             "after the committed operation (committed=$0, first pending=$1)",
-            OpIdToString(committed_op), first_pending_index));
+            OpIdToString(committed_op),
+            first_pending_index));
       }
       last_committed_op_id_ = committed_op;
     }
 
     RETURN_NOT_OK(AdvanceCommittedIndex(committed_op.index()));
-    CHECK_EQ(SecureShortDebugString(last_committed_op_id_),
-             SecureShortDebugString(committed_op));
+    CHECK_EQ(
+        SecureShortDebugString(last_committed_op_id_),
+        SecureShortDebugString(committed_op));
 
   } else {
     last_committed_op_id_ = committed_op;
@@ -212,14 +221,22 @@ Status PendingRounds::SetInitialCommittedOpId(const OpId& committed_op) {
   return Status::OK();
 }
 
-Status PendingRounds::CheckOpInSequence(const OpId& previous, const OpId& current) {
+Status PendingRounds::CheckOpInSequence(
+    const OpId& previous,
+    const OpId& current) {
   if (current.term() < previous.term()) {
-    return Status::Corruption(Substitute("New operation's term is not >= than the previous "
-        "op's term. Current: $0. Previous: $1", OpIdToString(current), OpIdToString(previous)));
+    return Status::Corruption(Substitute(
+        "New operation's term is not >= than the previous "
+        "op's term. Current: $0. Previous: $1",
+        OpIdToString(current),
+        OpIdToString(previous)));
   }
   if (current.index() != previous.index() + 1) {
-    return Status::Corruption(Substitute("New operation's index does not follow the previous"
-        " op's index. Current: $0. Previous: $1", OpIdToString(current), OpIdToString(previous)));
+    return Status::Corruption(Substitute(
+        "New operation's index does not follow the previous"
+        " op's index. Current: $0. Previous: $1",
+        OpIdToString(current),
+        OpIdToString(previous)));
   }
   return Status::OK();
 }
@@ -236,5 +253,5 @@ int PendingRounds::GetNumPendingTxns() const {
   return pending_txns_.size();
 }
 
-}  // namespace consensus
-}  // namespace kudu
+} // namespace consensus
+} // namespace kudu

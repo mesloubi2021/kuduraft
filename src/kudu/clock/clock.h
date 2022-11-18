@@ -37,12 +37,11 @@ namespace clock {
 // operations.
 // Implementations must respect the following assumptions:
 // 1 - Now() must return monotonically increasing numbers
-//     i.e. for any two calls, i.e. Now returns timestamp1 and timestamp2, it must
-//     hold that timestamp1 < timestamp2.
+//     i.e. for any two calls, i.e. Now returns timestamp1 and timestamp2, it
+//     must hold that timestamp1 < timestamp2.
 // 2 - Update() must never set the clock backwards (corollary of 1)
 class Clock : public RefCountedThreadSafe<Clock> {
  public:
-
   // Initializes the clock.
   virtual Status Init() = 0;
 
@@ -61,8 +60,10 @@ class Clock : public RefCountedThreadSafe<Clock> {
     return Status::NotSupported("clock does not support global properties");
   }
 
-  // Indicates whether this clock supports the required external consistency mode.
-  virtual bool SupportsExternalConsistencyMode(ExternalConsistencyMode mode) = 0;
+  // Indicates whether this clock supports the required external consistency
+  // mode.
+  virtual bool SupportsExternalConsistencyMode(
+      ExternalConsistencyMode mode) = 0;
 
   // Indicates whether the clock has a physical component to its timestamps
   // (wallclock time).
@@ -70,12 +71,14 @@ class Clock : public RefCountedThreadSafe<Clock> {
     return false;
   }
 
-  // Get a MonoDelta representing the physical component difference between two timestamps,
-  // specifically lhs - rhs.
+  // Get a MonoDelta representing the physical component difference between two
+  // timestamps, specifically lhs - rhs.
   //
   // Requires that this clock's timestamps have a physical component, i.e.
   // that HasPhysicalComponent() return true, otherwise it will crash.
-  virtual MonoDelta GetPhysicalComponentDifference(Timestamp /*lhs*/, Timestamp /*rhs*/) const {
+  virtual MonoDelta GetPhysicalComponentDifference(
+      Timestamp /*lhs*/,
+      Timestamp /*rhs*/) const {
     LOG(FATAL) << "Clock's timestamps don't have a physical component.";
   }
 
@@ -89,22 +92,26 @@ class Clock : public RefCountedThreadSafe<Clock> {
   // Waits until the clock on all machines has advanced past 'then'.
   // Can also be used to implement 'external consistency' in the same sense as
   // Google's Spanner.
-  virtual Status WaitUntilAfter(const Timestamp& then,
-                                const MonoTime& deadline) = 0;
+  virtual Status WaitUntilAfter(
+      const Timestamp& then,
+      const MonoTime& deadline) = 0;
 
   // Waits until the clock on this machine advances past 'then'. Unlike
   // WaitUntilAfter(), this does not make any global guarantees.
-  virtual Status WaitUntilAfterLocally(const Timestamp& then,
-                                       const MonoTime& deadline) = 0;
+  virtual Status WaitUntilAfterLocally(
+      const Timestamp& then,
+      const MonoTime& deadline) = 0;
 
   // Return true if the given time has definitely passed (i.e any future call
   // to Now() would return a higher value than t).
   virtual bool IsAfter(Timestamp t) = 0;
 
   // Register the clock metrics in the given entity.
-  virtual void RegisterMetrics(const scoped_refptr<MetricEntity>& metric_entity) = 0;
+  virtual void RegisterMetrics(
+      const scoped_refptr<MetricEntity>& metric_entity) = 0;
 
-  // Strigifies the provided timestamp according to this clock's internal format.
+  // Strigifies the provided timestamp according to this clock's internal
+  // format.
   virtual std::string Stringify(Timestamp timestamp) = 0;
 
   virtual ~Clock() {}

@@ -217,13 +217,16 @@ enum ExternalConsistencyMode {
 //   this snapshot.
 // - The latest snapshot: This corresponds to the instant beyond which no
 //   no transaction will have an earlier timestamp. Usually this corresponds
-//   to whatever clock->Now() returns, but can be higher if the client propagates
+//   to whatever clock->Now() returns, but can be higher if the client
+propagates
 //   a timestamp (see below).
 enum ReadMode {
   UNKNOWN_READ_MODE = 0;
 
-  // When READ_LATEST is specified the server will execute the read independently
-  // of the clock and will always return all visible writes at the time the request
+  // When READ_LATEST is specified the server will execute the read
+independently
+  // of the clock and will always return all visible writes at the time the
+request
   // was received. This type of read does not return a snapshot timestamp since
   // it might not be repeatable, i.e. a later read executed at the same snapshot
   // timestamp might yield rows that were committed by in-flight transactions.
@@ -231,11 +234,14 @@ enum ReadMode {
   // This is the default mode.
   READ_LATEST = 1;
 
-  // When READ_AT_SNAPSHOT is specified the server will attempt to perform a read
-  // at the required snapshot. If no snapshot is defined the server will take the
+  // When READ_AT_SNAPSHOT is specified the server will attempt to perform a
+read
+  // at the required snapshot. If no snapshot is defined the server will take
+the
   // current time as the snapshot timestamp. Snapshot reads are repeatable, i.e.
   // all future reads at the same timestamp will yield the same rows. This is
-  // performed at the expense of waiting for in-flight transactions whose timestamp
+  // performed at the expense of waiting for in-flight transactions whose
+timestamp
   // is lower than the snapshot's timestamp to complete.
   //
   // When mixing reads and writes clients that specify COMMIT_WAIT as their
@@ -262,10 +268,13 @@ enum ReadMode {
   // More specifically, the server will choose the latest timestamp higher than
   // the provided propagated timestamp bound that allows execution of the
   // reads without being blocked by the in-flight transactions (however the
-  // read can be blocked if the propagated timestamp is higher than some in-flight
-  // transactions). If no propagated timestamp is provided the server will choose
+  // read can be blocked if the propagated timestamp is higher than some
+in-flight
+  // transactions). If no propagated timestamp is provided the server will
+choose
   // a timestamp such that all transactions before it are committed. The chosen
-  // timestamp will be returned back to the client as 'snapshot timestamp'. The Kudu
+  // timestamp will be returned back to the client as 'snapshot timestamp'. The
+Kudu
   // client library will use it as the propagated timestamp for subsequent reads
   // to avoid unnecessarily waiting.
   //

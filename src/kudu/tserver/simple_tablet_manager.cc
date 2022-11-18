@@ -39,19 +39,19 @@
 #include "kudu/consensus/consensus_meta.h"
 #include "kudu/consensus/consensus_meta_manager.h"
 #include "kudu/consensus/consensus_peers.h"
-#include "kudu/consensus/persistent_vars.pb.h"
-#include "kudu/consensus/persistent_vars.h"
-#include "kudu/consensus/persistent_vars_manager.h"
-#include "kudu/consensus/proxy_policy.h"
-#include "kudu/consensus/time_manager.h"
 #include "kudu/consensus/log.h"
-#include "kudu/consensus/log_util.h"
 #include "kudu/consensus/log_anchor_registry.h"
+#include "kudu/consensus/log_util.h"
 #include "kudu/consensus/metadata.pb.h"
 #include "kudu/consensus/opid.pb.h"
 #include "kudu/consensus/opid_util.h"
+#include "kudu/consensus/persistent_vars.h"
+#include "kudu/consensus/persistent_vars.pb.h"
+#include "kudu/consensus/persistent_vars_manager.h"
+#include "kudu/consensus/proxy_policy.h"
 #include "kudu/consensus/quorum_util.h"
 #include "kudu/consensus/raft_consensus.h"
+#include "kudu/consensus/time_manager.h"
 #include "kudu/fs/data_dirs.h"
 #include "kudu/fs/fs_manager.h"
 #include "kudu/gutil/bind.h"
@@ -70,11 +70,11 @@
 #include "kudu/util/monotime.h"
 #include "kudu/util/net/net_util.h"
 #include "kudu/util/net/sockaddr.h"
+#include "kudu/util/pb_util.h"
 #include "kudu/util/scoped_cleanup.h"
 #include "kudu/util/stopwatch.h"
 #include "kudu/util/threadpool.h"
 #include "kudu/util/trace.h"
-#include "kudu/util/pb_util.h"
 
 DECLARE_bool(enable_flexi_raft);
 
@@ -89,45 +89,45 @@ namespace kudu {
 using consensus::ConsensusMetadata;
 using consensus::ConsensusMetadataCreateMode;
 using consensus::ConsensusMetadataManager;
-using consensus::ITimeManager;
-using consensus::PersistentVars;
-using consensus::PersistentVarsManager;
-using consensus::ConsensusStatePB;
 using consensus::ConsensusOptions;
-using consensus::PeerProxyFactory;
 using consensus::ConsensusRound;
-using consensus::RpcPeerProxyFactory;
+using consensus::ConsensusStatePB;
 using consensus::EXCLUDE_HEALTH_REPORT;
 using consensus::INCLUDE_HEALTH_REPORT;
-using consensus::TimeManager;
-using consensus::TimeManagerDummy;
+using consensus::ITimeManager;
+using consensus::kMinimumTerm;
 using consensus::OpId;
 using consensus::OpIdToString;
-using consensus::RECEIVED_OPID;
+using consensus::PeerProxyFactory;
+using consensus::PersistentVars;
+using consensus::PersistentVarsManager;
 using consensus::RaftConfigPB;
-using consensus::RaftPeerPB;
 using consensus::RaftConsensus;
-using consensus::kMinimumTerm;
+using consensus::RaftPeerPB;
+using consensus::RECEIVED_OPID;
+using consensus::RpcPeerProxyFactory;
+using consensus::TimeManager;
+using consensus::TimeManagerDummy;
 using fs::DataDirManager;
 using log::Log;
 using log::LogOptions;
 using pb_util::SecureDebugString;
 using pb_util::SecureShortDebugString;
 
-
 namespace tserver {
 
-const std::string TSTabletManager::kSysCatalogTabletId("00000000000000000000000000000000");
+const std::string TSTabletManager::kSysCatalogTabletId(
+    "00000000000000000000000000000000");
 
 TSTabletManager::TSTabletManager(TabletServer* server)
-  : fs_manager_(server->fs_manager()),
-    cmeta_manager_(new ConsensusMetadataManager(fs_manager_)),
-    persistent_vars_manager_(new PersistentVarsManager(fs_manager_)),
-    server_(server),
-    metric_registry_(server->metric_registry()),
-    state_(MANAGER_INITIALIZING),
-    mark_dirty_clbk_(Bind(&TSTabletManager::MarkTabletDirty, Unretained(this))) {
-}
+    : fs_manager_(server->fs_manager()),
+      cmeta_manager_(new ConsensusMetadataManager(fs_manager_)),
+      persistent_vars_manager_(new PersistentVarsManager(fs_manager_)),
+      server_(server),
+      metric_registry_(server->metric_registry()),
+      state_(MANAGER_INITIALIZING),
+      mark_dirty_clbk_(
+          Bind(&TSTabletManager::MarkTabletDirty, Unretained(this))) {}
 
 TSTabletManager::~TSTabletManager() {
   // Close cannot be called from the destructor any more.
@@ -139,12 +139,13 @@ TSTabletManager::~TSTabletManager() {
   }
 }
 
-Status TSTabletManager::Load(FsManager *fs_manager) {
+Status TSTabletManager::Load(FsManager* fs_manager) {
   if (server_->opts().IsDistributed()) {
     LOG(INFO) << "Verifying existing consensus state";
     scoped_refptr<ConsensusMetadata> cmeta;
-    RETURN_NOT_OK_PREPEND(cmeta_manager_->LoadCMeta(kSysCatalogTabletId, &cmeta),
-                          "Unable to load consensus metadata for tablet " + kSysCatalogTabletId);
+    RETURN_NOT_OK_PREPEND(
+        cmeta_manager_->LoadCMeta(kSysCatalogTabletId, &cmeta),
+        "Unable to load consensus metadata for tablet " + kSysCatalogTabletId);
     ConsensusStatePB cstate = cmeta->ToConsensusStatePB();
     RETURN_NOT_OK(consensus::VerifyRaftConfig(cstate.committed_config()));
     CHECK(!cstate.has_pending_config());
@@ -155,10 +156,12 @@ Status TSTabletManager::Load(FsManager *fs_manager) {
     for (const auto& hp : server_->opts().tserver_addresses) {
       peer_addrs_from_opts.insert(hp.ToString());
     }
-    if (peer_addrs_from_opts.size() < server_->opts().tserver_addresses.size()) {
-      LOG(WARNING) << Substitute("Found duplicates in --tserver_addresses: "
-                                 "the unique set of addresses is $0",
-                                 JoinStrings(peer_addrs_from_opts, ", "));
+    if (peer_addrs_from_opts.size() <
+        server_->opts().tserver_addresses.size()) {
+      LOG(WARNING) << Substitute(
+          "Found duplicates in --tserver_addresses: "
+          "the unique set of addresses is $0",
+          JoinStrings(peer_addrs_from_opts, ", "));
     }
     set<string> peer_addrs_from_disk;
     for (const auto& p : cstate.committed_config().peers()) {
@@ -167,11 +170,12 @@ Status TSTabletManager::Load(FsManager *fs_manager) {
       peer_addrs_from_disk.insert(hp.ToString());
     }
     vector<string> symm_diff;
-    std::set_symmetric_difference(peer_addrs_from_opts.begin(),
-                                  peer_addrs_from_opts.end(),
-                                  peer_addrs_from_disk.begin(),
-                                  peer_addrs_from_disk.end(),
-                                  std::back_inserter(symm_diff));
+    std::set_symmetric_difference(
+        peer_addrs_from_opts.begin(),
+        peer_addrs_from_opts.end(),
+        peer_addrs_from_disk.begin(),
+        peer_addrs_from_disk.end(),
+        std::back_inserter(symm_diff));
     if (!symm_diff.empty()) {
       string msg = Substitute(
           "on-disk master list ($0) and provided master list ($1) differ. "
@@ -186,14 +190,16 @@ Status TSTabletManager::Load(FsManager *fs_manager) {
   return SetupRaft();
 }
 
-Status TSTabletManager::CreateNew(FsManager *fs_manager) {
+Status TSTabletManager::CreateNew(FsManager* fs_manager) {
   RaftConfigPB config;
   if (server_->opts().IsDistributed()) {
     LOG(INFO) << "TSTabletManager::CreateNew - Calling CreateDistributedConfig";
-    RETURN_NOT_OK_PREPEND(CreateDistributedConfig(server_->opts(), &config),
-                          "Failed to create new distributed Raft config");
+    RETURN_NOT_OK_PREPEND(
+        CreateDistributedConfig(server_->opts(), &config),
+        "Failed to create new distributed Raft config");
   } else {
-    LOG(INFO) << "TSTabletManager::CreateNew - Setting up single peer local config";
+    LOG(INFO)
+        << "TSTabletManager::CreateNew - Setting up single peer local config";
     config.set_obsolete_local(true);
     config.set_opid_index(consensus::kInvalidOpIdIndex);
     RaftPeerPB* peer = config.add_peers();
@@ -201,21 +207,25 @@ Status TSTabletManager::CreateNew(FsManager *fs_manager) {
     peer->set_member_type(RaftPeerPB::VOTER);
   }
 
-  RETURN_NOT_OK_PREPEND(cmeta_manager_->CreateCMeta(kSysCatalogTabletId, config, consensus::kMinimumTerm),
-                        "Unable to persist consensus metadata for tablet " + kSysCatalogTabletId);
-  // TODO(mpercy): Provide a way to specify the proxy graph at tablet creation time.
-  // For now, we initialize with an empty proxy graph.
-  RETURN_NOT_OK_PREPEND(cmeta_manager_->CreateDRT(kSysCatalogTabletId, config, {}),
-                        "Unable to create new durable routing table for tablet " + kSysCatalogTabletId);
-  // Note that we are intentionally not creating Persistent Vars here because we do it
-  // in SetupRaft() anyway if the file does not exist
+  RETURN_NOT_OK_PREPEND(
+      cmeta_manager_->CreateCMeta(
+          kSysCatalogTabletId, config, consensus::kMinimumTerm),
+      "Unable to persist consensus metadata for tablet " + kSysCatalogTabletId);
+  // TODO(mpercy): Provide a way to specify the proxy graph at tablet creation
+  // time. For now, we initialize with an empty proxy graph.
+  RETURN_NOT_OK_PREPEND(
+      cmeta_manager_->CreateDRT(kSysCatalogTabletId, config, {}),
+      "Unable to create new durable routing table for tablet " +
+          kSysCatalogTabletId);
+  // Note that we are intentionally not creating Persistent Vars here because we
+  // do it in SetupRaft() anyway if the file does not exist
 
   return SetupRaft();
 }
 
 Status TSTabletManager::CreateConfigFromTserverAddresses(
     const TabletServerOptions& options,
-    KC::RaftConfigPB *new_config) {
+    KC::RaftConfigPB* new_config) {
   size_t ts_index = 0;
   // Build the set of followers from our server options.
   for (const HostPort& host_port : options.tserver_addresses) {
@@ -227,7 +237,8 @@ Status TSTabletManager::CreateConfigFromTserverAddresses(
 
     // applications are allowed to not populate bbd
     if (!options.tserver_bbd.empty()) {
-      peer.mutable_attrs()->set_backing_db_present(options.tserver_bbd[ts_index]);
+      peer.mutable_attrs()->set_backing_db_present(
+          options.tserver_bbd[ts_index]);
     }
 
     // applications are allowed to not populate region, but
@@ -244,14 +255,15 @@ Status TSTabletManager::CreateConfigFromTserverAddresses(
 
 void TSTabletManager::CreateConfigFromBootstrapPeers(
     const TabletServerOptions& options,
-    KC::RaftConfigPB *new_config) {
+    KC::RaftConfigPB* new_config) {
   for (const RaftPeerPB& peer : options.bootstrap_tservers) {
     new_config->add_peers()->CopyFrom(peer);
   }
 }
 
-Status TSTabletManager::CreateDistributedConfig(const TabletServerOptions& options,
-                                                RaftConfigPB* committed_config) {
+Status TSTabletManager::CreateDistributedConfig(
+    const TabletServerOptions& options,
+    RaftConfigPB* committed_config) {
   DCHECK(options.IsDistributed());
 
   RaftConfigPB new_config;
@@ -263,9 +275,10 @@ Status TSTabletManager::CreateDistributedConfig(const TabletServerOptions& optio
   // mistake.
   if (!options.tserver_addresses.empty() &&
       !options.bootstrap_tservers.empty()) {
-    LOG(WARNING) << "Both tserver_addresses and bootstrap_tservers is"
-       " being passed during bootstrap. This can create unexpected bahavior."
-       " Move to boostrap_tservers as it is more capable.";
+    LOG(WARNING)
+        << "Both tserver_addresses and bootstrap_tservers is"
+           " being passed during bootstrap. This can create unexpected bahavior."
+           " Move to boostrap_tservers as it is more capable.";
   }
 
   // Give first priority to options.tserver_addresses
@@ -291,10 +304,12 @@ Status TSTabletManager::CreateDistributedConfig(const TabletServerOptions& optio
       LOG(INFO) << SecureShortDebugString(peer)
                 << " has no permanent_uuid. Determining permanent_uuid...";
       RaftPeerPB new_peer = peer;
-      RETURN_NOT_OK_PREPEND(consensus::SetPermanentUuidForRemotePeer(server_->messenger(),
-                                                                     &new_peer),
-                            Substitute("Unable to resolve UUID for peer $0",
-                                       SecureShortDebugString(peer)));
+      RETURN_NOT_OK_PREPEND(
+          consensus::SetPermanentUuidForRemotePeer(
+              server_->messenger(), &new_peer),
+          Substitute(
+              "Unable to resolve UUID for peer $0",
+              SecureShortDebugString(peer)));
       resolved_config.add_peers()->CopyFrom(new_peer);
     }
   }
@@ -309,7 +324,8 @@ Status TSTabletManager::CreateDistributedConfig(const TabletServerOptions& optio
   }
 
   RETURN_NOT_OK(consensus::VerifyRaftConfig(resolved_config));
-  VLOG(1) << "Distributed Raft configuration: " << SecureShortDebugString(resolved_config);
+  VLOG(1) << "Distributed Raft configuration: "
+          << SecureShortDebugString(resolved_config);
 
   *committed_config = resolved_config;
   return Status::OK();
@@ -327,8 +343,9 @@ Status TSTabletManager::WaitUntilConsensusRunning(const MonoDelta& timeout) {
     MonoTime now(MonoTime::Now());
     MonoDelta elapsed(now - start);
     if (elapsed > timeout) {
-      return Status::TimedOut(Substitute("Raft Consensus is not running after waiting for $0:",
-                                         elapsed.ToString()));
+      return Status::TimedOut(Substitute(
+          "Raft Consensus is not running after waiting for $0:",
+          elapsed.ToString()));
     }
     SleepFor(MonoDelta::FromMilliseconds(1L << backoff_exp));
     backoff_exp = std::min(backoff_exp + 1, kMaxBackoffExp);
@@ -343,12 +360,13 @@ Status TSTabletManager::WaitUntilRunning() {
     Status status = WaitUntilConsensusRunning(MonoDelta::FromSeconds(1));
     seconds_waited++;
     if (status.ok()) {
-      LOG_WITH_PREFIX(INFO) << "configured and running, proceeding with master startup.";
+      LOG_WITH_PREFIX(INFO)
+          << "configured and running, proceeding with master startup.";
       break;
     }
     if (status.IsTimedOut()) {
-      LOG_WITH_PREFIX(INFO) <<  "not online yet (have been trying for "
-                               << seconds_waited << " seconds)";
+      LOG_WITH_PREFIX(INFO) << "not online yet (have been trying for "
+                            << seconds_waited << " seconds)";
       continue;
     }
     // if the status is not OK or TimedOut return it.
@@ -369,15 +387,15 @@ Status TSTabletManager::Init(bool is_first_run) {
   CHECK_EQ(state(), MANAGER_INITIALIZING);
 
   if (is_first_run) {
-    LOG(INFO) << "TSTabletManager::Init: is_first_run detected. Calling CreateNew";
+    LOG(INFO)
+        << "TSTabletManager::Init: is_first_run detected. Calling CreateNew";
     RETURN_NOT_OK_PREPEND(
         CreateNew(server_->fs_manager()),
         "Failed to CreateNew in TabletManager");
   } else {
     LOG(INFO) << "TSTabletManager::Init: existing cmeta dir. Calling Load";
     RETURN_NOT_OK_PREPEND(
-        Load(server_->fs_manager()),
-        "Failed to Load in TabletManager");
+        Load(server_->fs_manager()), "Failed to Load in TabletManager");
   }
 
   set_state(MANAGER_INITIALIZED);
@@ -394,15 +412,18 @@ Status TSTabletManager::Start(bool is_first_run) {
   Status s = cmeta_manager_->LoadCMeta(kSysCatalogTabletId, &cmeta);
 
   scoped_refptr<PersistentVars> persistent_vars;
-  s = persistent_vars_manager_->LoadPersistentVars(kSysCatalogTabletId, &persistent_vars);
+  s = persistent_vars_manager_->LoadPersistentVars(
+      kSysCatalogTabletId, &persistent_vars);
 
   // We have already captured the ConsensusBootstrapInfo in SetupRaft
   // and saved it locally.
   // consensus::ConsensusBootstrapInfo bootstrap_info;
 
   TRACE("Starting consensus");
-  VLOG(2) << "T " << kSysCatalogTabletId << " P " << consensus_->peer_uuid() << ": Peer starting";
-  VLOG(2) << "RaftConfig before starting: " << SecureDebugString(consensus_->CommittedConfig());
+  VLOG(2) << "T " << kSysCatalogTabletId << " P " << consensus_->peer_uuid()
+          << ": Peer starting";
+  VLOG(2) << "RaftConfig before starting: "
+          << SecureDebugString(consensus_->CommittedConfig());
 
   gscoped_ptr<PeerProxyFactory> peer_proxy_factory;
   scoped_refptr<ITimeManager> time_manager;
@@ -413,13 +434,15 @@ Status TSTabletManager::Start(bool is_first_run) {
   if (server_->opts().enable_time_manager) {
     // THIS IS OBVIOUSLY NOT CORRECT.
     // ONLY TO MAKE CODE COMPILE [ Anirban ]
-    time_manager.reset(new TimeManager(server_->clock(), Timestamp::kInitialTimestamp));
-    //time_manager.reset(new TimeManager(server_->clock(), tablet_->mvcc_manager()->GetCleanTimestamp()));
+    time_manager.reset(
+        new TimeManager(server_->clock(), Timestamp::kInitialTimestamp));
+    // time_manager.reset(new TimeManager(server_->clock(),
+    // tablet_->mvcc_manager()->GetCleanTimestamp()));
   } else {
     time_manager.reset(new TimeManagerDummy());
   }
 
-  ConsensusRoundHandler *round_handler = this;
+  ConsensusRoundHandler* round_handler = this;
   // If round handler comes from server options then override it
   if (server_->opts().round_handler) {
     round_handler = server_->opts().round_handler;
@@ -430,17 +453,22 @@ Status TSTabletManager::Start(bool is_first_run) {
   // causing a self-deadlock. We take a ref to members protected by 'lock_'
   // before unlocking.
   RETURN_NOT_OK(consensus_->Start(
-        bootstrap_info_, std::move(peer_proxy_factory),
-        log_, std::move(time_manager),
-        round_handler, server_->metric_entity(), mark_dirty_clbk_));
+      bootstrap_info_,
+      std::move(peer_proxy_factory),
+      log_,
+      std::move(time_manager),
+      round_handler,
+      server_->metric_entity(),
+      mark_dirty_clbk_));
 
-  for (consensus::ReplicateMsg* replicate : bootstrap_info_.orphaned_replicates) {
+  for (consensus::ReplicateMsg* replicate :
+       bootstrap_info_.orphaned_replicates) {
     delete replicate;
   }
   bootstrap_info_.orphaned_replicates.clear();
 
-  RETURN_NOT_OK_PREPEND(WaitUntilRunning(),
-                        "Failed waiting for the raft to run");
+  RETURN_NOT_OK_PREPEND(
+      WaitUntilRunning(), "Failed waiting for the raft to run");
 
   set_state(MANAGER_RUNNING);
   return Status::OK();
@@ -452,11 +480,14 @@ Status TSTabletManager::SetupRaft() {
   InitLocalRaftPeerPB();
 
   // If the persistent vars file does not already exist, create one
-  if (!persistent_vars_manager_->PersistentVarsFileExists(kSysCatalogTabletId)) {
+  if (!persistent_vars_manager_->PersistentVarsFileExists(
+          kSysCatalogTabletId)) {
     LOG(INFO) << "Persistent Vars file does not exist for tablet "
               << kSysCatalogTabletId << ". Creating a new one";
-    RETURN_NOT_OK_PREPEND(persistent_vars_manager_->CreatePersistentVars(kSysCatalogTabletId),
-                          "Unable to create persistent vars file for tablet " + kSysCatalogTabletId);
+    RETURN_NOT_OK_PREPEND(
+        persistent_vars_manager_->CreatePersistentVars(kSysCatalogTabletId),
+        "Unable to create persistent vars file for tablet " +
+            kSysCatalogTabletId);
   }
 
   ConsensusOptions options;
@@ -469,13 +500,15 @@ Status TSTabletManager::SetupRaft() {
 
   shared_ptr<RaftConsensus> consensus;
   TRACE("Creating consensus");
-  LOG(INFO) << LogPrefix(kSysCatalogTabletId) << "Creating Raft for the system tablet";
-  RETURN_NOT_OK(RaftConsensus::Create(std::move(options),
-                                      local_peer_pb_,
-                                      cmeta_manager_,
-                                      persistent_vars_manager_,
-                                      server_->raft_pool(),
-                                      &consensus));
+  LOG(INFO) << LogPrefix(kSysCatalogTabletId)
+            << "Creating Raft for the system tablet";
+  RETURN_NOT_OK(RaftConsensus::Create(
+      std::move(options),
+      local_peer_pb_,
+      cmeta_manager_,
+      persistent_vars_manager_,
+      server_->raft_pool(),
+      &consensus));
   consensus_ = std::move(consensus);
   if (server_->opts().edcb) {
     consensus_->SetElectionDecisionCallback(server_->opts().edcb);
@@ -507,8 +540,12 @@ Status TSTabletManager::SetupRaft() {
   // Factory could be empty.
   LogOptions log_options;
   log_options.log_factory = server_->opts().log_factory;
-  Status s1 = Log::Open(log_options, fs_manager_, kSysCatalogTabletId,
-      server_->metric_entity(), &log_);
+  Status s1 = Log::Open(
+      log_options,
+      fs_manager_,
+      kSysCatalogTabletId,
+      server_->metric_entity(),
+      &log_);
 
   // Abstracted logs will do their own log recovery
   // during Log::Open->Log::Init (virtual call). bootstrap_info
@@ -523,9 +560,8 @@ Status TSTabletManager::SetupRaft() {
   // However, for the MySQL case, we allow logs to be copied from a previous
   // instance while this instance is still new (is_first_run) and
   // going to be added to the ring. In that mode, the consensus-metadata files
-  // are not copied from the previous instance (this might change in the future).
-  // The cmeta is actually built from the options parameters.
-  // Using :
+  // are not copied from the previous instance (this might change in the
+  // future). The cmeta is actually built from the options parameters. Using :
   // 1. Term = Term of the last binlog opid term
   // 2. Config opid index, the index of last configuration passed in by
   // bootstrapper.
@@ -534,8 +570,8 @@ Status TSTabletManager::SetupRaft() {
   // an instance to the term of the Last Logged OpId.
   // In the MySQL first_run case, MySQL is expected to pass in
   // log_bootstrap_on_first_run in options.
-  if (server_->opts().log_factory && (!server_->is_first_run_ ||
-      server_->opts().log_bootstrap_on_first_run)) {
+  if (server_->opts().log_factory &&
+      (!server_->is_first_run_ || server_->opts().log_bootstrap_on_first_run)) {
     log_->GetRecoveryInfo(&bootstrap_info_);
     if (bootstrap_info_.last_id.term() > consensus_->CurrentTerm()) {
       consensus_->SetCurrentTermBootstrap(bootstrap_info_.last_id.term());
@@ -569,7 +605,8 @@ void TSTabletManager::Shutdown() {
     }
   }
 
-  if (consensus_) consensus_->Shutdown();
+  if (consensus_)
+    consensus_->Shutdown();
 
   state_ = MANAGER_SHUTDOWN;
 }
@@ -589,12 +626,15 @@ void TSTabletManager::InitLocalRaftPeerPB() {
   // We will make this the default soon, Flexi-raft needs regions
   // attr. We assumed that on plugin side, topology_config->server_config
   // is well formed. We use it directly here.
-  if (FLAGS_enable_flexi_raft && server_->opts().topology_config.has_server_config()) {
+  if (FLAGS_enable_flexi_raft &&
+      server_->opts().topology_config.has_server_config()) {
     local_peer_pb_ = server_->opts().topology_config.server_config();
   }
 }
 
-string TSTabletManager::LogPrefix(const string& tablet_id, FsManager *fs_manager) {
+string TSTabletManager::LogPrefix(
+    const string& tablet_id,
+    FsManager* fs_manager) {
   DCHECK(fs_manager != nullptr);
   return Substitute("T $0 P $1: ", tablet_id, fs_manager->uuid());
 }
@@ -604,13 +644,14 @@ string TSTabletManager::LogPrefix() const {
 }
 
 Status TSTabletManager::StartConsensusOnlyRound(
-      const scoped_refptr<consensus::ConsensusRound>& round) {
+    const scoped_refptr<consensus::ConsensusRound>& round) {
   // this is currently a no-op but other implementations
   // can provide their own version
   return Status::OK();
 }
 
-Status TSTabletManager::StartFollowerTransaction(const scoped_refptr<ConsensusRound>& round) {
+Status TSTabletManager::StartFollowerTransaction(
+    const scoped_refptr<ConsensusRound>& round) {
   // THIS IS CURRENTLY A NO-OP
   consensus::ReplicateMsg* replicate_msg = round->replicate_msg();
   DCHECK(replicate_msg->has_timestamp());

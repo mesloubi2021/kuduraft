@@ -31,14 +31,15 @@
 #include "kudu/gutil/port.h"
 #include "kudu/util/monotime.h"
 
-#define ASSERT_EVENTUALLY(expr) do { \
-  AssertEventually(expr); \
-  NO_PENDING_FATALS(); \
-} while (0)
+#define ASSERT_EVENTUALLY(expr) \
+  do {                          \
+    AssertEventually(expr);     \
+    NO_PENDING_FATALS();        \
+  } while (0)
 
 namespace gflags {
 class FlagSaver;
-} // namespace google
+} // namespace gflags
 
 namespace kudu {
 
@@ -55,10 +56,11 @@ class KuduTest : public ::testing::Test {
 
   virtual void SetUp() override;
 
-  // Tests assume that they run with no outside-provided kerberos credentials, and if the
-  // user happened to have some credentials available they might fail due to being already
-  // kinitted to a different realm, etc. This function overrides the relevant environment
-  // variables so that we don't pick up the user's credentials.
+  // Tests assume that they run with no outside-provided kerberos credentials,
+  // and if the user happened to have some credentials available they might fail
+  // due to being already kinitted to a different realm, etc. This function
+  // overrides the relevant environment variables so that we don't pick up the
+  // user's credentials.
   static void OverrideKrb5Environment();
 
  protected:
@@ -88,8 +90,9 @@ bool AllowSlowTests();
 //     "client_inserts_per_thread",
 //     strings::Substitute("$0", FLAGS_client_inserts_per_thread * 100));
 //
-void OverrideFlagForSlowTests(const std::string& flag_name,
-                              const std::string& new_value);
+void OverrideFlagForSlowTests(
+    const std::string& flag_name,
+    const std::string& new_value);
 
 // Call srand() with a random seed based on the current time, reporting
 // that seed to the logs. The time-based seed may be overridden by passing
@@ -126,9 +129,10 @@ enum class AssertBackoff {
   // Sleep for a millisecond while looping.
   NONE,
 };
-void AssertEventually(const std::function<void(void)>& f,
-                      const MonoDelta& timeout = MonoDelta::FromSeconds(30),
-                      AssertBackoff backoff = AssertBackoff::EXPONENTIAL);
+void AssertEventually(
+    const std::function<void(void)>& f,
+    const MonoDelta& timeout = MonoDelta::FromSeconds(30),
+    AssertBackoff backoff = AssertBackoff::EXPONENTIAL);
 
 // Count the number of open file descriptors in use by this process.
 // 'path_pattern' is a glob-style pattern. Only paths that match this
@@ -136,20 +140,25 @@ void AssertEventually(const std::function<void(void)>& f,
 // unlike the usual behavior of path globs.
 int CountOpenFds(Env* env, const std::string& path_pattern);
 
-// Waits for the subprocess to bind to any listening TCP port, and returns the port.
-Status WaitForTcpBind(pid_t pid, uint16_t* port, MonoDelta timeout) WARN_UNUSED_RESULT;
+// Waits for the subprocess to bind to any listening TCP port, and returns the
+// port.
+Status WaitForTcpBind(pid_t pid, uint16_t* port, MonoDelta timeout)
+    WARN_UNUSED_RESULT;
 
-// Waits for the subprocess to bind to any listening UDP port, and returns the port.
-Status WaitForUdpBind(pid_t pid, uint16_t* port, MonoDelta timeout) WARN_UNUSED_RESULT;
+// Waits for the subprocess to bind to any listening UDP port, and returns the
+// port.
+Status WaitForUdpBind(pid_t pid, uint16_t* port, MonoDelta timeout)
+    WARN_UNUSED_RESULT;
 
 // Find the home directory of a Java-style application, e.g. JAVA_HOME or
 // HADOOP_HOME.
 //
 // Checks the environment, or falls back to a symlink in the bin installation
 // directory.
-Status FindHomeDir(const std::string& name,
-                   const std::string& bin_dir,
-                   std::string* home_dir) WARN_UNUSED_RESULT;
+Status FindHomeDir(
+    const std::string& name,
+    const std::string& bin_dir,
+    std::string* home_dir) WARN_UNUSED_RESULT;
 
 } // namespace kudu
 #endif

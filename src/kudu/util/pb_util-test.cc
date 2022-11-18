@@ -56,7 +56,8 @@ using std::vector;
 static const char* kTestFileName = "pb_container.meta";
 static const char* kTestKeyvalName = "my-key";
 static const int kTestKeyvalValue = 1;
-static const int kUseDefaultVersion = 0; // Use the default container version (don't set it).
+static const int kUseDefaultVersion =
+    0; // Use the default container version (don't set it).
 
 class TestPBUtil : public KuduTest {
  public:
@@ -69,24 +70,32 @@ class TestPBUtil : public KuduTest {
   // Create a container file with expected values.
   // Since this is a unit test class, and we want it to be fast, we do not
   // fsync by default.
-  Status CreateKnownGoodContainerFile(CreateMode create = OVERWRITE,
-                                      SyncMode sync = NO_SYNC);
+  Status CreateKnownGoodContainerFile(
+      CreateMode create = OVERWRITE,
+      SyncMode sync = NO_SYNC);
 
   // Create a new Protobuf Container File Writer.
   // Set version to kUseDefaultVersion to use the default version.
-  Status NewPBCWriter(int version, RWFileOptions opts,
-                      unique_ptr<WritablePBContainerFile>* pb_writer);
+  Status NewPBCWriter(
+      int version,
+      RWFileOptions opts,
+      unique_ptr<WritablePBContainerFile>* pb_writer);
 
   // Same as CreateKnownGoodContainerFile(), but with settable file version.
   // Set version to kUseDefaultVersion to use the default version.
-  Status CreateKnownGoodContainerFileWithVersion(int version,
-                                                 CreateMode create = OVERWRITE,
-                                                 SyncMode sync = NO_SYNC);
+  Status CreateKnownGoodContainerFileWithVersion(
+      int version,
+      CreateMode create = OVERWRITE,
+      SyncMode sync = NO_SYNC);
 
   // XORs the data in the specified range of the file at the given path.
-  Status BitFlipFileByteRange(const string& path, uint64_t offset, uint64_t length);
+  Status
+  BitFlipFileByteRange(const string& path, uint64_t offset, uint64_t length);
 
-  void DumpPBCToString(const string& path, ReadablePBContainerFile::Format format, string* ret);
+  void DumpPBCToString(
+      const string& path,
+      ReadablePBContainerFile::Format format,
+      string* ret);
 
   // Truncate the specified file to the specified length.
   Status TruncateFile(const string& path, uint64_t size);
@@ -100,26 +109,30 @@ class TestPBUtil : public KuduTest {
 class TestPBContainerVersions : public TestPBUtil,
                                 public ::testing::WithParamInterface<int> {
  public:
-  TestPBContainerVersions()
-      : version_(GetParam()) {
-  }
+  TestPBContainerVersions() : version_(GetParam()) {}
 
  protected:
   const int version_; // The parameterized container version we are testing.
 };
 
-INSTANTIATE_TEST_CASE_P(SupportedVersions, TestPBContainerVersions,
-                        ::testing::Values(1, 2, kUseDefaultVersion));
+INSTANTIATE_TEST_CASE_P(
+    SupportedVersions,
+    TestPBContainerVersions,
+    ::testing::Values(1, 2, kUseDefaultVersion));
 
-Status TestPBUtil::CreateKnownGoodContainerFile(CreateMode create, SyncMode sync) {
+Status TestPBUtil::CreateKnownGoodContainerFile(
+    CreateMode create,
+    SyncMode sync) {
   ProtoContainerTestPB test_pb;
   test_pb.set_name(kTestKeyvalName);
   test_pb.set_value(kTestKeyvalValue);
   return WritePBContainerToPath(env_, path_, test_pb, create, sync);
 }
 
-Status TestPBUtil::NewPBCWriter(int version, RWFileOptions opts,
-                                unique_ptr<WritablePBContainerFile>* pb_writer) {
+Status TestPBUtil::NewPBCWriter(
+    int version,
+    RWFileOptions opts,
+    unique_ptr<WritablePBContainerFile>* pb_writer) {
   unique_ptr<RWFile> writer;
   RETURN_NOT_OK(env_->NewRWFile(opts, path_, &writer));
   pb_writer->reset(new WritablePBContainerFile(std::move(writer)));
@@ -129,9 +142,10 @@ Status TestPBUtil::NewPBCWriter(int version, RWFileOptions opts,
   return Status::OK();
 }
 
-Status TestPBUtil::CreateKnownGoodContainerFileWithVersion(int version,
-                                                           CreateMode create,
-                                                           SyncMode sync) {
+Status TestPBUtil::CreateKnownGoodContainerFileWithVersion(
+    int version,
+    CreateMode create,
+    SyncMode sync) {
   ProtoContainerTestPB test_pb;
   test_pb.set_name(kTestKeyvalName);
   test_pb.set_value(kTestKeyvalValue);
@@ -144,7 +158,10 @@ Status TestPBUtil::CreateKnownGoodContainerFileWithVersion(int version,
   return Status::OK();
 }
 
-Status TestPBUtil::BitFlipFileByteRange(const string& path, uint64_t offset, uint64_t length) {
+Status TestPBUtil::BitFlipFileByteRange(
+    const string& path,
+    uint64_t offset,
+    uint64_t length) {
   faststring buf;
   // Read the data from disk.
   {
@@ -232,9 +249,8 @@ TEST_F(TestPBUtil, TestWritableFileOutputStream) {
 TEST_F(TestPBUtil, TestPBContainerSimple) {
   // Exercise both the SYNC and NO_SYNC codepaths, despite the fact that we
   // aren't able to observe a difference in the test.
-  vector<SyncMode> modes = { SYNC, NO_SYNC };
+  vector<SyncMode> modes = {SYNC, NO_SYNC};
   for (SyncMode mode : modes) {
-
     // Write the file.
     ASSERT_OK(CreateKnownGoodContainerFile(NO_OVERWRITE, mode));
 
@@ -254,7 +270,8 @@ TEST_P(TestPBContainerVersions, TestCorruption) {
   // Test that we indicate when the file does not exist.
   ProtoContainerTestPB test_pb;
   Status s = ReadPBContainerFromPath(env_, path_, &test_pb);
-  ASSERT_TRUE(s.IsNotFound()) << "Should not be found: " << path_ << ": " << s.ToString();
+  ASSERT_TRUE(s.IsNotFound())
+      << "Should not be found: " << path_ << ": " << s.ToString();
 
   // Test that an empty file looks like corruption.
   {
@@ -264,7 +281,8 @@ TEST_P(TestPBContainerVersions, TestCorruption) {
     ASSERT_OK(file->Close());
   }
   s = ReadPBContainerFromPath(env_, path_, &test_pb);
-  ASSERT_TRUE(s.IsIncomplete()) << "Should be zero length: " << path_ << ": " << s.ToString();
+  ASSERT_TRUE(s.IsIncomplete())
+      << "Should be zero length: " << path_ << ": " << s.ToString();
   ASSERT_STR_CONTAINS(s.ToString(), "File size not large enough to be valid");
 
   // Test truncated file.
@@ -274,9 +292,11 @@ TEST_P(TestPBContainerVersions, TestCorruption) {
   ASSERT_OK(TruncateFile(path_, known_good_size - 2));
   s = ReadPBContainerFromPath(env_, path_, &test_pb);
   if (version_ == 1) {
-    ASSERT_TRUE(s.IsCorruption()) << "Should be incorrect size: " << path_ << ": " << s.ToString();
+    ASSERT_TRUE(s.IsCorruption())
+        << "Should be incorrect size: " << path_ << ": " << s.ToString();
   } else {
-    ASSERT_TRUE(s.IsIncomplete()) << "Should be incorrect size: " << path_ << ": " << s.ToString();
+    ASSERT_TRUE(s.IsIncomplete())
+        << "Should be incorrect size: " << path_ << ": " << s.ToString();
   }
   ASSERT_STR_CONTAINS(s.ToString(), "File size not large enough to be valid");
 
@@ -284,24 +304,28 @@ TEST_P(TestPBContainerVersions, TestCorruption) {
   ASSERT_OK(CreateKnownGoodContainerFileWithVersion(version_));
   ASSERT_OK(BitFlipFileByteRange(path_, 0, 2));
   s = ReadPBContainerFromPath(env_, path_, &test_pb);
-  ASSERT_TRUE(s.IsCorruption()) << "Should have invalid magic: " << path_ << ": " << s.ToString();
+  ASSERT_TRUE(s.IsCorruption())
+      << "Should have invalid magic: " << path_ << ": " << s.ToString();
   ASSERT_STR_CONTAINS(s.ToString(), "Invalid magic number");
 
   // Test corrupted version.
   ASSERT_OK(CreateKnownGoodContainerFileWithVersion(version_));
   ASSERT_OK(BitFlipFileByteRange(path_, 8, 2));
   s = ReadPBContainerFromPath(env_, path_, &test_pb);
-  ASSERT_TRUE(s.IsNotSupported()) << "Should have unsupported version number: " << path_ << ": "
-                                  << s.ToString();
-  ASSERT_STR_CONTAINS(s.ToString(), " Protobuf container has unsupported version");
+  ASSERT_TRUE(s.IsNotSupported())
+      << "Should have unsupported version number: " << path_ << ": "
+      << s.ToString();
+  ASSERT_STR_CONTAINS(
+      s.ToString(), " Protobuf container has unsupported version");
 
   // Test corrupted magic+version checksum (only exists in the V2+ format).
   if (version_ >= 2) {
     ASSERT_OK(CreateKnownGoodContainerFileWithVersion(version_));
     ASSERT_OK(BitFlipFileByteRange(path_, 12, 2));
     s = ReadPBContainerFromPath(env_, path_, &test_pb);
-    ASSERT_TRUE(s.IsCorruption()) << "Should have corrupted file header checksum: " << path_ << ": "
-                                    << s.ToString();
+    ASSERT_TRUE(s.IsCorruption())
+        << "Should have corrupted file header checksum: " << path_ << ": "
+        << s.ToString();
     ASSERT_STR_CONTAINS(s.ToString(), "File header checksum does not match");
   }
 
@@ -316,8 +340,9 @@ TEST_P(TestPBContainerVersions, TestCorruption) {
     ASSERT_TRUE(s.IsCorruption()) << s.ToString();
     ASSERT_STR_CONTAINS(s.ToString(), "File size not large enough to be valid");
   } else {
-    ASSERT_TRUE(s.IsCorruption()) << "Should be invalid data length checksum: "
-                                  << path_ << ": " << s.ToString();
+    ASSERT_TRUE(s.IsCorruption())
+        << "Should be invalid data length checksum: " << path_ << ": "
+        << s.ToString();
     ASSERT_STR_CONTAINS(s.ToString(), "Incorrect checksum");
   }
 
@@ -325,16 +350,16 @@ TEST_P(TestPBContainerVersions, TestCorruption) {
   ASSERT_OK(CreateKnownGoodContainerFileWithVersion(version_));
   ASSERT_OK(BitFlipFileByteRange(path_, kFirstRecordOffset + 4, 2));
   s = ReadPBContainerFromPath(env_, path_, &test_pb);
-  ASSERT_TRUE(s.IsCorruption()) << "Should be incorrect checksum: " << path_ << ": "
-                                << s.ToString();
+  ASSERT_TRUE(s.IsCorruption())
+      << "Should be incorrect checksum: " << path_ << ": " << s.ToString();
   ASSERT_STR_CONTAINS(s.ToString(), "Incorrect checksum");
 
   // Test corrupted checksum.
   ASSERT_OK(CreateKnownGoodContainerFileWithVersion(version_));
   ASSERT_OK(BitFlipFileByteRange(path_, known_good_size - 4, 2));
   s = ReadPBContainerFromPath(env_, path_, &test_pb);
-  ASSERT_TRUE(s.IsCorruption()) << "Should be incorrect checksum: " << path_ << ": "
-                                << s.ToString();
+  ASSERT_TRUE(s.IsCorruption())
+      << "Should be incorrect checksum: " << path_ << ": " << s.ToString();
   ASSERT_STR_CONTAINS(s.ToString(), "Incorrect checksum");
 }
 
@@ -384,11 +409,14 @@ TEST_P(TestPBContainerVersions, TestExtraNullBytes) {
     Status s = pb_file.ReadNextPB(&test_pb);
     // Loop to verify that the same response is repeatably returned.
     for (int i = 0; i < 2; i++) {
-      ASSERT_TRUE(version_ == 1 ? s.IsCorruption() : s.IsIncomplete()) << s.ToString();
+      ASSERT_TRUE(version_ == 1 ? s.IsCorruption() : s.IsIncomplete())
+          << s.ToString();
       if (extra_bytes < 8) {
-        ASSERT_STR_CONTAINS(s.ToString(), "File size not large enough to be valid");
+        ASSERT_STR_CONTAINS(
+            s.ToString(), "File size not large enough to be valid");
       } else if (version_ == 1) {
-        ASSERT_STR_CONTAINS(s.ToString(), "Length and data checksum does not match");
+        ASSERT_STR_CONTAINS(
+            s.ToString(), "Length and data checksum does not match");
       } else {
         ASSERT_STR_CONTAINS(s.ToString(), "rest of file is NULL bytes");
       }
@@ -550,9 +578,10 @@ TEST_F(TestPBUtil, TestPopulateDescriptorSet) {
   }
 }
 
-void TestPBUtil::DumpPBCToString(const string& path,
-                                 ReadablePBContainerFile::Format format,
-                                 string* ret) {
+void TestPBUtil::DumpPBCToString(
+    const string& path,
+    ReadablePBContainerFile::Format format,
+    string* ret) {
   unique_ptr<RandomAccessFile> reader;
   ASSERT_OK(env_->NewRandomAccessFile(path, &reader));
   ReadablePBContainerFile pb_reader(std::move(reader));
@@ -592,8 +621,8 @@ TEST_P(TestPBContainerVersions, TestDumpPBContainer) {
       "}\n\n";
 
   const char* kExpectedOutputShort =
-    "0\trecord_one { name: \"foo\" value: 0 } record_two { record { name: \"foo\" value: 0 } }\n"
-    "1\trecord_one { name: \"foo\" value: 1 } record_two { record { name: \"foo\" value: 2 } }\n";
+      "0\trecord_one { name: \"foo\" value: 0 } record_two { record { name: \"foo\" value: 0 } }\n"
+      "1\trecord_one { name: \"foo\" value: 1 } record_two { record { name: \"foo\" value: 2 } }\n";
 
   const char* kExpectedOutputJson =
       "{\"recordOne\":{\"name\":\"foo\",\"value\":0},\"recordTwo\":{\"record\":{\"name\":\"foo\",\"value\":0}}}\n" // NOLINT
@@ -609,19 +638,22 @@ TEST_P(TestPBContainerVersions, TestDumpPBContainer) {
 
   for (int i = 0; i < 2; i++) {
     pb.mutable_record_one()->set_value(i);
-    pb.mutable_record_two()->mutable_record()->set_value(i*2);
+    pb.mutable_record_two()->mutable_record()->set_value(i * 2);
     ASSERT_OK(pb_writer->Append(pb));
   }
   ASSERT_OK(pb_writer->Close());
 
   string output;
-  NO_FATALS(DumpPBCToString(path_, ReadablePBContainerFile::Format::DEFAULT, &output));
+  NO_FATALS(DumpPBCToString(
+      path_, ReadablePBContainerFile::Format::DEFAULT, &output));
   ASSERT_STREQ(kExpectedOutput, output.c_str());
 
-  NO_FATALS(DumpPBCToString(path_, ReadablePBContainerFile::Format::ONELINE, &output));
+  NO_FATALS(DumpPBCToString(
+      path_, ReadablePBContainerFile::Format::ONELINE, &output));
   ASSERT_STREQ(kExpectedOutputShort, output.c_str());
 
-  NO_FATALS(DumpPBCToString(path_, ReadablePBContainerFile::Format::JSON, &output));
+  NO_FATALS(
+      DumpPBCToString(path_, ReadablePBContainerFile::Format::JSON, &output));
   ASSERT_STREQ(kExpectedOutputJson, output.c_str());
 }
 

@@ -48,10 +48,12 @@ using strings::Substitute;
 namespace kudu {
 namespace security {
 
-template<> struct SslTypeTraits<ASN1_INTEGER> {
+template <>
+struct SslTypeTraits<ASN1_INTEGER> {
   static constexpr auto kFreeFunc = &ASN1_INTEGER_free;
 };
-template<> struct SslTypeTraits<BIGNUM> {
+template <>
+struct SslTypeTraits<BIGNUM> {
   static constexpr auto kFreeFunc = &BN_free;
 };
 
@@ -59,14 +61,21 @@ namespace ca {
 
 namespace {
 
-Status SetSubjectNameField(X509_NAME* name,
-                           const char* field_code,
-                           const string& field_value) {
+Status SetSubjectNameField(
+    X509_NAME* name,
+    const char* field_code,
+    const string& field_value) {
   CHECK(name);
   CHECK(field_code);
-  OPENSSL_RET_NOT_OK(X509_NAME_add_entry_by_txt(
-      name, field_code, MBSTRING_ASC,
-      reinterpret_cast<const unsigned char*>(field_value.c_str()), -1, -1, 0),
+  OPENSSL_RET_NOT_OK(
+      X509_NAME_add_entry_by_txt(
+          name,
+          field_code,
+          MBSTRING_ASC,
+          reinterpret_cast<const unsigned char*>(field_value.c_str()),
+          -1,
+          -1,
+          0),
       Substitute("error setting subject field $0", field_code));
   return Status::OK();
 }
@@ -77,13 +86,15 @@ CertRequestGenerator::~CertRequestGenerator() {
   sk_X509_EXTENSION_pop_free(extensions_, X509_EXTENSION_free);
 }
 
-Status CertRequestGeneratorBase::GenerateRequest(const PrivateKey& key,
-                                                 CertSignRequest* ret) const {
+Status CertRequestGeneratorBase::GenerateRequest(
+    const PrivateKey& key,
+    CertSignRequest* ret) const {
   SCOPED_OPENSSL_NO_PENDING_ERRORS;
   CHECK(ret);
   CHECK(Initialized());
   auto req = ssl_make_unique(X509_REQ_new());
-  OPENSSL_RET_NOT_OK(X509_REQ_set_pubkey(req.get(), key.GetRawData()),
+  OPENSSL_RET_NOT_OK(
+      X509_REQ_set_pubkey(req.get(), key.GetRawData()),
       "error setting X509 public key");
 
   // Populate the subject field of the request.
@@ -93,28 +104,30 @@ Status CertRequestGeneratorBase::GenerateRequest(const PrivateKey& key,
   RETURN_NOT_OK(SetExtensions(req.get()));
 
   // And finally sign the result.
-  OPENSSL_RET_NOT_OK(X509_REQ_sign(req.get(), key.GetRawData(), EVP_sha256()),
+  OPENSSL_RET_NOT_OK(
+      X509_REQ_sign(req.get(), key.GetRawData(), EVP_sha256()),
       "error signing X509 request");
   ret->AdoptRawData(req.release());
 
   return Status::OK();
 }
 
-Status CertRequestGeneratorBase::PushExtension(stack_st_X509_EXTENSION* st,
-                                               int32_t nid, StringPiece value) {
+Status CertRequestGeneratorBase::PushExtension(
+    stack_st_X509_EXTENSION* st,
+    int32_t nid,
+    StringPiece value) {
   SCOPED_OPENSSL_NO_PENDING_ERRORS;
-  auto ex = ssl_make_unique(
-      X509V3_EXT_conf_nid(nullptr, nullptr, nid, const_cast<char*>(value.data())));
+  auto ex = ssl_make_unique(X509V3_EXT_conf_nid(
+      nullptr, nullptr, nid, const_cast<char*>(value.data())));
   OPENSSL_RET_IF_NULL(ex, "error configuring extension");
-  OPENSSL_RET_NOT_OK(sk_X509_EXTENSION_push(st, ex.release()),
+  OPENSSL_RET_NOT_OK(
+      sk_X509_EXTENSION_push(st, ex.release()),
       "error pushing extension into the stack");
   return Status::OK();
 }
 
 CertRequestGenerator::CertRequestGenerator(Config config)
-    : CertRequestGeneratorBase(),
-      config_(std::move(config)) {
-}
+    : CertRequestGeneratorBase(), config_(std::move(config)) {}
 
 Status CertRequestGenerator::Init() {
   InitializeOpenSSL();
@@ -150,18 +163,20 @@ Status CertRequestGenerator::Init() {
   // of a server to a client and vice versa: the intended users of the
   // certificates are tablet servers which are going to talk to master
   // and other tablet servers via TLS channels.
-  RETURN_NOT_OK(PushExtension(extensions_, NID_ext_key_usage,
-                              "critical,serverAuth,clientAuth"));
+  RETURN_NOT_OK(PushExtension(
+      extensions_, NID_ext_key_usage, "critical,serverAuth,clientAuth"));
 
   // The generated certificates are not intended to be used as CA certificates
   // (i.e. they cannot be used to sign/issue certificates).
-  RETURN_NOT_OK(PushExtension(extensions_, NID_basic_constraints,
-                              "critical,CA:FALSE"));
+  RETURN_NOT_OK(
+      PushExtension(extensions_, NID_basic_constraints, "critical,CA:FALSE"));
 
   if (config_.kerberos_principal) {
     int nid = GetKuduKerberosPrincipalOidNid();
-    RETURN_NOT_OK(PushExtension(extensions_, nid,
-                                Substitute("ASN1:UTF8:$0", *config_.kerberos_principal)));
+    RETURN_NOT_OK(PushExtension(
+        extensions_,
+        nid,
+        Substitute("ASN1:UTF8:$0", *config_.kerberos_principal)));
   }
   RETURN_NOT_OK(PushExtension(extensions_, NID_subject_alt_name, san_hosts));
 
@@ -176,14 +191,15 @@ bool CertRequestGenerator::Initialized() const {
 
 Status CertRequestGenerator::SetSubject(X509_REQ* req) const {
   if (config_.user_id) {
-    RETURN_NOT_OK(SetSubjectNameField(X509_REQ_get_subject_name(req),
-                                      "UID", *config_.user_id));
+    RETURN_NOT_OK(SetSubjectNameField(
+        X509_REQ_get_subject_name(req), "UID", *config_.user_id));
   }
   return Status::OK();
 }
 
 Status CertRequestGenerator::SetExtensions(X509_REQ* req) const {
-  OPENSSL_RET_NOT_OK(X509_REQ_add_extensions(req, extensions_),
+  OPENSSL_RET_NOT_OK(
+      X509_REQ_add_extensions(req, extensions_),
       "error setting X509 request extensions");
   return Status::OK();
 }
@@ -191,8 +207,7 @@ Status CertRequestGenerator::SetExtensions(X509_REQ* req) const {
 CaCertRequestGenerator::CaCertRequestGenerator(Config config)
     : config_(std::move(config)),
       extensions_(nullptr),
-      is_initialized_(false) {
-}
+      is_initialized_(false) {}
 
 CaCertRequestGenerator::~CaCertRequestGenerator() {
   sk_X509_EXTENSION_pop_free(extensions_, X509_EXTENSION_free);
@@ -218,11 +233,11 @@ Status CaCertRequestGenerator::Init() {
   // for details.
 
   // The target ceritifcate is a CA certificate: it's for signing X509 certs.
-  RETURN_NOT_OK(PushExtension(extensions_, NID_key_usage,
-                              "critical,keyCertSign"));
+  RETURN_NOT_OK(
+      PushExtension(extensions_, NID_key_usage, "critical,keyCertSign"));
   // The generated certificates are for the private CA service.
-  RETURN_NOT_OK(PushExtension(extensions_, NID_basic_constraints,
-                              "critical,CA:TRUE"));
+  RETURN_NOT_OK(
+      PushExtension(extensions_, NID_basic_constraints, "critical,CA:TRUE"));
   is_initialized_ = true;
 
   return Status::OK();
@@ -238,15 +253,17 @@ Status CaCertRequestGenerator::SetSubject(X509_REQ* req) const {
 }
 
 Status CaCertRequestGenerator::SetExtensions(X509_REQ* req) const {
-  OPENSSL_RET_NOT_OK(X509_REQ_add_extensions(req, extensions_),
+  OPENSSL_RET_NOT_OK(
+      X509_REQ_add_extensions(req, extensions_),
       "error setting X509 request extensions");
   return Status::OK();
 }
 
-Status CertSigner::SelfSignCA(const PrivateKey& key,
-                              CaCertRequestGenerator::Config config,
-                              int64_t cert_expiration_seconds,
-                              Cert* cert) {
+Status CertSigner::SelfSignCA(
+    const PrivateKey& key,
+    CaCertRequestGenerator::Config config,
+    int64_t cert_expiration_seconds,
+    Cert* cert) {
   // Generate a CSR for the CA.
   CertSignRequest ca_csr;
   {
@@ -261,9 +278,10 @@ Status CertSigner::SelfSignCA(const PrivateKey& key,
       .Sign(ca_csr, cert);
 }
 
-Status CertSigner::SelfSignCert(const PrivateKey& key,
-                                CertRequestGenerator::Config config,
-                                Cert* cert) {
+Status CertSigner::SelfSignCert(
+    const PrivateKey& key,
+    CertRequestGenerator::Config config,
+    Cert* cert) {
   // Generate a CSR.
   CertSignRequest csr;
   {
@@ -277,11 +295,8 @@ Status CertSigner::SelfSignCert(const PrivateKey& key,
   return CertSigner(nullptr, &key).Sign(csr, cert);
 }
 
-
-CertSigner::CertSigner(const Cert* ca_cert,
-                       const PrivateKey* ca_private_key)
-    : ca_cert_(ca_cert),
-      ca_private_key_(ca_private_key) {
+CertSigner::CertSigner(const Cert* ca_cert, const PrivateKey* ca_private_key)
+    : ca_cert_(ca_cert), ca_private_key_(ca_private_key) {
   // Private key is required.
   CHECK(ca_private_key_ && ca_private_key_->GetRawData());
   // The cert is optional, but if we have it, it should be initialized.
@@ -315,9 +330,7 @@ Status CertSigner::CopyExtensions(X509_REQ* req, X509* x) {
   CHECK(req);
   CHECK(x);
   STACK_OF(X509_EXTENSION)* exts = X509_REQ_get_extensions(req);
-  SCOPED_CLEANUP({
-    sk_X509_EXTENSION_pop_free(exts, X509_EXTENSION_free);
-  });
+  SCOPED_CLEANUP({ sk_X509_EXTENSION_pop_free(exts, X509_EXTENSION_free); });
   for (size_t i = 0; i < sk_X509_EXTENSION_num(exts); ++i) {
     X509_EXTENSION* ext = sk_X509_EXTENSION_value(exts, i);
     ASN1_OBJECT* obj = X509_EXTENSION_get_object(ext);
@@ -342,8 +355,7 @@ Status CertSigner::FillCertTemplateFromRequest(X509_REQ* req, X509* tmpl) {
 
   // As of OpenSSL 1.1, req's internals are hidden.
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
-  if (!req->req_info ||
-      !req->req_info->pubkey ||
+  if (!req->req_info || !req->req_info->pubkey ||
       !req->req_info->pubkey->public_key ||
       !req->req_info->pubkey->public_key->data) {
     return Status::RuntimeError("corrupted CSR: no public key");
@@ -353,18 +365,18 @@ Status CertSigner::FillCertTemplateFromRequest(X509_REQ* req, X509* tmpl) {
   OPENSSL_RET_IF_NULL(pub_key, "error unpacking public key from CSR");
   const int rc = X509_REQ_verify(req, pub_key.get());
   if (rc < 0) {
-    return Status::RuntimeError("CSR signature verification error",
-                                GetOpenSSLErrors());
+    return Status::RuntimeError(
+        "CSR signature verification error", GetOpenSSLErrors());
   }
   if (rc == 0) {
-    return Status::RuntimeError("CSR signature mismatch",
-                                GetOpenSSLErrors());
+    return Status::RuntimeError("CSR signature mismatch", GetOpenSSLErrors());
   }
-  OPENSSL_RET_NOT_OK(X509_set_subject_name(tmpl, X509_REQ_get_subject_name(req)),
+  OPENSSL_RET_NOT_OK(
+      X509_set_subject_name(tmpl, X509_REQ_get_subject_name(req)),
       "error setting cert subject name");
   RETURN_NOT_OK(CopyExtensions(req, tmpl));
-  OPENSSL_RET_NOT_OK(X509_set_pubkey(tmpl, pub_key.get()),
-      "error setting cert public key");
+  OPENSSL_RET_NOT_OK(
+      X509_set_pubkey(tmpl, pub_key.get()), "error setting cert public key");
   return Status::OK();
 }
 
@@ -376,10 +388,11 @@ Status CertSigner::DigestSign(const EVP_MD* md, EVP_PKEY* pkey, X509* x) {
 Status CertSigner::GenerateSerial(c_unique_ptr<ASN1_INTEGER>* ret) {
   SCOPED_OPENSSL_NO_PENDING_ERRORS;
   auto btmp = ssl_make_unique(BN_new());
-  OPENSSL_RET_NOT_OK(BN_pseudo_rand(btmp.get(), 64, 0, 0),
-      "error generating random number");
+  OPENSSL_RET_NOT_OK(
+      BN_pseudo_rand(btmp.get(), 64, 0, 0), "error generating random number");
   auto serial = ssl_make_unique(ASN1_INTEGER_new());
-  OPENSSL_RET_IF_NULL(BN_to_ASN1_INTEGER(btmp.get(), serial.get()),
+  OPENSSL_RET_IF_NULL(
+      BN_to_ASN1_INTEGER(btmp.get(), serial.get()),
       "error converting number into ASN1 representation");
   if (ret) {
     ret->swap(serial);
@@ -387,8 +400,8 @@ Status CertSigner::GenerateSerial(c_unique_ptr<ASN1_INTEGER>* ret) {
   return Status::OK();
 }
 
-Status CertSigner::DoSign(const EVP_MD* digest, int32_t exp_seconds,
-                          X509* ret) const {
+Status CertSigner::DoSign(const EVP_MD* digest, int32_t exp_seconds, X509* ret)
+    const {
   SCOPED_OPENSSL_NO_PENDING_ERRORS;
   CHECK(ret);
 
@@ -400,18 +413,20 @@ Status CertSigner::DoSign(const EVP_MD* digest, int32_t exp_seconds,
   // Otherwise, we are self-signing so the target cert is also the issuer.
   X509* issuer_cert = ca_cert_ ? ca_cert_->GetTopOfChainX509() : ret;
   X509_NAME* issuer_name = X509_get_subject_name(issuer_cert);
-  OPENSSL_RET_NOT_OK(X509_set_issuer_name(ret, issuer_name),
-      "error setting issuer name");
+  OPENSSL_RET_NOT_OK(
+      X509_set_issuer_name(ret, issuer_name), "error setting issuer name");
   c_unique_ptr<ASN1_INTEGER> serial;
   RETURN_NOT_OK(GenerateSerial(&serial));
   // set version to v3
-  OPENSSL_RET_NOT_OK(X509_set_version(ret, kX509V3),
-      "error setting cert version");
-  OPENSSL_RET_NOT_OK(X509_set_serialNumber(ret, serial.get()),
-      "error setting cert serial");
-  OPENSSL_RET_IF_NULL(X509_gmtime_adj(X509_get_notBefore(ret), 0L),
+  OPENSSL_RET_NOT_OK(
+      X509_set_version(ret, kX509V3), "error setting cert version");
+  OPENSSL_RET_NOT_OK(
+      X509_set_serialNumber(ret, serial.get()), "error setting cert serial");
+  OPENSSL_RET_IF_NULL(
+      X509_gmtime_adj(X509_get_notBefore(ret), 0L),
       "error setting cert validity time");
-  OPENSSL_RET_IF_NULL(X509_gmtime_adj(X509_get_notAfter(ret), exp_seconds),
+  OPENSSL_RET_IF_NULL(
+      X509_gmtime_adj(X509_get_notAfter(ret), exp_seconds),
       "error setting cert expiration time");
   RETURN_NOT_OK(DigestSign(digest, ca_private_key_->GetRawData(), ret));
 

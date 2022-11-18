@@ -45,12 +45,11 @@ using strings::Substitute;
 
 namespace kudu {
 
-class TsLocationAssignmentITest :
-    public KuduTest,
-    public ::testing::WithParamInterface<std::tuple<int, int>> {
+class TsLocationAssignmentITest
+    : public KuduTest,
+      public ::testing::WithParamInterface<std::tuple<int, int>> {
  public:
-  TsLocationAssignmentITest()
-      : rng_(SeedRandom()) {
+  TsLocationAssignmentITest() : rng_(SeedRandom()) {
     const auto& param = GetParam();
     opts_.num_masters = std::get<0>(param);
     opts_.num_tablet_servers = std::get<1>(param);
@@ -87,9 +86,8 @@ class TsLocationAssignmentITest :
 
   void CheckLocationInfo() {
     unordered_map<string, itest::TServerDetails*> ts_map;
-    ASSERT_OK(itest::CreateTabletServerMap(cluster_->master_proxy(0),
-                                           cluster_->messenger(),
-                                           &ts_map));
+    ASSERT_OK(itest::CreateTabletServerMap(
+        cluster_->master_proxy(0), cluster_->messenger(), &ts_map));
     ValueDeleter deleter(&ts_map);
 
     LocationInfo location_info;
@@ -125,8 +123,11 @@ TEST_P(TsLocationAssignmentITest, Basic) {
   NO_FATALS(cluster_->AssertNoCrashes());
 }
 
-INSTANTIATE_TEST_CASE_P(, TsLocationAssignmentITest,
-    ::testing::Combine(::testing::Values(1, 3),
-                       ::testing::Values(1, 8, 16, 32)));
+INSTANTIATE_TEST_CASE_P(
+    ,
+    TsLocationAssignmentITest,
+    ::testing::Combine(
+        ::testing::Values(1, 3),
+        ::testing::Values(1, 8, 16, 32)));
 
 } // namespace kudu

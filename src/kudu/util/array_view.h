@@ -85,7 +85,8 @@ class ArrayView final {
 
   // Construct an ArrayView for an array.
   template <typename U, size_t N>
-  ArrayView(U (&array)[N]) : ArrayView(&array[0], N) {} // NOLINT(runtime/explicit)
+  ArrayView(U (&array)[N])
+      : ArrayView(&array[0], N) {} // NOLINT(runtime/explicit)
 
   // Construct an ArrayView for any type U that has a size() method whose
   // return value converts implicitly to size_t, and a data() method whose
@@ -101,18 +102,32 @@ class ArrayView final {
   // Indexing, size, and iteration. These allow mutation even if the ArrayView
   // is const, because the ArrayView doesn't own the array. (To prevent
   // mutation, use ArrayView<const T>.)
-  size_t size() const { return size_; }
-  bool empty() const { return size_ == 0; }
-  T* data() const { return data_; }
+  size_t size() const {
+    return size_;
+  }
+  bool empty() const {
+    return size_ == 0;
+  }
+  T* data() const {
+    return data_;
+  }
   T& operator[](size_t idx) const {
     DCHECK_LT(idx, size_);
-    DCHECK(data_);  // Follows from size_ > idx and the class invariant.
+    DCHECK(data_); // Follows from size_ > idx and the class invariant.
     return data_[idx];
   }
-  T* begin() const { return data_; }
-  T* end() const { return data_ + size_; }
-  const T* cbegin() const { return data_; }
-  const T* cend() const { return data_ + size_; }
+  T* begin() const {
+    return data_;
+  }
+  T* end() const {
+    return data_ + size_;
+  }
+  const T* cbegin() const {
+    return data_;
+  }
+  const T* cend() const {
+    return data_ + size_;
+  }
 
   // Comparing two ArrayViews compares their (pointer,size) pairs; it does
   // *not* dereference the pointers.
@@ -125,9 +140,11 @@ class ArrayView final {
 
  private:
   // Invariant: !data_ iff size_ == 0.
-  void CheckInvariant() const { DCHECK_EQ(!data_, size_ == 0); }
+  void CheckInvariant() const {
+    DCHECK_EQ(!data_, size_ == 0);
+  }
   T* data_;
   size_t size_;
 };
 
-}  // namespace kudu
+} // namespace kudu

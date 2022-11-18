@@ -15,14 +15,15 @@ namespace subtle {
 
 RefCountedBase::RefCountedBase()
     : ref_count_(0)
-#ifdef FB_DO_NOT_REMOVE  // #ifndef NDEBUG
-    , in_dtor_(false)
+#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
+      ,
+      in_dtor_(false)
 #endif
-    {
+{
 }
 
 RefCountedBase::~RefCountedBase() {
-#ifdef FB_DO_NOT_REMOVE  // #ifndef NDEBUG
+#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
   DCHECK(in_dtor_) << "RefCounted object deleted without calling Release()";
 #endif
 }
@@ -31,7 +32,7 @@ void RefCountedBase::AddRef() const {
   // TODO(maruel): Add back once it doesn't assert 500 times/sec.
   // Current thread books the critical section "AddRelease" without release it.
   // DFAKE_SCOPED_LOCK_THREAD_LOCKED(add_release_);
-#ifdef FB_DO_NOT_REMOVE  // #ifndef NDEBUG
+#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
   DCHECK(!in_dtor_);
 #endif
   ++ref_count_;
@@ -41,11 +42,11 @@ bool RefCountedBase::Release() const {
   // TODO(maruel): Add back once it doesn't assert 500 times/sec.
   // Current thread books the critical section "AddRelease" without release it.
   // DFAKE_SCOPED_LOCK_THREAD_LOCKED(add_release_);
-#ifdef FB_DO_NOT_REMOVE  // #ifndef NDEBUG
+#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
   DCHECK(!in_dtor_);
 #endif
   if (--ref_count_ == 0) {
-#ifdef FB_DO_NOT_REMOVE  // #ifndef NDEBUG
+#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
     in_dtor_ = true;
 #endif
     return true;
@@ -59,32 +60,32 @@ bool RefCountedThreadSafeBase::HasOneRef() const {
 }
 
 RefCountedThreadSafeBase::RefCountedThreadSafeBase() : ref_count_(0) {
-#ifdef FB_DO_NOT_REMOVE  // #ifndef NDEBUG
+#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
   in_dtor_ = false;
 #endif
 }
 
 RefCountedThreadSafeBase::~RefCountedThreadSafeBase() {
-#ifdef FB_DO_NOT_REMOVE  // #ifndef NDEBUG
+#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
   DCHECK(in_dtor_) << "RefCountedThreadSafe object deleted without "
                       "calling Release()";
 #endif
 }
 
 void RefCountedThreadSafeBase::AddRef() const {
-#ifdef FB_DO_NOT_REMOVE  // #ifndef NDEBUG
+#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
   DCHECK(!in_dtor_);
 #endif
   base::RefCountInc(&ref_count_);
 }
 
 bool RefCountedThreadSafeBase::Release() const {
-#ifdef FB_DO_NOT_REMOVE  // #ifndef NDEBUG
+#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
   DCHECK(!in_dtor_);
   DCHECK(!base::RefCountIsZero(&ref_count_));
 #endif
   if (!base::RefCountDec(&ref_count_)) {
-#ifdef FB_DO_NOT_REMOVE  // #ifndef NDEBUG
+#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
     in_dtor_ = true;
 #endif
     return true;
@@ -92,6 +93,6 @@ bool RefCountedThreadSafeBase::Release() const {
   return false;
 }
 
-}  // namespace subtle
+} // namespace subtle
 
-}  // namespace kudu
+} // namespace kudu

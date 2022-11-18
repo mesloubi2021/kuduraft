@@ -138,8 +138,9 @@ class RpcController {
   void set_deadline(const MonoTime& deadline);
 
   // Allows setting the request id for the next request sent to the server.
-  // A request id allows the server to identify each request sent by the client uniquely,
-  // in some cases even when sent to multiple servers, enabling exactly once semantics.
+  // A request id allows the server to identify each request sent by the client
+  // uniquely, in some cases even when sent to multiple servers, enabling
+  // exactly once semantics.
   void SetRequestIdPB(std::unique_ptr<RequestIdPB> request_id);
 
   // Returns whether a request id has been set on RPC header.
@@ -156,19 +157,20 @@ class RpcController {
   // with the RPC call, and if any required feature is not supported, the
   // call will fail with a NotSupported() status.
   //
-  // This can be used when an RPC call changes in a way that is protobuf-compatible,
-  // but for which it would not be appropriate for the server to simply ignore
-  // an added field. For example, consider an API call like:
+  // This can be used when an RPC call changes in a way that is
+  // protobuf-compatible, but for which it would not be appropriate for the
+  // server to simply ignore an added field. For example, consider an API call
+  // like:
   //
   //   message DeleteAccount {
   //     optional string username = 1;
   //     optional bool dry_run = 2; // ADDED LATER!
   //   }
   //
-  // In this case, if a new client which supports the 'dry_run' flag sends the RPC
-  // to an old server, the old server will simply ignore the unrecognized parameter,
-  // with highly problematic results. To solve this problem, the new version can
-  // add a feature flag:
+  // In this case, if a new client which supports the 'dry_run' flag sends the
+  // RPC to an old server, the old server will simply ignore the unrecognized
+  // parameter, with highly problematic results. To solve this problem, the new
+  // version can add a feature flag:
   //
   //   In .proto file
   //   ----------------
@@ -184,13 +186,13 @@ class RpcController {
   //     req.set_dry_run(true);
   //   }
   //
-  // This has the effect of (a) maintaining compatibility when dry_run is not specified
-  // and (b) rejecting the RPC with a "NotSupported" error when it is.
+  // This has the effect of (a) maintaining compatibility when dry_run is not
+  // specified and (b) rejecting the RPC with a "NotSupported" error when it is.
   //
   // NOTE: 'feature' is an int rather than an enum type because each service
-  // must define its own enum of supported features, and protobuf doesn't support
-  // any ability to 'extend' enum types. Implementers should define an enum in the
-  // service's protobuf definition as shown above.
+  // must define its own enum of supported features, and protobuf doesn't
+  // support any ability to 'extend' enum types. Implementers should define an
+  // enum in the service's protobuf definition as shown above.
   void RequireServerFeature(uint32_t feature);
 
   // Executes the provided function with a reference to the required server
@@ -219,23 +221,24 @@ class RpcController {
   // May fail if index is invalid.
   Status GetInboundSidecar(int idx, Slice* sidecar) const;
 
-  // Adds a sidecar to the outbound request. The index of the sidecar is written to
-  // 'idx'. Returns an error if TransferLimits::kMaxSidecars have already been added
-  // to this request. Also returns an error if the total size of all sidecars would
-  // exceed TransferLimits::kMaxTotalSidecarBytes.
+  // Adds a sidecar to the outbound request. The index of the sidecar is written
+  // to 'idx'. Returns an error if TransferLimits::kMaxSidecars have already
+  // been added to this request. Also returns an error if the total size of all
+  // sidecars would exceed TransferLimits::kMaxTotalSidecarBytes.
   Status AddOutboundSidecar(std::unique_ptr<RpcSidecar> car, int* idx);
 
-  // Cancel the call associated with the RpcController. This function should only be
-  // called when there is an outstanding outbound call. It's always safe to call
-  // Cancel() after you've sent a call, so long as you haven't called Reset() yet.
-  // Caller is not responsible for synchronization between cancellation and the
-  // callback. (i.e. the callback may or may not be invoked yet when Cancel()
-  // is called).
+  // Cancel the call associated with the RpcController. This function should
+  // only be called when there is an outstanding outbound call. It's always safe
+  // to call Cancel() after you've sent a call, so long as you haven't called
+  // Reset() yet. Caller is not responsible for synchronization between
+  // cancellation and the callback. (i.e. the callback may or may not be invoked
+  // yet when Cancel() is called).
   //
-  // Cancellation is "best effort" - i.e. it's still possible the callback passed
-  // to the call will be fired with a success status. If cancellation succeeds,
-  // the callback will be invoked with a Aborted status. Cancellation is asynchronous
-  // so the callback will still be invoked from the reactor thread.
+  // Cancellation is "best effort" - i.e. it's still possible the callback
+  // passed to the call will be fired with a success status. If cancellation
+  // succeeds, the callback will be invoked with a Aborted status. Cancellation
+  // is asynchronous so the callback will still be invoked from the reactor
+  // thread.
   void Cancel();
 
  private:
@@ -246,8 +249,11 @@ class RpcController {
   // outbound_sidecars_ to call_ in preparation for serialization.
   void SetRequestParam(const google::protobuf::Message& req);
 
-  // Set the messenger which contains the reactor thread handling the outbound call.
-  void SetMessenger(Messenger* messenger) { messenger_ = messenger; }
+  // Set the messenger which contains the reactor thread handling the outbound
+  // call.
+  void SetMessenger(Messenger* messenger) {
+    messenger_ = messenger;
+  }
 
   MonoDelta timeout_;
   std::unordered_set<uint32_t> required_server_features_;

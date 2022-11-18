@@ -25,7 +25,7 @@
 #include <boost/optional/optional.hpp>
 
 #include "kudu/client/shared_ptr.h"
-#include "kudu/consensus/consensus.pb.h"  // IWYU pragma: keep
+#include "kudu/consensus/consensus.pb.h" // IWYU pragma: keep
 #include "kudu/consensus/metadata.pb.h"
 #include "kudu/util/status.h"
 
@@ -139,7 +139,8 @@ Status GetRpcAddressForTS(
     HostPort* hp);
 
 // Change Raft consensus configuration for the tablet with UUID 'replica_uuid'.
-Status DoChangeConfig(const std::vector<std::string>& master_addresses,
+Status DoChangeConfig(
+    const std::vector<std::string>& master_addresses,
     const std::string& tablet_id,
     const std::string& replica_uuid,
     const boost::optional<consensus::RaftPeerPB::MemberType>& member_type,
@@ -154,9 +155,10 @@ Status DoChangeConfig(const std::vector<std::string>& master_addresses,
 // of an existing tablet is known, pass it via the 'tablet_id_in' parameter.
 // The 'is_343_scheme' out parameter is set to 'true' if the cluster uses
 // the 3-4-3 replica management scheme.
-Status Is343SchemeCluster(const std::vector<std::string>& master_addresses,
-                          const boost::optional<std::string>& tablet_id_in,
-                          bool* is_343_scheme);
+Status Is343SchemeCluster(
+    const std::vector<std::string>& master_addresses,
+    const boost::optional<std::string>& tablet_id_in,
+    bool* is_343_scheme);
 
 } // namespace tools
 } // namespace kudu

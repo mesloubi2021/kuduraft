@@ -41,18 +41,25 @@ Status CheckInBlockingMode(const Socket* sock);
 // header: Request or Response header protobuf.
 // msg: Protobuf message to send. This message must be fully initialized.
 // deadline: Latest time allowed for receive to complete before timeout.
-Status SendFramedMessageBlocking(Socket* sock, const google::protobuf::MessageLite& header,
-    const google::protobuf::MessageLite& msg, const MonoTime& deadline);
+Status SendFramedMessageBlocking(
+    Socket* sock,
+    const google::protobuf::MessageLite& header,
+    const google::protobuf::MessageLite& msg,
+    const MonoTime& deadline);
 
 // Receive a full message frame from the server.
 // recv_buf: buffer to use for reading the data from the socket.
 // header: Request or Response header protobuf.
 // param_buf: Slice into recv_buf containing unparsed RPC param protobuf data.
 // deadline: Latest time allowed for receive to complete before timeout.
-Status ReceiveFramedMessageBlocking(Socket* sock, faststring* recv_buf,
-    google::protobuf::MessageLite* header, Slice* param_buf, const MonoTime& deadline);
+Status ReceiveFramedMessageBlocking(
+    Socket* sock,
+    faststring* recv_buf,
+    google::protobuf::MessageLite* header,
+    Slice* param_buf,
+    const MonoTime& deadline);
 
 } // namespace rpc
 } // namespace kudu
 
-#endif  // KUDU_RPC_BLOCKING_OPS_H
+#endif // KUDU_RPC_BLOCKING_OPS_H

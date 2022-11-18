@@ -19,8 +19,8 @@
 #define KUDU_CONSENSUS_REF_COUNTED_REPLICATE_H_
 
 #include "kudu/consensus/consensus.pb.h"
-#include "kudu/gutil/ref_counted.h"
 #include "kudu/gutil/gscoped_ptr.h"
+#include "kudu/gutil/ref_counted.h"
 
 namespace kudu {
 namespace consensus {

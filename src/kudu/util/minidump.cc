@@ -36,12 +36,12 @@
 #include <gflags/gflags_declare.h>
 #include <glog/logging.h>
 
-#include "kudu/gutil/macros.h"
 #include "kudu/gutil/linux_syscall_support.h"
+#include "kudu/gutil/macros.h"
 #include "kudu/gutil/strings/human_readable.h"
-#include "kudu/util/errno.h"
 #include "kudu/util/env.h"
 #include "kudu/util/env_util.h"
+#include "kudu/util/errno.h"
 #include "kudu/util/flag_tags.h"
 #include "kudu/util/path_util.h"
 #include "kudu/util/status.h"
@@ -58,9 +58,11 @@ static constexpr bool kMinidumpPlatformSupported = false;
 
 DECLARE_string(log_dir);
 
-DEFINE_bool(enable_minidumps, kMinidumpPlatformSupported,
-            "Whether to enable minidump generation upon process crash or SIGUSR1. "
-            "Currently only supported on Linux systems.");
+DEFINE_bool(
+    enable_minidumps,
+    kMinidumpPlatformSupported,
+    "Whether to enable minidump generation upon process crash or SIGUSR1. "
+    "Currently only supported on Linux systems.");
 TAG_FLAG(enable_minidumps, advanced);
 TAG_FLAG(enable_minidumps, evolving);
 static bool ValidateMinidumpEnabled(const char* /*flagname*/, bool value) {
@@ -71,7 +73,10 @@ static bool ValidateMinidumpEnabled(const char* /*flagname*/, bool value) {
 }
 DEFINE_validator(enable_minidumps, &ValidateMinidumpEnabled);
 
-DEFINE_string(minidump_path, "minidumps", "Directory to write minidump files to. This "
+DEFINE_string(
+    minidump_path,
+    "minidumps",
+    "Directory to write minidump files to. This "
     "can be either an absolute path or a path relative to --log_dir. Each daemon will "
     "create an additional sub-directory to prevent naming conflicts and to make it "
     "easier to identify a crashing daemon. Minidump files contain crash-related "
@@ -80,16 +85,24 @@ DEFINE_string(minidump_path, "minidumps", "Directory to write minidump files to.
     "SIGUSR1 signal is sent to the process. Cannot be set to an empty value.");
 TAG_FLAG(minidump_path, evolving);
 // The minidump path cannot be empty.
-static bool ValidateMinidumpPath(const char* /*flagname*/, const string& value) {
+static bool ValidateMinidumpPath(
+    const char* /*flagname*/,
+    const string& value) {
   return !value.empty();
 }
 DEFINE_validator(minidump_path, &ValidateMinidumpPath);
 
-DEFINE_int32(max_minidumps, 9, "Maximum number of minidump files to keep per daemon. "
+DEFINE_int32(
+    max_minidumps,
+    9,
+    "Maximum number of minidump files to keep per daemon. "
     "Older files are removed first. Set to 0 to keep all minidump files.");
 TAG_FLAG(max_minidumps, evolving);
 
-DEFINE_int32(minidump_size_limit_hint_kb, 20480, "Size limit hint for minidump files in "
+DEFINE_int32(
+    minidump_size_limit_hint_kb,
+    20480,
+    "Size limit hint for minidump files in "
     "KB. If a minidump exceeds this value, then breakpad will reduce the stack memory it "
     "collects for each thread from 8KB to 2KB. However it will always include the full "
     "stack memory for the first 20 threads, including the thread that crashed.");
@@ -151,9 +164,10 @@ static void WriteLineStdoutStderr(const char* msg1, const char* msg2) {
 // logged. The calls might still fail in unknown scenarios as the process is in
 // a broken state. However we don't rely on them as the minidump file has been
 // written already.
-static bool DumpCallback(const google_breakpad::MinidumpDescriptor& descriptor,
-                         void* context, bool succeeded) {
-
+static bool DumpCallback(
+    const google_breakpad::MinidumpDescriptor& descriptor,
+    void* context,
+    bool succeeded) {
   // Indicate whether a minidump file was written successfully. Write message
   // to stdout/stderr, which will usually be captured in the INFO/ERROR log.
   if (succeeded) {
@@ -192,9 +206,8 @@ static void AbortFailureFunction() {
 
 bool MinidumpExceptionHandler::WriteMinidump() {
   bool user_signal = true;
-  return google_breakpad::ExceptionHandler::WriteMinidump(minidump_dir(),
-                                                          &DumpCallback,
-                                                          &user_signal);
+  return google_breakpad::ExceptionHandler::WriteMinidump(
+      minidump_dir(), &DumpCallback, &user_signal);
 }
 
 Status MinidumpExceptionHandler::InitMinidumpExceptionHandler() {
@@ -205,19 +218,21 @@ Status MinidumpExceptionHandler::InitMinidumpExceptionHandler() {
 
   // Create the first-level minidump directory.
   Env* env = Env::Default();
-  RETURN_NOT_OK_PREPEND(CreateDirIfMissing(env, minidump_dir_),
-                        "Error creating top-level minidump directory");
+  RETURN_NOT_OK_PREPEND(
+      CreateDirIfMissing(env, minidump_dir_),
+      "Error creating top-level minidump directory");
 
-  // Add the executable name to the path where minidumps will be written. This makes
-  // identification easier and prevents name collisions between the files.
+  // Add the executable name to the path where minidumps will be written. This
+  // makes identification easier and prevents name collisions between the files.
   // This is also consistent with how Impala organizes its minidump files.
   const char* exe_name = gflags::ProgramInvocationShortName();
   minidump_dir_ = JoinPathSegments(minidump_dir_, exe_name);
 
-  // Create the directory if it is not there. The minidump doesn't get written if there is
-  // no directory.
-  RETURN_NOT_OK_PREPEND(CreateDirIfMissing(env, minidump_dir_),
-                        "Error creating minidump directory");
+  // Create the directory if it is not there. The minidump doesn't get written
+  // if there is no directory.
+  RETURN_NOT_OK_PREPEND(
+      CreateDirIfMissing(env, minidump_dir_),
+      "Error creating minidump directory");
 
   // Verify that the minidump directory really is a directory. We canonicalize
   // in case it's a symlink to a directory.
@@ -226,14 +241,16 @@ Status MinidumpExceptionHandler::InitMinidumpExceptionHandler() {
   bool is_dir;
   RETURN_NOT_OK(env->IsDirectory(canonical_minidump_path, &is_dir));
   if (!is_dir) {
-    return Status::IOError("Unable to create minidump directory", canonical_minidump_path);
+    return Status::IOError(
+        "Unable to create minidump directory", canonical_minidump_path);
   }
 
   google_breakpad::MinidumpDescriptor desc(minidump_dir_);
 
   // Limit filesize if configured.
   if (FLAGS_minidump_size_limit_hint_kb > 0) {
-    size_t size_limit = 1024 * static_cast<int64_t>(FLAGS_minidump_size_limit_hint_kb);
+    size_t size_limit =
+        1024 * static_cast<int64_t>(FLAGS_minidump_size_limit_hint_kb);
     LOG(INFO) << "Setting minidump size limit to "
               << HumanReadableNumBytes::ToStringWithoutRounding(size_limit);
     desc.set_size_limit(size_limit);
@@ -246,19 +263,20 @@ Status MinidumpExceptionHandler::InitMinidumpExceptionHandler() {
   // case.
   google::InstallFailureFunction(&AbortFailureFunction);
 
-  breakpad_handler_.reset(
-      new google_breakpad::ExceptionHandler(desc,           // Path to minidump directory.
-                                            FilterCallback, // Indicates whether to write the dump.
-                                            DumpCallback,   // Output a log message when dumping.
-                                            nullptr,        // Optional context for callbacks.
-                                            true,           // Whether to install a crash handler.
-                                            -1));           // -1: Use in-process dump generation.
+  breakpad_handler_.reset(new google_breakpad::ExceptionHandler(
+      desc, // Path to minidump directory.
+      FilterCallback, // Indicates whether to write the dump.
+      DumpCallback, // Output a log message when dumping.
+      nullptr, // Optional context for callbacks.
+      true, // Whether to install a crash handler.
+      -1)); // -1: Use in-process dump generation.
 
   return Status::OK();
 }
 
 Status MinidumpExceptionHandler::RegisterMinidumpExceptionHandler() {
-  if (!FLAGS_enable_minidumps) return Status::OK();
+  if (!FLAGS_enable_minidumps)
+    return Status::OK();
 
   // Ensure only one active instance is alive per process at any given time.
   CHECK_EQ(0, MinidumpExceptionHandler::current_num_instances_.fetch_add(1));
@@ -268,7 +286,8 @@ Status MinidumpExceptionHandler::RegisterMinidumpExceptionHandler() {
 }
 
 void MinidumpExceptionHandler::UnregisterMinidumpExceptionHandler() {
-  if (!FLAGS_enable_minidumps) return;
+  if (!FLAGS_enable_minidumps)
+    return;
 
   StopUserSignalHandlerThread();
   CHECK_EQ(1, MinidumpExceptionHandler::current_num_instances_.fetch_sub(1));
@@ -276,9 +295,12 @@ void MinidumpExceptionHandler::UnregisterMinidumpExceptionHandler() {
 
 Status MinidumpExceptionHandler::StartUserSignalHandlerThread() {
   user_signal_handler_thread_running_.store(true, std::memory_order_relaxed);
-  return Thread::Create("minidump", "sigusr1-handler",
-                        &MinidumpExceptionHandler::RunUserSignalHandlerThread,
-                        this, &user_signal_handler_thread_);
+  return Thread::Create(
+      "minidump",
+      "sigusr1-handler",
+      &MinidumpExceptionHandler::RunUserSignalHandlerThread,
+      this,
+      &user_signal_handler_thread_);
 }
 
 void MinidumpExceptionHandler::StopUserSignalHandlerThread() {
@@ -320,8 +342,7 @@ Status MinidumpExceptionHandler::RegisterMinidumpExceptionHandler() {
   return Status::OK();
 }
 
-void MinidumpExceptionHandler::UnregisterMinidumpExceptionHandler() {
-}
+void MinidumpExceptionHandler::UnregisterMinidumpExceptionHandler() {}
 
 bool MinidumpExceptionHandler::WriteMinidump() {
   return true;
@@ -331,11 +352,9 @@ Status MinidumpExceptionHandler::StartUserSignalHandlerThread() {
   return Status::OK();
 }
 
-void MinidumpExceptionHandler::StopUserSignalHandlerThread() {
-}
+void MinidumpExceptionHandler::StopUserSignalHandlerThread() {}
 
-void MinidumpExceptionHandler::RunUserSignalHandlerThread() {
-}
+void MinidumpExceptionHandler::RunUserSignalHandlerThread() {}
 
 #endif // defined(__linux__)
 
@@ -351,14 +370,16 @@ MinidumpExceptionHandler::~MinidumpExceptionHandler() {
 
 Status MinidumpExceptionHandler::DeleteExcessMinidumpFiles(Env* env) {
   // Do not delete minidump files if minidumps are disabled.
-  if (!FLAGS_enable_minidumps) return Status::OK();
+  if (!FLAGS_enable_minidumps)
+    return Status::OK();
 
   int32_t max_minidumps = FLAGS_max_minidumps;
   // Disable rotation if set to 0 or less.
-  if (max_minidumps <= 0) return Status::OK();
+  if (max_minidumps <= 0)
+    return Status::OK();
 
-  // Minidump filenames are created by breakpad in the following format, for example:
-  // 7b57915b-ee6a-dbc5-21e59491-5c60a2cf.dmp.
+  // Minidump filenames are created by breakpad in the following format, for
+  // example: 7b57915b-ee6a-dbc5-21e59491-5c60a2cf.dmp.
   string pattern = JoinPathSegments(minidump_dir(), "*.dmp");
 
   // Use mtime to determine which minidumps to delete. While this could
@@ -375,7 +396,8 @@ string MinidumpExceptionHandler::minidump_dir() const {
 Status BlockSigUSR1() {
   sigset_t signals = GetSigset(SIGUSR1);
   int ret = pthread_sigmask(SIG_BLOCK, &signals, nullptr);
-  if (ret == 0) return Status::OK();
+  if (ret == 0)
+    return Status::OK();
   return Status::InvalidArgument("pthread_sigmask", ErrnoToString(ret), ret);
 }
 

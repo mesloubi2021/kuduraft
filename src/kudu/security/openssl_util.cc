@@ -63,7 +63,8 @@ bool g_ssl_is_initialized = false;
 bool g_disable_ssl_init = false;
 
 // Array of locks used by OpenSSL.
-// We use an intentionally-leaked C-style array here to avoid non-POD static data.
+// We use an intentionally-leaked C-style array here to avoid non-POD static
+// data.
 //
 // As of OpenSSL 1.1, locking callbacks are no longer used.
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
@@ -88,7 +89,8 @@ Status CheckOpenSSLInitialized() {
   auto ctx = ssl_make_unique(SSL_CTX_new(SSLv23_method()));
   if (!ctx) {
     ERR_clear_error();
-    return Status::RuntimeError("SSL library appears uninitialized (cannot create SSL_CTX)");
+    return Status::RuntimeError(
+        "SSL library appears uninitialized (cannot create SSL_CTX)");
   }
   return Status::OK();
 }
@@ -129,13 +131,14 @@ void DoInitializeOpenSSL() {
   // log a warning.
   auto ctx = ssl_make_unique(SSL_CTX_new(SSLv23_method()));
   if (ctx) {
-    LOG(WARNING) << "It appears that OpenSSL has been previously initialized by "
-                 << "code outside of Kudu. Please use kudu::client::DisableOpenSSLInitialization() "
-                 << "to avoid potential crashes due to conflicting initialization.";
-    // Continue anyway; all of the below is idempotent, except for the locking callback,
-    // which we check before overriding. They aren't thread-safe, however -- that's why
-    // we try to get embedding applications to do the right thing here rather than risk a
-    // potential initialization race.
+    LOG(WARNING)
+        << "It appears that OpenSSL has been previously initialized by "
+        << "code outside of Kudu. Please use kudu::client::DisableOpenSSLInitialization() "
+        << "to avoid potential crashes due to conflicting initialization.";
+    // Continue anyway; all of the below is idempotent, except for the locking
+    // callback, which we check before overriding. They aren't thread-safe,
+    // however -- that's why we try to get embedding applications to do the
+    // right thing here rather than risk a potential initialization race.
   } else {
     // As expected, SSL is not initialized, so SSL_CTX_new() failed. Make sure
     // it didn't leave anything in our error queue.
@@ -166,47 +169,55 @@ void DoInitializeOpenSSL() {
 } // anonymous namespace
 
 // Reads a STACK_OF(X509) from the BIO and returns it.
-STACK_OF(X509)* PEM_read_STACK_OF_X509(BIO* bio, void* /* unused */, pem_password_cb* /* unused */,
-    void* /* unused */) {
+STACK_OF(X509) *
+    PEM_read_STACK_OF_X509(
+        BIO* bio,
+        void* /* unused */,
+        pem_password_cb* /* unused */,
+        void* /* unused */) {
   // Extract information from the chain certificate.
-  STACK_OF(X509_INFO)* info = PEM_X509_INFO_read_bio(bio, nullptr, nullptr, nullptr);
-  if (!info) return nullptr;
-  SCOPED_CLEANUP({
-    sk_X509_INFO_pop_free(info, X509_INFO_free);
-  });
+  STACK_OF(X509_INFO)* info =
+      PEM_X509_INFO_read_bio(bio, nullptr, nullptr, nullptr);
+  if (!info)
+    return nullptr;
+  SCOPED_CLEANUP({ sk_X509_INFO_pop_free(info, X509_INFO_free); });
 
   // Initialize the Stack.
   STACK_OF(X509)* sk = sk_X509_new_null();
 
   // Iterate through the chain certificate and add each one to the stack.
   for (int i = 0; i < sk_X509_INFO_num(info); ++i) {
-    X509_INFO *stack_item = sk_X509_INFO_value(info, i);
+    X509_INFO* stack_item = sk_X509_INFO_value(info, i);
     sk_X509_push(sk, stack_item->x509);
-    // We don't want the ScopedCleanup to free the x509 certificates as well since we will
-    // use it as a part of the STACK_OF(X509) object to be returned, so we set it to nullptr.
-    // We will take the responsibility of freeing it when we are done with the STACK_OF(X509).
+    // We don't want the ScopedCleanup to free the x509 certificates as well
+    // since we will use it as a part of the STACK_OF(X509) object to be
+    // returned, so we set it to nullptr. We will take the responsibility of
+    // freeing it when we are done with the STACK_OF(X509).
     stack_item->x509 = nullptr;
   }
   return sk;
 }
 
 // Writes a STACK_OF(X509) to the BIO.
-int PEM_write_STACK_OF_X509(BIO* bio, STACK_OF(X509)* obj) {
+int PEM_write_STACK_OF_X509(BIO* bio, STACK_OF(X509) * obj) {
   int chain_len = sk_X509_num(obj);
   // Iterate through the stack and add each one to the BIO.
   for (int i = 0; i < chain_len; ++i) {
     X509* cert_item = sk_X509_value(obj, i);
     int ret = PEM_write_bio_X509(bio, cert_item);
-    if (ret <= 0) return ret;
+    if (ret <= 0)
+      return ret;
   }
   return 1;
 }
 
-// Reads a single X509 certificate and returns a STACK_OF(X509) with the single certificate.
-STACK_OF(X509)* DER_read_STACK_OF_X509(BIO* bio, void* /* unused */) {
+// Reads a single X509 certificate and returns a STACK_OF(X509) with the single
+// certificate.
+STACK_OF(X509) * DER_read_STACK_OF_X509(BIO* bio, void* /* unused */) {
   // We don't support chain certificates written in DER format.
   auto x = ssl_make_unique(d2i_X509_bio(bio, nullptr));
-  if (!x) return nullptr;
+  if (!x)
+    return nullptr;
   STACK_OF(X509)* sk = sk_X509_new_null();
   if (sk_X509_push(sk, x.get()) == 0) {
     return nullptr;
@@ -216,24 +227,27 @@ STACK_OF(X509)* DER_read_STACK_OF_X509(BIO* bio, void* /* unused */) {
 }
 
 // Writes a single X509 certificate that it gets from the STACK_OF(X509) 'obj'.
-int DER_write_STACK_OF_X509(BIO* bio, STACK_OF(X509)* obj) {
+int DER_write_STACK_OF_X509(BIO* bio, STACK_OF(X509) * obj) {
   int chain_len = sk_X509_num(obj);
   // We don't support chain certificates written in DER format.
   DCHECK_EQ(chain_len, 1);
   X509* cert_item = sk_X509_value(obj, 0);
-  if (cert_item == nullptr) return 0;
+  if (cert_item == nullptr)
+    return 0;
   return i2d_X509_bio(bio, cert_item);
 }
 
-void free_STACK_OF_X509(STACK_OF(X509)* sk) {
+void free_STACK_OF_X509(STACK_OF(X509) * sk) {
   sk_X509_pop_free(sk, X509_free);
 }
 
 Status DisableOpenSSLInitialization() {
-  if (g_disable_ssl_init) return Status::OK();
+  if (g_disable_ssl_init)
+    return Status::OK();
   if (g_ssl_is_initialized) {
-    return Status::IllegalState("SSL already initialized. Initialization can only be disabled "
-                                "before first usage.");
+    return Status::IllegalState(
+        "SSL already initialized. Initialization can only be disabled "
+        "before first usage.");
   }
   RETURN_NOT_OK(CheckOpenSSLInitialized());
   g_disable_ssl_init = true;
@@ -270,13 +284,20 @@ string GetOpenSSLErrors() {
 
 string GetSSLErrorDescription(int error_code) {
   switch (error_code) {
-    case SSL_ERROR_NONE: return "";
-    case SSL_ERROR_ZERO_RETURN: return "SSL_ERROR_ZERO_RETURN";
-    case SSL_ERROR_WANT_READ: return "SSL_ERROR_WANT_READ";
-    case SSL_ERROR_WANT_WRITE: return "SSL_ERROR_WANT_WRITE";
-    case SSL_ERROR_WANT_CONNECT: return "SSL_ERROR_WANT_CONNECT";
-    case SSL_ERROR_WANT_ACCEPT: return "SSL_ERROR_WANT_ACCEPT";
-    case SSL_ERROR_WANT_X509_LOOKUP: return "SSL_ERROR_WANT_X509_LOOKUP";
+    case SSL_ERROR_NONE:
+      return "";
+    case SSL_ERROR_ZERO_RETURN:
+      return "SSL_ERROR_ZERO_RETURN";
+    case SSL_ERROR_WANT_READ:
+      return "SSL_ERROR_WANT_READ";
+    case SSL_ERROR_WANT_WRITE:
+      return "SSL_ERROR_WANT_WRITE";
+    case SSL_ERROR_WANT_CONNECT:
+      return "SSL_ERROR_WANT_CONNECT";
+    case SSL_ERROR_WANT_ACCEPT:
+      return "SSL_ERROR_WANT_ACCEPT";
+    case SSL_ERROR_WANT_X509_LOOKUP:
+      return "SSL_ERROR_WANT_X509_LOOKUP";
     case SSL_ERROR_SYSCALL: {
       string queued_error = GetOpenSSLErrors();
       if (!queued_error.empty()) {
@@ -284,7 +305,8 @@ string GetSSLErrorDescription(int error_code) {
       }
       return kudu::ErrnoToString(errno);
     };
-    default: return GetOpenSSLErrors();
+    default:
+      return GetOpenSSLErrors();
   }
 }
 
@@ -310,8 +332,10 @@ Status GetPasswordFromShellCommand(const string& cmd, string* password) {
   string stderr, stdout;
   Status s = Subprocess::Call(argv, "" /* stdin */, &stdout, &stderr);
   if (!s.ok()) {
-    return Status::RuntimeError(strings::Substitute(
-        "failed to run private key password command: $0", s.ToString()), stderr);
+    return Status::RuntimeError(
+        strings::Substitute(
+            "failed to run private key password command: $0", s.ToString()),
+        stderr);
   }
   StripTrailingWhitespace(&stdout);
   *password = stdout;

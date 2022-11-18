@@ -20,13 +20,15 @@
 #include <memory>
 #include <utility>
 
-// It isn't possible to use 'std::make_shared' on a class with private or protected
-// constructors. Using friends as a workaround worked in some earlier libc++/libstdcxx
-// versions, but in the latest versions there are some static_asserts that seem to defeat
-// this trickery. So, instead, we rely on the "curiously recurring template pattern" (CRTP)
-// to inject a static 'make_shared' function inside the class.
+// It isn't possible to use 'std::make_shared' on a class with private or
+// protected constructors. Using friends as a workaround worked in some earlier
+// libc++/libstdcxx versions, but in the latest versions there are some
+// static_asserts that seem to defeat this trickery. So, instead, we rely on the
+// "curiously recurring template pattern" (CRTP) to inject a static
+// 'make_shared' function inside the class.
 //
-// See https://stackoverflow.com/questions/8147027/how-do-i-call-stdmake-shared-on-a-class-with-only-protected-or-private-const
+// See
+// https://stackoverflow.com/questions/8147027/how-do-i-call-stdmake-shared-on-a-class-with-only-protected-or-private-const
 // for some details.
 //
 // Usage:
@@ -43,19 +45,18 @@
 //  }
 //
 //    shared_ptr<MyClass> foo = MyClass::make_shared(arg1, arg2);
-template<class T>
+template <class T>
 class enable_make_shared { // NOLINT
  public:
-
   // Define a static make_shared member which constructs the public subclass
   // and casts it back to the desired class.
-  template<typename... Arg>
+  template <typename... Arg>
   static std::shared_ptr<T> make_shared(Arg&&... args) {
-    // Define a struct subclass with a public constructor which will be accessible
-    // from make_shared.
+    // Define a struct subclass with a public constructor which will be
+    // accessible from make_shared.
     struct make_shared_enabler : public T { // NOLINT
-      explicit make_shared_enabler(Arg&&... args) : T(std::forward<Arg>(args)...) {
-      }
+      explicit make_shared_enabler(Arg&&... args)
+          : T(std::forward<Arg>(args)...) {}
     };
 
     return ::std::make_shared<make_shared_enabler>(

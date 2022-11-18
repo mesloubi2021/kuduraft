@@ -40,25 +40,27 @@ namespace consensus {
 class PeerMessageQueue;
 class RaftConfigPB;
 
-// Manages the remote peers that pull data from the local queue and send updates to the
-// remote machines.
+// Manages the remote peers that pull data from the local queue and send updates
+// to the remote machines.
 class PeerManager {
  public:
   // All of the raw pointer arguments are not owned by the PeerManager
   // and must live at least as long as the PeerManager.
-  PeerManager(std::string tablet_id,
-              std::string local_uuid,
-              PeerProxyFactory* peer_proxy_factory,
-              PeerMessageQueue* queue,
-              ThreadPoolToken* raft_pool_token,
-              scoped_refptr<log::Log> log);
+  PeerManager(
+      std::string tablet_id,
+      std::string local_uuid,
+      PeerProxyFactory* peer_proxy_factory,
+      PeerMessageQueue* queue,
+      ThreadPoolToken* raft_pool_token,
+      scoped_refptr<log::Log> log);
 
   ~PeerManager();
 
   // Updates 'peers_' according to the new configuration config.
   Status UpdateRaftConfig(const RaftConfigPB& config);
 
-  // Signals all peers of the current configuration that there is a new request pending.
+  // Signals all peers of the current configuration that there is a new request
+  // pending.
   void SignalRequest(bool force_if_queue_empty = false);
 
   // Start an election on the peer with UUID 'uuid'.
@@ -85,8 +87,6 @@ class PeerManager {
 
   DISALLOW_COPY_AND_ASSIGN(PeerManager);
 };
-
-
 
 } // namespace consensus
 } // namespace kudu

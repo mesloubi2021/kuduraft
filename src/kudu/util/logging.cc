@@ -31,7 +31,7 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
-#include "kudu/gutil/callback.h"  // IWYU pragma: keep
+#include "kudu/gutil/callback.h" // IWYU pragma: keep
 #include "kudu/gutil/port.h"
 #include "kudu/gutil/spinlock.h"
 #include "kudu/gutil/stringprintf.h"
@@ -46,22 +46,30 @@
 #include "kudu/util/signal.h"
 #include "kudu/util/status.h"
 
-DEFINE_string(log_filename, "",
+DEFINE_string(
+    log_filename,
+    "",
     "Prefix of log filename - "
     "full path is <log_dir>/<log_filename>.[INFO|WARN|ERROR|FATAL]");
 TAG_FLAG(log_filename, stable);
 
-DEFINE_bool(log_async, true,
-            "Enable asynchronous writing to log files. This improves "
-            "latency and stability.");
+DEFINE_bool(
+    log_async,
+    true,
+    "Enable asynchronous writing to log files. This improves "
+    "latency and stability.");
 TAG_FLAG(log_async, hidden);
 
-DEFINE_int32(log_async_buffer_bytes_per_level, 2 * 1024 * 1024,
-             "The number of bytes of buffer space used by each log "
-             "level. Only relevant when --log_async is enabled.");
+DEFINE_int32(
+    log_async_buffer_bytes_per_level,
+    2 * 1024 * 1024,
+    "The number of bytes of buffer space used by each log "
+    "level. Only relevant when --log_async is enabled.");
 TAG_FLAG(log_async_buffer_bytes_per_level, hidden);
 
-DEFINE_int32(max_log_files, 10,
+DEFINE_int32(
+    max_log_files,
+    10,
     "Maximum number of log files to retain per severity level. The most recent "
     "log files are retained. If set to 0, all log files are retained.");
 TAG_FLAG(max_log_files, runtime);
@@ -89,13 +97,16 @@ class SimpleSink : public google::LogSink {
  public:
   explicit SimpleSink(LoggingCallback cb) : cb_(std::move(cb)) {}
 
-  virtual ~SimpleSink() override {
-  }
+  virtual ~SimpleSink() override {}
 
-  virtual void send(google::LogSeverity severity, const char* full_filename,
-                    const char* base_filename, int line,
-                    const struct ::tm* tm_time,
-                    const char* message, size_t message_len) override {
+  virtual void send(
+      google::LogSeverity severity,
+      const char* full_filename,
+      const char* base_filename,
+      int line,
+      const struct ::tm* tm_time,
+      const char* message,
+      size_t message_len) override {
     LogSeverity kudu_severity;
     switch (severity) {
       case google::INFO:
@@ -117,7 +128,6 @@ class SimpleSink : public google::LogSink {
   }
 
  private:
-
   LoggingCallback cb_;
 };
 
@@ -140,7 +150,7 @@ void EnableAsyncLogging() {
 
   // Enable Async for every level except for FATAL. Fatal should be synchronous
   // to ensure that we get the fatal log message written before exiting.
-  for (auto level : { google::INFO, google::WARNING, google::ERROR }) {
+  for (auto level : {google::INFO, google::WARNING, google::ERROR}) {
     auto* orig = google::base::GetLogger(level);
     auto* async = new AsyncLogger(orig, FLAGS_log_async_buffer_bytes_per_level);
     async->Start();
@@ -164,7 +174,8 @@ void FlushCoverageOnExit() {
   // Coverage flushing is not re-entrant, but this might be called from a
   // crash signal context, so avoid re-entrancy.
   static __thread bool in_call = false;
-  if (in_call) return;
+  if (in_call)
+    return;
   in_call = true;
 
   // The failure writer will be called multiple times per exit.
@@ -173,16 +184,16 @@ void FlushCoverageOnExit() {
   // to finish before allowing this thread to call abort().
   static std::once_flag once;
   std::call_once(once, [] {
-      static const char msg[] = "Flushing coverage data before crash...\n";
-      write(STDERR_FILENO, msg, arraysize(msg));
-      TryFlushCoverage();
-    });
+    static const char msg[] = "Flushing coverage data before crash...\n";
+    write(STDERR_FILENO, msg, arraysize(msg));
+    TryFlushCoverage();
+  });
   in_call = false;
 }
 
-// On SEGVs, etc, glog will call this function to write the error to stderr. This
-// implementation is copied from glog with the exception that we also flush coverage
-// the first time it's called.
+// On SEGVs, etc, glog will call this function to write the error to stderr.
+// This implementation is copied from glog with the exception that we also flush
+// coverage the first time it's called.
 //
 // NOTE: this is only used in coverage builds!
 void FailureWriterWithCoverage(const char* data, int size) {
@@ -206,7 +217,8 @@ void FlushCoverageAndAbort() {
 
 void InitGoogleLoggingSafe(const char* arg) {
   SpinLockHolder l(&logging_mutex);
-  if (logging_initialized) return;
+  if (logging_initialized)
+    return;
 
   google::InstallFailureSignalHandler();
 
@@ -235,7 +247,8 @@ void InitGoogleLoggingSafe(const char* arg) {
       ostringstream error_msg;
       error_msg << "Could not open file in log_dir " << FLAGS_log_dir;
       perror(error_msg.str().c_str());
-      // Unlock the mutex before exiting the program to avoid mutex d'tor assert.
+      // Unlock the mutex before exiting the program to avoid mutex d'tor
+      // assert.
       logging_mutex.Unlock();
       exit(1);
     }
@@ -283,7 +296,8 @@ void InitGoogleLoggingSafe(const char* arg) {
 
 void InitGoogleLoggingSafeBasic(const char* arg) {
   SpinLockHolder l(&logging_mutex);
-  if (logging_initialized) return;
+  if (logging_initialized)
+    return;
 
   google::InitGoogleLogging(arg);
 
@@ -349,18 +363,20 @@ std::string FormatTimestampForLog(MicrosecondsInt64 micros_since_epoch) {
   struct tm tm_time;
   localtime_r(&secs_since_epoch, &tm_time);
 
-  return StringPrintf("%02d%02d %02d:%02d:%02d.%06d",
-                      1 + tm_time.tm_mon,
-                      tm_time.tm_mday,
-                      tm_time.tm_hour,
-                      tm_time.tm_min,
-                      tm_time.tm_sec,
-                      usecs);
+  return StringPrintf(
+      "%02d%02d %02d:%02d:%02d.%06d",
+      1 + tm_time.tm_mon,
+      tm_time.tm_mday,
+      tm_time.tm_hour,
+      tm_time.tm_min,
+      tm_time.tm_sec,
+      usecs);
 }
 
 void ShutdownLoggingSafe() {
   SpinLockHolder l(&logging_mutex);
-  if (!logging_initialized) return;
+  if (!logging_initialized)
+    return;
 
   if (registered_sink) {
     UnregisterLoggingCallbackUnlocked();
@@ -374,13 +390,17 @@ void ShutdownLoggingSafe() {
 Status DeleteExcessLogFiles(Env* env) {
   int32_t max_log_files = FLAGS_max_log_files;
   // Ignore bad input or disable log rotation.
-  if (max_log_files <= 0) return Status::OK();
+  if (max_log_files <= 0)
+    return Status::OK();
 
   for (int severity = 0; severity < google::NUM_SEVERITIES; ++severity) {
     // Build glob pattern for input
     // e.g. /var/log/kudu/kudu-master.*.INFO.*
-    string pattern = strings::Substitute("$0/$1.*.$2.*", FLAGS_log_dir, FLAGS_log_filename,
-                                         google::GetLogSeverityName(severity));
+    string pattern = strings::Substitute(
+        "$0/$1.*.$2.*",
+        FLAGS_log_dir,
+        FLAGS_log_filename,
+        google::GetLogSeverityName(severity));
 
     // Keep the 'max_log_files' most recent log files, as compared by
     // modification time. Glog files contain a second-granularity timestamp in
@@ -388,18 +408,19 @@ Status DeleteExcessLogFiles(Env* env) {
     // guaranteed by glob, however this code has been adapted from Impala which
     // uses mtime to determine which files to delete, and there haven't been any
     // issues in production settings.
-    RETURN_NOT_OK(env_util::DeleteExcessFilesByPattern(env, pattern, max_log_files));
+    RETURN_NOT_OK(
+        env_util::DeleteExcessFilesByPattern(env, pattern, max_log_files));
   }
   return Status::OK();
 }
 
 // Support for the special THROTTLE_MSG token in a log message stream.
-ostream& operator<<(ostream &os, const PRIVATE_ThrottleMsg& /*unused*/) {
+ostream& operator<<(ostream& os, const PRIVATE_ThrottleMsg& /*unused*/) {
   using google::LogMessage;
 #ifdef DISABLE_RTTI
-  LogMessage::LogStream *log = static_cast<LogMessage::LogStream*>(&os);
+  LogMessage::LogStream* log = static_cast<LogMessage::LogStream*>(&os);
 #else
-  LogMessage::LogStream *log = dynamic_cast<LogMessage::LogStream*>(&os);
+  LogMessage::LogStream* log = dynamic_cast<LogMessage::LogStream*>(&os);
 #endif
   CHECK(log && log == log->self())
       << "You must not use COUNTER with non-glog ostream";

@@ -60,14 +60,17 @@ class HybridClock : public Clock {
   // Updates the clock with a timestamp originating on another machine.
   virtual Status Update(const Timestamp& to_update) override;
 
-  virtual void RegisterMetrics(const scoped_refptr<MetricEntity>& metric_entity) override;
+  virtual void RegisterMetrics(
+      const scoped_refptr<MetricEntity>& metric_entity) override;
 
   // HybridClock supports all external consistency modes.
-  virtual bool SupportsExternalConsistencyMode(ExternalConsistencyMode mode) override;
+  virtual bool SupportsExternalConsistencyMode(
+      ExternalConsistencyMode mode) override;
 
   virtual bool HasPhysicalComponent() const override;
 
-  MonoDelta GetPhysicalComponentDifference(Timestamp lhs, Timestamp rhs) const override;
+  MonoDelta GetPhysicalComponentDifference(Timestamp lhs, Timestamp rhs)
+      const override;
 
   // Blocks the caller thread until the true time is after 'then'.
   // In other words, waits until the HybridClock::Now() on _all_ nodes
@@ -99,8 +102,8 @@ class HybridClock : public Clock {
   // This is because, by looking at the current clock, we can know how long
   // we'll have to wait, in contrast to most Wait() methods which are waiting
   // on some external condition to become true.
-  virtual Status WaitUntilAfter(const Timestamp& then,
-                                const MonoTime& deadline) override;
+  virtual Status WaitUntilAfter(const Timestamp& then, const MonoTime& deadline)
+      override;
 
   // Blocks the caller thread until the local time is after 'then'.
   // This is in contrast to the above method, which waits until the time
@@ -109,8 +112,9 @@ class HybridClock : public Clock {
   // Returns Status::TimedOut() if 'deadline' will pass before the specified
   // timestamp. NOTE: unlike most "wait" methods, this may return _immediately_
   // with a timeout. See WaitUntilAfter() for details.
-  virtual Status WaitUntilAfterLocally(const Timestamp& then,
-                                       const MonoTime& deadline) override;
+  virtual Status WaitUntilAfterLocally(
+      const Timestamp& then,
+      const MonoTime& deadline) override;
 
   // Return true if the given time has passed (i.e any future call
   // to Now() would return a higher value than t).
@@ -121,9 +125,9 @@ class HybridClock : public Clock {
   virtual bool IsAfter(Timestamp t) override;
 
   // Obtains the timestamp corresponding to the current time and the associated
-  // error in micros. This may fail if the clock is unsynchronized or synchronized
-  // but the error is too high and, since we can't do anything about it,
-  // LOG(FATAL)'s in that case.
+  // error in micros. This may fail if the clock is unsynchronized or
+  // synchronized but the error is too high and, since we can't do anything
+  // about it, LOG(FATAL)'s in that case.
   void NowWithError(Timestamp* timestamp, uint64_t* max_error_usec);
 
   virtual std::string Stringify(Timestamp timestamp) override;
@@ -141,16 +145,18 @@ class HybridClock : public Clock {
   static Timestamp TimestampFromMicroseconds(uint64_t micros);
 
   // Obtains a new Timestamp that embeds both the physical and logical values.
-  static Timestamp TimestampFromMicrosecondsAndLogicalValue(uint64_t micros,
-                                                            uint64_t logical_value);
+  static Timestamp TimestampFromMicrosecondsAndLogicalValue(
+      uint64_t micros,
+      uint64_t logical_value);
 
   // Creates a new timestamp whose physical time is GetPhysicalValue(original) +
   // 'to_add' and which retains the same logical value.
-  static Timestamp AddPhysicalTimeToTimestamp(const Timestamp& original,
-                                              const MonoDelta& to_add);
+  static Timestamp AddPhysicalTimeToTimestamp(
+      const Timestamp& original,
+      const MonoDelta& to_add);
 
-  // Outputs a string containing the physical and logical values of the timestamp,
-  // separated.
+  // Outputs a string containing the physical and logical values of the
+  // timestamp, separated.
   static std::string StringifyTimestamp(const Timestamp& timestamp);
 
   clock::TimeService* time_service() {
@@ -199,10 +205,7 @@ class HybridClock : public Clock {
   // Mask to extract the pure logical bits.
   static const uint64_t kLogicalBitMask;
 
-  enum State {
-    kNotInitialized,
-    kInitialized
-  };
+  enum State { kNotInitialized, kInitialized };
 
   State state_;
 
@@ -212,5 +215,5 @@ class HybridClock : public Clock {
   FunctionGaugeDetacher metric_detacher_;
 };
 
-}  // namespace clock
-}  // namespace kudu
+} // namespace clock
+} // namespace kudu

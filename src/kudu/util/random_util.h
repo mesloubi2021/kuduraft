@@ -18,8 +18,8 @@
 #ifndef KUDU_UTIL_RANDOM_UTIL_H
 #define KUDU_UTIL_RANDOM_UTIL_H
 
-#include <cstdlib>
 #include <stdint.h>
+#include <cstdlib>
 
 #include <string>
 

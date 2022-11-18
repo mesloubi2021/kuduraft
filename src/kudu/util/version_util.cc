@@ -40,10 +40,8 @@ using strings::Substitute;
 namespace kudu {
 
 bool Version::operator==(const Version& other) const {
-  return this->major == other.major &&
-         this->minor == other.minor &&
-         this->maintenance == other.maintenance &&
-         this->extra == other.extra;
+  return this->major == other.major && this->minor == other.minor &&
+      this->maintenance == other.maintenance && this->extra == other.extra;
 }
 
 string Version::ToString() const {
@@ -56,8 +54,7 @@ ostream& operator<<(ostream& os, const Version& v) {
   return os << v.ToString();
 }
 
-Status ParseVersion(const string& version_str,
-                    Version* v) {
+Status ParseVersion(const string& version_str, Version* v) {
   static const char* const kDelimiter = "-";
 
   DCHECK(v);
@@ -79,8 +76,8 @@ Status ParseVersion(const string& version_str,
       !SimpleAtoi(maj_min_maint[2], &temp_v.maintenance)) {
     return invalid_ver_err;
   }
-  temp_v.extra = JoinStringsIterator(std::next(main_and_extra.begin()),
-                                     main_and_extra.end(), kDelimiter);
+  temp_v.extra = JoinStringsIterator(
+      std::next(main_and_extra.begin()), main_and_extra.end(), kDelimiter);
   temp_v.raw_version = version_str;
   *v = std::move(temp_v);
 

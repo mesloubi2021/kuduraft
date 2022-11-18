@@ -41,26 +41,27 @@ using strings::Substitute;
 namespace kudu {
 namespace consensus {
 
-PeerManager::PeerManager(std::string tablet_id,
-                         std::string local_uuid,
-                         PeerProxyFactory* peer_proxy_factory,
-                         PeerMessageQueue* queue,
-                         ThreadPoolToken* raft_pool_token,
-                         scoped_refptr<log::Log> log)
+PeerManager::PeerManager(
+    std::string tablet_id,
+    std::string local_uuid,
+    PeerProxyFactory* peer_proxy_factory,
+    PeerMessageQueue* queue,
+    ThreadPoolToken* raft_pool_token,
+    scoped_refptr<log::Log> log)
     : tablet_id_(std::move(tablet_id)),
       local_uuid_(std::move(local_uuid)),
       peer_proxy_factory_(peer_proxy_factory),
       queue_(queue),
       raft_pool_token_(raft_pool_token),
-      log_(std::move(log)) {
-}
+      log_(std::move(log)) {}
 
 PeerManager::~PeerManager() {
   Close();
 }
 
 Status PeerManager::UpdateRaftConfig(const RaftConfigPB& config) {
-  VLOG(1) << "Updating peers from new config: " << SecureShortDebugString(config);
+  VLOG(1) << "Updating peers from new config: "
+          << SecureShortDebugString(config);
 
   std::lock_guard<simple_spinlock> lock(lock_);
   // Create new peers
@@ -72,21 +73,24 @@ Status PeerManager::UpdateRaftConfig(const RaftConfigPB& config) {
       continue;
     }
 
-    VLOG(1) << GetLogPrefix() << "Adding remote peer. Peer: " << SecureShortDebugString(peer_pb);
+    VLOG(1) << GetLogPrefix()
+            << "Adding remote peer. Peer: " << SecureShortDebugString(peer_pb);
     shared_ptr<PeerProxy> peer_proxy;
-    RETURN_NOT_OK_PREPEND(peer_proxy_factory_->NewProxy(peer_pb, &peer_proxy),
-                          "Could not obtain a remote proxy to the peer.");
+    RETURN_NOT_OK_PREPEND(
+        peer_proxy_factory_->NewProxy(peer_pb, &peer_proxy),
+        "Could not obtain a remote proxy to the peer.");
     peer_proxy_pool_.Put(peer_pb.permanent_uuid(), peer_proxy);
     std::shared_ptr<Peer> remote_peer;
-    RETURN_NOT_OK(Peer::NewRemotePeer(peer_pb,
-                                      tablet_id_,
-                                      local_uuid_,
-                                      queue_,
-                                      &peer_proxy_pool_,
-                                      raft_pool_token_,
-                                      std::move(peer_proxy),
-                                      peer_proxy_factory_->messenger(),
-                                      &remote_peer));
+    RETURN_NOT_OK(Peer::NewRemotePeer(
+        peer_pb,
+        tablet_id_,
+        local_uuid_,
+        queue_,
+        &peer_proxy_pool_,
+        raft_pool_token_,
+        std::move(peer_proxy),
+        peer_proxy_factory_->messenger(),
+        &remote_peer));
     peers_.emplace(peer_pb.permanent_uuid(), std::move(remote_peer));
   }
 
@@ -111,8 +115,7 @@ void PeerManager::SignalRequest(bool force_if_queue_empty) {
 Status PeerManager::StartElection(
     const std::string& uuid,
     RunLeaderElectionResponsePB* resp,
-    RunLeaderElectionRequestPB req
-) {
+    RunLeaderElectionRequestPB req) {
   std::shared_ptr<Peer> peer;
   {
     std::lock_guard<simple_spinlock> lock(lock_);

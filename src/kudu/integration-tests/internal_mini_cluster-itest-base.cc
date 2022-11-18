@@ -40,13 +40,13 @@ void MiniClusterITestBase::StartCluster(int num_tablet_servers) {
   cluster_.reset(new InternalMiniCluster(env_, opts));
   ASSERT_OK(cluster_->Start());
   ASSERT_OK(cluster_->CreateClient(nullptr, &client_));
-  ASSERT_OK(itest::CreateTabletServerMap(cluster_->master_proxy(),
-                                         cluster_->messenger(),
-                                         &ts_map_));
+  ASSERT_OK(itest::CreateTabletServerMap(
+      cluster_->master_proxy(), cluster_->messenger(), &ts_map_));
 }
 
 void MiniClusterITestBase::StopCluster() {
-  if (!cluster_) return;
+  if (!cluster_)
+    return;
 
   cluster_->Shutdown();
   cluster_.reset();

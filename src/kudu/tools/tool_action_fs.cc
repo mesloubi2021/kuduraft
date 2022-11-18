@@ -79,27 +79,21 @@ DECLARE_bool(force);
 DECLARE_bool(print_meta);
 DECLARE_string(columns);
 
-DEFINE_bool(print_rows, true,
-            "Print each row in the CFile");
-DEFINE_string(uuid, "",
-              "The uuid to use in the filesystem. "
-              "If not provided, one is generated");
-DEFINE_bool(repair, false,
-            "Repair any inconsistencies in the filesystem.");
+DEFINE_bool(print_rows, true, "Print each row in the CFile");
+DEFINE_string(
+    uuid,
+    "",
+    "The uuid to use in the filesystem. "
+    "If not provided, one is generated");
+DEFINE_bool(repair, false, "Repair any inconsistencies in the filesystem.");
 
-DEFINE_string(table_id, "",
-              "Restrict output to a specific table by id");
+DEFINE_string(table_id, "", "Restrict output to a specific table by id");
 DECLARE_string(table_name);
-DEFINE_string(tablet_id, "",
-              "Restrict output to a specific tablet");
-DEFINE_int64(rowset_id, -1,
-             "Restrict output to a specific rowset");
-DEFINE_int32(column_id, -1,
-             "Restrict output to a specific column");
-DEFINE_uint64(block_id, 0,
-              "Restrict output to a specific block");
-DEFINE_bool(h, true,
-            "Pretty-print values in human-readable units");
+DEFINE_string(tablet_id, "", "Restrict output to a specific tablet");
+DEFINE_int64(rowset_id, -1, "Restrict output to a specific rowset");
+DEFINE_int32(column_id, -1, "Restrict output to a specific column");
+DEFINE_uint64(block_id, 0, "Restrict output to a specific block");
+DEFINE_bool(h, true, "Pretty-print values in human-readable units");
 
 namespace kudu {
 namespace tools {
@@ -140,16 +134,18 @@ Status Check(const RunnerContext& /*context*/) {
 
   // Get the "live" block IDs (i.e. those referenced by a tablet).
   vector<BlockId> live_block_ids;
-  unordered_map<BlockId, string, BlockIdHash, BlockIdEqual> live_block_id_to_tablet;
+  unordered_map<BlockId, string, BlockIdHash, BlockIdEqual>
+      live_block_id_to_tablet;
   vector<string> tablet_ids;
   RETURN_NOT_OK(fs_manager.ListTabletIds(&tablet_ids));
   for (const auto& t : tablet_ids) {
     scoped_refptr<TabletMetadata> meta;
     RETURN_NOT_OK(TabletMetadata::Load(&fs_manager, t, &meta));
     vector<BlockId> tablet_live_block_ids = meta->CollectBlockIds();
-    live_block_ids.insert(live_block_ids.end(),
-                          tablet_live_block_ids.begin(),
-                          tablet_live_block_ids.end());
+    live_block_ids.insert(
+        live_block_ids.end(),
+        tablet_live_block_ids.begin(),
+        tablet_live_block_ids.end());
     for (const auto& id : tablet_live_block_ids) {
       InsertOrDie(&live_block_id_to_tablet, id, t);
     }
@@ -165,16 +161,24 @@ Status Check(const RunnerContext& /*context*/) {
   // Blocks found in the block manager but not in a tablet. They are orphaned
   // and can be safely deleted.
   vector<BlockId> orphaned_block_ids;
-  std::set_difference(all_block_ids.begin(), all_block_ids.end(),
-                      live_block_ids.begin(), live_block_ids.end(),
-                      std::back_inserter(orphaned_block_ids), BlockIdCompare());
+  std::set_difference(
+      all_block_ids.begin(),
+      all_block_ids.end(),
+      live_block_ids.begin(),
+      live_block_ids.end(),
+      std::back_inserter(orphaned_block_ids),
+      BlockIdCompare());
 
   // Blocks found in a tablet but not in the block manager. They are missing
   // and indicative of corruption in the associated tablet(s).
   vector<BlockId> missing_block_ids;
-  std::set_difference(live_block_ids.begin(), live_block_ids.end(),
-                      all_block_ids.begin(), all_block_ids.end(),
-                      std::back_inserter(missing_block_ids), BlockIdCompare());
+  std::set_difference(
+      live_block_ids.begin(),
+      live_block_ids.end(),
+      all_block_ids.begin(),
+      all_block_ids.end(),
+      std::back_inserter(missing_block_ids),
+      BlockIdCompare());
 
   // Add missing blocks to the report.
   report.missing_block_check.emplace();
@@ -208,11 +212,13 @@ Status Check(const RunnerContext& /*context*/) {
   }
 
   if (FLAGS_repair) {
-    WARN_NOT_OK(deletion_transaction->CommitDeletedBlocks(&deleted),
-                "Could not delete orphaned blocks");
+    WARN_NOT_OK(
+        deletion_transaction->CommitDeletedBlocks(&deleted),
+        "Could not delete orphaned blocks");
     BlockIdSet deleted_set(deleted.begin(), deleted.end());
     for (auto& entry : report.orphaned_block_check->entries) {
-      if (ContainsKey(deleted_set, entry.block_id)) entry.repaired = true;
+      if (ContainsKey(deleted_set, entry.block_id))
+        entry.repaired = true;
     }
   }
 
@@ -237,13 +243,12 @@ Status DumpUuid(const RunnerContext& /*context*/) {
   return Status::OK();
 }
 
-Status ParseBlockIdArg(const RunnerContext& context,
-                       BlockId* id) {
+Status ParseBlockIdArg(const RunnerContext& context, BlockId* id) {
   const string& block_id_str = FindOrDie(context.required_args, "block_id");
   uint64_t numeric_id;
   if (!safe_strtou64(block_id_str, &numeric_id)) {
-    return Status::InvalidArgument(Substitute(
-        "Could not parse $0 as numeric block ID", block_id_str));
+    return Status::InvalidArgument(
+        Substitute("Could not parse $0 as numeric block ID", block_id_str));
   }
   *id = BlockId(numeric_id);
   return Status::OK();
@@ -271,7 +276,8 @@ Status DumpCFile(const RunnerContext& context) {
 
   if (FLAGS_print_rows) {
     gscoped_ptr<CFileIterator> it;
-    RETURN_NOT_OK(reader->NewIterator(&it, CFileReader::DONT_CACHE_BLOCK, nullptr));
+    RETURN_NOT_OK(
+        reader->NewIterator(&it, CFileReader::DONT_CACHE_BLOCK, nullptr));
     RETURN_NOT_OK(it->SeekToFirst());
 
     RETURN_NOT_OK(DumpIterator(*reader, it.get(), &cout, 0, 0));
@@ -403,31 +409,33 @@ enum class Field {
   kCFileDeltaStats,
 };
 
-// Enumerable array of field variants. Must be kept in-sync with the Field enum class.
+// Enumerable array of field variants. Must be kept in-sync with the Field enum
+// class.
 const Field kFieldVariants[] = {
-  Field::kTable,
-  Field::kTableId,
-  Field::kTabletId,
-  Field::kPartition,
-  Field::kRowsetId,
-  Field::kBlockId,
-  Field::kBlockKind,
-  Field::kColumn,
-  Field::kColumnId,
-  Field::kCFileDataType,
-  Field::kCFileNullable,
-  Field::kCFileEncoding,
-  Field::kCFileCompression,
-  Field::kCFileNumValues,
-  Field::kCFileSize,
-  Field::kCFileIncompatibleFeatures,
-  Field::kCFileCompatibleFeatures,
-  Field::kCFileMinKey,
-  Field::kCFileMaxKey,
-  Field::kCFileDeltaStats,
+    Field::kTable,
+    Field::kTableId,
+    Field::kTabletId,
+    Field::kPartition,
+    Field::kRowsetId,
+    Field::kBlockId,
+    Field::kBlockKind,
+    Field::kColumn,
+    Field::kColumnId,
+    Field::kCFileDataType,
+    Field::kCFileNullable,
+    Field::kCFileEncoding,
+    Field::kCFileCompression,
+    Field::kCFileNumValues,
+    Field::kCFileSize,
+    Field::kCFileIncompatibleFeatures,
+    Field::kCFileCompatibleFeatures,
+    Field::kCFileMinKey,
+    Field::kCFileMaxKey,
+    Field::kCFileDeltaStats,
 };
 
-// Groups the fields into categories based on their cardinality and required metadata.
+// Groups the fields into categories based on their cardinality and required
+// metadata.
 enum class FieldGroup {
   // Cardinality: 1 row per tablet
   // Metadata: TabletMetadata
@@ -449,26 +457,46 @@ enum class FieldGroup {
 // Returns the pretty-printed field name.
 const char* ToString(Field field) {
   switch (field) {
-    case Field::kTable: return "table";
-    case Field::kTableId: return "table-id";
-    case Field::kTabletId: return "tablet-id";
-    case Field::kPartition: return "partition";
-    case Field::kRowsetId: return "rowset-id";
-    case Field::kBlockId: return "block-id";
-    case Field::kBlockKind: return "block-kind";
-    case Field::kColumn: return "column";
-    case Field::kColumnId: return "column-id";
-    case Field::kCFileDataType: return "cfile-data-type";
-    case Field::kCFileNullable: return "cfile-nullable";
-    case Field::kCFileEncoding: return "cfile-encoding";
-    case Field::kCFileCompression: return "cfile-compression";
-    case Field::kCFileNumValues: return "cfile-num-values";
-    case Field::kCFileSize: return "cfile-size";
-    case Field::kCFileIncompatibleFeatures: return "cfile-incompatible-features";
-    case Field::kCFileCompatibleFeatures: return "cfile-compatible-features";
-    case Field::kCFileMinKey: return "cfile-min-key";
-    case Field::kCFileMaxKey: return "cfile-max-key";
-    case Field::kCFileDeltaStats: return "cfile-delta-stats";
+    case Field::kTable:
+      return "table";
+    case Field::kTableId:
+      return "table-id";
+    case Field::kTabletId:
+      return "tablet-id";
+    case Field::kPartition:
+      return "partition";
+    case Field::kRowsetId:
+      return "rowset-id";
+    case Field::kBlockId:
+      return "block-id";
+    case Field::kBlockKind:
+      return "block-kind";
+    case Field::kColumn:
+      return "column";
+    case Field::kColumnId:
+      return "column-id";
+    case Field::kCFileDataType:
+      return "cfile-data-type";
+    case Field::kCFileNullable:
+      return "cfile-nullable";
+    case Field::kCFileEncoding:
+      return "cfile-encoding";
+    case Field::kCFileCompression:
+      return "cfile-compression";
+    case Field::kCFileNumValues:
+      return "cfile-num-values";
+    case Field::kCFileSize:
+      return "cfile-size";
+    case Field::kCFileIncompatibleFeatures:
+      return "cfile-incompatible-features";
+    case Field::kCFileCompatibleFeatures:
+      return "cfile-compatible-features";
+    case Field::kCFileMinKey:
+      return "cfile-min-key";
+    case Field::kCFileMaxKey:
+      return "cfile-max-key";
+    case Field::kCFileDeltaStats:
+      return "cfile-delta-stats";
   }
   LOG(FATAL) << "unhandled field (this is a bug)";
 }
@@ -476,17 +504,23 @@ const char* ToString(Field field) {
 // Returns the pretty-printed group name.
 const char* ToString(FieldGroup group) {
   switch (group) {
-    case FieldGroup::kTablet: return "tablet";
-    case FieldGroup::kRowset: return "rowset";
-    case FieldGroup::kBlock: return "block";
-    case FieldGroup::kCFile: return "cfile";
-    default: LOG(FATAL) << "unhandled field group (this is a bug)";
+    case FieldGroup::kTablet:
+      return "tablet";
+    case FieldGroup::kRowset:
+      return "rowset";
+    case FieldGroup::kBlock:
+      return "block";
+    case FieldGroup::kCFile:
+      return "cfile";
+    default:
+      LOG(FATAL) << "unhandled field group (this is a bug)";
   }
 }
 
 // Transforms an ASCII string to lowercase.
 void ToLowerCase(string* string) {
-  std::transform(string->begin(), string->end(), string->begin(), ascii_tolower);
+  std::transform(
+      string->begin(), string->end(), string->begin(), ascii_tolower);
 }
 
 // Parses a field name and returns the corresponding enum variant.
@@ -510,14 +544,17 @@ FieldGroup ToFieldGroup(Field field) {
     case Field::kTable:
     case Field::kTableId:
     case Field::kTabletId:
-    case Field::kPartition: return FieldGroup::kTablet;
+    case Field::kPartition:
+      return FieldGroup::kTablet;
 
-    case Field::kRowsetId: return FieldGroup::kRowset;
+    case Field::kRowsetId:
+      return FieldGroup::kRowset;
 
     case Field::kBlockId:
     case Field::kBlockKind:
     case Field::kColumn:
-    case Field::kColumnId: return FieldGroup::kBlock;
+    case Field::kColumnId:
+      return FieldGroup::kBlock;
 
     case Field::kCFileDataType:
     case Field::kCFileNullable:
@@ -529,7 +566,8 @@ FieldGroup ToFieldGroup(Field field) {
     case Field::kCFileCompatibleFeatures:
     case Field::kCFileMinKey:
     case Field::kCFileMaxKey:
-    case Field::kCFileDeltaStats: return FieldGroup::kCFile;
+    case Field::kCFileDeltaStats:
+      return FieldGroup::kCFile;
   }
   LOG(FATAL) << "unhandled field (this is a bug): " << ToString(field);
 }
@@ -537,52 +575,72 @@ FieldGroup ToFieldGroup(Field field) {
 // Returns tablet info for the field.
 string TabletInfo(Field field, const TabletMetadata& tablet) {
   switch (field) {
-    case Field::kTable: return tablet.table_name();
-    case Field::kTableId: return tablet.table_id();
-    case Field::kTabletId: return tablet.tablet_id();
-    case Field::kPartition: return tablet.partition_schema()
-                                         .PartitionDebugString(tablet.partition(),
-                                                               tablet.schema());
-    default: LOG(FATAL) << "unhandled field (this is a bug): " << ToString(field);
+    case Field::kTable:
+      return tablet.table_name();
+    case Field::kTableId:
+      return tablet.table_id();
+    case Field::kTabletId:
+      return tablet.tablet_id();
+    case Field::kPartition:
+      return tablet.partition_schema().PartitionDebugString(
+          tablet.partition(), tablet.schema());
+    default:
+      LOG(FATAL) << "unhandled field (this is a bug): " << ToString(field);
   }
 }
 
 // Returns rowset info for the field.
-string RowsetInfo(Field field, const TabletMetadata& tablet, const RowSetMetadata& rowset) {
+string RowsetInfo(
+    Field field,
+    const TabletMetadata& tablet,
+    const RowSetMetadata& rowset) {
   switch (field) {
-    case Field::kRowsetId: return std::to_string(rowset.id());
-    default: return TabletInfo(field, tablet);
+    case Field::kRowsetId:
+      return std::to_string(rowset.id());
+    default:
+      return TabletInfo(field, tablet);
   }
 }
 
 // Returns block info for the field.
-string BlockInfo(Field field,
-                 const TabletMetadata& tablet,
-                 const RowSetMetadata& rowset,
-                 const char* block_kind,
-                 boost::optional<ColumnId> column_id,
-                 const BlockId& block) {
+string BlockInfo(
+    Field field,
+    const TabletMetadata& tablet,
+    const RowSetMetadata& rowset,
+    const char* block_kind,
+    boost::optional<ColumnId> column_id,
+    const BlockId& block) {
   CHECK(!block.IsNull());
   switch (field) {
-    case Field::kBlockId: return std::to_string(block.id());
-    case Field::kBlockKind: return block_kind;
+    case Field::kBlockId:
+      return std::to_string(block.id());
+    case Field::kBlockKind:
+      return block_kind;
 
-    case Field::kColumn: if (column_id) {
-      return tablet.schema().column_by_id(*column_id).name();
-    } else { return ""; }
+    case Field::kColumn:
+      if (column_id) {
+        return tablet.schema().column_by_id(*column_id).name();
+      } else {
+        return "";
+      }
 
-    case Field::kColumnId: if (column_id) {
-      return std::to_string(column_id.get());
-    } else { return ""; }
+    case Field::kColumnId:
+      if (column_id) {
+        return std::to_string(column_id.get());
+      } else {
+        return "";
+      }
 
-    default: return RowsetInfo(field, tablet, rowset);
+    default:
+      return RowsetInfo(field, tablet, rowset);
   }
 }
 
 // Formats the min or max primary key property from CFile metadata.
-string FormatCFileKeyMetadata(const TabletMetadata& tablet,
-                              const CFileReader& cfile,
-                              const char* property) {
+string FormatCFileKeyMetadata(
+    const TabletMetadata& tablet,
+    const CFileReader& cfile,
+    const char* property) {
   string value;
   if (!cfile.GetMetadataEntry(property, &value)) {
     return "";
@@ -590,14 +648,16 @@ string FormatCFileKeyMetadata(const TabletMetadata& tablet,
 
   Arena arena(1024);
   gscoped_ptr<EncodedKey> key;
-  CHECK_OK(EncodedKey::DecodeEncodedString(tablet.schema(), &arena, value, &key));
+  CHECK_OK(
+      EncodedKey::DecodeEncodedString(tablet.schema(), &arena, value, &key));
   return key->Stringify(tablet.schema());
 }
 
 // Formats the delta stats property from CFile metadata.
 string FormatCFileDeltaStats(const CFileReader& cfile) {
   string value;
-  if (!cfile.GetMetadataEntry(tablet::DeltaFileReader::kDeltaStatsEntryName, &value)) {
+  if (!cfile.GetMetadataEntry(
+          tablet::DeltaFileReader::kDeltaStatsEntryName, &value)) {
     return "";
   }
 
@@ -611,13 +671,14 @@ string FormatCFileDeltaStats(const CFileReader& cfile) {
 }
 
 // Returns cfile info for the field.
-string CFileInfo(Field field,
-                 const TabletMetadata& tablet,
-                 const RowSetMetadata& rowset,
-                 const char* block_kind,
-                 const boost::optional<ColumnId>& column_id,
-                 const BlockId& block,
-                 const CFileReader& cfile) {
+string CFileInfo(
+    Field field,
+    const TabletMetadata& tablet,
+    const RowSetMetadata& rowset,
+    const char* block_kind,
+    const boost::optional<ColumnId>& column_id,
+    const BlockId& block,
+    const CFileReader& cfile) {
   switch (field) {
     case Field::kCFileDataType:
       return cfile.type_info()->name();
@@ -627,36 +688,42 @@ string CFileInfo(Field field,
       return EncodingType_Name(cfile.type_encoding_info()->encoding_type());
     case Field::kCFileCompression:
       return CompressionType_Name(cfile.footer().compression());
-    case Field::kCFileNumValues: if (FLAGS_h) {
-      return HumanReadableNum::ToString(cfile.footer().num_values());
-    } else {
-      return std::to_string(cfile.footer().num_values());
-    }
-    case Field::kCFileSize: if (FLAGS_h) {
-      return HumanReadableNumBytes::ToString(cfile.file_size());
-    } else {
-      return std::to_string(cfile.file_size());
-    }
+    case Field::kCFileNumValues:
+      if (FLAGS_h) {
+        return HumanReadableNum::ToString(cfile.footer().num_values());
+      } else {
+        return std::to_string(cfile.footer().num_values());
+      }
+    case Field::kCFileSize:
+      if (FLAGS_h) {
+        return HumanReadableNumBytes::ToString(cfile.file_size());
+      } else {
+        return std::to_string(cfile.file_size());
+      }
     case Field::kCFileIncompatibleFeatures:
       return std::to_string(cfile.footer().incompatible_features());
     case Field::kCFileCompatibleFeatures:
       return std::to_string(cfile.footer().compatible_features());
     case Field::kCFileMinKey:
-      return FormatCFileKeyMetadata(tablet, cfile, tablet::DiskRowSet::kMinKeyMetaEntryName);
+      return FormatCFileKeyMetadata(
+          tablet, cfile, tablet::DiskRowSet::kMinKeyMetaEntryName);
     case Field::kCFileMaxKey:
-      return FormatCFileKeyMetadata(tablet, cfile, tablet::DiskRowSet::kMaxKeyMetaEntryName);
+      return FormatCFileKeyMetadata(
+          tablet, cfile, tablet::DiskRowSet::kMaxKeyMetaEntryName);
     case Field::kCFileDeltaStats:
       return FormatCFileDeltaStats(cfile);
-    default: return BlockInfo(field, tablet, rowset, block_kind, column_id, block);
+    default:
+      return BlockInfo(field, tablet, rowset, block_kind, column_id, block);
   }
 }
 
 // Helper function that calls one of the above info functions repeatedly to
 // build up a row.
-template<typename F, typename... Params>
-vector<string> BuildInfoRow(F info_func,
-                            const vector<Field>& fields,
-                            const Params&... params) {
+template <typename F, typename... Params>
+vector<string> BuildInfoRow(
+    F info_func,
+    const vector<Field>& fields,
+    const Params&... params) {
   vector<string> row;
   row.reserve(fields.size());
   for (Field field : fields) {
@@ -670,15 +737,16 @@ vector<string> BuildInfoRow(F info_func,
 //
 // If the block ID isn't valid or doesn't match the block ID filter, then the
 // block is skipped.
-Status AddBlockInfoRow(DataTable* table,
-                       FieldGroup group,
-                       const vector<Field>& fields,
-                       FsManager* fs_manager,
-                       const TabletMetadata& tablet,
-                       const RowSetMetadata& rowset,
-                       const char* block_kind,
-                       const boost::optional<ColumnId>& column_id,
-                       const BlockId& block) {
+Status AddBlockInfoRow(
+    DataTable* table,
+    FieldGroup group,
+    const vector<Field>& fields,
+    FsManager* fs_manager,
+    const TabletMetadata& tablet,
+    const RowSetMetadata& rowset,
+    const char* block_kind,
+    const boost::optional<ColumnId>& column_id,
+    const BlockId& block) {
   if (block.IsNull() || (FLAGS_block_id > 0 && FLAGS_block_id != block.id())) {
     return Status::OK();
   }
@@ -686,23 +754,33 @@ Status AddBlockInfoRow(DataTable* table,
     unique_ptr<CFileReader> cfile;
     unique_ptr<ReadableBlock> readable_block;
     RETURN_NOT_OK(fs_manager->OpenBlock(block, &readable_block));
-    RETURN_NOT_OK(CFileReader::Open(std::move(readable_block), ReaderOptions(), &cfile));
-    table->AddRow(BuildInfoRow(CFileInfo, fields, tablet, rowset, block_kind,
-                               column_id, block, *cfile));
+    RETURN_NOT_OK(
+        CFileReader::Open(std::move(readable_block), ReaderOptions(), &cfile));
+    table->AddRow(BuildInfoRow(
+        CFileInfo,
+        fields,
+        tablet,
+        rowset,
+        block_kind,
+        column_id,
+        block,
+        *cfile));
 
   } else {
-    table->AddRow(BuildInfoRow(BlockInfo, fields, tablet, rowset, block_kind,
-                               column_id, block));
+    table->AddRow(BuildInfoRow(
+        BlockInfo, fields, tablet, rowset, block_kind, column_id, block));
   }
   return Status::OK();
 }
 } // anonymous namespace
 
 Status List(const RunnerContext& /*context*/) {
-  // Parse the required fields into the enum form, and create an output data table.
+  // Parse the required fields into the enum form, and create an output data
+  // table.
   vector<Field> fields;
   vector<string> columns;
-  for (StringPiece name : strings::Split(FLAGS_columns, ",", strings::SkipEmpty())) {
+  for (StringPiece name :
+       strings::Split(FLAGS_columns, ",", strings::SkipEmpty())) {
     Field field;
     RETURN_NOT_OK(ParseField(name.ToString(), &field));
     fields.push_back(field);
@@ -733,12 +811,14 @@ Status List(const RunnerContext& /*context*/) {
   string table_id = FLAGS_table_id;
   ToLowerCase(&table_id);
 
-  FieldGroup group = ToFieldGroup(*std::max_element(fields.begin(), fields.end()));
+  FieldGroup group =
+      ToFieldGroup(*std::max_element(fields.begin(), fields.end()));
   VLOG(1) << "group: " << string(ToString(group));
 
   for (const string& tablet_id : tablet_ids) {
     scoped_refptr<TabletMetadata> tablet_metadata;
-    RETURN_NOT_OK(TabletMetadata::Load(&fs_manager, tablet_id, &tablet_metadata));
+    RETURN_NOT_OK(
+        TabletMetadata::Load(&fs_manager, tablet_id, &tablet_metadata));
     const TabletMetadata& tablet = *tablet_metadata.get();
 
     if (!table_name.empty() && table_name != tablet.table_name()) {
@@ -771,28 +851,74 @@ Status List(const RunnerContext& /*context*/) {
         ColumnId column_id(FLAGS_column_id);
         auto block = FindOrNull(column_blocks, column_id);
         if (block) {
-          RETURN_NOT_OK(AddBlockInfoRow(&table, group, fields, &fs_manager, tablet, rowset,
-                                        "column", column_id, *block));
+          RETURN_NOT_OK(AddBlockInfoRow(
+              &table,
+              group,
+              fields,
+              &fs_manager,
+              tablet,
+              rowset,
+              "column",
+              column_id,
+              *block));
         }
       } else {
         for (const auto& col_block : column_blocks) {
-          RETURN_NOT_OK(AddBlockInfoRow(&table, group, fields, &fs_manager, tablet,
-                                        rowset, "column", col_block.first, col_block.second));
+          RETURN_NOT_OK(AddBlockInfoRow(
+              &table,
+              group,
+              fields,
+              &fs_manager,
+              tablet,
+              rowset,
+              "column",
+              col_block.first,
+              col_block.second));
         }
         for (const auto& block : rowset.redo_delta_blocks()) {
-          RETURN_NOT_OK(AddBlockInfoRow(&table, group, fields, &fs_manager, tablet,
-                                        rowset, "redo", boost::none, block));
+          RETURN_NOT_OK(AddBlockInfoRow(
+              &table,
+              group,
+              fields,
+              &fs_manager,
+              tablet,
+              rowset,
+              "redo",
+              boost::none,
+              block));
         }
         for (const auto& block : rowset.undo_delta_blocks()) {
-          RETURN_NOT_OK(AddBlockInfoRow(&table, group, fields, &fs_manager, tablet,
-                                        rowset, "undo", boost::none, block));
+          RETURN_NOT_OK(AddBlockInfoRow(
+              &table,
+              group,
+              fields,
+              &fs_manager,
+              tablet,
+              rowset,
+              "undo",
+              boost::none,
+              block));
         }
-        RETURN_NOT_OK(AddBlockInfoRow(&table, group, fields, &fs_manager, tablet,
-                                      rowset, "bloom", boost::none, rowset.bloom_block()));
-        RETURN_NOT_OK(AddBlockInfoRow(&table, group, fields, &fs_manager, tablet,
-                                      rowset, "adhoc-index", boost::none,
-                                      rowset.adhoc_index_block()));
-
+        RETURN_NOT_OK(AddBlockInfoRow(
+            &table,
+            group,
+            fields,
+            &fs_manager,
+            tablet,
+            rowset,
+            "bloom",
+            boost::none,
+            rowset.bloom_block()));
+        RETURN_NOT_OK(AddBlockInfoRow(
+            &table,
+            group,
+            fields,
+            &fs_manager,
+            tablet,
+            rowset,
+            "adhoc-index",
+            boost::none,
+            rowset.adhoc_index_block()));
       }
     }
     // TODO(dan): should orphaned blocks be included, perhaps behind a flag?
@@ -804,43 +930,45 @@ Status List(const RunnerContext& /*context*/) {
 static unique_ptr<Mode> BuildFsDumpMode() {
   unique_ptr<Action> dump_cfile =
       ActionBuilder("cfile", &DumpCFile)
-      .Description("Dump the contents of a CFile (column file)")
-      .ExtraDescription("This interprets the contents of a CFile-formatted block "
-                        "and outputs the decoded row data.")
-      .AddRequiredParameter({ "block_id", "block identifier" })
-      .AddOptionalParameter("fs_data_dirs")
-      .AddOptionalParameter("fs_metadata_dir")
-      .AddOptionalParameter("fs_wal_dir")
-      .AddOptionalParameter("print_meta")
-      .AddOptionalParameter("print_rows")
-      .Build();
+          .Description("Dump the contents of a CFile (column file)")
+          .ExtraDescription(
+              "This interprets the contents of a CFile-formatted block "
+              "and outputs the decoded row data.")
+          .AddRequiredParameter({"block_id", "block identifier"})
+          .AddOptionalParameter("fs_data_dirs")
+          .AddOptionalParameter("fs_metadata_dir")
+          .AddOptionalParameter("fs_wal_dir")
+          .AddOptionalParameter("print_meta")
+          .AddOptionalParameter("print_rows")
+          .Build();
 
   unique_ptr<Action> dump_block =
       ActionBuilder("block", &DumpBlock)
-      .Description("Dump the binary contents of a data block")
-      .ExtraDescription("This performs no parsing or interpretation of the data stored "
-                        "in the block but rather outputs its binary contents directly.")
-      .AddRequiredParameter({ "block_id", "block identifier" })
-      .AddOptionalParameter("fs_data_dirs")
-      .AddOptionalParameter("fs_metadata_dir")
-      .AddOptionalParameter("fs_wal_dir")
-      .Build();
+          .Description("Dump the binary contents of a data block")
+          .ExtraDescription(
+              "This performs no parsing or interpretation of the data stored "
+              "in the block but rather outputs its binary contents directly.")
+          .AddRequiredParameter({"block_id", "block identifier"})
+          .AddOptionalParameter("fs_data_dirs")
+          .AddOptionalParameter("fs_metadata_dir")
+          .AddOptionalParameter("fs_wal_dir")
+          .Build();
 
   unique_ptr<Action> dump_tree =
       ActionBuilder("tree", &DumpFsTree)
-      .Description("Dump the tree of a Kudu filesystem")
-      .AddOptionalParameter("fs_data_dirs")
-      .AddOptionalParameter("fs_metadata_dir")
-      .AddOptionalParameter("fs_wal_dir")
-      .Build();
+          .Description("Dump the tree of a Kudu filesystem")
+          .AddOptionalParameter("fs_data_dirs")
+          .AddOptionalParameter("fs_metadata_dir")
+          .AddOptionalParameter("fs_wal_dir")
+          .Build();
 
   unique_ptr<Action> dump_uuid =
       ActionBuilder("uuid", &DumpUuid)
-      .Description("Dump the UUID of a Kudu filesystem")
-      .AddOptionalParameter("fs_data_dirs")
-      .AddOptionalParameter("fs_metadata_dir")
-      .AddOptionalParameter("fs_wal_dir")
-      .Build();
+          .Description("Dump the UUID of a Kudu filesystem")
+          .AddOptionalParameter("fs_data_dirs")
+          .AddOptionalParameter("fs_metadata_dir")
+          .AddOptionalParameter("fs_wal_dir")
+          .Build();
 
   return ModeBuilder("dump")
       .Description("Dump a Kudu filesystem")
@@ -854,64 +982,75 @@ static unique_ptr<Mode> BuildFsDumpMode() {
 unique_ptr<Mode> BuildFsMode() {
   unique_ptr<Action> check =
       ActionBuilder("check", &Check)
-      .Description("Check a Kudu filesystem for inconsistencies")
-      .AddOptionalParameter("fs_data_dirs")
-      .AddOptionalParameter("fs_metadata_dir")
-      .AddOptionalParameter("fs_wal_dir")
-      .AddOptionalParameter("repair")
-      .Build();
+          .Description("Check a Kudu filesystem for inconsistencies")
+          .AddOptionalParameter("fs_data_dirs")
+          .AddOptionalParameter("fs_metadata_dir")
+          .AddOptionalParameter("fs_wal_dir")
+          .AddOptionalParameter("repair")
+          .Build();
 
-  unique_ptr<Action> format =
-      ActionBuilder("format", &Format)
-      .Description("Format a new Kudu filesystem")
-      .AddOptionalParameter("fs_data_dirs")
-      .AddOptionalParameter("fs_metadata_dir")
-      .AddOptionalParameter("fs_wal_dir")
-      .AddOptionalParameter("uuid")
-      .Build();
+  unique_ptr<Action> format = ActionBuilder("format", &Format)
+                                  .Description("Format a new Kudu filesystem")
+                                  .AddOptionalParameter("fs_data_dirs")
+                                  .AddOptionalParameter("fs_metadata_dir")
+                                  .AddOptionalParameter("fs_wal_dir")
+                                  .AddOptionalParameter("uuid")
+                                  .Build();
 
   unique_ptr<Action> update =
       ActionBuilder("update_dirs", &Update)
-      .Description("Updates the set of data directories in an existing Kudu filesystem")
-      .ExtraDescription("If a data directory is in use by a tablet and is "
-          "removed, the operation will fail unless --force is also used")
-      .AddOptionalParameter("force", boost::none, string("If true, permits "
-          "the removal of a data directory that is configured for use by "
-          "existing tablets. Those tablets will fail the next time the server "
-          "is started"))
-      .AddOptionalParameter("fs_data_dirs")
-      .AddOptionalParameter("fs_metadata_dir")
-      .AddOptionalParameter("fs_wal_dir")
-      .Build();
+          .Description(
+              "Updates the set of data directories in an existing Kudu filesystem")
+          .ExtraDescription(
+              "If a data directory is in use by a tablet and is "
+              "removed, the operation will fail unless --force is also used")
+          .AddOptionalParameter(
+              "force",
+              boost::none,
+              string(
+                  "If true, permits "
+                  "the removal of a data directory that is configured for use by "
+                  "existing tablets. Those tablets will fail the next time the server "
+                  "is started"))
+          .AddOptionalParameter("fs_data_dirs")
+          .AddOptionalParameter("fs_metadata_dir")
+          .AddOptionalParameter("fs_wal_dir")
+          .Build();
 
   unique_ptr<Action> list =
       ActionBuilder("list", &List)
-      .Description("List metadata for on-disk tablets, rowsets, blocks, and cfiles")
-      .ExtraDescription("This tool is useful for discovering and gathering information about "
-                        "on-disk data. Many field types can be added to the results with the "
-                        "--columns flag, and results can be filtered to a specific table, "
-                        "tablet, rowset, column, or block through flags.\n\n"
-                        "Note: adding any of the 'cfile' fields to --columns will cause "
-                        "the tool to read on-disk metadata for each CFile in the result set, "
-                        "which could require large amounts of I/O when many results are returned.")
-      .AddOptionalParameter("fs_data_dirs")
-      .AddOptionalParameter("fs_metadata_dir")
-      .AddOptionalParameter("fs_wal_dir")
-      .AddOptionalParameter("table_id")
-      .AddOptionalParameter("table_name")
-      .AddOptionalParameter("tablet_id")
-      .AddOptionalParameter("rowset_id")
-      .AddOptionalParameter("column_id")
-      .AddOptionalParameter("block_id")
-      .AddOptionalParameter("columns", string("tablet-id, rowset-id, block-id, block-kind"),
-                            Substitute("Comma-separated list of fields to include in output.\n"
-                                       "Possible values: $0",
-                                       JoinMapped(kFieldVariants, [] (Field field) {
-                                                    return ToString(field);
-                                                  }, ", ")))
-      .AddOptionalParameter("format")
-      .AddOptionalParameter("h")
-      .Build();
+          .Description(
+              "List metadata for on-disk tablets, rowsets, blocks, and cfiles")
+          .ExtraDescription(
+              "This tool is useful for discovering and gathering information about "
+              "on-disk data. Many field types can be added to the results with the "
+              "--columns flag, and results can be filtered to a specific table, "
+              "tablet, rowset, column, or block through flags.\n\n"
+              "Note: adding any of the 'cfile' fields to --columns will cause "
+              "the tool to read on-disk metadata for each CFile in the result set, "
+              "which could require large amounts of I/O when many results are returned.")
+          .AddOptionalParameter("fs_data_dirs")
+          .AddOptionalParameter("fs_metadata_dir")
+          .AddOptionalParameter("fs_wal_dir")
+          .AddOptionalParameter("table_id")
+          .AddOptionalParameter("table_name")
+          .AddOptionalParameter("tablet_id")
+          .AddOptionalParameter("rowset_id")
+          .AddOptionalParameter("column_id")
+          .AddOptionalParameter("block_id")
+          .AddOptionalParameter(
+              "columns",
+              string("tablet-id, rowset-id, block-id, block-kind"),
+              Substitute(
+                  "Comma-separated list of fields to include in output.\n"
+                  "Possible values: $0",
+                  JoinMapped(
+                      kFieldVariants,
+                      [](Field field) { return ToString(field); },
+                      ", ")))
+          .AddOptionalParameter("format")
+          .AddOptionalParameter("h")
+          .Build();
 
   return ModeBuilder("fs")
       .Description("Operate on a local Kudu filesystem")

@@ -66,7 +66,6 @@ using strings::Substitute;
 // Test Master <-> HMS catalog synchronization.
 class MasterHmsTest : public ExternalMiniClusterITestBase {
  public:
-
   void SetUp() override {
     ExternalMiniClusterITestBase::SetUp();
 
@@ -75,8 +74,10 @@ class MasterHmsTest : public ExternalMiniClusterITestBase {
     opts.num_masters = 1;
     opts.num_tablet_servers = 1;
     opts.enable_kerberos = EnableKerberos();
-    // Tune down the notification log poll period in order to speed up catalog convergence.
-    opts.extra_master_flags.emplace_back("--hive_metastore_notification_log_poll_period_seconds=1");
+    // Tune down the notification log poll period in order to speed up catalog
+    // convergence.
+    opts.extra_master_flags.emplace_back(
+        "--hive_metastore_notification_log_poll_period_seconds=1");
     StartClusterWithOpts(std::move(opts));
 
     thrift::ClientOptions hms_opts;
@@ -112,7 +113,9 @@ class MasterHmsTest : public ExternalMiniClusterITestBase {
     return Status::OK();
   }
 
-  Status CreateKuduTable(const string& database_name, const string& table_name) {
+  Status CreateKuduTable(
+      const string& database_name,
+      const string& table_name) {
     // Get coverage of all column types.
     KuduSchema schema;
     KuduSchemaBuilder b;
@@ -127,30 +130,35 @@ class MasterHmsTest : public ExternalMiniClusterITestBase {
     b.AddColumn("float_val")->Type(KuduColumnSchema::FLOAT);
     b.AddColumn("double_val")->Type(KuduColumnSchema::DOUBLE);
     b.AddColumn("binary_val")->Type(KuduColumnSchema::BINARY);
-    b.AddColumn("decimal32_val")->Type(KuduColumnSchema::DECIMAL)
+    b.AddColumn("decimal32_val")
+        ->Type(KuduColumnSchema::DECIMAL)
         ->Precision(kMaxDecimal32Precision);
-    b.AddColumn("decimal64_val")->Type(KuduColumnSchema::DECIMAL)
+    b.AddColumn("decimal64_val")
+        ->Type(KuduColumnSchema::DECIMAL)
         ->Precision(kMaxDecimal64Precision);
-    b.AddColumn("decimal128_val")->Type(KuduColumnSchema::DECIMAL)
+    b.AddColumn("decimal128_val")
+        ->Type(KuduColumnSchema::DECIMAL)
         ->Precision(kMaxDecimal128Precision);
 
     RETURN_NOT_OK(b.Build(&schema));
     unique_ptr<KuduTableCreator> table_creator(client_->NewTableCreator());
-    return table_creator->table_name(Substitute("$0.$1", database_name, table_name))
-                         .schema(&schema)
-                         .num_replicas(1)
-                         .set_range_partition_columns({ "key" })
-                         .Create();
+    return table_creator
+        ->table_name(Substitute("$0.$1", database_name, table_name))
+        .schema(&schema)
+        .num_replicas(1)
+        .set_range_partition_columns({"key"})
+        .Create();
   }
 
   // Rename a table entry in the HMS catalog.
-  Status RenameHmsTable(const string& database_name,
-                        const string& old_table_name,
-                        const string& new_table_name) {
+  Status RenameHmsTable(
+      const string& database_name,
+      const string& old_table_name,
+      const string& new_table_name) {
     // The HMS doesn't have a rename table API. Instead it offers the more
-    // general AlterTable API, which requires the entire set of table fields to be
-    // set. Since we don't know these fields during a simple rename operation, we
-    // have to look them up.
+    // general AlterTable API, which requires the entire set of table fields to
+    // be set. Since we don't know these fields during a simple rename
+    // operation, we have to look them up.
     hive::Table table;
     RETURN_NOT_OK(hms_client_->GetTable(database_name, old_table_name, &table));
     table.tableName = new_table_name;
@@ -158,7 +166,9 @@ class MasterHmsTest : public ExternalMiniClusterITestBase {
   }
 
   // Drop all columns from a Kudu HMS table entry.
-  Status AlterHmsTableDropColumns(const string& database_name, const string& table_name) {
+  Status AlterHmsTableDropColumns(
+      const string& database_name,
+      const string& table_name) {
     hive::Table table;
     RETURN_NOT_OK(hms_client_->GetTable(database_name, table_name, &table));
     table.sd.cols.clear();
@@ -166,8 +176,10 @@ class MasterHmsTest : public ExternalMiniClusterITestBase {
     // The KuduMetastorePlugin only allows the master to alter the columns in a
     // Kudu table, so we pretend to be the master.
     hive::EnvironmentContext env_ctx;
-    env_ctx.__set_properties({ std::make_pair(hms::HmsClient::kKuduMasterEventKey, "true") });
-    RETURN_NOT_OK(hms_client_->AlterTable(database_name, table_name, table, env_ctx));
+    env_ctx.__set_properties(
+        {std::make_pair(hms::HmsClient::kKuduMasterEventKey, "true")});
+    RETURN_NOT_OK(
+        hms_client_->AlterTable(database_name, table_name, table, env_ctx));
     return Status::OK();
   }
 
@@ -176,7 +188,8 @@ class MasterHmsTest : public ExternalMiniClusterITestBase {
   void CheckTable(const string& database_name, const string& table_name) {
     SCOPED_TRACE(Substitute("Checking table $0.$1", database_name, table_name));
     shared_ptr<KuduTable> table;
-    ASSERT_OK(client_->OpenTable(Substitute("$0.$1", database_name, table_name), &table));
+    ASSERT_OK(client_->OpenTable(
+        Substitute("$0.$1", database_name, table_name), &table));
     KuduSchema schema = table->schema();
 
     hive::Table hms_table;
@@ -190,19 +203,26 @@ class MasterHmsTest : public ExternalMiniClusterITestBase {
     for (int idx = 0; idx < schema.num_columns(); idx++) {
       ASSERT_EQ(schema.Column(idx).name(), hms_table.sd.cols[idx].name);
     }
-    ASSERT_EQ(table->id(), hms_table.parameters[hms::HmsClient::kKuduTableIdKey]);
-    ASSERT_EQ(HostPort::ToCommaSeparatedString(cluster_->master_rpc_addrs()),
-              hms_table.parameters[hms::HmsClient::kKuduMasterAddrsKey]);
-    ASSERT_EQ(hms::HmsClient::kKuduStorageHandler,
-              hms_table.parameters[hms::HmsClient::kStorageHandlerKey]);
+    ASSERT_EQ(
+        table->id(), hms_table.parameters[hms::HmsClient::kKuduTableIdKey]);
+    ASSERT_EQ(
+        HostPort::ToCommaSeparatedString(cluster_->master_rpc_addrs()),
+        hms_table.parameters[hms::HmsClient::kKuduMasterAddrsKey]);
+    ASSERT_EQ(
+        hms::HmsClient::kKuduStorageHandler,
+        hms_table.parameters[hms::HmsClient::kStorageHandlerKey]);
   }
 
   // Checks that a table does not exist in the Kudu and HMS catalogs.
-  void CheckTableDoesNotExist(const string& database_name, const string& table_name) {
-    SCOPED_TRACE(Substitute("Checking table $0.$1 does not exist", database_name, table_name));
+  void CheckTableDoesNotExist(
+      const string& database_name,
+      const string& table_name) {
+    SCOPED_TRACE(Substitute(
+        "Checking table $0.$1 does not exist", database_name, table_name));
 
     shared_ptr<KuduTable> table;
-    Status s = client_->OpenTable(Substitute("$0.$1", database_name, table_name), &table);
+    Status s = client_->OpenTable(
+        Substitute("$0.$1", database_name, table_name), &table);
     ASSERT_TRUE(s.IsNotFound()) << s.ToString();
 
     hive::Table hms_table;
@@ -212,16 +232,15 @@ class MasterHmsTest : public ExternalMiniClusterITestBase {
 
   static hive::EnvironmentContext MasterEnvCtx() {
     hive::EnvironmentContext env_ctx;
-    env_ctx.__set_properties({ std::make_pair(hms::HmsClient::kKuduMasterEventKey, "true") });
+    env_ctx.__set_properties(
+        {std::make_pair(hms::HmsClient::kKuduMasterEventKey, "true")});
     return env_ctx;
   }
 
  protected:
-
   unique_ptr<HmsClient> hms_client_;
 
  private:
-
   virtual HmsMode GetHmsMode() {
     return HmsMode::ENABLE_METASTORE_INTEGRATION;
   }
@@ -272,7 +291,8 @@ TEST_F(MasterHmsTest, TestCreateTable) {
   // Start the HMS and try again.
   ASSERT_OK(StartHms());
   ASSERT_EVENTUALLY([&] {
-    // HmsCatalog throttles reconnections, so it's necessary to wait out the backoff.
+    // HmsCatalog throttles reconnections, so it's necessary to wait out the
+    // backoff.
     ASSERT_OK(CreateKuduTable(hms_database_name, "foo"));
   });
   NO_FATALS(CheckTable(hms_database_name, "foo"));
@@ -329,7 +349,8 @@ TEST_F(MasterHmsTest, TestRenameTable) {
   // Start the HMS and rename the table through Kudu.
   ASSERT_OK(StartHms());
   ASSERT_EVENTUALLY([&] {
-    // HmsCatalog throttles reconnections, so it's necessary to wait out the backoff.
+    // HmsCatalog throttles reconnections, so it's necessary to wait out the
+    // backoff.
     ASSERT_OK(table_alterer->Alter());
   });
   NO_FATALS(CheckTable("db", "c"));
@@ -337,15 +358,13 @@ TEST_F(MasterHmsTest, TestRenameTable) {
 
   // Rename the table through the HMS, and ensure the rename is handled in Kudu.
   ASSERT_OK(RenameHmsTable("db", "c", "d"));
-  ASSERT_EVENTUALLY([&] {
-    NO_FATALS(CheckTable("db", "d"));
-  });
+  ASSERT_EVENTUALLY([&] { NO_FATALS(CheckTable("db", "d")); });
 
   // Check that the two tables still exist.
   vector<string> tables;
   ASSERT_OK(hms_client_->GetTableNames("db", &tables));
   std::sort(tables.begin(), tables.end());
-  ASSERT_EQ(tables, vector<string>({ "b", "d" })) << tables;
+  ASSERT_EQ(tables, vector<string>({"b", "d"})) << tables;
 
   // Regression test for HIVE-19569
   // If HIVE-19569 is in effect the rename across databases will result in DROP
@@ -371,28 +390,34 @@ TEST_F(MasterHmsTest, TestAlterTable) {
   // Alter the HMS table entry in a destructive way (remove all columns).
   ASSERT_OK(AlterHmsTableDropColumns("default", "a"));
 
-  // Drop a column in Kudu. This should correct the entire set of columns in the HMS.
-  unique_ptr<KuduTableAlterer> table_alterer(client_->NewTableAlterer("default.a"));
+  // Drop a column in Kudu. This should correct the entire set of columns in the
+  // HMS.
+  unique_ptr<KuduTableAlterer> table_alterer(
+      client_->NewTableAlterer("default.a"));
   ASSERT_OK(table_alterer->DropColumn("int8_val")->Alter());
   NO_FATALS(CheckTable("default", "a"));
 
   // Shutdown the HMS and try to alter the table.
   ASSERT_OK(StopHms());
-  table_alterer.reset(client_->NewTableAlterer("default.a")->DropColumn("int16_val"));
+  table_alterer.reset(
+      client_->NewTableAlterer("default.a")->DropColumn("int16_val"));
   Status s = table_alterer->Alter();
   ASSERT_TRUE(s.IsNetworkError()) << s.ToString();
 
   // Start the HMS and try again.
   ASSERT_OK(StartHms());
   ASSERT_EVENTUALLY([&] {
-    // HmsCatalog throttles reconnections, so it's necessary to wait out the backoff.
+    // HmsCatalog throttles reconnections, so it's necessary to wait out the
+    // backoff.
     ASSERT_OK(table_alterer->Alter());
   });
   NO_FATALS(CheckTable("default", "a"));
 
-  // Only alter the table in Kudu, the corresponding table in the HMS will not be altered.
-  table_alterer.reset(client_->NewTableAlterer("default.a")->RenameTo("default.b")
-                             ->modify_external_catalogs(false));
+  // Only alter the table in Kudu, the corresponding table in the HMS will not
+  // be altered.
+  table_alterer.reset(client_->NewTableAlterer("default.a")
+                          ->RenameTo("default.b")
+                          ->modify_external_catalogs(false));
   ASSERT_OK(table_alterer->Alter());
   bool exists;
   ASSERT_OK(client_->TableExists("default.b", &exists));
@@ -402,7 +427,8 @@ TEST_F(MasterHmsTest, TestAlterTable) {
 }
 
 TEST_F(MasterHmsTest, TestDeleteTable) {
-  // Create a Kudu table, then drop it from Kudu and ensure the HMS entry is removed.
+  // Create a Kudu table, then drop it from Kudu and ensure the HMS entry is
+  // removed.
   ASSERT_OK(CreateKuduTable("default", "a"));
   NO_FATALS(CheckTable("default", "a"));
   hive::Table hms_table;
@@ -411,7 +437,8 @@ TEST_F(MasterHmsTest, TestDeleteTable) {
   ASSERT_OK(client_->DeleteTable("default.a"));
   NO_FATALS(CheckTableDoesNotExist("default", "a"));
 
-  // Create the Kudu table, then drop it from the HMS, and ensure the Kudu table is deleted.
+  // Create the Kudu table, then drop it from the HMS, and ensure the Kudu table
+  // is deleted.
   ASSERT_OK(CreateKuduTable("default", "b"));
   NO_FATALS(CheckTable("default", "b"));
   hive::Table hms_table_b;
@@ -419,9 +446,7 @@ TEST_F(MasterHmsTest, TestDeleteTable) {
   shared_ptr<KuduTable> table;
   ASSERT_OK(client_->OpenTable("default.b", &table));
   ASSERT_OK(hms_client_->DropTable("default", "b"));
-  ASSERT_EVENTUALLY([&] {
-      NO_FATALS(CheckTableDoesNotExist("default", "b"));
-  });
+  ASSERT_EVENTUALLY([&] { NO_FATALS(CheckTableDoesNotExist("default", "b")); });
 
   // Ensure that dropping a table while the HMS is unreachable fails.
   ASSERT_OK(CreateKuduTable("default", "c"));
@@ -432,7 +457,8 @@ TEST_F(MasterHmsTest, TestDeleteTable) {
   ASSERT_OK(StartHms());
   NO_FATALS(CheckTable("default", "c"));
   ASSERT_EVENTUALLY([&] {
-    // HmsCatalog throttles reconnections, so it's necessary to wait out the backoff.
+    // HmsCatalog throttles reconnections, so it's necessary to wait out the
+    // backoff.
     ASSERT_OK(client_->DeleteTable("default.c"));
   });
   NO_FATALS(CheckTableDoesNotExist("default", "c"));
@@ -467,28 +493,30 @@ TEST_F(MasterHmsTest, TestNotificationLogListener) {
   // Drop the table in the HMS, and ensure that the notification log listener
   // detects the drop and updates the Kudu catalog accordingly.
   ASSERT_OK(hms_client_->DropTable("default", "b"));
-  ASSERT_EVENTUALLY([&] {
-    NO_FATALS(CheckTableDoesNotExist("default", "b"));
-  });
+  ASSERT_EVENTUALLY([&] { NO_FATALS(CheckTableDoesNotExist("default", "b")); });
 
   // Rename a table from A to B to A, and ensure that Kudu doesn't continue
   // applying notification log events in a self-perpetuating loop.
   ASSERT_OK(CreateKuduTable("default", "a"));
   unique_ptr<KuduTableAlterer> table_alterer;
-  table_alterer.reset(client_->NewTableAlterer("default.a")->RenameTo("default.b"));
+  table_alterer.reset(
+      client_->NewTableAlterer("default.a")->RenameTo("default.b"));
   ASSERT_OK(table_alterer->Alter());
   NO_FATALS(CheckTable("default", "b"));
-  table_alterer.reset(client_->NewTableAlterer("default.b")->RenameTo("default.a"));
+  table_alterer.reset(
+      client_->NewTableAlterer("default.b")->RenameTo("default.a"));
   ASSERT_OK(table_alterer->Alter());
   NO_FATALS(CheckTable("default", "a"));
 
-
-  // Ensure that Kudu can rename a table just after it's been renamed through the HMS.
+  // Ensure that Kudu can rename a table just after it's been renamed through
+  // the HMS.
   RenameHmsTable("default", "a", "b");
-  table_alterer.reset(client_->NewTableAlterer("default.b")->RenameTo("default.c"));
+  table_alterer.reset(
+      client_->NewTableAlterer("default.b")->RenameTo("default.c"));
   ASSERT_OK(table_alterer->Alter());
 
-  // Ensure that Kudu can drop a table just after it's been renamed through the HMS.
+  // Ensure that Kudu can drop a table just after it's been renamed through the
+  // HMS.
   RenameHmsTable("default", "c", "a");
   ASSERT_OK(client_->DeleteTable("default.a"));
 
@@ -516,10 +544,11 @@ TEST_F(MasterHmsTest, TestUppercaseIdentifiers) {
   NO_FATALS(CheckTable("default", "MYTABLE"));
 
   // Kudu table schema lookups should be case-insensitive.
-  for (const auto& name : { "default.MyTable",
-                            "default.mytable",
-                            "DEFAULT.MYTABLE",
-                            "default.mYtABLE" }) {
+  for (const auto& name :
+       {"default.MyTable",
+        "default.mytable",
+        "DEFAULT.MYTABLE",
+        "default.mYtABLE"}) {
     shared_ptr<KuduTable> table;
     ASSERT_OK(client_->OpenTable(name, &table));
     // The client uses the requested name as the table object's name.
@@ -529,7 +558,7 @@ TEST_F(MasterHmsTest, TestUppercaseIdentifiers) {
   // Listing tables shows the normalized case.
   vector<string> tables;
   ASSERT_OK(client_->ListTables(&tables));
-  ASSERT_EQ(tables, vector<string>({ "default.mytable" }));
+  ASSERT_EQ(tables, vector<string>({"default.mytable"}));
 
   // Rename the table to the same normalized name, but with a different case.
   unique_ptr<KuduTableAlterer> table_alterer;
@@ -546,14 +575,12 @@ TEST_F(MasterHmsTest, TestUppercaseIdentifiers) {
 
   // Rename the table through the HMS.
   ASSERT_OK(RenameHmsTable("default", "T_1/1", "AbC"));
-  ASSERT_EVENTUALLY([&] {
-    NO_FATALS(CheckTable("default", "AbC"));
-  });
+  ASSERT_EVENTUALLY([&] { NO_FATALS(CheckTable("default", "AbC")); });
 
   // Listing tables shows the normalized case.
   tables.clear();
   ASSERT_OK(client_->ListTables(&tables));
-  ASSERT_EQ(tables, vector<string>({ "default.abc" }));
+  ASSERT_EQ(tables, vector<string>({"default.abc"}));
 
   // Drop the table.
   ASSERT_OK(client_->DeleteTable("DEFAULT.abc"));
@@ -593,7 +620,8 @@ TEST_F(MasterHmsUpgradeTest, TestConflictingNormalizedNames) {
   cluster_->ShutdownNodes(cluster::ClusterNodes::MASTERS_ONLY);
   cluster_->DisableMetastoreIntegration();
   ASSERT_OK(cluster_->Restart());
-  unique_ptr<KuduTableAlterer> table_alterer(client_->NewTableAlterer("default.mytable"));
+  unique_ptr<KuduTableAlterer> table_alterer(
+      client_->NewTableAlterer("default.mytable"));
   ASSERT_OK(table_alterer->RenameTo("default.mytable-renamed")->Alter());
 
   // Try again to enable the integration.
@@ -604,7 +632,8 @@ TEST_F(MasterHmsUpgradeTest, TestConflictingNormalizedNames) {
   vector<string> tables;
   client_->ListTables(&tables);
   std::sort(tables.begin(), tables.end());
-  ASSERT_EQ(tables, vector<string>({ "default.MyTable", "default.mytable-renamed" }));
+  ASSERT_EQ(
+      tables, vector<string>({"default.MyTable", "default.mytable-renamed"}));
 }
 
 // Checks that existing tables with HMS-incompatible names can be renamed post
@@ -621,19 +650,26 @@ TEST_F(MasterHmsUpgradeTest, TestRenameExistingTables) {
   vector<string> tables;
   ASSERT_OK(client_->ListTables(&tables));
   std::sort(tables.begin(), tables.end());
-  ASSERT_EQ(tables, vector<string>({ "default.UPPERCASE", "default.illegal-chars⁉" }));
+  ASSERT_EQ(
+      tables, vector<string>({"default.UPPERCASE", "default.illegal-chars⁉"}));
 
   // Rename the tables using a Kudu catalog only rename.
-  unique_ptr<KuduTableAlterer> alterer(client_->NewTableAlterer("default.UPPERCASE"));
-  ASSERT_OK(alterer->RenameTo("default.uppercase")->modify_external_catalogs(false)->Alter());
+  unique_ptr<KuduTableAlterer> alterer(
+      client_->NewTableAlterer("default.UPPERCASE"));
+  ASSERT_OK(alterer->RenameTo("default.uppercase")
+                ->modify_external_catalogs(false)
+                ->Alter());
 
   alterer.reset(client_->NewTableAlterer("default.illegal-chars⁉"));
-  ASSERT_OK(alterer->RenameTo("default.illegal_chars")->modify_external_catalogs(false)->Alter());
+  ASSERT_OK(alterer->RenameTo("default.illegal_chars")
+                ->modify_external_catalogs(false)
+                ->Alter());
 
   tables.clear();
   client_->ListTables(&tables);
   std::sort(tables.begin(), tables.end());
-  ASSERT_EQ(tables, vector<string>({ "default.illegal_chars", "default.uppercase" }));
+  ASSERT_EQ(
+      tables, vector<string>({"default.illegal_chars", "default.uppercase"}));
 }
 
 class MasterHmsKerberizedTest : public MasterHmsTest {

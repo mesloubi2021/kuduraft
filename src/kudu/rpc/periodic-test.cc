@@ -43,8 +43,7 @@ namespace rpc {
 
 class PeriodicTimerTest : public KuduTest {
  public:
-  PeriodicTimerTest()
-      : period_ms_(200) {}
+  PeriodicTimerTest() : period_ms_(200) {}
 
  protected:
   const int64_t period_ms_;
@@ -60,9 +59,7 @@ class JitteredPeriodicTimerTest : public PeriodicTimerTest,
   // is observed even under substantial load. Otherwise it would be necessary
   // to introduce additional logic to verify that the actual timings satisfy
   // the implicit constraints of the test scenarios below.
-  JitteredPeriodicTimerTest()
-      : counter_(0) {
-  }
+  JitteredPeriodicTimerTest() : counter_(0) {}
 
   virtual void SetUp() override {
     PeriodicTimerTest::SetUp();
@@ -70,10 +67,11 @@ class JitteredPeriodicTimerTest : public PeriodicTimerTest,
     MessengerBuilder builder("test");
     ASSERT_OK(builder.Build(&messenger_));
 
-    timer_ = PeriodicTimer::Create(messenger_,
-                                   [&] { counter_++; },
-                                   MonoDelta::FromMilliseconds(period_ms_),
-                                   GetOptions());
+    timer_ = PeriodicTimer::Create(
+        messenger_,
+        [&] { counter_++; },
+        MonoDelta::FromMilliseconds(period_ms_),
+        GetOptions());
   }
 
   virtual void TearDown() override {
@@ -85,7 +83,6 @@ class JitteredPeriodicTimerTest : public PeriodicTimerTest,
   }
 
  protected:
-
   virtual PeriodicTimer::Options GetOptions() {
     PeriodicTimer::Options opts;
     opts.jitter_pct = GetParam();
@@ -97,9 +94,10 @@ class JitteredPeriodicTimerTest : public PeriodicTimerTest,
   shared_ptr<PeriodicTimer> timer_;
 };
 
-INSTANTIATE_TEST_CASE_P(AllJitterModes,
-                        JitteredPeriodicTimerTest,
-                        ::testing::Values(0.0, 0.25));
+INSTANTIATE_TEST_CASE_P(
+    AllJitterModes,
+    JitteredPeriodicTimerTest,
+    ::testing::Values(0.0, 0.25));
 
 TEST_P(JitteredPeriodicTimerTest, TestStartStop) {
   // Before the timer starts, the counter's value should not change.
@@ -110,17 +108,14 @@ TEST_P(JitteredPeriodicTimerTest, TestStartStop) {
   // underlying OS scheduler).
   timer_->Start();
   SleepFor(MonoDelta::FromMilliseconds(period_ms_ * 2));
-  ASSERT_EVENTUALLY([&]{
-    ASSERT_GT(counter_, 0);
-  });
+  ASSERT_EVENTUALLY([&] { ASSERT_GT(counter_, 0); });
 
   // After stopping the timer, the value should either remain the same or
   // increment once (if Stop() raced with a scheduled task).
   timer_->Stop();
   int64_t v = counter_;
   messenger_->Shutdown();
-  ASSERT_TRUE(counter_ == v ||
-              counter_ == v + 1);
+  ASSERT_TRUE(counter_ == v || counter_ == v + 1);
 }
 
 TEST_P(JitteredPeriodicTimerTest, TestReset) {
@@ -149,9 +144,7 @@ TEST_P(JitteredPeriodicTimerTest, TestResetWithDelta) {
   ASSERT_EQ(0, counter_);
 
   // ...but it will increment eventually.
-  ASSERT_EVENTUALLY([&](){
-    ASSERT_GT(counter_, 0);
-  });
+  ASSERT_EVENTUALLY([&]() { ASSERT_GT(counter_, 0); });
 }
 
 TEST_P(JitteredPeriodicTimerTest, TestStartWithDelta) {
@@ -162,9 +155,7 @@ TEST_P(JitteredPeriodicTimerTest, TestStartWithDelta) {
   ASSERT_EQ(0, counter_);
 
   // ...but it will increment eventually.
-  ASSERT_EVENTUALLY([&](){
-    ASSERT_GT(counter_, 0);
-  });
+  ASSERT_EVENTUALLY([&]() { ASSERT_GT(counter_, 0); });
 }
 
 TEST_F(PeriodicTimerTest, TestCallbackRestartsTimer) {
@@ -208,9 +199,10 @@ class JitteredOneShotPeriodicTimerTest : public JitteredPeriodicTimerTest {
   }
 };
 
-INSTANTIATE_TEST_CASE_P(AllJitterModes,
-                        JitteredOneShotPeriodicTimerTest,
-                        ::testing::Values(0.0, 0.25));
+INSTANTIATE_TEST_CASE_P(
+    AllJitterModes,
+    JitteredOneShotPeriodicTimerTest,
+    ::testing::Values(0.0, 0.25));
 
 TEST_P(JitteredOneShotPeriodicTimerTest, TestBasics) {
   // Kick off the one-shot timer a few times.
@@ -219,9 +211,7 @@ TEST_P(JitteredOneShotPeriodicTimerTest, TestBasics) {
 
     // Eventually the task will run.
     timer_->Start();
-    ASSERT_EVENTUALLY([&](){
-      ASSERT_EQ(i + 1, counter_);
-    });
+    ASSERT_EVENTUALLY([&]() { ASSERT_EQ(i + 1, counter_); });
 
     // Even if we explicitly wait another few periods, the counter value
     // shouldn't change.
@@ -233,8 +223,7 @@ TEST_P(JitteredOneShotPeriodicTimerTest, TestBasics) {
 TEST_F(PeriodicTimerTest, TestCallbackRestartsOneShotTimer) {
   atomic<int64_t> counter(0);
   shared_ptr<Messenger> messenger;
-  ASSERT_OK(MessengerBuilder("test")
-            .Build(&messenger));
+  ASSERT_OK(MessengerBuilder("test").Build(&messenger));
 
   // Create a timer that restarts itself from within its functor.
   PeriodicTimer::Options opts;
@@ -252,9 +241,7 @@ TEST_F(PeriodicTimerTest, TestCallbackRestartsOneShotTimer) {
   // Because the timer restarts itself every time the functor runs, we
   // should see the counter value increase with each period.
   timer->Start();
-  ASSERT_EVENTUALLY([&](){
-    ASSERT_GE(counter, 5);
-  });
+  ASSERT_EVENTUALLY([&]() { ASSERT_GE(counter, 5); });
 
   // Ensure that the reactor threads are fully quiesced (and thus no timer
   // callbacks are running) by the time 'counter' is destroyed.
@@ -264,9 +251,7 @@ TEST_F(PeriodicTimerTest, TestCallbackRestartsOneShotTimer) {
 TEST_F(PeriodicTimerTest, TestPerformance) {
   const int kNumTimers = 1000;
   shared_ptr<Messenger> messenger;
-  ASSERT_OK(MessengerBuilder("test")
-            .set_num_reactors(1)
-            .Build(&messenger));
+  ASSERT_OK(MessengerBuilder("test").set_num_reactors(1).Build(&messenger));
   SCOPED_CLEANUP({ messenger->Shutdown(); });
 
   vector<shared_ptr<PeriodicTimer>> timers;
@@ -282,13 +267,13 @@ TEST_F(PeriodicTimerTest, TestPerformance) {
   sw.start();
   SleepFor(MonoDelta::FromSeconds(1));
   sw.stop();
-  LOG(INFO) << "User CPU for running " << kNumTimers << " timers for 1 second: "
-            << sw.elapsed().user_cpu_seconds() << "s";
+  LOG(INFO) << "User CPU for running " << kNumTimers
+            << " timers for 1 second: " << sw.elapsed().user_cpu_seconds()
+            << "s";
 
   for (auto& t : timers) {
     t->Stop();
   }
-
 }
 
 } // namespace rpc

@@ -43,8 +43,9 @@ const size_t ArenaBase<THREADSAFE>::kMinimumChunkSize = 16;
 constexpr int kMaxTcmallocFastAllocation = 8192 * 127;
 
 template <bool THREADSAFE>
-ArenaBase<THREADSAFE>::ArenaBase(BufferAllocator* buffer_allocator,
-                                 size_t initial_buffer_size)
+ArenaBase<THREADSAFE>::ArenaBase(
+    BufferAllocator* buffer_allocator,
+    size_t initial_buffer_size)
     : buffer_allocator_(buffer_allocator),
       max_buffer_size_(kMaxTcmallocFastAllocation),
       arena_footprint_(0) {
@@ -53,9 +54,7 @@ ArenaBase<THREADSAFE>::ArenaBase(BufferAllocator* buffer_allocator,
 
 template <bool THREADSAFE>
 ArenaBase<THREADSAFE>::ArenaBase(size_t initial_buffer_size)
-    : ArenaBase<THREADSAFE>(HeapBufferAllocator::Get(),
-                            initial_buffer_size) {
-}
+    : ArenaBase<THREADSAFE>(HeapBufferAllocator::Get(), initial_buffer_size) {}
 
 template <bool THREADSAFE>
 void ArenaBase<THREADSAFE>::SetMaxBufferSize(size_t size) {
@@ -64,14 +63,17 @@ void ArenaBase<THREADSAFE>::SetMaxBufferSize(size_t size) {
 }
 
 template <bool THREADSAFE>
-void *ArenaBase<THREADSAFE>::AllocateBytesFallback(const size_t size, const size_t align) {
+void* ArenaBase<THREADSAFE>::AllocateBytesFallback(
+    const size_t size,
+    const size_t align) {
   std::lock_guard<mutex_type> lock(component_lock_);
 
   // It's possible another thread raced with us and already allocated
   // a new component, in which case we should try the "fast path" again
   Component* cur = AcquireLoadCurrent();
-  void * result = cur->AllocateBytesAligned(size, align);
-  if (PREDICT_FALSE(result != nullptr)) return result;
+  void* result = cur->AllocateBytesAligned(size, align);
+  if (PREDICT_FALSE(result != nullptr))
+    return result;
 
   // Really need to allocate more space.
   size_t next_component_size = min(2 * cur->size(), max_buffer_size_);
@@ -94,7 +96,8 @@ void *ArenaBase<THREADSAFE>::AllocateBytesFallback(const size_t size, const size
   if (component == nullptr) {
     component = NewComponent(next_component_size, size);
   }
-  if (!component) return nullptr;
+  if (!component)
+    return nullptr;
 
   // Now, must succeed. The component has at least 'size' bytes.
   result = component->AllocateBytesAligned(size, align);
@@ -108,14 +111,15 @@ void *ArenaBase<THREADSAFE>::AllocateBytesFallback(const size_t size, const size
 
 template <bool THREADSAFE>
 typename ArenaBase<THREADSAFE>::Component* ArenaBase<THREADSAFE>::NewComponent(
-  size_t requested_size,
-  size_t minimum_size) {
-  Buffer* buffer = buffer_allocator_->BestEffortAllocate(requested_size,
-                                                         minimum_size);
-  if (buffer == nullptr) return nullptr;
+    size_t requested_size,
+    size_t minimum_size) {
+  Buffer* buffer =
+      buffer_allocator_->BestEffortAllocate(requested_size, minimum_size);
+  if (buffer == nullptr)
+    return nullptr;
 
   CHECK_EQ(reinterpret_cast<uintptr_t>(buffer->data()) & (16 - 1), 0)
-    << "Components should be 16-byte aligned: " << buffer->data();
+      << "Components should be 16-byte aligned: " << buffer->data();
 
   ASAN_POISON_MEMORY_REGION(buffer->data(), buffer->size());
 
@@ -124,7 +128,7 @@ typename ArenaBase<THREADSAFE>::Component* ArenaBase<THREADSAFE>::NewComponent(
 
 // LOCKING: component_lock_ must be held by the current thread.
 template <bool THREADSAFE>
-void ArenaBase<THREADSAFE>::AddComponent(ArenaBase::Component *component) {
+void ArenaBase<THREADSAFE>::AddComponent(ArenaBase::Component* component) {
   ReleaseStoreCurrent(component);
   arena_.push_back(unique_ptr<Component>(component));
   arena_footprint_ += component->size();
@@ -163,5 +167,4 @@ size_t ArenaBase<THREADSAFE>::memory_footprint() const {
 template class ArenaBase<true>;
 template class ArenaBase<false>;
 
-
-}  // namespace kudu
+} // namespace kudu

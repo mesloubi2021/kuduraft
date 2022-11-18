@@ -24,54 +24,59 @@
 // Summary
 // ------------------------------------------------------------
 //
-// This API provides a basic set of metrics primitives along the lines of the Coda Hale's
-// metrics library along with JSON formatted output of running metrics.
+// This API provides a basic set of metrics primitives along the lines of the
+// Coda Hale's metrics library along with JSON formatted output of running
+// metrics.
 //
 // The metrics system has a few main concepts in its data model:
 //
 // Metric Prototypes
 // -----------------
-// Every metric that may be emitted is constructed from a prototype. The prototype defines
-// the name of the metric, the entity it is attached to, its type, its units, and a description.
+// Every metric that may be emitted is constructed from a prototype. The
+// prototype defines the name of the metric, the entity it is attached to, its
+// type, its units, and a description.
 //
-// Metric prototypes are defined statically using the METRIC_DEFINE_*(...) macros. This
-// allows us to easily enumerate a full list of every metric that might be emitted from a
-// server, thus allowing auto-generation of metric metadata for integration with
-// monitoring systems such as Cloudera Manager.
+// Metric prototypes are defined statically using the METRIC_DEFINE_*(...)
+// macros. This allows us to easily enumerate a full list of every metric that
+// might be emitted from a server, thus allowing auto-generation of metric
+// metadata for integration with monitoring systems such as Cloudera Manager.
 //
 // Metric Entity Prototypes
 // ------------------------
-// The other main type in the data model is the Metric Entity. The most basic entity is the
-// "server" entity -- metrics such as memory usage, RPC rates, etc, are typically associated
-// with the server as a whole.
+// The other main type in the data model is the Metric Entity. The most basic
+// entity is the "server" entity -- metrics such as memory usage, RPC rates,
+// etc, are typically associated with the server as a whole.
 //
 // Users of the metrics framework can define more entity types using the
 // METRIC_DEFINE_entity(...) macro.
 //
 // MetricEntity instances
 // -----------------------
-// Each defined Metric Entity Type serves as a prototype allowing instantiation of a
-// MetricEntity object. Each instance then has its own unique set of metrics. For
-// example, in the case of Kudu, we define a Metric Entity Type called 'tablet', and the
-// Tablet Server instantiates one MetricEntity instance per tablet that it hosts.
+// Each defined Metric Entity Type serves as a prototype allowing instantiation
+// of a MetricEntity object. Each instance then has its own unique set of
+// metrics. For example, in the case of Kudu, we define a Metric Entity Type
+// called 'tablet', and the Tablet Server instantiates one MetricEntity instance
+// per tablet that it hosts.
 //
-// MetricEntity instances are instantiated within a MetricRegistry, and each instance is
-// expected to have a unique string identifier within that registry. To continue the
-// example above, a tablet entity uses its tablet ID as its unique identifier. These
-// identifiers are exposed to the operator and surfaced in monitoring tools.
+// MetricEntity instances are instantiated within a MetricRegistry, and each
+// instance is expected to have a unique string identifier within that registry.
+// To continue the example above, a tablet entity uses its tablet ID as its
+// unique identifier. These identifiers are exposed to the operator and surfaced
+// in monitoring tools.
 //
-// MetricEntity instances may also carry a key-value map of string attributes. These
-// attributes are directly exposed to monitoring systems via the JSON output. Monitoring
-// systems may use this information to allow hierarchical aggregation between entities,
-// display them to the user, etc.
+// MetricEntity instances may also carry a key-value map of string attributes.
+// These attributes are directly exposed to monitoring systems via the JSON
+// output. Monitoring systems may use this information to allow hierarchical
+// aggregation between entities, display them to the user, etc.
 //
 // Metric instances
 // ----------------
-// Given a MetricEntity instance and a Metric Prototype, one can instantiate a Metric
-// instance. For example, the Kudu Tablet Server instantiates one MetricEntity instance
-// for each tablet, and then instantiates the 'tablet_rows_inserted' prototype within that
-// entity. Thus, each tablet then has a separate instance of the metric, allowing the end
-// operator to track the metric on a per-tablet basis.
+// Given a MetricEntity instance and a Metric Prototype, one can instantiate a
+// Metric instance. For example, the Kudu Tablet Server instantiates one
+// MetricEntity instance for each tablet, and then instantiates the
+// 'tablet_rows_inserted' prototype within that entity. Thus, each tablet then
+// has a separate instance of the metric, allowing the end operator to track the
+// metric on a per-tablet basis.
 //
 //
 // Types of metrics
@@ -80,7 +85,8 @@
 //  - string: Gauge for a string value.
 //  - Primitive types (bool, int64_t/uint64_t, double): Lock-free gauges.
 // Counter: Get, reset, increment or decrement an int64_t value.
-// Histogram: Increment buckets of values segmented by configurable max and precision.
+// Histogram: Increment buckets of values segmented by configurable max and
+// precision.
 //
 // Gauge vs. Counter
 // ------------------------------------------------------------
@@ -93,10 +99,11 @@
 // produce a metric for the number of transactions processed over some
 // time period.
 //
-// The one exception to this rule is that occasionally it may be more convenient to
-// implement a metric as a Gauge, even when it is logically a counter, due to Gauge's
-// support for fetching metric values via a bound function. In that case, you can
-// use the 'EXPOSE_AS_COUNTER' flag when defining the gauge prototype. For example:
+// The one exception to this rule is that occasionally it may be more convenient
+// to implement a metric as a Gauge, even when it is logically a counter, due to
+// Gauge's support for fetching metric values via a bound function. In that
+// case, you can use the 'EXPOSE_AS_COUNTER' flag when defining the gauge
+// prototype. For example:
 //
 // METRIC_DEFINE_gauge_uint64(server, threads_started,
 //                            "Threads Started",
@@ -108,17 +115,19 @@
 // Metrics ownership
 // ------------------------------------------------------------
 //
-// Metrics are reference-counted, and one of the references is always held by a metrics
-// entity itself. Users of metrics should typically hold a scoped_refptr to their metrics
-// within class instances, so that they also hold a reference. The one exception to this
-// is FunctionGauges: see the class documentation below for a typical Gauge ownership pattern.
+// Metrics are reference-counted, and one of the references is always held by a
+// metrics entity itself. Users of metrics should typically hold a scoped_refptr
+// to their metrics within class instances, so that they also hold a reference.
+// The one exception to this is FunctionGauges: see the class documentation
+// below for a typical Gauge ownership pattern.
 //
-// Because the metrics entity holds a reference to the metric, this means that metrics will
-// not be immediately destructed when your class instance publishing them is destructed.
-// This is on purpose: metrics are retained for a configurable time interval even after they
-// are no longer being published. The purpose of this is to allow monitoring systems, which
-// only poll metrics infrequently (eg once a minute) to see the last value of a metric whose
-// owner was destructed in between two polls.
+// Because the metrics entity holds a reference to the metric, this means that
+// metrics will not be immediately destructed when your class instance
+// publishing them is destructed. This is on purpose: metrics are retained for a
+// configurable time interval even after they are no longer being published. The
+// purpose of this is to allow monitoring systems, which only poll metrics
+// infrequently (eg once a minute) to see the last value of a metric whose owner
+// was destructed in between two polls.
 //
 //
 // Example usage for server-level metrics
@@ -129,21 +138,27 @@
 //   MetricRegistry metric_registry_;
 //   scoped_refptr<MetricEntity> metric_entity_;
 //
-// 2) In your server constructor/initialization, construct metric_entity_. This instance
-//    will be plumbed through into other subsystems that want to register server-level
-//    metrics.
+// 2) In your server constructor/initialization, construct metric_entity_. This
+// instance
+//    will be plumbed through into other subsystems that want to register
+//    server-level metrics.
 //
-//   metric_entity_ = METRIC_ENTITY_server.Instantiate(&registry_, "some server identifier)");
+//   metric_entity_ = METRIC_ENTITY_server.Instantiate(&registry_, "some server
+//   identifier)");
 //
-// 3) At the top of your .cc file where you want to emit a metric, define the metric prototype:
+// 3) At the top of your .cc file where you want to emit a metric, define the
+// metric prototype:
 //
-//   METRIC_DEFINE_counter(server, ping_requests, "Ping Requests", kudu::MetricUnit::kRequests,
+//   METRIC_DEFINE_counter(server, ping_requests, "Ping Requests",
+//   kudu::MetricUnit::kRequests,
 //       "Number of Ping() RPC requests this server has handled since start");
 //
-// 4) In your class where you want to emit metrics, define the metric instance itself:
+// 4) In your class where you want to emit metrics, define the metric instance
+// itself:
 //   scoped_refptr<Counter> ping_counter_;
 //
-// 5) In your class constructor, instantiate the metric based on the MetricEntity plumbed in:
+// 5) In your class constructor, instantiate the metric based on the
+// MetricEntity plumbed in:
 //
 //   MyClass(..., const scoped_refptr<MetricEntity>& metric_entity) :
 //     ping_counter_(METRIC_ping_requests.Instantiate(metric_entity)) {
@@ -156,13 +171,16 @@
 //
 // Example usage for custom entity metrics
 // ------------------------------------------------------------
-// Follow the same pattern as above, but also define a metric entity somewhere. For example:
+// Follow the same pattern as above, but also define a metric entity somewhere.
+// For example:
 //
 // At the top of your CC file:
 //
 //   METRIC_DEFINE_entity(my_entity);
-//   METRIC_DEFINE_counter(my_entity, ping_requests, "Ping Requests", kudu::MetricUnit::kRequests,
-//       "Number of Ping() RPC requests this particular entity has handled since start");
+//   METRIC_DEFINE_counter(my_entity, ping_requests, "Ping Requests",
+//   kudu::MetricUnit::kRequests,
+//       "Number of Ping() RPC requests this particular entity has handled since
+//       start");
 //
 // In whatever class represents the entity:
 //
@@ -170,18 +188,19 @@
 //
 // In whatever classes emit metrics:
 //
-//   scoped_refptr<Counter> ping_requests_ = METRIC_ping_requests.Instantiate(entity);
-//   ping_requests_->Increment();
+//   scoped_refptr<Counter> ping_requests_ =
+//   METRIC_ping_requests.Instantiate(entity); ping_requests_->Increment();
 //
-// NOTE: at runtime, the metrics system prevents you from instantiating a metric in the
-// wrong entity type. This ensures that the metadata can fully describe the set of metric-entity
-// relationships.
+// NOTE: at runtime, the metrics system prevents you from instantiating a metric
+// in the wrong entity type. This ensures that the metadata can fully describe
+// the set of metric-entity relationships.
 //
 // Plumbing of MetricEntity and MetricRegistry objects
 // ------------------------------------------------------------
-// Generally, the rule of thumb to follow when plumbing through entities and registries is
-// this: if you're creating new entities or you need to dump the registry contents
-// (e.g. path handlers), pass in the registry. Otherwise, pass in the entity.
+// Generally, the rule of thumb to follow when plumbing through entities and
+// registries is this: if you're creating new entities or you need to dump the
+// registry contents (e.g. path handlers), pass in the registry. Otherwise, pass
+// in the entity.
 //
 // ===========
 // JSON output
@@ -254,46 +273,56 @@
 //
 // The metrics subsystem itself defines the entity type 'server', but other
 // entity types can be registered using this macro.
-#define METRIC_DEFINE_entity(name)                               \
+#define METRIC_DEFINE_entity(name) \
   ::kudu::MetricEntityPrototype METRIC_ENTITY_##name(#name)
 
 // Convenience macros to define metric prototypes.
 // See the documentation at the top of this file for example usage.
-#define METRIC_DEFINE_counter(entity, name, label, unit, desc)   \
-  ::kudu::CounterPrototype METRIC_##name(                        \
+#define METRIC_DEFINE_counter(entity, name, label, unit, desc) \
+  ::kudu::CounterPrototype METRIC_##name(                      \
       ::kudu::MetricPrototype::CtorArgs(#entity, #name, label, unit, desc))
 
 #define METRIC_DEFINE_gauge_string(entity, name, label, unit, desc, ...) \
-  ::kudu::GaugePrototype<std::string> METRIC_##name(                 \
-      ::kudu::MetricPrototype::CtorArgs(#entity, #name, label, unit, desc, ## __VA_ARGS__))
+  ::kudu::GaugePrototype<std::string> METRIC_##name(                     \
+      ::kudu::MetricPrototype::CtorArgs(                                 \
+          #entity, #name, label, unit, desc, ##__VA_ARGS__))
 #define METRIC_DEFINE_gauge_bool(entity, name, label, unit, desc, ...) \
-  ::kudu::GaugePrototype<bool> METRIC_##  name(                    \
-      ::kudu::MetricPrototype::CtorArgs(#entity, #name, label, unit, desc, ## __VA_ARGS__))
+  ::kudu::GaugePrototype<bool> METRIC_##name(                          \
+      ::kudu::MetricPrototype::CtorArgs(                               \
+          #entity, #name, label, unit, desc, ##__VA_ARGS__))
 #define METRIC_DEFINE_gauge_int32(entity, name, label, unit, desc, ...) \
-  ::kudu::GaugePrototype<int32_t> METRIC_##name(                   \
-      ::kudu::MetricPrototype::CtorArgs(#entity, #name, label, unit, desc, ## __VA_ARGS__))
+  ::kudu::GaugePrototype<int32_t> METRIC_##name(                        \
+      ::kudu::MetricPrototype::CtorArgs(                                \
+          #entity, #name, label, unit, desc, ##__VA_ARGS__))
 #define METRIC_DEFINE_gauge_uint32(entity, name, label, unit, desc, ...) \
-  ::kudu::GaugePrototype<uint32_t> METRIC_##name(                    \
-      ::kudu::MetricPrototype::CtorArgs(#entity, #name, label, unit, desc, ## __VA_ARGS__))
+  ::kudu::GaugePrototype<uint32_t> METRIC_##name(                        \
+      ::kudu::MetricPrototype::CtorArgs(                                 \
+          #entity, #name, label, unit, desc, ##__VA_ARGS__))
 #define METRIC_DEFINE_gauge_int64(entity, name, label, unit, desc, ...) \
-  ::kudu::GaugePrototype<int64_t> METRIC_##name(                   \
-      ::kudu::MetricPrototype::CtorArgs(#entity, #name, label, unit, desc, ## __VA_ARGS__))
+  ::kudu::GaugePrototype<int64_t> METRIC_##name(                        \
+      ::kudu::MetricPrototype::CtorArgs(                                \
+          #entity, #name, label, unit, desc, ##__VA_ARGS__))
 #define METRIC_DEFINE_gauge_uint64(entity, name, label, unit, desc, ...) \
-  ::kudu::GaugePrototype<uint64_t> METRIC_##name(                    \
-      ::kudu::MetricPrototype::CtorArgs(#entity, #name, label, unit, desc, ## __VA_ARGS__))
+  ::kudu::GaugePrototype<uint64_t> METRIC_##name(                        \
+      ::kudu::MetricPrototype::CtorArgs(                                 \
+          #entity, #name, label, unit, desc, ##__VA_ARGS__))
 #define METRIC_DEFINE_gauge_double(entity, name, label, unit, desc, ...) \
-  ::kudu::GaugePrototype<double> METRIC_##name(                      \
-      ::kudu::MetricPrototype::CtorArgs(#entity, #name, label, unit, desc, ## __VA_ARGS__))
+  ::kudu::GaugePrototype<double> METRIC_##name(                          \
+      ::kudu::MetricPrototype::CtorArgs(                                 \
+          #entity, #name, label, unit, desc, ##__VA_ARGS__))
 
-#define METRIC_DEFINE_histogram(entity, name, label, unit, desc, max_val, num_sig_digits) \
-  ::kudu::HistogramPrototype METRIC_##name(                                       \
+#define METRIC_DEFINE_histogram(                                            \
+    entity, name, label, unit, desc, max_val, num_sig_digits)               \
+  ::kudu::HistogramPrototype METRIC_##name(                                 \
       ::kudu::MetricPrototype::CtorArgs(#entity, #name, label, unit, desc), \
-    max_val, num_sig_digits)
+      max_val,                                                              \
+      num_sig_digits)
 
-// The following macros act as forward declarations for entity types and metric prototypes.
+// The following macros act as forward declarations for entity types and metric
+// prototypes.
 #define METRIC_DECLARE_entity(name) \
   extern ::kudu::MetricEntityPrototype METRIC_ENTITY_##name
-#define METRIC_DECLARE_counter(name)                             \
+#define METRIC_DECLARE_counter(name) \
   extern ::kudu::CounterPrototype METRIC_##name
 #define METRIC_DECLARE_gauge_string(name) \
   extern ::kudu::GaugePrototype<std::string> METRIC_##name
@@ -314,8 +343,9 @@
 
 #if defined(__APPLE__)
 #define METRIC_DEFINE_gauge_size(entity, name, label, unit, desc, ...) \
-  ::kudu::GaugePrototype<size_t> METRIC_##name(                    \
-      ::kudu::MetricPrototype::CtorArgs(#entity, #name, label, unit, desc, ## __VA_ARGS__))
+  ::kudu::GaugePrototype<size_t> METRIC_##name(                        \
+      ::kudu::MetricPrototype::CtorArgs(                               \
+          #entity, #name, label, unit, desc, ##__VA_ARGS__))
 #define METRIC_DECLARE_gauge_size(name) \
   extern ::kudu::GaugePrototype<size_t> METRIC_##name
 #else
@@ -323,20 +353,21 @@
 #define METRIC_DECLARE_gauge_size METRIC_DECLARE_gauge_uint64
 #endif
 
-template <typename Type> class Singleton;
+template <typename Type>
+class Singleton;
 
 namespace kudu {
 
 class Counter;
 class CounterPrototype;
 
-template<typename T>
+template <typename T>
 class AtomicGauge;
 template <typename Sig>
 class Callback;
-template<typename T>
+template <typename T>
 class FunctionGauge;
-template<typename T>
+template <typename T>
 class GaugePrototype;
 
 class Metric;
@@ -400,6 +431,7 @@ class MetricType {
  public:
   enum Type { kGauge, kCounter, kHistogram };
   static const char* Name(Type t);
+
  private:
   static const char* const kGaugeType;
   static const char* const kCounterType;
@@ -407,10 +439,8 @@ class MetricType {
 };
 
 struct MetricJsonOptions {
-  MetricJsonOptions() :
-    include_raw_histograms(false),
-    include_schema_info(false) {
-  }
+  MetricJsonOptions()
+      : include_raw_histograms(false), include_schema_info(false) {}
 
   // Include the raw histogram values and counts in the JSON output.
   // This allows consumers to do cross-server aggregation or window
@@ -431,15 +461,15 @@ struct MetricJsonOptions {
   int64_t only_modified_in_or_after_epoch = 0;
 
   // Whether to include metrics which have had no data recorded and thus have
-  // a value of 0. Note that some metrics with the value 0 may still be included:
-  // notably, gauges may be non-zero and then reset to zero, so seeing that
-  // they are currently zero does not indicate they are "untouched".
+  // a value of 0. Note that some metrics with the value 0 may still be
+  // included: notably, gauges may be non-zero and then reset to zero, so seeing
+  // that they are currently zero does not indicate they are "untouched".
   bool include_untouched_metrics = true;
 
   // Whether to include the attributes of each entity.
   bool include_entity_attributes = true;
-  
-  //controls wether we should refresh metrics after retrieval. 
+
+  // controls wether we should refresh metrics after retrieval.
   bool refresh_histogram_metrics = false;
 };
 
@@ -448,17 +478,20 @@ class MetricEntityPrototype {
   explicit MetricEntityPrototype(const char* name);
   ~MetricEntityPrototype();
 
-  const char* name() const { return name_; }
+  const char* name() const {
+    return name_;
+  }
 
   // Find or create an entity with the given ID within the provided 'registry'.
   scoped_refptr<MetricEntity> Instantiate(
       MetricRegistry* registry,
       const std::string& id) const {
-    return Instantiate(registry, id, std::unordered_map<std::string, std::string>());
+    return Instantiate(
+        registry, id, std::unordered_map<std::string, std::string>());
   }
 
-  // If the entity already exists, then 'initial_attrs' will replace all existing
-  // attributes.
+  // If the entity already exists, then 'initial_attrs' will replace all
+  // existing attributes.
   scoped_refptr<MetricEntity> Instantiate(
       MetricRegistry* registry,
       const std::string& id,
@@ -472,43 +505,54 @@ class MetricEntityPrototype {
 
 class MetricEntity : public RefCountedThreadSafe<MetricEntity> {
  public:
-  typedef std::unordered_map<const MetricPrototype*, scoped_refptr<Metric> > MetricMap;
+  typedef std::unordered_map<const MetricPrototype*, scoped_refptr<Metric>>
+      MetricMap;
   typedef std::unordered_map<std::string, std::string> AttributeMap;
 
   scoped_refptr<Counter> FindOrCreateCounter(const CounterPrototype* proto);
-  scoped_refptr<Histogram> FindOrCreateHistogram(const HistogramPrototype* proto);
+  scoped_refptr<Histogram> FindOrCreateHistogram(
+      const HistogramPrototype* proto);
 
-  template<typename T>
-  scoped_refptr<AtomicGauge<T> > FindOrCreateGauge(const GaugePrototype<T>* proto,
-                                                   const T& initial_value);
+  template <typename T>
+  scoped_refptr<AtomicGauge<T>> FindOrCreateGauge(
+      const GaugePrototype<T>* proto,
+      const T& initial_value);
 
-  template<typename T>
-  scoped_refptr<FunctionGauge<T> > FindOrCreateFunctionGauge(const GaugePrototype<T>* proto,
-                                                             const Callback<T()>& function);
+  template <typename T>
+  scoped_refptr<FunctionGauge<T>> FindOrCreateFunctionGauge(
+      const GaugePrototype<T>* proto,
+      const Callback<T()>& function);
 
-  // Return the metric instantiated from the given prototype, or NULL if none has been
-  // instantiated. Primarily used by tests trying to read metric values.
+  // Return the metric instantiated from the given prototype, or NULL if none
+  // has been instantiated. Primarily used by tests trying to read metric
+  // values.
   scoped_refptr<Metric> FindOrNull(const MetricPrototype& prototype) const;
 
-  const std::string& id() const { return id_; }
+  const std::string& id() const {
+    return id_;
+  }
 
   // See MetricRegistry::WriteAsJson()
-  Status WriteAsJson(JsonWriter* writer,
-                     const std::vector<std::string>& requested_metrics,
-                     const MetricJsonOptions& opts) const;
+  Status WriteAsJson(
+      JsonWriter* writer,
+      const std::vector<std::string>& requested_metrics,
+      const MetricJsonOptions& opts) const;
 
-  const MetricMap& UnsafeMetricsMapForTests() const { return metric_map_; }
+  const MetricMap& UnsafeMetricsMapForTests() const {
+    return metric_map_;
+  }
 
   // Mark that the given metric should never be retired until the metric
   // registry itself destructs. This is useful for system metrics such as
   // tcmalloc, etc, which should live as long as the process itself.
   void NeverRetire(const scoped_refptr<Metric>& metric);
 
-  // Scan the metrics map for metrics needing retirement, removing them as necessary.
+  // Scan the metrics map for metrics needing retirement, removing them as
+  // necessary.
   //
-  // Metrics are retired when they are no longer referenced outside of the metrics system
-  // itself. Additionally, we only retire a metric that has been in this state for
-  // at least FLAGS_metrics_retirement_age_ms milliseconds.
+  // Metrics are retired when they are no longer referenced outside of the
+  // metrics system itself. Additionally, we only retire a metric that has been
+  // in this state for at least FLAGS_metrics_retirement_age_ms milliseconds.
   void RetireOldMetrics();
 
   // Replaces all attributes for this entity.
@@ -523,8 +567,8 @@ class MetricEntity : public RefCountedThreadSafe<MetricEntity> {
     return metric_map_.size();
   }
 
-  // Mark this entity as unpublished. This will cause the registry to retire its metrics
-  // and unregister it.
+  // Mark this entity as unpublished. This will cause the registry to retire its
+  // metrics and unregister it.
   void Unpublish() {
     std::lock_guard<simple_spinlock> l(lock_);
     published_ = false;
@@ -539,8 +583,10 @@ class MetricEntity : public RefCountedThreadSafe<MetricEntity> {
   friend class MetricRegistry;
   friend class RefCountedThreadSafe<MetricEntity>;
 
-  MetricEntity(const MetricEntityPrototype* prototype, std::string id,
-               AttributeMap attributes);
+  MetricEntity(
+      const MetricEntityPrototype* prototype,
+      std::string id,
+      AttributeMap attributes);
   ~MetricEntity();
 
   // Ensure that the given metric prototype is allowed to be instantiated
@@ -560,21 +606,24 @@ class MetricEntity : public RefCountedThreadSafe<MetricEntity> {
   AttributeMap attributes_;
 
   // The set of metrics which should never be retired. Protected by lock_.
-  std::vector<scoped_refptr<Metric> > never_retire_metrics_;
+  std::vector<scoped_refptr<Metric>> never_retire_metrics_;
 
   // Whether this entity is published. Protected by lock_.
   bool published_;
 };
 
 // Base class to allow for putting all metrics into a single container.
-// See documentation at the top of this file for information on metrics ownership.
+// See documentation at the top of this file for information on metrics
+// ownership.
 class Metric : public RefCountedThreadSafe<Metric> {
  public:
   // All metrics must be able to render themselves as JSON.
-  virtual Status WriteAsJson(JsonWriter* writer,
-                             const MetricJsonOptions& opts) const = 0;
+  virtual Status WriteAsJson(JsonWriter* writer, const MetricJsonOptions& opts)
+      const = 0;
 
-  const MetricPrototype* prototype() const { return prototype_; }
+  const MetricPrototype* prototype() const {
+    return prototype_;
+  }
 
   // Return true if this metric has never been touched.
   virtual bool IsUntouched() const = 0;
@@ -592,9 +641,9 @@ class Metric : public RefCountedThreadSafe<Metric> {
   }
 
   // Advance to the next epoch for metrics.
-  // This is cheap for the calling thread but causes some extra work on the paths
-  // of hot metric updaters, so should only be done rarely (eg before dumping
-  // metrics).
+  // This is cheap for the calling thread but causes some extra work on the
+  // paths of hot metric updaters, so should only be done rarely (eg before
+  // dumping metrics).
   static void IncrementEpoch();
 
  protected:
@@ -604,8 +653,8 @@ class Metric : public RefCountedThreadSafe<Metric> {
   const MetricPrototype* const prototype_;
 
   void UpdateModificationEpoch() {
-    // If we have some upper bound, we need to invalidate it. We use a 'test-and-set'
-    // here to avoid contending on writes to this cacheline.
+    // If we have some upper bound, we need to invalidate it. We use a
+    // 'test-and-set' here to avoid contending on writes to this cacheline.
     if (m_epoch_ < current_epoch()) {
       // Out-of-line the uncommon case which requires a bit more code.
       UpdateModificationEpochSlowPath();
@@ -625,9 +674,9 @@ class Metric : public RefCountedThreadSafe<Metric> {
   friend class MetricEntity;
   friend class RefCountedThreadSafe<Metric>;
 
-  // The time at which we should retire this metric if it is still un-referenced outside
-  // of the metrics subsystem. If this metric is not due for retirement, this member is
-  // uninitialized.
+  // The time at which we should retire this metric if it is still un-referenced
+  // outside of the metrics subsystem. If this metric is not due for retirement,
+  // this member is uninitialized.
   MonoTime retire_time_;
 
   // See 'current_epoch()'.
@@ -644,9 +693,10 @@ class MetricRegistry {
   MetricRegistry();
   ~MetricRegistry();
 
-  scoped_refptr<MetricEntity> FindOrCreateEntity(const MetricEntityPrototype* prototype,
-                                                 const std::string& id,
-                                                 const MetricEntity::AttributeMap& initial_attrs);
+  scoped_refptr<MetricEntity> FindOrCreateEntity(
+      const MetricEntityPrototype* prototype,
+      const std::string& id,
+      const MetricEntity::AttributeMap& initial_attrs);
 
   // Writes metrics in this registry to 'writer'.
   //
@@ -654,16 +704,19 @@ class MetricRegistry {
   // where '*' matches all metrics.
   //
   // The string matching can either match an entity ID or a metric name.
-  // If it matches an entity ID, then all metrics for that entity will be printed.
+  // If it matches an entity ID, then all metrics for that entity will be
+  // printed.
   //
   // See the MetricJsonOptions struct definition above for options changing the
   // output of this function.
-  Status WriteAsJson(JsonWriter* writer,
-                     const std::vector<std::string>& requested_metrics,
-                     const MetricJsonOptions& opts) const;
+  Status WriteAsJson(
+      JsonWriter* writer,
+      const std::vector<std::string>& requested_metrics,
+      const MetricJsonOptions& opts) const;
 
-  // For each registered entity, retires orphaned metrics. If an entity has no more
-  // metrics and there are no external references, entities are removed as well.
+  // For each registered entity, retires orphaned metrics. If an entity has no
+  // more metrics and there are no external references, entities are removed as
+  // well.
   //
   // See MetricEntity::RetireOldMetrics().
   void RetireOldMetrics();
@@ -675,7 +728,8 @@ class MetricRegistry {
   }
 
  private:
-  typedef std::unordered_map<std::string, scoped_refptr<MetricEntity> > EntityMap;
+  typedef std::unordered_map<std::string, scoped_refptr<MetricEntity>>
+      EntityMap;
   EntityMap entities_;
 
   mutable simple_spinlock lock_;
@@ -700,9 +754,10 @@ class MetricPrototypeRegistry {
   // prototypes.
   void WriteAsJson(JsonWriter* writer) const;
 
-  // Convenience wrapper around WriteAsJson(...). This dumps the JSON information
-  // to stdout.
+  // Convenience wrapper around WriteAsJson(...). This dumps the JSON
+  // information to stdout.
   void WriteAsJson() const;
+
  private:
   friend class Singleton<MetricPrototypeRegistry>;
   friend class MetricPrototype;
@@ -734,19 +789,19 @@ class MetricPrototype {
   // Simple struct to aggregate the arguments common to all prototypes.
   // This makes constructor chaining a little less tedious.
   struct CtorArgs {
-    CtorArgs(const char* entity_type,
-             const char* name,
-             const char* label,
-             MetricUnit::Type unit,
-             const char* description,
-             uint32_t flags = 0)
-      : entity_type_(entity_type),
-        name_(name),
-        label_(label),
-        unit_(unit),
-        description_(description),
-        flags_(flags) {
-    }
+    CtorArgs(
+        const char* entity_type,
+        const char* name,
+        const char* label,
+        MetricUnit::Type unit,
+        const char* description,
+        uint32_t flags = 0)
+        : entity_type_(entity_type),
+          name_(name),
+          label_(label),
+          unit_(unit),
+          description_(description),
+          flags_(flags) {}
 
     const char* const entity_type_;
     const char* const name_;
@@ -756,21 +811,29 @@ class MetricPrototype {
     const uint32_t flags_;
   };
 
-  const char* entity_type() const { return args_.entity_type_; }
-  const char* name() const { return args_.name_; }
-  const char* label() const { return args_.label_; }
-  MetricUnit::Type unit() const { return args_.unit_; }
-  const char* description() const { return args_.description_; }
+  const char* entity_type() const {
+    return args_.entity_type_;
+  }
+  const char* name() const {
+    return args_.name_;
+  }
+  const char* label() const {
+    return args_.label_;
+  }
+  MetricUnit::Type unit() const {
+    return args_.unit_;
+  }
+  const char* description() const {
+    return args_.description_;
+  }
   virtual MetricType::Type type() const = 0;
 
   // Writes the fields of this prototype to the given JSON writer.
-  void WriteFields(JsonWriter* writer,
-                   const MetricJsonOptions& opts) const;
+  void WriteFields(JsonWriter* writer, const MetricJsonOptions& opts) const;
 
  protected:
   explicit MetricPrototype(CtorArgs args);
-  virtual ~MetricPrototype() {
-  }
+  virtual ~MetricPrototype() {}
 
   const CtorArgs args_;
 
@@ -779,22 +842,21 @@ class MetricPrototype {
 };
 
 // A description of a Gauge.
-template<typename T>
+template <typename T>
 class GaugePrototype : public MetricPrototype {
  public:
   explicit GaugePrototype(const MetricPrototype::CtorArgs& args)
-    : MetricPrototype(args) {
-  }
+      : MetricPrototype(args) {}
 
   // Instantiate a "manual" gauge.
-  scoped_refptr<AtomicGauge<T> > Instantiate(
+  scoped_refptr<AtomicGauge<T>> Instantiate(
       const scoped_refptr<MetricEntity>& entity,
       const T& initial_value) const {
     return entity->FindOrCreateGauge(this, initial_value);
   }
 
   // Instantiate a gauge that is backed by the given callback.
-  scoped_refptr<FunctionGauge<T> > InstantiateFunctionGauge(
+  scoped_refptr<FunctionGauge<T>> InstantiateFunctionGauge(
       const scoped_refptr<MetricEntity>& entity,
       const Callback<T()>& function) const {
     return entity->FindOrCreateFunctionGauge(this, function);
@@ -815,15 +877,14 @@ class GaugePrototype : public MetricPrototype {
 // Abstract base class to provide point-in-time metric values.
 class Gauge : public Metric {
  public:
-  explicit Gauge(const MetricPrototype* prototype)
-    : Metric(prototype) {
-  }
+  explicit Gauge(const MetricPrototype* prototype) : Metric(prototype) {}
   virtual ~Gauge() {}
-  virtual Status WriteAsJson(JsonWriter* w,
-                             const MetricJsonOptions& opts) const override;
+  virtual Status WriteAsJson(JsonWriter* w, const MetricJsonOptions& opts)
+      const override;
 
  protected:
   virtual void WriteValue(JsonWriter* writer) const = 0;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(Gauge);
 };
@@ -831,8 +892,9 @@ class Gauge : public Metric {
 // Gauge implementation for string that uses locks to ensure thread safety.
 class StringGauge : public Gauge {
  public:
-  StringGauge(const GaugePrototype<std::string>* proto,
-              std::string initial_value);
+  StringGauge(
+      const GaugePrototype<std::string>* proto,
+      std::string initial_value);
   std::string value() const;
   void set_value(const std::string& value);
   virtual bool IsUntouched() const override {
@@ -841,9 +903,10 @@ class StringGauge : public Gauge {
 
  protected:
   virtual void WriteValue(JsonWriter* writer) const override;
+
  private:
   std::string value_;
-  mutable simple_spinlock lock_;  // Guards value_
+  mutable simple_spinlock lock_; // Guards value_
   DISALLOW_COPY_AND_ASSIGN(StringGauge);
 };
 
@@ -852,9 +915,7 @@ template <typename T>
 class AtomicGauge : public Gauge {
  public:
   AtomicGauge(const GaugePrototype<T>* proto, T initial_value)
-    : Gauge(proto),
-      value_(initial_value) {
-  }
+      : Gauge(proto), value_(initial_value) {}
   T value() const {
     return static_cast<T>(value_.Load(kMemOrderRelease));
   }
@@ -878,29 +939,32 @@ class AtomicGauge : public Gauge {
   virtual bool IsUntouched() const override {
     return false;
   }
+
  protected:
   virtual void WriteValue(JsonWriter* writer) const override {
     writer->Value(value());
   }
   AtomicInt<int64_t> value_;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(AtomicGauge);
 };
 
 // Utility class to automatically detach FunctionGauges when a class destructs.
 //
-// Because FunctionGauges typically access class instance state, it's important to ensure
-// that they are detached before the class destructs. One approach is to make all
-// FunctionGauge instances be members of the class, and then call gauge_->Detach() in your
-// class's destructor. However, it's easy to forget to do this, which would lead to
-// heap-use-after-free bugs. This type of bug is easy to miss in unit tests because the
-// tests don't always poll metrics. Using a FunctionGaugeDetacher member instead makes
-// the detaching automatic and thus less error-prone.
+// Because FunctionGauges typically access class instance state, it's important
+// to ensure that they are detached before the class destructs. One approach is
+// to make all FunctionGauge instances be members of the class, and then call
+// gauge_->Detach() in your class's destructor. However, it's easy to forget to
+// do this, which would lead to heap-use-after-free bugs. This type of bug is
+// easy to miss in unit tests because the tests don't always poll metrics. Using
+// a FunctionGaugeDetacher member instead makes the detaching automatic and thus
+// less error-prone.
 //
 // Example usage:
 //
-// METRIC_define_gauge_int64(my_metric, MetricUnit::kOperations, "My metric docs");
-// class MyClassWithMetrics {
+// METRIC_define_gauge_int64(my_metric, MetricUnit::kOperations, "My metric
+// docs"); class MyClassWithMetrics {
 //  public:
 //   MyClassWithMetrics(const scoped_refptr<MetricEntity>& entity) {
 //     METRIC_my_metric.InstantiateFunctionGauge(entity,
@@ -922,7 +986,7 @@ class FunctionGaugeDetacher {
   ~FunctionGaugeDetacher();
 
  private:
-  template<typename T>
+  template <typename T>
   friend class FunctionGauge;
 
   void OnDestructor(const Closure& c) {
@@ -934,17 +998,17 @@ class FunctionGaugeDetacher {
   DISALLOW_COPY_AND_ASSIGN(FunctionGaugeDetacher);
 };
 
-
 // A Gauge that calls back to a function to get its value.
 //
-// This metric type should be used in cases where it is difficult to keep a running
-// measure of a metric, but instead would like to compute the metric value whenever it is
-// requested by a user.
+// This metric type should be used in cases where it is difficult to keep a
+// running measure of a metric, but instead would like to compute the metric
+// value whenever it is requested by a user.
 //
-// The lifecycle should be carefully considered when using a FunctionGauge. In particular,
-// the bound function needs to always be safe to run -- so if it references a particular
-// non-singleton class instance, the instance must out-live the function. Typically,
-// the easiest way to ensure this is to use a FunctionGaugeDetacher (see above).
+// The lifecycle should be carefully considered when using a FunctionGauge. In
+// particular, the bound function needs to always be safe to run -- so if it
+// references a particular non-singleton class instance, the instance must
+// out-live the function. Typically, the easiest way to ensure this is to use a
+// FunctionGaugeDetacher (see above).
 template <typename T>
 class FunctionGauge : public Gauge {
  public:
@@ -965,8 +1029,8 @@ class FunctionGauge : public Gauge {
     function_ = Bind(&FunctionGauge::Return, v);
   }
 
-  // Get the current value of the gauge, and detach so that it continues to return this
-  // value in perpetuity.
+  // Get the current value of the gauge, and detach so that it continues to
+  // return this value in perpetuity.
   void DetachToCurrentValue() {
     T last_value = value();
     DetachToConstant(last_value);
@@ -975,22 +1039,22 @@ class FunctionGauge : public Gauge {
   // Automatically detach this gauge when the given 'detacher' destructs.
   // After detaching, the metric will return 'value' in perpetuity.
   void AutoDetach(FunctionGaugeDetacher* detacher, T value = T()) {
-    detacher->OnDestructor(Bind(&FunctionGauge<T>::DetachToConstant,
-                                this, value));
+    detacher->OnDestructor(
+        Bind(&FunctionGauge<T>::DetachToConstant, this, value));
   }
 
   // Automatically detach this gauge when the given 'detacher' destructs.
   // After detaching, the metric will return whatever its value was at the
   // time of detaching.
   //
-  // Note that, when using this method, you should be sure that the FunctionGaugeDetacher
-  // is destructed before any objects which are required by the gauge implementation.
-  // In typical usage (see the FunctionGaugeDetacher class documentation) this means you
-  // should declare the detacher member after all other class members that might be
-  // accessed by the gauge function implementation.
+  // Note that, when using this method, you should be sure that the
+  // FunctionGaugeDetacher is destructed before any objects which are required
+  // by the gauge implementation. In typical usage (see the
+  // FunctionGaugeDetacher class documentation) this means you should declare
+  // the detacher member after all other class members that might be accessed by
+  // the gauge function implementation.
   void AutoDetachToLastValue(FunctionGaugeDetacher* detacher) {
-    detacher->OnDestructor(Bind(&FunctionGauge<T>::DetachToCurrentValue,
-                                this));
+    detacher->OnDestructor(Bind(&FunctionGauge<T>::DetachToCurrentValue, this));
   }
 
   virtual bool IsUntouched() const override {
@@ -1002,8 +1066,8 @@ class FunctionGauge : public Gauge {
 
   FunctionGauge(const GaugePrototype<T>* proto, Callback<T()> function)
       : Gauge(proto), function_(std::move(function)) {
-    // Override the modification epoch to the maximum, since we don't have any idea
-    // when the bound function changes value.
+    // Override the modification epoch to the maximum, since we don't have any
+    // idea when the bound function changes value.
     m_epoch_ = std::numeric_limits<decltype(m_epoch_.load())>::max();
   }
 
@@ -1020,29 +1084,31 @@ class FunctionGauge : public Gauge {
 class CounterPrototype : public MetricPrototype {
  public:
   explicit CounterPrototype(const MetricPrototype::CtorArgs& args)
-    : MetricPrototype(args) {
-  }
+      : MetricPrototype(args) {}
   scoped_refptr<Counter> Instantiate(const scoped_refptr<MetricEntity>& entity);
 
-  virtual MetricType::Type type() const override { return MetricType::kCounter; }
+  virtual MetricType::Type type() const override {
+    return MetricType::kCounter;
+  }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(CounterPrototype);
 };
 
 // Simple incrementing 64-bit integer.
-// Only use Counters in cases that we expect the count to only increase. For example,
-// a counter is appropriate for "number of transactions processed by the server",
-// but not for "number of transactions currently in flight". Monitoring software
-// knows that counters only increase and thus can compute rates over time, rates
-// across multiple servers, etc, which aren't appropriate in the case of gauges.
+// Only use Counters in cases that we expect the count to only increase. For
+// example, a counter is appropriate for "number of transactions processed by
+// the server", but not for "number of transactions currently in flight".
+// Monitoring software knows that counters only increase and thus can compute
+// rates over time, rates across multiple servers, etc, which aren't appropriate
+// in the case of gauges.
 class Counter : public Metric {
  public:
   int64_t value() const;
   void Increment();
   void IncrementBy(int64_t amount);
-  virtual Status WriteAsJson(JsonWriter* w,
-                             const MetricJsonOptions& opts) const override;
+  virtual Status WriteAsJson(JsonWriter* w, const MetricJsonOptions& opts)
+      const override;
 
   virtual bool IsUntouched() const override {
     return value() == 0;
@@ -1061,13 +1127,22 @@ class Counter : public Metric {
 
 class HistogramPrototype : public MetricPrototype {
  public:
-  HistogramPrototype(const MetricPrototype::CtorArgs& args,
-                     uint64_t max_trackable_value, int num_sig_digits);
-  scoped_refptr<Histogram> Instantiate(const scoped_refptr<MetricEntity>& entity);
+  HistogramPrototype(
+      const MetricPrototype::CtorArgs& args,
+      uint64_t max_trackable_value,
+      int num_sig_digits);
+  scoped_refptr<Histogram> Instantiate(
+      const scoped_refptr<MetricEntity>& entity);
 
-  uint64_t max_trackable_value() const { return max_trackable_value_; }
-  int num_sig_digits() const { return num_sig_digits_; }
-  virtual MetricType::Type type() const override { return MetricType::kHistogram; }
+  uint64_t max_trackable_value() const {
+    return max_trackable_value_;
+  }
+  int num_sig_digits() const {
+    return num_sig_digits_;
+  }
+  virtual MetricType::Type type() const override {
+    return MetricType::kHistogram;
+  }
 
  private:
   const uint64_t max_trackable_value_;
@@ -1089,16 +1164,20 @@ class Histogram : public Metric {
   // or IncrementBy()).
   uint64_t TotalCount() const;
 
-  virtual Status WriteAsJson(JsonWriter* w,
-                             const MetricJsonOptions& opts) const override;
+  virtual Status WriteAsJson(JsonWriter* w, const MetricJsonOptions& opts)
+      const override;
 
-  // Returns a snapshot of this histogram including the bucketed values and counts.
-  Status GetHistogramSnapshotPB(HistogramSnapshotPB* snapshot_pb,
-                                const MetricJsonOptions& opts) const;
+  // Returns a snapshot of this histogram including the bucketed values and
+  // counts.
+  Status GetHistogramSnapshotPB(
+      HistogramSnapshotPB* snapshot_pb,
+      const MetricJsonOptions& opts) const;
 
-  // Returns a pointer to the underlying histogram. The implementation of HdrHistogram
-  // is thread safe.
-  const HdrHistogram* histogram() const { return histogram_.get(); }
+  // Returns a pointer to the underlying histogram. The implementation of
+  // HdrHistogram is thread safe.
+  const HdrHistogram* histogram() const {
+    return histogram_.get();
+  }
 
   uint64_t CountInBucketForValueForTests(uint64_t value) const;
   uint64_t MinValueForTests() const;
@@ -1118,7 +1197,8 @@ class Histogram : public Metric {
   DISALLOW_COPY_AND_ASSIGN(Histogram);
 };
 
-// Measures a duration while in scope. Adds this duration to specified histogram on destruction.
+// Measures a duration while in scope. Adds this duration to specified histogram
+// on destruction.
 class ScopedLatencyMetric {
  public:
   // NOTE: the given histogram must live as long as this object.
@@ -1134,7 +1214,6 @@ class ScopedLatencyMetric {
 #define SCOPED_LATENCY_METRIC(_mtx, _h) \
   ScopedLatencyMetric _h##_metric((_mtx) ? (_mtx)->_h.get() : NULL)
 
-
 ////////////////////////////////////////////////////////////
 // Inline implementations of template methods
 ////////////////////////////////////////////////////////////
@@ -1143,7 +1222,8 @@ inline scoped_refptr<Counter> MetricEntity::FindOrCreateCounter(
     const CounterPrototype* proto) {
   CheckInstantiation(proto);
   std::lock_guard<simple_spinlock> l(lock_);
-  scoped_refptr<Counter> m = down_cast<Counter*>(FindPtrOrNull(metric_map_, proto).get());
+  scoped_refptr<Counter> m =
+      down_cast<Counter*>(FindPtrOrNull(metric_map_, proto).get());
   if (!m) {
     m = new Counter(proto);
     InsertOrDie(&metric_map_, proto, m);
@@ -1155,7 +1235,8 @@ inline scoped_refptr<Histogram> MetricEntity::FindOrCreateHistogram(
     const HistogramPrototype* proto) {
   CheckInstantiation(proto);
   std::lock_guard<simple_spinlock> l(lock_);
-  scoped_refptr<Histogram> m = down_cast<Histogram*>(FindPtrOrNull(metric_map_, proto).get());
+  scoped_refptr<Histogram> m =
+      down_cast<Histogram*>(FindPtrOrNull(metric_map_, proto).get());
   if (!m) {
     m = new Histogram(proto);
     InsertOrDie(&metric_map_, proto, m);
@@ -1163,14 +1244,14 @@ inline scoped_refptr<Histogram> MetricEntity::FindOrCreateHistogram(
   return m;
 }
 
-template<typename T>
-inline scoped_refptr<AtomicGauge<T> > MetricEntity::FindOrCreateGauge(
+template <typename T>
+inline scoped_refptr<AtomicGauge<T>> MetricEntity::FindOrCreateGauge(
     const GaugePrototype<T>* proto,
     const T& initial_value) {
   CheckInstantiation(proto);
   std::lock_guard<simple_spinlock> l(lock_);
-  scoped_refptr<AtomicGauge<T> > m = down_cast<AtomicGauge<T>*>(
-      FindPtrOrNull(metric_map_, proto).get());
+  scoped_refptr<AtomicGauge<T>> m =
+      down_cast<AtomicGauge<T>*>(FindPtrOrNull(metric_map_, proto).get());
   if (!m) {
     m = new AtomicGauge<T>(proto, initial_value);
     InsertOrDie(&metric_map_, proto, m);
@@ -1178,14 +1259,14 @@ inline scoped_refptr<AtomicGauge<T> > MetricEntity::FindOrCreateGauge(
   return m;
 }
 
-template<typename T>
-inline scoped_refptr<FunctionGauge<T> > MetricEntity::FindOrCreateFunctionGauge(
+template <typename T>
+inline scoped_refptr<FunctionGauge<T>> MetricEntity::FindOrCreateFunctionGauge(
     const GaugePrototype<T>* proto,
     const Callback<T()>& function) {
   CheckInstantiation(proto);
   std::lock_guard<simple_spinlock> l(lock_);
-  scoped_refptr<FunctionGauge<T> > m = down_cast<FunctionGauge<T>*>(
-      FindPtrOrNull(metric_map_, proto).get());
+  scoped_refptr<FunctionGauge<T>> m =
+      down_cast<FunctionGauge<T>*>(FindPtrOrNull(metric_map_, proto).get());
   if (!m) {
     m = new FunctionGauge<T>(proto, function);
     InsertOrDie(&metric_map_, proto, m);

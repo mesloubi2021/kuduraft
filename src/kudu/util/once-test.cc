@@ -36,12 +36,9 @@ namespace kudu {
 
 namespace {
 
-template<class KuduOnceType>
+template <class KuduOnceType>
 struct Thing {
-  explicit Thing(bool should_fail)
-    : should_fail_(should_fail),
-      value_(0) {
-  }
+  explicit Thing(bool should_fail) : should_fail_(should_fail), value_(0) {}
 
   Status Init();
 
@@ -58,17 +55,17 @@ struct Thing {
   KuduOnceType once_;
 };
 
-template<>
+template <>
 Status Thing<KuduOnceDynamic>::Init() {
   return once_.Init(&Thing<KuduOnceDynamic>::InitOnce, this);
 }
 
-template<>
+template <>
 Status Thing<KuduOnceLambda>::Init() {
   return once_.Init([this] { return InitOnce(); });
 }
 
-template<class KuduOnceType>
+template <class KuduOnceType>
 static void InitOrGetInitted(Thing<KuduOnceType>* t, int i) {
   if (i % 2 == 0) {
     LOG(INFO) << "Thread " << i << " initting";
@@ -78,12 +75,12 @@ static void InitOrGetInitted(Thing<KuduOnceType>* t, int i) {
   }
 }
 
-}  // anonymous namespace
+} // anonymous namespace
 
 typedef ::testing::Types<KuduOnceDynamic, KuduOnceLambda> KuduOnceTypes;
 TYPED_TEST_CASE(TestOnce, KuduOnceTypes);
 
-template<class KuduOnceType>
+template <class KuduOnceType>
 class TestOnce : public KuduTest {};
 
 TYPED_TEST(TestOnce, KuduOnceTest) {
@@ -114,11 +111,16 @@ TYPED_TEST(TestOnce, KuduOnceThreadSafeTest) {
 
   // The threads will read and write to thing.once_.initted. If access to
   // it is not synchronized, TSAN will flag the access as data races.
-  vector<scoped_refptr<Thread> > threads;
+  vector<scoped_refptr<Thread>> threads;
   for (int i = 0; i < 10; i++) {
     scoped_refptr<Thread> t;
-    ASSERT_OK(Thread::Create("test", Substitute("thread $0", i),
-                             &InitOrGetInitted<TypeParam>, &thing, i, &t));
+    ASSERT_OK(Thread::Create(
+        "test",
+        Substitute("thread $0", i),
+        &InitOrGetInitted<TypeParam>,
+        &thing,
+        i,
+        &t));
     threads.push_back(t);
   }
 

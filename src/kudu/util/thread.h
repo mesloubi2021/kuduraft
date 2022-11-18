@@ -32,7 +32,7 @@
 #include <string>
 #include <utility>
 
-#include <boost/bind.hpp>     // IWYU pragma: keep
+#include <boost/bind.hpp> // IWYU pragma: keep
 #include <boost/function.hpp> // IWYU pragma: keep
 
 #include "kudu/gutil/atomicops.h"
@@ -101,16 +101,18 @@ class ThreadJoiner {
   DISALLOW_COPY_AND_ASSIGN(ThreadJoiner);
 };
 
-// Thin wrapper around pthread that can register itself with the singleton ThreadMgr
-// (a private class implemented in thread.cc entirely, which tracks all live threads so
-// that they may be monitored via the debug webpages). This class has a limited subset of
-// boost::thread's API. Construction is almost the same, but clients must supply a
-// category and a name for each thread so that they can be identified in the debug web
-// UI. Otherwise, Join() is the only supported method from boost::thread.
+// Thin wrapper around pthread that can register itself with the singleton
+// ThreadMgr (a private class implemented in thread.cc entirely, which tracks
+// all live threads so that they may be monitored via the debug webpages). This
+// class has a limited subset of boost::thread's API. Construction is almost the
+// same, but clients must supply a category and a name for each thread so that
+// they can be identified in the debug web UI. Otherwise, Join() is the only
+// supported method from boost::thread.
 //
-// Each Thread object knows its operating system thread ID (TID), which can be used to
-// attach debuggers to specific threads, to retrieve resource-usage statistics from the
-// operating system, and to assign threads to resource control groups.
+// Each Thread object knows its operating system thread ID (TID), which can be
+// used to attach debuggers to specific threads, to retrieve resource-usage
+// statistics from the operating system, and to assign threads to resource
+// control groups.
 //
 // Threads are shared objects, but in a degenerate way. They may only have
 // up to two referents: the caller that created the thread (parent), and
@@ -120,7 +122,6 @@ class ThreadJoiner {
 // These constraints allow us to access thread internals without any locks.
 class Thread : public RefCountedThreadSafe<Thread> {
  public:
-
   // Flags passed to Thread::CreateWithFlags().
   enum CreateFlags {
     NO_FLAGS = 0,
@@ -137,75 +138,132 @@ class Thread : public RefCountedThreadSafe<Thread> {
   // another constructor with <class F, class A1.... class An>.
   //
   // In general:
-  //  - category: string identifying the thread category to which this thread belongs,
+  //  - category: string identifying the thread category to which this thread
+  //  belongs,
   //    used for organising threads together on the debug UI.
-  //  - name: name of this thread. Will be appended with "-<thread-id>" to ensure
+  //  - name: name of this thread. Will be appended with "-<thread-id>" to
+  //  ensure
   //    uniqueness.
-  //  - F - a method type that supports operator(), and the instance passed to the
+  //  - F - a method type that supports operator(), and the instance passed to
+  //  the
   //    constructor is executed immediately in a separate thread.
   //  - A1...An - argument types whose instances are passed to f(...)
-  //  - holder - optional shared pointer to hold a reference to the created thread.
+  //  - holder - optional shared pointer to hold a reference to the created
+  //  thread.
   template <class F>
-  static Status CreateWithFlags(const std::string& category, const std::string& name,
-                                const F& f, uint64_t flags,
-                                scoped_refptr<Thread>* holder) {
+  static Status CreateWithFlags(
+      const std::string& category,
+      const std::string& name,
+      const F& f,
+      uint64_t flags,
+      scoped_refptr<Thread>* holder) {
     return StartThread(category, name, f, flags, holder);
-
   }
   template <class F>
-  static Status Create(const std::string& category, const std::string& name, const F& f,
-                       scoped_refptr<Thread>* holder) {
+  static Status Create(
+      const std::string& category,
+      const std::string& name,
+      const F& f,
+      scoped_refptr<Thread>* holder) {
     return StartThread(category, name, f, NO_FLAGS, holder);
   }
 
   template <class F, class A1>
-  static Status Create(const std::string& category, const std::string& name, const F& f,
-                       const A1& a1, scoped_refptr<Thread>* holder) {
+  static Status Create(
+      const std::string& category,
+      const std::string& name,
+      const F& f,
+      const A1& a1,
+      scoped_refptr<Thread>* holder) {
     return StartThread(category, name, boost::bind(f, a1), NO_FLAGS, holder);
   }
 
   template <class F, class A1, class A2>
-  static Status Create(const std::string& category, const std::string& name, const F& f,
-                       const A1& a1, const A2& a2, scoped_refptr<Thread>* holder) {
-    return StartThread(category, name, boost::bind(f, a1, a2), NO_FLAGS, holder);
+  static Status Create(
+      const std::string& category,
+      const std::string& name,
+      const F& f,
+      const A1& a1,
+      const A2& a2,
+      scoped_refptr<Thread>* holder) {
+    return StartThread(
+        category, name, boost::bind(f, a1, a2), NO_FLAGS, holder);
   }
 
   template <class F, class A1, class A2, class A3>
-  static Status Create(const std::string& category, const std::string& name, const F& f,
-                       const A1& a1, const A2& a2, const A3& a3, scoped_refptr<Thread>* holder) {
-    return StartThread(category, name, boost::bind(f, a1, a2, a3), NO_FLAGS, holder);
+  static Status Create(
+      const std::string& category,
+      const std::string& name,
+      const F& f,
+      const A1& a1,
+      const A2& a2,
+      const A3& a3,
+      scoped_refptr<Thread>* holder) {
+    return StartThread(
+        category, name, boost::bind(f, a1, a2, a3), NO_FLAGS, holder);
   }
 
   template <class F, class A1, class A2, class A3, class A4>
-  static Status Create(const std::string& category, const std::string& name, const F& f,
-                       const A1& a1, const A2& a2, const A3& a3, const A4& a4,
-                       scoped_refptr<Thread>* holder) {
-    return StartThread(category, name, boost::bind(f, a1, a2, a3, a4), NO_FLAGS, holder);
+  static Status Create(
+      const std::string& category,
+      const std::string& name,
+      const F& f,
+      const A1& a1,
+      const A2& a2,
+      const A3& a3,
+      const A4& a4,
+      scoped_refptr<Thread>* holder) {
+    return StartThread(
+        category, name, boost::bind(f, a1, a2, a3, a4), NO_FLAGS, holder);
   }
 
   template <class F, class A1, class A2, class A3, class A4, class A5>
-  static Status Create(const std::string& category, const std::string& name, const F& f,
-                       const A1& a1, const A2& a2, const A3& a3, const A4& a4, const A5& a5,
-                       scoped_refptr<Thread>* holder) {
-    return StartThread(category, name, boost::bind(f, a1, a2, a3, a4, a5), NO_FLAGS, holder);
+  static Status Create(
+      const std::string& category,
+      const std::string& name,
+      const F& f,
+      const A1& a1,
+      const A2& a2,
+      const A3& a3,
+      const A4& a4,
+      const A5& a5,
+      scoped_refptr<Thread>* holder) {
+    return StartThread(
+        category, name, boost::bind(f, a1, a2, a3, a4, a5), NO_FLAGS, holder);
   }
 
   template <class F, class A1, class A2, class A3, class A4, class A5, class A6>
-  static Status Create(const std::string& category, const std::string& name, const F& f,
-                       const A1& a1, const A2& a2, const A3& a3, const A4& a4, const A5& a5,
-                       const A6& a6, scoped_refptr<Thread>* holder) {
-    return StartThread(category, name, boost::bind(f, a1, a2, a3, a4, a5, a6), NO_FLAGS, holder);
+  static Status Create(
+      const std::string& category,
+      const std::string& name,
+      const F& f,
+      const A1& a1,
+      const A2& a2,
+      const A3& a3,
+      const A4& a4,
+      const A5& a5,
+      const A6& a6,
+      scoped_refptr<Thread>* holder) {
+    return StartThread(
+        category,
+        name,
+        boost::bind(f, a1, a2, a3, a4, a5, a6),
+        NO_FLAGS,
+        holder);
   }
 
   // Emulates boost::thread and detaches.
   ~Thread();
 
-  // Blocks until this thread finishes execution. Once this method returns, the thread
-  // will be unregistered with the ThreadMgr and will not appear in the debug UI.
-  void Join() { ThreadJoiner(this).Join(); }
+  // Blocks until this thread finishes execution. Once this method returns, the
+  // thread will be unregistered with the ThreadMgr and will not appear in the
+  // debug UI.
+  void Join() {
+    ThreadJoiner(this).Join();
+  }
 
-  // The thread ID assigned to this thread by the operating system. If the thread
-  // has not yet started running, returns INVALID_TID.
+  // The thread ID assigned to this thread by the operating system. If the
+  // thread has not yet started running, returns INVALID_TID.
   //
   // NOTE: this may block for a short amount of time if the thread has just been
   // started.
@@ -218,21 +276,29 @@ class Thread : public RefCountedThreadSafe<Thread> {
   }
 
   // Returns the thread's pthread ID.
-  pthread_t pthread_id() const { return thread_; }
+  pthread_t pthread_id() const {
+    return thread_;
+  }
 
-  const std::string& name() const { return name_; }
-  const std::string& category() const { return category_; }
+  const std::string& name() const {
+    return name_;
+  }
+  const std::string& category() const {
+    return category_;
+  }
 
   // Return a string representation of the thread identifying information.
   std::string ToString() const;
 
-  // The current thread of execution, or NULL if the current thread isn't a kudu::Thread.
-  // This call is signal-safe.
-  static Thread* current_thread() { return tls_; }
+  // The current thread of execution, or NULL if the current thread isn't a
+  // kudu::Thread. This call is signal-safe.
+  static Thread* current_thread() {
+    return tls_;
+  }
 
-  // Returns a unique, stable identifier for this thread. Note that this is a static
-  // method and thus can be used on any thread, including the main thread of the
-  // process.
+  // Returns a unique, stable identifier for this thread. Note that this is a
+  // static method and thus can be used on any thread, including the main thread
+  // of the process.
   //
   // In general, this should be used when a value is required that is unique to
   // a thread and must work on any thread including the main process thread.
@@ -283,8 +349,9 @@ class Thread : public RefCountedThreadSafe<Thread> {
     PARENT_WAITING_TID = -2,
   };
 
-  // Function object that wraps the user-supplied function to run in a separate thread.
-  typedef boost::function<void ()> ThreadFunctor;
+  // Function object that wraps the user-supplied function to run in a separate
+  // thread.
+  typedef boost::function<void()> ThreadFunctor;
 
   Thread(std::string category, std::string name, ThreadFunctor functor)
       : thread_(0),
@@ -325,20 +392,23 @@ class Thread : public RefCountedThreadSafe<Thread> {
 
   bool joinable_;
 
-  // Thread local pointer to the current thread of execution. Will be NULL if the current
-  // thread is not a Thread.
+  // Thread local pointer to the current thread of execution. Will be NULL if
+  // the current thread is not a Thread.
   static __thread Thread* tls_;
 
   // Wait for the running thread to publish its tid.
   int64_t WaitForTid() const;
 
-  // Starts the thread running SuperviseThread(), and returns once that thread has
-  // initialised and its TID has been read. Waits for notification from the started
-  // thread that initialisation is complete before returning. On success, stores a
-  // reference to the thread in holder.
-  static Status StartThread(const std::string& category, const std::string& name,
-                            const ThreadFunctor& functor, uint64_t flags,
-                            scoped_refptr<Thread>* holder);
+  // Starts the thread running SuperviseThread(), and returns once that thread
+  // has initialised and its TID has been read. Waits for notification from the
+  // started thread that initialisation is complete before returning. On
+  // success, stores a reference to the thread in holder.
+  static Status StartThread(
+      const std::string& category,
+      const std::string& name,
+      const ThreadFunctor& functor,
+      uint64_t flags,
+      scoped_refptr<Thread>* holder);
 
   // Wrapper for the user-supplied function. Invoked from the new thread,
   // with the Thread as its only argument. Executes functor_, but before
@@ -364,30 +434,42 @@ class Thread : public RefCountedThreadSafe<Thread> {
   static void FinishThread(void* arg);
 };
 
-// Registers /threadz with the debug webserver, and creates thread-tracking metrics under
-// the given entity. If 'web' is NULL, does not register the path handler.
-Status StartThreadInstrumentation(const scoped_refptr<MetricEntity>& server_metrics,
-                                  WebCallbackRegistry* web);
+// Registers /threadz with the debug webserver, and creates thread-tracking
+// metrics under the given entity. If 'web' is NULL, does not register the path
+// handler.
+Status StartThreadInstrumentation(
+    const scoped_refptr<MetricEntity>& server_metrics,
+    WebCallbackRegistry* web);
 
 // Container class for any details we want to capture about a thread
 // TODO: Add start-time.
 // TODO: Track fragment ID.
 // fb: Move to header file, so can be used by plugin
 class ThreadDescriptor {
-  public:
-  ThreadDescriptor() { }
+ public:
+  ThreadDescriptor() {}
   ThreadDescriptor(std::string category, std::string name, int64_t thread_id)
       : name_(std::move(name)),
         category_(std::move(category)),
         thread_id_(thread_id) {}
 
-  const std::string& name() const { return name_; }
-  const std::string& category() const { return category_; }
-  int64_t thread_id() const { return thread_id_; }
-  int priority() const { return priority_; }
-  void setPriority(int p) { priority_ = p; }
+  const std::string& name() const {
+    return name_;
+  }
+  const std::string& category() const {
+    return category_;
+  }
+  int64_t thread_id() const {
+    return thread_id_;
+  }
+  int priority() const {
+    return priority_;
+  }
+  void setPriority(int p) {
+    priority_ = p;
+  }
 
-  private:
+ private:
   // Thread name
   std::string name_;
 

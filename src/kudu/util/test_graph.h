@@ -22,8 +22,8 @@
 #include <unordered_map>
 #include <utility>
 
-#include "kudu/gutil/ref_counted.h"
 #include "kudu/gutil/macros.h"
+#include "kudu/gutil/ref_counted.h"
 #include "kudu/gutil/walltime.h"
 #include "kudu/util/countdown_latch.h"
 #include "kudu/util/locks.h"
@@ -46,9 +46,7 @@ class TimeSeries {
 
   DISALLOW_COPY_AND_ASSIGN(TimeSeries);
 
-  TimeSeries() :
-    val_(0)
-  {}
+  TimeSeries() : val_(0) {}
 
   mutable simple_spinlock lock_;
   double val_;
@@ -61,7 +59,7 @@ class TimeSeriesCollector {
 
   ~TimeSeriesCollector();
 
-  std::shared_ptr<TimeSeries> GetTimeSeries(const std::string &key);
+  std::shared_ptr<TimeSeries> GetTimeSeries(const std::string& key);
   void StartDumperThread();
   void StopDumperThread();
 
@@ -69,11 +67,12 @@ class TimeSeriesCollector {
   DISALLOW_COPY_AND_ASSIGN(TimeSeriesCollector);
 
   void DumperThread();
-  void BuildMetricsString(WallTime time_since_start, faststring *dst_buf) const;
+  void BuildMetricsString(WallTime time_since_start, faststring* dst_buf) const;
 
   std::string scope_;
 
-  typedef std::unordered_map<std::string, std::shared_ptr<TimeSeries> > SeriesMap;
+  typedef std::unordered_map<std::string, std::shared_ptr<TimeSeries>>
+      SeriesMap;
   SeriesMap series_map_;
   mutable Mutex series_lock_;
 

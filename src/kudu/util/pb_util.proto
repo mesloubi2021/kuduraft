@@ -41,5 +41,5 @@ message ContainerSupHeaderPB {
 }
 
 extend google.protobuf.FieldOptions {
-  optional bool REDACT = 50001 [default=false];
+  optional bool REDACT = 50001 [ default = false ];
 }

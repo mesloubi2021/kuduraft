@@ -15,11 +15,11 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#include <string>
 #include <ostream>
+#include <string>
 
-#include <gtest/gtest.h>
 #include <glog/logging.h>
+#include <gtest/gtest.h>
 
 #include "kudu/util/test_macros.h"
 #include "kudu/util/test_util.h"
@@ -29,8 +29,7 @@ namespace kudu {
 
 using std::string;
 
-class TestUser : public KuduTest {
-};
+class TestUser : public KuduTest {};
 
 // Validate that the current username is non-empty.
 TEST_F(TestUser, TestNonEmpty) {

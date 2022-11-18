@@ -32,19 +32,24 @@
 #include "kudu/util/status.h"
 #include "kudu/util/test_util.h"
 
-DEFINE_int32(test_timeout_after, 0,
-             "Maximum total seconds allowed for all unit tests in the suite. Default: disabled");
+DEFINE_int32(
+    test_timeout_after,
+    0,
+    "Maximum total seconds allowed for all unit tests in the suite. Default: disabled");
 
-DEFINE_int32(stress_cpu_threads, 0,
-             "Number of threads to start that burn CPU in an attempt to "
-             "stimulate race conditions");
+DEFINE_int32(
+    stress_cpu_threads,
+    0,
+    "Number of threads to start that burn CPU in an attempt to "
+    "stimulate race conditions");
 
 namespace kudu {
 
-// Start thread that kills the process if --test_timeout_after is exceeded before
-// the tests complete.
+// Start thread that kills the process if --test_timeout_after is exceeded
+// before the tests complete.
 static void CreateAndStartTimeoutThread() {
-  if (FLAGS_test_timeout_after == 0) return;
+  if (FLAGS_test_timeout_after == 0)
+    return;
 
   // KUDU-1995: if running death tests using EXPECT_EXIT()/ASSERT_EXIT(), LSAN
   // reports leaks in CreateAndStartTimeoutThread(). Adding a couple of scoped
@@ -53,31 +58,31 @@ static void CreateAndStartTimeoutThread() {
   // ASSERT_DEATH(). This does not seem harmful or hiding any potential leaks
   // since it's scoped and targeted only for this utility thread.
   debug::ScopedLeakCheckDisabler disabler;
-  std::thread([=](){
-      debug::ScopedLeakCheckDisabler disabler;
-      SleepFor(MonoDelta::FromSeconds(FLAGS_test_timeout_after));
-      // Dump a pstack to stdout.
-      WARN_NOT_OK(PstackWatcher::DumpStacks(), "Unable to print pstack");
+  std::thread([=]() {
+    debug::ScopedLeakCheckDisabler disabler;
+    SleepFor(MonoDelta::FromSeconds(FLAGS_test_timeout_after));
+    // Dump a pstack to stdout.
+    WARN_NOT_OK(PstackWatcher::DumpStacks(), "Unable to print pstack");
 
-      // ...and abort.
-      LOG(FATAL) << "Maximum unit test time exceeded (" << FLAGS_test_timeout_after << " sec)";
-    }).detach();
+    // ...and abort.
+    LOG(FATAL) << "Maximum unit test time exceeded ("
+               << FLAGS_test_timeout_after << " sec)";
+  }).detach();
 }
 } // namespace kudu
 
-
 static void StartStressThreads() {
   for (int i = 0; i < FLAGS_stress_cpu_threads; i++) {
-    std::thread([]{
-        while (true) {
-          // Do something which won't be optimized out.
-          base::subtle::MemoryBarrier();
-        }
-      }).detach();
+    std::thread([] {
+      while (true) {
+        // Do something which won't be optimized out.
+        base::subtle::MemoryBarrier();
+      }
+    }).detach();
   }
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   google::InstallFailureSignalHandler();
 
   // We don't use InitGoogleLoggingSafe() because gtest initializes glog, so we

@@ -37,7 +37,6 @@ using strings::Substitute;
 
 class CrcTest : public KuduTest {
  protected:
-
   // Returns pointer to data which must be deleted by caller.
   static void GenerateBenchmarkData(const uint8_t** bufptr, size_t* buflen) {
     const uint32_t kNumNumbers = 1000000;
@@ -50,22 +49,24 @@ class CrcTest : public KuduTest {
     *bufptr = buf;
     *buflen = kLength;
   }
-
 };
 
 // Basic functionality test.
 TEST_F(CrcTest, TestCRC32C) {
   const std::string test_data("abcdefgh");
-  const uint64_t kExpectedCrc = 0xa9421b7; // Known value from crcutil usage test program.
+  const uint64_t kExpectedCrc =
+      0xa9421b7; // Known value from crcutil usage test program.
 
   Crc* crc32c = GetCrc32cInstance();
   uint64_t data_crc = 0;
   crc32c->Compute(test_data.data(), test_data.length(), &data_crc);
   char buf[kFastToBufferSize];
   const char* output = FastHex64ToBuffer(data_crc, buf);
-  LOG(INFO) << "CRC32C of " << test_data << " is: 0x" << output << " (full 64 bits)";
+  LOG(INFO) << "CRC32C of " << test_data << " is: 0x" << output
+            << " (full 64 bits)";
   output = FastHex32ToBuffer(static_cast<uint32_t>(data_crc), buf);
-  LOG(INFO) << "CRC32C of " << test_data << " is: 0x" << output << " (truncated 32 bits)";
+  LOG(INFO) << "CRC32C of " << test_data << " is: 0x" << output
+            << " (truncated 32 bits)";
   ASSERT_EQ(kExpectedCrc, data_crc);
 
   // Using helper
@@ -101,11 +102,15 @@ TEST_F(CrcTest, BenchmarkCRC32C) {
   }
   sw.stop();
   CpuTimes elapsed = sw.elapsed();
-  LOG(INFO) << Substitute("$0 runs of CRC32C on $1 bytes of data (total: $2 bytes)"
-                          " in $3 seconds; $4 bytes per millisecond, $5 bytes per nanosecond!",
-                          kNumRuns, buflen, kNumBytes, elapsed.wall_seconds(),
-                          (kNumBytes / elapsed.wall_millis()),
-                          (kNumBytes / elapsed.wall));
+  LOG(INFO) << Substitute(
+      "$0 runs of CRC32C on $1 bytes of data (total: $2 bytes)"
+      " in $3 seconds; $4 bytes per millisecond, $5 bytes per nanosecond!",
+      kNumRuns,
+      buflen,
+      kNumBytes,
+      elapsed.wall_seconds(),
+      (kNumBytes / elapsed.wall_millis()),
+      (kNumBytes / elapsed.wall));
 }
 
 } // namespace crc

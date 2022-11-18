@@ -36,16 +36,20 @@ namespace tools {
 // At the time of this writing, we only support ints, bools, and strings.
 // For the numbers / bool, the value is truncated to fit the data type.
 // For the string, we encode the number as hex.
-void WriteValueToColumn(const client::KuduSchema& schema,
-                        int col_idx,
-                        uint64_t value,
-                        KuduPartialRow* row);
+void WriteValueToColumn(
+    const client::KuduSchema& schema,
+    int col_idx,
+    uint64_t value,
+    KuduPartialRow* row);
 
 // Generate row data for an arbitrary schema. Initial column value determined
 // by the value of 'record_id'.
-template<class RNG>
-void GenerateDataForRow(const client::KuduSchema& schema, uint64_t record_id,
-                        RNG* random, KuduPartialRow* row);
+template <class RNG>
+void GenerateDataForRow(
+    const client::KuduSchema& schema,
+    uint64_t record_id,
+    RNG* random,
+    KuduPartialRow* row);
 
 } // namespace tools
 } // namespace kudu

@@ -27,8 +27,8 @@
 namespace kudu {
 namespace clock {
 
-// TimeService implementation which uses the 'ntp_adjtime' call (corresponding to the
-// 'adjtimex' syscall) to consult the Linux kernel for the current time
+// TimeService implementation which uses the 'ntp_adjtime' call (corresponding
+// to the 'adjtimex' syscall) to consult the Linux kernel for the current time
 // and error bound.
 //
 // This implementation relies on the ntpd service running on the local host
@@ -41,7 +41,8 @@ class SystemNtp : public TimeService {
   // in sync, and initialize various internal parameters.
   virtual Status Init() override;
 
-  virtual Status WalltimeWithError(uint64_t* now_usec, uint64_t* error_usec) override;
+  virtual Status WalltimeWithError(uint64_t* now_usec, uint64_t* error_usec)
+      override;
 
   virtual int64_t skew_ppm() const override {
     return skew_ppm_;

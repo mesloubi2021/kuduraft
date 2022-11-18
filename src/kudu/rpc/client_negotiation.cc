@@ -66,37 +66,39 @@ DECLARE_bool(rpc_encrypt_loopback_connections);
 DECLARE_bool(rpc_allow_external_cert_authentication);
 
 // Initiate normal TLS handshake from the client
-DEFINE_bool(use_normal_tls, false,
-    "Whether to initiate normal TLS handshake.");
+DEFINE_bool(use_normal_tls, false, "Whether to initiate normal TLS handshake.");
 
 namespace kudu {
 namespace rpc {
 
-static int ClientNegotiationGetoptCb(ClientNegotiation* client_negotiation,
-                                     const char* plugin_name,
-                                     const char* option,
-                                     const char** result,
-                                     unsigned* len) {
+static int ClientNegotiationGetoptCb(
+    ClientNegotiation* client_negotiation,
+    const char* plugin_name,
+    const char* option,
+    const char** result,
+    unsigned* len) {
   return client_negotiation->GetOptionCb(plugin_name, option, result, len);
 }
 
-static int ClientNegotiationSimpleCb(ClientNegotiation* client_negotiation,
-                                     int id,
-                                     const char** result,
-                                     unsigned* len) {
+static int ClientNegotiationSimpleCb(
+    ClientNegotiation* client_negotiation,
+    int id,
+    const char** result,
+    unsigned* len) {
   return client_negotiation->SimpleCb(id, result, len);
 }
 
-static int ClientNegotiationSecretCb(sasl_conn_t* conn,
-                                     ClientNegotiation* client_negotiation,
-                                     int id,
-                                     sasl_secret_t** psecret) {
+static int ClientNegotiationSecretCb(
+    sasl_conn_t* conn,
+    ClientNegotiation* client_negotiation,
+    int id,
+    sasl_secret_t** psecret) {
   return client_negotiation->SecretCb(conn, id, psecret);
 }
 
-// Return an appropriately-typed Status object based on an ErrorStatusPB returned
-// from an Error RPC.
-// In case there is no relevant Status type, return a RuntimeError.
+// Return an appropriately-typed Status object based on an ErrorStatusPB
+// returned from an Error RPC. In case there is no relevant Status type, return
+// a RuntimeError.
 static Status StatusFromRpcError(const ErrorStatusPB& error) {
   DCHECK(error.IsInitialized()) << "Error status PB must be initialized";
   if (PREDICT_FALSE(!error.has_code())) {
@@ -114,11 +116,12 @@ static Status StatusFromRpcError(const ErrorStatusPB& error) {
   }
 }
 
-ClientNegotiation::ClientNegotiation(unique_ptr<Socket> socket,
-                                     const security::TlsContext* tls_context,
-                                     boost::optional<security::SignedTokenPB> authn_token,
-                                     RpcEncryption encryption,
-                                     std::string sasl_proto_name)
+ClientNegotiation::ClientNegotiation(
+    unique_ptr<Socket> socket,
+    const security::TlsContext* tls_context,
+    boost::optional<security::SignedTokenPB> authn_token,
+    RpcEncryption encryption,
+    std::string sasl_proto_name)
     : socket_(std::move(socket)),
       helper_(SaslHelper::CLIENT),
       tls_context_(tls_context),
@@ -131,12 +134,18 @@ ClientNegotiation::ClientNegotiation(unique_ptr<Socket> socket,
       negotiated_mech_(SaslMechanism::INVALID),
       sasl_proto_name_(std::move(sasl_proto_name)),
       deadline_(MonoTime::Max()) {
-  callbacks_.push_back(SaslBuildCallback(SASL_CB_GETOPT,
-      reinterpret_cast<int (*)()>(&ClientNegotiationGetoptCb), this));
-  callbacks_.push_back(SaslBuildCallback(SASL_CB_AUTHNAME,
-      reinterpret_cast<int (*)()>(&ClientNegotiationSimpleCb), this));
-  callbacks_.push_back(SaslBuildCallback(SASL_CB_PASS,
-      reinterpret_cast<int (*)()>(&ClientNegotiationSecretCb), this));
+  callbacks_.push_back(SaslBuildCallback(
+      SASL_CB_GETOPT,
+      reinterpret_cast<int (*)()>(&ClientNegotiationGetoptCb),
+      this));
+  callbacks_.push_back(SaslBuildCallback(
+      SASL_CB_AUTHNAME,
+      reinterpret_cast<int (*)()>(&ClientNegotiationSimpleCb),
+      this));
+  callbacks_.push_back(SaslBuildCallback(
+      SASL_CB_PASS,
+      reinterpret_cast<int (*)()>(&ClientNegotiationSecretCb),
+      this));
   callbacks_.push_back(SaslBuildCallback(SASL_CB_LIST_END, nullptr, nullptr));
   DCHECK(socket_);
   DCHECK(tls_context_);
@@ -198,14 +207,15 @@ Status ClientNegotiation::Negotiate(unique_ptr<ErrorStatusPB>* rpc_error) {
   // TODO(KUDU-1921): allow the client to require TLS.
   if (encryption_ != RpcEncryption::DISABLED &&
       ContainsKey(server_features_, TLS)) {
-    RETURN_NOT_OK(tls_context_->InitiateHandshake(security::TlsHandshakeType::CLIENT,
-                                                  &tls_handshake_));
+    RETURN_NOT_OK(tls_context_->InitiateHandshake(
+        security::TlsHandshakeType::CLIENT, &tls_handshake_));
 
     if (negotiated_authn_ == AuthenticationType::SASL) {
       // When using SASL authentication, verifying the server's certificate is
       // not necessary. This allows the client to still use TLS encryption for
       // connections to servers which only have a self-signed certificate.
-      tls_handshake_.set_verification_mode(security::TlsVerificationMode::VERIFY_NONE);
+      tls_handshake_.set_verification_mode(
+          security::TlsVerificationMode::VERIFY_NONE);
     }
 
     // To initiate the TLS handshake, we pretend as if the server sent us an
@@ -235,7 +245,8 @@ Status ClientNegotiation::Negotiate(unique_ptr<ErrorStatusPB>* rpc_error) {
     case AuthenticationType::CERTIFICATE:
       // The TLS handshake has already authenticated the server.
       break;
-    case AuthenticationType::INVALID: LOG(FATAL) << "unreachable";
+    case AuthenticationType::INVALID:
+      LOG(FATAL) << "unreachable";
   }
 
   // Step 5: Send connection context.
@@ -260,7 +271,8 @@ Status ClientNegotiation::HandleTLS() {
   server_features_.insert(TLS);
   negotiated_authn_ = AuthenticationType::CERTIFICATE;
 
-  RETURN_NOT_OK(((security::TlsContext*)tls_context_)->SetSupportedAlpns(kAlpns, false));
+  RETURN_NOT_OK(
+      ((security::TlsContext*)tls_context_)->SetSupportedAlpns(kAlpns, false));
 
   RETURN_NOT_OK(tls_context_->CreateSSL(&tls_handshake_));
 
@@ -290,16 +302,20 @@ Status ClientNegotiation::SendNegotiatePB(const NegotiatePB& msg) {
   DCHECK(msg.IsInitialized()) << "message must be initialized";
   DCHECK(msg.has_step()) << "message must have a step";
 
-  TRACE("Sending $0 NegotiatePB request", NegotiatePB::NegotiateStep_Name(msg.step()));
+  TRACE(
+      "Sending $0 NegotiatePB request",
+      NegotiatePB::NegotiateStep_Name(msg.step()));
   return SendFramedMessageBlocking(socket(), header, msg, deadline_);
 }
 
-Status ClientNegotiation::RecvNegotiatePB(NegotiatePB* msg,
-                                          faststring* buffer,
-                                          unique_ptr<ErrorStatusPB>* rpc_error) {
+Status ClientNegotiation::RecvNegotiatePB(
+    NegotiatePB* msg,
+    faststring* buffer,
+    unique_ptr<ErrorStatusPB>* rpc_error) {
   ResponseHeader header;
   Slice param_buf;
-  RETURN_NOT_OK(ReceiveFramedMessageBlocking(socket(), buffer, &header, &param_buf, deadline_));
+  RETURN_NOT_OK(ReceiveFramedMessageBlocking(
+      socket(), buffer, &header, &param_buf, deadline_));
   RETURN_NOT_OK(helper_.CheckNegotiateCallId(header.call_id()));
 
   if (header.is_error()) {
@@ -307,16 +323,20 @@ Status ClientNegotiation::RecvNegotiatePB(NegotiatePB* msg,
   }
 
   RETURN_NOT_OK(helper_.ParseNegotiatePB(param_buf, msg));
-  TRACE("Received $0 NegotiatePB response", NegotiatePB::NegotiateStep_Name(msg->step()));
+  TRACE(
+      "Received $0 NegotiatePB response",
+      NegotiatePB::NegotiateStep_Name(msg->step()));
   return Status::OK();
 }
 
-Status ClientNegotiation::ParseError(const Slice& err_data,
-                                     unique_ptr<ErrorStatusPB>* rpc_error) {
+Status ClientNegotiation::ParseError(
+    const Slice& err_data,
+    unique_ptr<ErrorStatusPB>* rpc_error) {
   unique_ptr<ErrorStatusPB> error(new ErrorStatusPB);
   if (!error->ParseFromArray(err_data.data(), err_data.size())) {
-    return Status::IOError("invalid error response, missing fields",
-                           error->InitializationErrorString());
+    return Status::IOError(
+        "invalid error response, missing fields",
+        error->InitializationErrorString());
   }
   Status s = StatusFromRpcError(*error);
   TRACE("Received error response from server: $0", s.ToString());
@@ -340,16 +360,22 @@ Status ClientNegotiation::InitSaslClient() {
   unsigned flags = 0;
 
   sasl_conn_t* sasl_conn = nullptr;
-  RETURN_NOT_OK_PREPEND(WrapSaslCall(nullptr /* no conn */, [&]() {
-      return sasl_client_new(
-          sasl_proto_name_.c_str(),     // Registered name of the service using SASL. Required.
-          helper_.server_fqdn(),        // The fully qualified domain name of the remote server.
-          nullptr,                      // Local and remote IP address strings. (we don't use
-          nullptr,                      // any mechanisms which require this info.)
-          &callbacks_[0],               // Connection-specific callbacks.
-          flags,
-          &sasl_conn);
-    }), Substitute("unable to create new SASL $0 client", sasl_proto_name_));
+  RETURN_NOT_OK_PREPEND(
+      WrapSaslCall(
+          nullptr /* no conn */,
+          [&]() {
+            return sasl_client_new(
+                sasl_proto_name_.c_str(), // Registered name of the service
+                                          // using SASL. Required.
+                helper_.server_fqdn(), // The fully qualified domain name of the
+                                       // remote server.
+                nullptr, // Local and remote IP address strings. (we don't use
+                nullptr, // any mechanisms which require this info.)
+                &callbacks_[0], // Connection-specific callbacks.
+                flags,
+                &sasl_conn);
+          }),
+      Substitute("unable to create new SASL $0 client", sasl_proto_name_));
   sasl_conn_.reset(sasl_conn);
   return Status::OK();
 }
@@ -365,7 +391,8 @@ Status ClientNegotiation::SendNegotiate() {
     client_features_.insert(TLS);
     // If the remote peer is local, then we allow using TLS for authentication
     // without encryption or integrity.
-    if (socket_->IsLoopbackConnection() && !FLAGS_rpc_encrypt_loopback_connections) {
+    if (socket_->IsLoopbackConnection() &&
+        !FLAGS_rpc_encrypt_loopback_connections) {
       client_features_.insert(TLS_AUTHENTICATION_ONLY);
     }
   }
@@ -383,17 +410,19 @@ Status ClientNegotiation::SendNegotiate() {
   // However for mysql raft, in order to support pure TLS based authentication,
   // we add a backdoor to override this kudu limitation.
   if (tls_context_->has_signed_cert() &&
-      (FLAGS_rpc_allow_external_cert_authentication || !tls_context_->is_external_cert())) {
+      (FLAGS_rpc_allow_external_cert_authentication ||
+       !tls_context_->is_external_cert())) {
     msg.add_authn_types()->mutable_certificate();
   }
   if (authn_token_ && tls_context_->has_trusted_cert()) {
-    // TODO(KUDU-1924): check that the authn token is not expired. Can this be done
-    // reliably on clients?
+    // TODO(KUDU-1924): check that the authn token is not expired. Can this be
+    // done reliably on clients?
     msg.add_authn_types()->mutable_token();
   }
 
   if (PREDICT_FALSE(msg.authn_types().empty())) {
-    return Status::NotAuthorized("client is not configured with an authentication type");
+    return Status::NotAuthorized(
+        "client is not configured with an authentication type");
   }
 
   RETURN_NOT_OK(SendNegotiatePB(msg));
@@ -402,16 +431,18 @@ Status ClientNegotiation::SendNegotiate() {
 
 Status ClientNegotiation::HandleNegotiate(const NegotiatePB& response) {
   if (PREDICT_FALSE(response.step() != NegotiatePB::NEGOTIATE)) {
-    return Status::NotAuthorized("expected NEGOTIATE step",
-                                 NegotiatePB::NegotiateStep_Name(response.step()));
+    return Status::NotAuthorized(
+        "expected NEGOTIATE step",
+        NegotiatePB::NegotiateStep_Name(response.step()));
   }
   TRACE("Received NEGOTIATE response from server");
 
   // Fill in the set of features supported by the server.
   for (int flag : response.supported_features()) {
     // We only add the features that our local build knows about.
-    RpcFeatureFlag feature_flag = RpcFeatureFlag_IsValid(flag) ?
-                                  static_cast<RpcFeatureFlag>(flag) : UNKNOWN;
+    RpcFeatureFlag feature_flag = RpcFeatureFlag_IsValid(flag)
+        ? static_cast<RpcFeatureFlag>(flag)
+        : UNKNOWN;
     if (feature_flag != UNKNOWN) {
       server_features_.insert(feature_flag);
     }
@@ -419,7 +450,8 @@ Status ClientNegotiation::HandleNegotiate(const NegotiatePB& response) {
 
   if (encryption_ == RpcEncryption::REQUIRED &&
       !ContainsKey(server_features_, RpcFeatureFlag::TLS)) {
-    return Status::NotAuthorized("server does not support required TLS encryption");
+    return Status::NotAuthorized(
+        "server does not support required TLS encryption");
   }
 
   // Get the authentication type which the server would like to use.
@@ -435,9 +467,10 @@ Status ClientNegotiation::HandleNegotiate(const NegotiatePB& response) {
         negotiated_authn_ = AuthenticationType::SASL;
         break;
       case AuthenticationTypePB::kToken:
-        // TODO(todd): we should also be checking tls_context_->has_trusted_cert()
-        // here to match the original logic we used to advertise TOKEN support,
-        // or perhaps just check explicitly whether we advertised TOKEN.
+        // TODO(todd): we should also be checking
+        // tls_context_->has_trusted_cert() here to match the original logic we
+        // used to advertise TOKEN support, or perhaps just check explicitly
+        // whether we advertised TOKEN.
         if (!authn_token_) {
           return Status::RuntimeError(
               "server chose token authentication, but client has no token");
@@ -452,7 +485,8 @@ Status ClientNegotiation::HandleNegotiate(const NegotiatePB& response) {
         negotiated_authn_ = AuthenticationType::CERTIFICATE;
         return Status::OK();
       case AuthenticationTypePB::TYPE_NOT_SET:
-        return Status::RuntimeError("server chose an unknown authentication type");
+        return Status::RuntimeError(
+            "server chose an unknown authentication type");
     }
   }
 
@@ -461,7 +495,8 @@ Status ClientNegotiation::HandleNegotiate(const NegotiatePB& response) {
   // Build a map of the SASL mechanisms offered by the server.
   set<SaslMechanism::Type> client_mechs(helper_.EnabledMechs());
   set<SaslMechanism::Type> server_mechs;
-  for (const NegotiatePB::SaslMechanism& sasl_mech : response.sasl_mechanisms()) {
+  for (const NegotiatePB::SaslMechanism& sasl_mech :
+       response.sasl_mechanisms()) {
     auto mech = SaslMechanism::value_of(sasl_mech.mechanism());
     if (mech == SaslMechanism::INVALID) {
       continue;
@@ -478,7 +513,6 @@ Status ClientNegotiation::HandleNegotiate(const NegotiatePB& response) {
   // TODO(KUDU-1921): allow the client to require authentication.
   if (ContainsKey(client_mechs, SaslMechanism::GSSAPI) &&
       ContainsKey(server_mechs, SaslMechanism::GSSAPI)) {
-
     // Check that the client has local Kerberos credentials, and if not fall
     // back to an alternate mechanism.
     Status s = CheckGSSAPI();
@@ -487,7 +521,9 @@ Status ClientNegotiation::HandleNegotiate(const NegotiatePB& response) {
       return Status::OK();
     }
 
-    TRACE("Kerberos authentication credentials are not available: $0", s.ToString());
+    TRACE(
+        "Kerberos authentication credentials are not available: $0",
+        s.ToString());
     client_mechs.erase(SaslMechanism::GSSAPI);
   }
 
@@ -500,18 +536,21 @@ Status ClientNegotiation::HandleNegotiate(const NegotiatePB& response) {
   // There are no mechanisms in common.
   if (ContainsKey(server_mechs, SaslMechanism::GSSAPI) &&
       !ContainsKey(client_mechs, SaslMechanism::GSSAPI)) {
-    return Status::NotAuthorized("server requires authentication, "
-                                  "but client does not have Kerberos credentials available");
+    return Status::NotAuthorized(
+        "server requires authentication, "
+        "but client does not have Kerberos credentials available");
   }
   if (!ContainsKey(server_mechs, SaslMechanism::GSSAPI) &&
       ContainsKey(client_mechs, SaslMechanism::GSSAPI)) {
-    return Status::NotAuthorized("client requires authentication, "
-                                  "but server does not have Kerberos enabled");
+    return Status::NotAuthorized(
+        "client requires authentication, "
+        "but server does not have Kerberos enabled");
   }
-  string msg = Substitute("client/server supported SASL mechanism mismatch; "
-                          "client mechanisms: [$0], server mechanisms: [$1]",
-                          JoinMapped(client_mechs, SaslMechanism::name_of, ", "),
-                          JoinMapped(server_mechs, SaslMechanism::name_of, ", "));
+  string msg = Substitute(
+      "client/server supported SASL mechanism mismatch; "
+      "client mechanisms: [$0], server mechanisms: [$1]",
+      JoinMapped(client_mechs, SaslMechanism::name_of, ", "),
+      JoinMapped(server_mechs, SaslMechanism::name_of, ", "));
 
   // For now, there should never be a SASL mechanism mismatch that isn't due
   // to one of the sides requiring Kerberos and the other not having it, so
@@ -530,15 +569,17 @@ Status ClientNegotiation::SendTlsHandshake(string tls_token) {
 
 Status ClientNegotiation::HandleTlsHandshake(const NegotiatePB& response) {
   if (PREDICT_FALSE(response.step() != NegotiatePB::TLS_HANDSHAKE)) {
-    return Status::NotAuthorized("expected TLS_HANDSHAKE step",
-                                 NegotiatePB::NegotiateStep_Name(response.step()));
+    return Status::NotAuthorized(
+        "expected TLS_HANDSHAKE step",
+        NegotiatePB::NegotiateStep_Name(response.step()));
   }
   if (!response.tls_handshake().empty()) {
     TRACE("Received TLS_HANDSHAKE response from server");
   }
 
   if (PREDICT_FALSE(!response.has_tls_handshake())) {
-    return Status::NotAuthorized("No TLS handshake token in TLS_HANDSHAKE response from server");
+    return Status::NotAuthorized(
+        "No TLS handshake token in TLS_HANDSHAKE response from server");
   }
 
   string token;
@@ -555,18 +596,23 @@ Status ClientNegotiation::HandleTlsHandshake(const NegotiatePB& response) {
   // TLS handshake is finished.
   if (ContainsKey(server_features_, TLS_AUTHENTICATION_ONLY) &&
       ContainsKey(client_features_, TLS_AUTHENTICATION_ONLY)) {
-    TRACE("Negotiated auth-only $0 with cipher $1",
-          tls_handshake_.GetProtocol(), tls_handshake_.GetCipherDescription());
+    TRACE(
+        "Negotiated auth-only $0 with cipher $1",
+        tls_handshake_.GetProtocol(),
+        tls_handshake_.GetCipherDescription());
     return tls_handshake_.FinishNoWrap(*socket_);
   }
 
-  TRACE("Negotiated $0 with cipher $1",
-        tls_handshake_.GetProtocol(), tls_handshake_.GetCipherDescription());
+  TRACE(
+      "Negotiated $0 with cipher $1",
+      tls_handshake_.GetProtocol(),
+      tls_handshake_.GetCipherDescription());
   return tls_handshake_.Finish(&socket_);
 }
 
-Status ClientNegotiation::AuthenticateBySasl(faststring* recv_buf,
-                                             unique_ptr<ErrorStatusPB>* rpc_error) {
+Status ClientNegotiation::AuthenticateBySasl(
+    faststring* recv_buf,
+    unique_ptr<ErrorStatusPB>* rpc_error) {
   RETURN_NOT_OK(InitSaslClient());
   Status s = SendSaslInitiate();
 
@@ -587,8 +633,9 @@ Status ClientNegotiation::AuthenticateBySasl(faststring* recv_buf,
   return HandleSaslSuccess(success);
 }
 
-Status ClientNegotiation::AuthenticateByToken(faststring* recv_buf,
-                                              unique_ptr<ErrorStatusPB>* rpc_error) {
+Status ClientNegotiation::AuthenticateByToken(
+    faststring* recv_buf,
+    unique_ptr<ErrorStatusPB>* rpc_error) {
   // Sanity check that TLS has been negotiated. Sending the token on an
   // unencrypted channel is a big no-no.
   CHECK(tls_negotiated_);
@@ -603,15 +650,17 @@ Status ClientNegotiation::AuthenticateByToken(faststring* recv_buf,
   // Check that the server responds with a non-error TOKEN_EXCHANGE message.
   RETURN_NOT_OK(RecvNegotiatePB(&pb, recv_buf, rpc_error));
   if (pb.step() != NegotiatePB::TOKEN_EXCHANGE) {
-    return Status::NotAuthorized("expected TOKEN_EXCHANGE step",
-                                 NegotiatePB::NegotiateStep_Name(pb.step()));
+    return Status::NotAuthorized(
+        "expected TOKEN_EXCHANGE step",
+        NegotiatePB::NegotiateStep_Name(pb.step()));
   }
 
   return Status::OK();
 }
 
 Status ClientNegotiation::SendSaslInitiate() {
-  TRACE("Initiating SASL $0 handshake", SaslMechanism::name_of(negotiated_mech_));
+  TRACE(
+      "Initiating SASL $0 handshake", SaslMechanism::name_of(negotiated_mech_));
 
   // At this point we've already chosen the SASL mechanism to use
   // (negotiated_mech_), but we need to let the SASL library know. SASL likes to
@@ -638,13 +687,14 @@ Status ClientNegotiation::SendSaslInitiate() {
    */
   TRACE("Calling sasl_client_start()");
   const Status s = WrapSaslCall(sasl_conn_.get(), [&]() {
-      return sasl_client_start(
-          sasl_conn_.get(),                         // The SASL connection context created by init()
-          SaslMechanism::name_of(negotiated_mech_), // The list of mechanisms to negotiate.
-          nullptr,                                  // Disables INTERACT return if NULL.
-          &init_msg,                                // Filled in on success.
-          &init_msg_len,                            // Filled in on success.
-          &negotiated_mech);                        // Filled in on success.
+    return sasl_client_start(
+        sasl_conn_.get(), // The SASL connection context created by init()
+        SaslMechanism::name_of(
+            negotiated_mech_), // The list of mechanisms to negotiate.
+        nullptr, // Disables INTERACT return if NULL.
+        &init_msg, // Filled in on success.
+        &init_msg_len, // Filled in on success.
+        &negotiated_mech); // Filled in on success.
   });
 
   if (PREDICT_FALSE(!s.IsIncomplete() && !s.ok())) {
@@ -658,7 +708,8 @@ Status ClientNegotiation::SendSaslInitiate() {
   // integrity protection so that the channel bindings and nonce can be
   // verified.
   if (negotiated_mech_ == SaslMechanism::GSSAPI) {
-    RETURN_NOT_OK(EnableProtection(sasl_conn_.get(), SaslProtection::kIntegrity));
+    RETURN_NOT_OK(
+        EnableProtection(sasl_conn_.get(), SaslProtection::kIntegrity));
   }
 
   NegotiatePB msg;
@@ -669,7 +720,9 @@ Status ClientNegotiation::SendSaslInitiate() {
   return s;
 }
 
-Status ClientNegotiation::SendSaslResponse(const char* resp_msg, unsigned resp_msg_len) {
+Status ClientNegotiation::SendSaslResponse(
+    const char* resp_msg,
+    unsigned resp_msg_len) {
   NegotiatePB reply;
   reply.set_step(NegotiatePB::SASL_RESPONSE);
   reply.mutable_token()->assign(resp_msg, resp_msg_len);
@@ -678,12 +731,14 @@ Status ClientNegotiation::SendSaslResponse(const char* resp_msg, unsigned resp_m
 
 Status ClientNegotiation::HandleSaslChallenge(const NegotiatePB& response) {
   if (PREDICT_FALSE(response.step() != NegotiatePB::SASL_CHALLENGE)) {
-    return Status::NotAuthorized("expected SASL_CHALLENGE step",
-                                 NegotiatePB::NegotiateStep_Name(response.step()));
+    return Status::NotAuthorized(
+        "expected SASL_CHALLENGE step",
+        NegotiatePB::NegotiateStep_Name(response.step()));
   }
   TRACE("Received SASL_CHALLENGE response from server");
   if (PREDICT_FALSE(!response.has_token())) {
-    return Status::NotAuthorized("no token in SASL_CHALLENGE response from server");
+    return Status::NotAuthorized(
+        "no token in SASL_CHALLENGE response from server");
   }
 
   const char* out = nullptr;
@@ -699,8 +754,9 @@ Status ClientNegotiation::HandleSaslChallenge(const NegotiatePB& response) {
 
 Status ClientNegotiation::HandleSaslSuccess(const NegotiatePB& response) {
   if (PREDICT_FALSE(response.step() != NegotiatePB::SASL_SUCCESS)) {
-    return Status::NotAuthorized("expected SASL_SUCCESS step",
-                                 NegotiatePB::NegotiateStep_Name(response.step()));
+    return Status::NotAuthorized(
+        "expected SASL_SUCCESS step",
+        NegotiatePB::NegotiateStep_Name(response.step()));
   }
   TRACE("Received SASL_SUCCESS response from server");
 
@@ -712,7 +768,8 @@ Status ClientNegotiation::HandleSaslSuccess(const NegotiatePB& response) {
     }
 
     if (tls_negotiated_) {
-      // Check the channel bindings provided by the server against the expected channel bindings.
+      // Check the channel bindings provided by the server against the expected
+      // channel bindings.
       if (!response.has_channel_bindings()) {
         return Status::NotAuthorized("no channel bindings provided by server");
       }
@@ -721,22 +778,26 @@ Status ClientNegotiation::HandleSaslSuccess(const NegotiatePB& response) {
       RETURN_NOT_OK(tls_handshake_.GetRemoteCert(&cert));
 
       string expected_channel_bindings;
-      RETURN_NOT_OK_PREPEND(cert.GetServerEndPointChannelBindings(&expected_channel_bindings),
-                            "failed to generate channel bindings");
+      RETURN_NOT_OK_PREPEND(
+          cert.GetServerEndPointChannelBindings(&expected_channel_bindings),
+          "failed to generate channel bindings");
 
       Slice received_channel_bindings;
-      RETURN_NOT_OK_PREPEND(SaslDecode(sasl_conn_.get(),
-                                       response.channel_bindings(),
-                                       &received_channel_bindings),
-                            "failed to decode channel bindings");
+      RETURN_NOT_OK_PREPEND(
+          SaslDecode(
+              sasl_conn_.get(),
+              response.channel_bindings(),
+              &received_channel_bindings),
+          "failed to decode channel bindings");
 
       if (expected_channel_bindings != received_channel_bindings) {
         Sockaddr addr;
         ignore_result(socket_->GetPeerAddress(&addr));
 
-        LOG(WARNING) << "Received invalid channel bindings from server "
-                    << addr.ToString()
-                    << ", this could indicate an active network man-in-the-middle";
+        LOG(WARNING)
+            << "Received invalid channel bindings from server "
+            << addr.ToString()
+            << ", this could indicate an active network man-in-the-middle";
         return Status::NotAuthorized("channel bindings do not match");
       }
     }
@@ -745,11 +806,15 @@ Status ClientNegotiation::HandleSaslSuccess(const NegotiatePB& response) {
   return Status::OK();
 }
 
-Status ClientNegotiation::DoSaslStep(const string& in, const char** out, unsigned* out_len) {
+Status ClientNegotiation::DoSaslStep(
+    const string& in,
+    const char** out,
+    unsigned* out_len) {
   TRACE("Calling sasl_client_step()");
 
   return WrapSaslCall(sasl_conn_.get(), [&]() {
-      return sasl_client_step(sasl_conn_.get(), in.c_str(), in.length(), nullptr, out, out_len);
+    return sasl_client_step(
+        sasl_conn_.get(), in.c_str(), in.length(), nullptr, out, out_len);
   });
 }
 
@@ -759,13 +824,14 @@ Status ClientNegotiation::SendConnectionContext() {
   header.set_call_id(kConnectionContextCallId);
 
   ConnectionContextPB conn_context;
-  // This field is deprecated but used by servers <Kudu 1.1. Newer server versions ignore
-  // this and use the SASL-provided username instead.
+  // This field is deprecated but used by servers <Kudu 1.1. Newer server
+  // versions ignore this and use the SASL-provided username instead.
   conn_context.mutable_deprecated_user_info()->set_real_user(
       plain_auth_user_.empty() ? "cpp-client" : plain_auth_user_);
 
   if (nonce_) {
-    // Reply with the SASL-protected nonce. We only set the nonce when using SASL GSSAPI.
+    // Reply with the SASL-protected nonce. We only set the nonce when using
+    // SASL GSSAPI.
     Slice ciphertext;
     RETURN_NOT_OK(SaslEncode(sasl_conn_.get(), *nonce_, &ciphertext));
     *conn_context.mutable_encoded_nonce() = ciphertext.ToString();
@@ -774,8 +840,11 @@ Status ClientNegotiation::SendConnectionContext() {
   return SendFramedMessageBlocking(socket(), header, conn_context, deadline_);
 }
 
-int ClientNegotiation::GetOptionCb(const char* plugin_name, const char* option,
-                            const char** result, unsigned* len) {
+int ClientNegotiation::GetOptionCb(
+    const char* plugin_name,
+    const char* option,
+    const char** result,
+    unsigned* len) {
   return helper_.GetOptionCb(plugin_name, option, result, len);
 }
 
@@ -792,20 +861,23 @@ int ClientNegotiation::SimpleCb(int id, const char** result, unsigned* len) {
   }
   switch (id) {
     // TODO(unknown): Support impersonation?
-    // For impersonation, USER is the impersonated user, AUTHNAME is the "sudoer".
+    // For impersonation, USER is the impersonated user, AUTHNAME is the
+    // "sudoer".
     case SASL_CB_USER:
       TRACE("callback for SASL_CB_USER");
       *result = plain_auth_user_.c_str();
-      if (len != nullptr) *len = plain_auth_user_.length();
+      if (len != nullptr)
+        *len = plain_auth_user_.length();
       break;
     case SASL_CB_AUTHNAME:
       TRACE("callback for SASL_CB_AUTHNAME");
       *result = plain_auth_user_.c_str();
-      if (len != nullptr) *len = plain_auth_user_.length();
+      if (len != nullptr)
+        *len = plain_auth_user_.length();
       break;
     case SASL_CB_LANGUAGE:
       LOG(DFATAL) << "Unable to handle SASL callback type SASL_CB_LANGUAGE"
-        << "(" << id << ")";
+                  << "(" << id << ")";
       return SASL_BADPARAM;
     default:
       LOG(DFATAL) << "Unexpected SASL callback type: " << id;
@@ -817,21 +889,27 @@ int ClientNegotiation::SimpleCb(int id, const char** result, unsigned* len) {
 
 // Used for PLAIN.
 // SASL callback for SASL_CB_PASS: User password.
-int ClientNegotiation::SecretCb(sasl_conn_t* conn, int id, sasl_secret_t** psecret) {
+int ClientNegotiation::SecretCb(
+    sasl_conn_t* conn,
+    int id,
+    sasl_secret_t** psecret) {
   if (PREDICT_FALSE(!helper_.IsPlainEnabled())) {
-    LOG(DFATAL) << "Plain secret callback called, but PLAIN auth is not enabled";
+    LOG(DFATAL)
+        << "Plain secret callback called, but PLAIN auth is not enabled";
     return SASL_FAIL;
   }
   switch (id) {
     case SASL_CB_PASS: {
-      if (!conn || !psecret) return SASL_BADPARAM;
+      if (!conn || !psecret)
+        return SASL_BADPARAM;
 
       size_t len = plain_pass_.length();
-      *psecret = reinterpret_cast<sasl_secret_t*>(malloc(sizeof(sasl_secret_t) + len));
+      *psecret =
+          reinterpret_cast<sasl_secret_t*>(malloc(sizeof(sasl_secret_t) + len));
       if (!*psecret) {
         return SASL_NOMEM;
       }
-      psecret_.reset(*psecret);  // Ensure that we free() this structure later.
+      psecret_.reset(*psecret); // Ensure that we free() this structure later.
       (*psecret)->len = len;
       memcpy((*psecret)->data, plain_pass_.c_str(), len + 1);
       break;
@@ -856,7 +934,8 @@ string gss_error_description(OM_uint32 code, int type) {
     }
     OM_uint32 minor = 0;
     gss_buffer_desc buf;
-    gss_display_status(&minor, code, type, GSS_C_NULL_OID, &message_context, &buf);
+    gss_display_status(
+        &minor, code, type, GSS_C_NULL_OID, &message_context, &buf);
     description.append(static_cast<const char*>(buf.value), buf.length);
     gss_release_buffer(&minor, &buf);
   } while (message_context != 0);
@@ -866,11 +945,12 @@ string gss_error_description(OM_uint32 code, int type) {
 
 // Transforms a GSSAPI major and minor error code into a Kudu Status.
 Status check_gss_error(OM_uint32 major, OM_uint32 minor) {
-    if (GSS_ERROR(major)) {
-      return Status::NotAuthorized(gss_error_description(major, GSS_C_GSS_CODE),
-                                   gss_error_description(minor, GSS_C_MECH_CODE));
-    }
-    return Status::OK();
+  if (GSS_ERROR(major)) {
+    return Status::NotAuthorized(
+        gss_error_description(major, GSS_C_GSS_CODE),
+        gss_error_description(minor, GSS_C_MECH_CODE));
+  }
+  return Status::OK();
 }
 } // anonymous namespace
 
@@ -881,14 +961,15 @@ Status ClientNegotiation::CheckGSSAPI() {
   // Acquire the Kerberos credential. This will fail if the client does not have
   // a Kerberos tgt ticket. In theory it should be sufficient to call
   // gss_inquire_cred_by_mech, but that causes a memory leak on RHEL 7.
-  major = gss_acquire_cred(&minor,
-                           GSS_C_NO_NAME,
-                           GSS_C_INDEFINITE,
-                           const_cast<gss_OID_set>(gss_mech_set_krb5),
-                           GSS_C_INITIATE,
-                           &cred,
-                           nullptr,
-                           nullptr);
+  major = gss_acquire_cred(
+      &minor,
+      GSS_C_NO_NAME,
+      GSS_C_INDEFINITE,
+      const_cast<gss_OID_set>(gss_mech_set_krb5),
+      GSS_C_INITIATE,
+      &cred,
+      nullptr,
+      nullptr);
   Status s = check_gss_error(major, minor);
 
   // Inspect the Kerberos credential to determine if it is expired. The lifetime
@@ -897,7 +978,8 @@ Status ClientNegotiation::CheckGSSAPI() {
   // holds the remaining validity of the tgt in seconds.
   OM_uint32 lifetime;
   if (s.ok()) {
-    major = gss_inquire_cred(&minor, cred, nullptr, &lifetime, nullptr, nullptr);
+    major =
+        gss_inquire_cred(&minor, cred, nullptr, &lifetime, nullptr, nullptr);
     s = check_gss_error(major, minor);
   }
 

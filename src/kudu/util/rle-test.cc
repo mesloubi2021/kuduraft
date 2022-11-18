@@ -111,7 +111,7 @@ TEST(BitArray, TestBool) {
 // Writes 'num_vals' values with width 'bit_width' and reads them back.
 void TestBitArrayValues(int bit_width, int num_vals) {
   const int kTestLen = BitUtil::Ceil(bit_width * num_vals, 8);
-  const uint64_t mod = bit_width == 64? 1 : 1LL << bit_width;
+  const uint64_t mod = bit_width == 64 ? 1 : 1LL << bit_width;
 
   faststring buffer(kTestLen);
   BitWriter writer(&buffer);
@@ -180,9 +180,12 @@ TEST(BitArray, TestMixed) {
 // expected_encoding != NULL, also validates that the encoded buffer is
 // exactly 'expected_encoding'.
 // if expected_len is not -1, it will validate the encoded size is correct.
-template<typename T>
-void ValidateRle(const vector<T>& values, int bit_width,
-    uint8_t* expected_encoding, int expected_len) {
+template <typename T>
+void ValidateRle(
+    const vector<T>& values,
+    int bit_width,
+    uint8_t* expected_encoding,
+    int expected_len) {
   faststring buffer;
   RleEncoder<T> encoder(&buffer, bit_width);
 
@@ -196,9 +199,10 @@ void ValidateRle(const vector<T>& values, int bit_width,
   }
   if (expected_encoding != nullptr) {
     EXPECT_EQ(memcmp(buffer.data(), expected_encoding, expected_len), 0)
-      << "\n"
-      << "Expected: " << HexDump(Slice(expected_encoding, expected_len)) << "\n"
-      << "Got:      " << HexDump(Slice(buffer));
+        << "\n"
+        << "Expected: " << HexDump(Slice(expected_encoding, expected_len))
+        << "\n"
+        << "Got:      " << HexDump(Slice(buffer));
   }
 
   // Verify read
@@ -244,11 +248,11 @@ TEST(Rle, SpecificSequences) {
   }
   int num_groups = BitUtil::Ceil(100, 8);
   expected_buffer[0] = (num_groups << 1) | 1;
-  for (int i = 0; i < 100/8; ++i) {
+  for (int i = 0; i < 100 / 8; ++i) {
     expected_buffer[i + 1] = BOOST_BINARY(1 0 1 0 1 0 1 0); // 0xaa
   }
   // Values for the last 4 0 and 1's
-  expected_buffer[1 + 100/8] = BOOST_BINARY(0 0 0 0 1 0 1 0); // 0x0a
+  expected_buffer[1 + 100 / 8] = BOOST_BINARY(0 0 0 0 1 0 1 0); // 0x0a
 
   // num_groups and expected_buffer only valid for bit width = 1
   ValidateRle(values, 1, expected_buffer, 1 + num_groups);
@@ -257,8 +261,8 @@ TEST(Rle, SpecificSequences) {
   }
 }
 
-// ValidateRle on 'num_vals' values with width 'bit_width'. If 'value' != -1, that value
-// is used, otherwise alternating values are used.
+// ValidateRle on 'num_vals' values with width 'bit_width'. If 'value' != -1,
+// that value is used, otherwise alternating values are used.
 void TestRleValues(int bit_width, int num_vals, int value = -1) {
   const uint64_t mod = bit_width == 64 ? 1ULL : 1ULL << bit_width;
   vector<uint64_t> values;
@@ -277,8 +281,7 @@ TEST(Rle, TestValues) {
   }
 }
 
-class BitRle : public KuduTest {
-};
+class BitRle : public KuduTest {};
 
 // Tests all true/false values
 TEST_F(BitRle, AllSame) {
@@ -299,7 +302,8 @@ TEST_F(BitRle, AllSame) {
 // group but flush before finishing.
 TEST_F(BitRle, Flush) {
   vector<bool> values;
-  for (int i = 0; i < 16; ++i) values.push_back(1);
+  for (int i = 0; i < 16; ++i)
+    values.push_back(1);
   values.push_back(false);
   ValidateRle(values, 1, nullptr, -1);
   values.push_back(true);
@@ -316,8 +320,9 @@ TEST_F(BitRle, RandomBools) {
   const int n_iters = AllowSlowTests() ? 1000 : 20;
   while (iters < n_iters) {
     srand(iters++);
-    if (iters % 10000 == 0) LOG(ERROR) << "Seed: " << iters;
-    vector<uint64_t > values;
+    if (iters % 10000 == 0)
+      LOG(ERROR) << "Seed: " << iters;
+    vector<uint64_t> values;
     bool parity = 0;
     for (int i = 0; i < 1000; ++i) {
       int group_size = rand() % 20 + 1; // NOLINT(*)
@@ -339,18 +344,19 @@ TEST_F(BitRle, Random64Bit) {
   const int n_iters = AllowSlowTests() ? 1000 : 20;
   while (iters < n_iters) {
     srand(iters++);
-    if (iters % 10000 == 0) LOG(ERROR) << "Seed: " << iters;
-    vector<uint64_t > values;
+    if (iters % 10000 == 0)
+      LOG(ERROR) << "Seed: " << iters;
+    vector<uint64_t> values;
     for (int i = 0; i < 1000; ++i) {
       int group_size = rand() % 20 + 1; // NOLINT(*)
-      uint64_t cur_value = (static_cast<uint64_t>(rand()) << 32) + static_cast<uint64_t>(rand());
+      uint64_t cur_value =
+          (static_cast<uint64_t>(rand()) << 32) + static_cast<uint64_t>(rand());
       if (group_size > 16) {
         group_size = 1;
       }
       for (int i = 0; i < group_size; ++i) {
         values.push_back(cur_value);
       }
-
     }
     ValidateRle(values, 64, nullptr, -1);
   }
@@ -446,7 +452,8 @@ TEST_F(TestRle, TestGetNextRun) {
 // Generate a random bit string which consists of 'num_runs' runs,
 // each with a random length between 1 and 100. Returns the number
 // of values encoded (i.e the sum run length).
-static size_t GenerateRandomBitString(int num_runs, faststring* enc_buf, string* string_rep) {
+static size_t
+GenerateRandomBitString(int num_runs, faststring* enc_buf, string* string_rep) {
   RleEncoder<bool> enc(enc_buf, 1);
   int num_bits = 0;
   for (int i = 0; i < num_runs; i++) {
@@ -478,7 +485,8 @@ TEST_F(TestRle, TestRoundTripRandomSequencesWithRuns) {
     size_t run_len;
     bool val;
     while (rem_to_read > 0 &&
-           (run_len = decoder.GetNextRun(&val, std::min(kMaxToReadAtOnce, rem_to_read))) != 0) {
+           (run_len = decoder.GetNextRun(
+                &val, std::min(kMaxToReadAtOnce, rem_to_read))) != 0) {
       ASSERT_LE(run_len, kMaxToReadAtOnce);
       roundtrip_str.append(run_len, val ? '1' : '0');
       rem_to_read -= run_len;

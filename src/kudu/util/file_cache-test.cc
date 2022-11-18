@@ -34,7 +34,7 @@
 #include "kudu/util/cache.h"
 #include "kudu/util/debug-util.h"
 #include "kudu/util/env.h"
-#include "kudu/util/metrics.h"  // IWYU pragma: keep
+#include "kudu/util/metrics.h" // IWYU pragma: keep
 #include "kudu/util/random.h"
 #include "kudu/util/scoped_cleanup.h"
 #include "kudu/util/slice.h"
@@ -56,8 +56,7 @@ namespace kudu {
 template <class FileType>
 class FileCacheTest : public KuduTest {
  public:
-  FileCacheTest()
-      : rand_(SeedRandom()) {
+  FileCacheTest() : rand_(SeedRandom()) {
     // Simplify testing of the actual cache capacity.
     FLAGS_cache_force_single_shard = true;
 
@@ -85,10 +84,8 @@ class FileCacheTest : public KuduTest {
 
  protected:
   Status ReinitCache(int max_open_files) {
-    cache_.reset(new FileCache<FileType>("test",
-                                         env_,
-                                         max_open_files,
-                                         nullptr));
+    cache_.reset(
+        new FileCache<FileType>("test", env_, max_open_files, nullptr));
     return cache_->Init();
   }
 
@@ -99,8 +96,9 @@ class FileCacheTest : public KuduTest {
     return Status::OK();
   }
 
-  void AssertFdsAndDescriptors(int num_expected_fds,
-                               int num_expected_descriptors) {
+  void AssertFdsAndDescriptors(
+      int num_expected_fds,
+      int num_expected_descriptors) {
     ASSERT_EQ(initial_open_fds_ + num_expected_fds, CountOpenFds());
 
     // The expiry thread may take some time to run.
@@ -121,8 +119,8 @@ TYPED_TEST(FileCacheTest, TestBasicOperations) {
   // Open a non-existent file.
   {
     shared_ptr<TypeParam> f;
-    ASSERT_TRUE(this->cache_->OpenExistingFile(
-        "/does/not/exist", &f).IsNotFound());
+    ASSERT_TRUE(
+        this->cache_->OpenExistingFile("/does/not/exist", &f).IsNotFound());
     NO_FATALS(this->AssertFdsAndDescriptors(0, 0));
   }
 
@@ -277,7 +275,6 @@ TYPED_TEST(FileCacheTest, TestInvalidation) {
   ASSERT_EQ(kData2.size(), size);
 }
 
-
 TYPED_TEST(FileCacheTest, TestHeavyReads) {
   const int kNumFiles = 20;
   const int kNumIterations = 100;
@@ -311,8 +308,7 @@ TYPED_TEST(FileCacheTest, TestHeavyReads) {
     Slice s(buf.get(), size);
     ASSERT_OK(f->Read(0, s));
     ASSERT_EQ(data, s);
-    ASSERT_LE(this->CountOpenFds(),
-              this->initial_open_fds_ + kCacheCapacity);
+    ASSERT_LE(this->CountOpenFds(), this->initial_open_fds_ + kCacheCapacity);
   }
 }
 
@@ -321,9 +317,7 @@ TYPED_TEST(FileCacheTest, TestNoRecursiveDeadlock) {
   // weak_ptrs were removed from the descriptor map in the descriptor's
   // destructor.
   alarm(60);
-  auto cleanup = MakeScopedCleanup([]() {
-    alarm(0);
-  });
+  auto cleanup = MakeScopedCleanup([]() { alarm(0); });
 
   const string kFile = this->GetTestPath("foo");
   ASSERT_OK(this->WriteTestFile(kFile, "test data"));
@@ -343,8 +337,7 @@ TYPED_TEST(FileCacheTest, TestNoRecursiveDeadlock) {
   }
 }
 
-class RandomAccessFileCacheTest : public FileCacheTest<RandomAccessFile> {
-};
+class RandomAccessFileCacheTest : public FileCacheTest<RandomAccessFile> {};
 
 TEST_F(RandomAccessFileCacheTest, TestMemoryFootprintDoesNotCrash) {
   const string kFile = this->GetTestPath("foo");

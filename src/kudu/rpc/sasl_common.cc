@@ -65,8 +65,8 @@ static bool has_kerberos_keytab = false;
 // level: logging level.
 // message: message to output;
 static int SaslLogCallback(void* context, int level, const char* message) {
-
-  if (message == nullptr) return SASL_BADPARAM;
+  if (message == nullptr)
+    return SASL_BADPARAM;
 
   switch (level) {
     case SASL_LOG_NONE:
@@ -113,9 +113,14 @@ static int SaslLogCallback(void* context, int level, const char* message) {
 // result: set to result which persists until next getopt in same thread,
 //         unchanged if option not found
 // len: length of the result
-// Return SASL_FAIL if the option is not handled, this does not fail the handshake.
-static int SaslGetOption(void* context, const char* plugin_name, const char* option,
-                         const char** result, unsigned* len) {
+// Return SASL_FAIL if the option is not handled, this does not fail the
+// handshake.
+static int SaslGetOption(
+    void* context,
+    const char* plugin_name,
+    const char* option,
+    const char** result,
+    unsigned* len) {
   // Handle Sasl Library options
   if (plugin_name == nullptr) {
     // Return the logging level that we want the sasl library to use.
@@ -132,7 +137,8 @@ static int SaslGetOption(void* context, const char* plugin_name, const char* opt
       static __thread char buf[4];
       snprintf(buf, arraysize(buf), "%d", level);
       *result = buf;
-      if (len != nullptr) *len = strlen(buf);
+      if (len != nullptr)
+        *len = strlen(buf);
       return SASL_OK;
     }
     // Options can default so don't complain.
@@ -145,14 +151,13 @@ static int SaslGetOption(void* context, const char* plugin_name, const char* opt
 
 // Array of callbacks for the sasl library.
 static sasl_callback_t callbacks[] = {
-  { SASL_CB_LOG, reinterpret_cast<int (*)()>(&SaslLogCallback), nullptr },
-  { SASL_CB_GETOPT, reinterpret_cast<int (*)()>(&SaslGetOption), nullptr },
-  { SASL_CB_LIST_END, nullptr, nullptr }
-  // TODO(todd): provide a CANON_USER callback? This is necessary if we want
-  // to support some kind of auth-to-local mapping of Kerberos principals
-  // to local usernames. See Impala's implementation for inspiration.
+    {SASL_CB_LOG, reinterpret_cast<int (*)()>(&SaslLogCallback), nullptr},
+    {SASL_CB_GETOPT, reinterpret_cast<int (*)()>(&SaslGetOption), nullptr},
+    {SASL_CB_LIST_END, nullptr, nullptr}
+    // TODO(todd): provide a CANON_USER callback? This is necessary if we want
+    // to support some kind of auth-to-local mapping of Kerberos principals
+    // to local usernames. See Impala's implementation for inspiration.
 };
-
 
 // SASL requires mutexes for thread safety, but doesn't implement
 // them itself. So, we have to hook them up to our mutex implementation.
@@ -173,7 +178,8 @@ static int SaslMutexUnlock(void* m) {
 
 namespace internal {
 void SaslSetMutex() {
-  sasl_set_mutex(&SaslMutexAlloc, &SaslMutexLock, &SaslMutexUnlock, &SaslMutexFree);
+  sasl_set_mutex(
+      &SaslMutexAlloc, &SaslMutexLock, &SaslMutexUnlock, &SaslMutexFree);
 }
 } // namespace internal
 
@@ -197,12 +203,14 @@ static bool SaslIsInitialized() {
   return sasl_global_utils != nullptr;
 }
 static bool SaslMutexImplementationProvided() {
-  if (!SaslIsInitialized()) return false;
+  if (!SaslIsInitialized())
+    return false;
   void* m = sasl_global_utils->mutex_alloc();
   sasl_global_utils->mutex_free(m);
-  // The default implementation of mutex_alloc just returns the constant pointer 0x1.
-  // This is a bit of an ugly heuristic, but seems unlikely that anyone would ever
-  // provide a valid implementation that returns an invalid pointer value.
+  // The default implementation of mutex_alloc just returns the constant pointer
+  // 0x1. This is a bit of an ugly heuristic, but seems unlikely that anyone
+  // would ever provide a valid implementation that returns an invalid pointer
+  // value.
   return m != reinterpret_cast<void*>(1);
 }
 #endif
@@ -216,9 +224,10 @@ static void DoSaslInit(bool kerberos_keytab_provided) {
 
   bool sasl_initialized = SaslIsInitialized();
   if (sasl_initialized && !g_disable_sasl_init) {
-    LOG(WARNING) << "SASL was initialized prior to Kudu's initialization. Skipping "
-                 << "initialization. Call kudu::client::DisableSaslInitialization() "
-                 << "to suppress this message.";
+    LOG(WARNING)
+        << "SASL was initialized prior to Kudu's initialization. Skipping "
+        << "initialization. Call kudu::client::DisableSaslInitialization() "
+        << "to suppress this message.";
     g_disable_sasl_init = true;
   }
 
@@ -229,25 +238,26 @@ static void DoSaslInit(bool kerberos_keytab_provided) {
       return;
     }
     if (!SaslMutexImplementationProvided()) {
-      LOG(WARNING)
-          << "SASL appears to be initialized by code outside of Kudu "
-          << "but was not provided with a mutex implementation! If "
-          << "manually initializing SASL, use sasl_set_mutex(3).";
+      LOG(WARNING) << "SASL appears to be initialized by code outside of Kudu "
+                   << "but was not provided with a mutex implementation! If "
+                   << "manually initializing SASL, use sasl_set_mutex(3).";
     }
     return;
   }
   internal::SaslSetMutex();
   int result = sasl_client_init(&callbacks[0]);
   if (result != SASL_OK) {
-    sasl_init_status = Status::RuntimeError("Could not initialize SASL client",
-                                            sasl_errstring(result, nullptr, nullptr));
+    sasl_init_status = Status::RuntimeError(
+        "Could not initialize SASL client",
+        sasl_errstring(result, nullptr, nullptr));
     return;
   }
 
   result = sasl_server_init(&callbacks[0], kSaslAppName);
   if (result != SASL_OK) {
-    sasl_init_status = Status::RuntimeError("Could not initialize SASL server",
-                                            sasl_errstring(result, nullptr, nullptr));
+    sasl_init_status = Status::RuntimeError(
+        "Could not initialize SASL server",
+        sasl_errstring(result, nullptr, nullptr));
     return;
   }
 
@@ -255,10 +265,12 @@ static void DoSaslInit(bool kerberos_keytab_provided) {
 }
 
 Status DisableSaslInitialization() {
-  if (g_disable_sasl_init) return Status::OK();
+  if (g_disable_sasl_init)
+    return Status::OK();
   if (sasl_is_initialized) {
-    return Status::IllegalState("SASL already initialized. Initialization can only be disabled "
-                                "before first usage.");
+    return Status::IllegalState(
+        "SASL already initialized. Initialization can only be disabled "
+        "before first usage.");
   }
   g_disable_sasl_init = true;
   return Status::OK();
@@ -282,14 +294,17 @@ static string CleanSaslError(const string& err) {
   static std::once_flag once;
 
 #if defined(__APPLE__)
-  static const char* kGssapiPattern = "GSSAPI Error:  Miscellaneous failure \\(see text \\((.+)\\)";
+  static const char* kGssapiPattern =
+      "GSSAPI Error:  Miscellaneous failure \\(see text \\((.+)\\)";
 #else
-  static const char* kGssapiPattern = "Unspecified GSS failure. +"
-                                      "Minor code may provide more information +"
-                                      "\\((.+)\\)";
+  static const char* kGssapiPattern =
+      "Unspecified GSS failure. +"
+      "Minor code may provide more information +"
+      "\\((.+)\\)";
 #endif
 
-  std::call_once(once, []{ CHECK_EQ(0, regcomp(&re, kGssapiPattern, REG_EXTENDED)); });
+  std::call_once(
+      once, [] { CHECK_EQ(0, regcomp(&re, kGssapiPattern, REG_EXTENDED)); });
   regmatch_t matches[2];
   if (regexec(&re, err.c_str(), arraysize(matches), matches, 0) == 0) {
     return err.substr(matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
@@ -320,10 +335,13 @@ Status WrapSaslCall(sasl_conn_t* conn, const std::function<int()>& call) {
   string err;
   g_auth_failure_capture = &err;
 
-  // Take the 'kerberos_reinit_lock' here to avoid a possible race with ticket renewal.
-  if (has_kerberos_keytab) kudu::security::KerberosReinitLock()->ReadLock();
+  // Take the 'kerberos_reinit_lock' here to avoid a possible race with ticket
+  // renewal.
+  if (has_kerberos_keytab)
+    kudu::security::KerberosReinitLock()->ReadLock();
   int rc = call();
-  if (has_kerberos_keytab) kudu::security::KerberosReinitLock()->ReadUnlock();
+  if (has_kerberos_keytab)
+    kudu::security::KerberosReinitLock()->ReadUnlock();
   g_auth_failure_capture = nullptr;
 
   switch (rc) {
@@ -331,11 +349,11 @@ Status WrapSaslCall(sasl_conn_t* conn, const std::function<int()>& call) {
       return Status::OK();
     case SASL_CONTINUE:
       return Status::Incomplete("");
-    case SASL_FAIL:      // Generic failure (encompasses missing krb5 credentials).
-    case SASL_BADAUTH:   // Authentication failure.
-    case SASL_BADMAC:    // Decode failure.
-    case SASL_NOAUTHZ:   // Authorization failure.
-    case SASL_NOUSER:    // User not found.
+    case SASL_FAIL: // Generic failure (encompasses missing krb5 credentials).
+    case SASL_BADAUTH: // Authentication failure.
+    case SASL_BADMAC: // Decode failure.
+    case SASL_NOAUTHZ: // Authorization failure.
+    case SASL_NOUSER: // User not found.
     case SASL_WRONGMECH: // Server doesn't support requested mechanism.
     case SASL_BADSERV: { // Server failed mutual authentication.
       if (err.empty()) {
@@ -352,14 +370,17 @@ Status WrapSaslCall(sasl_conn_t* conn, const std::function<int()>& call) {
 
 bool NeedsWrap(sasl_conn_t* sasl_conn) {
   const unsigned* ssf;
-  int rc = sasl_getprop(sasl_conn, SASL_SSF, reinterpret_cast<const void**>(&ssf));
-  CHECK_EQ(rc, SASL_OK) << "Failed to get SSF property on authenticated SASL connection";
+  int rc =
+      sasl_getprop(sasl_conn, SASL_SSF, reinterpret_cast<const void**>(&ssf));
+  CHECK_EQ(rc, SASL_OK)
+      << "Failed to get SSF property on authenticated SASL connection";
   return *ssf != 0;
 }
 
 uint32_t GetMaxSendBufferSize(sasl_conn_t* sasl_conn) {
   const unsigned* max_buf_size;
-  int rc = sasl_getprop(sasl_conn, SASL_MAXOUTBUF, reinterpret_cast<const void**>(&max_buf_size));
+  int rc = sasl_getprop(
+      sasl_conn, SASL_MAXOUTBUF, reinterpret_cast<const void**>(&max_buf_size));
   CHECK_EQ(rc, SASL_OK)
       << "Failed to get max output buffer property on authenticated SASL connection";
   return *max_buf_size;
@@ -368,12 +389,18 @@ uint32_t GetMaxSendBufferSize(sasl_conn_t* sasl_conn) {
 Status SaslEncode(sasl_conn_t* conn, Slice plaintext, Slice* ciphertext) {
   const char* out;
   unsigned out_len;
-  RETURN_NOT_OK_PREPEND(WrapSaslCall(conn, [&] {
-      return sasl_encode(conn,
-                         reinterpret_cast<const char*>(plaintext.data()),
-                         plaintext.size(),
-                         &out, &out_len);
-  }), "SASL encode failed");
+  RETURN_NOT_OK_PREPEND(
+      WrapSaslCall(
+          conn,
+          [&] {
+            return sasl_encode(
+                conn,
+                reinterpret_cast<const char*>(plaintext.data()),
+                plaintext.size(),
+                &out,
+                &out_len);
+          }),
+      "SASL encode failed");
   *ciphertext = Slice(out, out_len);
   return Status::OK();
 }
@@ -381,12 +408,18 @@ Status SaslEncode(sasl_conn_t* conn, Slice plaintext, Slice* ciphertext) {
 Status SaslDecode(sasl_conn_t* conn, Slice ciphertext, Slice* plaintext) {
   const char* out;
   unsigned out_len;
-  RETURN_NOT_OK_PREPEND(WrapSaslCall(conn, [&] {
-    return sasl_decode(conn,
-                       reinterpret_cast<const char*>(ciphertext.data()),
-                       ciphertext.size(),
-                       &out, &out_len);
-  }), "SASL decode failed");
+  RETURN_NOT_OK_PREPEND(
+      WrapSaslCall(
+          conn,
+          [&] {
+            return sasl_decode(
+                conn,
+                reinterpret_cast<const char*>(ciphertext.data()),
+                ciphertext.size(),
+                &out,
+                &out_len);
+          }),
+      "SASL decode failed");
   *plaintext = Slice(out, out_len);
   return Status::OK();
 }
@@ -423,18 +456,21 @@ sasl_callback_t SaslBuildCallback(int id, int (*proc)(void), void* context) {
   return callback;
 }
 
-Status EnableProtection(sasl_conn_t* sasl_conn,
-                        SaslProtection::Type minimum_protection,
-                        size_t max_recv_buf_size) {
+Status EnableProtection(
+    sasl_conn_t* sasl_conn,
+    SaslProtection::Type minimum_protection,
+    size_t max_recv_buf_size) {
   sasl_security_properties_t sec_props;
   memset(&sec_props, 0, sizeof(sec_props));
   sec_props.min_ssf = minimum_protection;
   sec_props.max_ssf = std::numeric_limits<sasl_ssf_t>::max();
   sec_props.maxbufsize = max_recv_buf_size;
 
-  RETURN_NOT_OK_PREPEND(WrapSaslCall(sasl_conn, [&] {
-    return sasl_setprop(sasl_conn, SASL_SEC_PROPS, &sec_props);
-  }), "failed to set SASL security properties");
+  RETURN_NOT_OK_PREPEND(
+      WrapSaslCall(
+          sasl_conn,
+          [&] { return sasl_setprop(sasl_conn, SASL_SEC_PROPS, &sec_props); }),
+      "failed to set SASL security properties");
   return Status::OK();
 }
 
@@ -450,8 +486,10 @@ SaslMechanism::Type SaslMechanism::value_of(const string& mech) {
 
 const char* SaslMechanism::name_of(SaslMechanism::Type val) {
   switch (val) {
-    case PLAIN: return "PLAIN";
-    case GSSAPI: return "GSSAPI";
+    case PLAIN:
+      return "PLAIN";
+    case GSSAPI:
+      return "GSSAPI";
     default:
       return "INVALID";
   }
@@ -459,9 +497,12 @@ const char* SaslMechanism::name_of(SaslMechanism::Type val) {
 
 const char* SaslProtection::name_of(SaslProtection::Type val) {
   switch (val) {
-    case SaslProtection::kAuthentication: return "authentication";
-    case SaslProtection::kIntegrity: return "integrity";
-    case SaslProtection::kPrivacy: return "privacy";
+    case SaslProtection::kAuthentication:
+      return "authentication";
+    case SaslProtection::kIntegrity:
+      return "integrity";
+    case SaslProtection::kPrivacy:
+      return "privacy";
   }
   LOG(FATAL) << "unknown SASL protection type: " << val;
 }

@@ -46,7 +46,13 @@
 #include "kudu/gutil/port.h"
 
 // forward declaration for use by spinlock_*-inl.h
-namespace base { namespace internal { namespace kudu { static int SuggestedDelayNS(int loop); }}}
+namespace base {
+namespace internal {
+namespace kudu {
+static int SuggestedDelayNS(int loop);
+}
+} // namespace internal
+} // namespace base
 
 #if defined(_WIN32)
 #include "kudu/gutil/spinlock_win32-inl.h"
@@ -61,8 +67,10 @@ namespace internal {
 namespace kudu {
 
 // See spinlock_internal.h for spec.
-int32 SpinLockWait(volatile Atomic32 *w, int n,
-                   const SpinLockWaitTransition trans[]) {
+int32 SpinLockWait(
+    volatile Atomic32* w,
+    int n,
+    const SpinLockWaitTransition trans[]) {
   int32 v;
   bool done = false;
   for (int loop = 0; !done; loop++) {
@@ -71,9 +79,10 @@ int32 SpinLockWait(volatile Atomic32 *w, int n,
     for (i = 0; i != n && v != trans[i].from; i++) {
     }
     if (i == n) {
-      SpinLockDelay(w, v, loop);     // no matching transition
-    } else if (trans[i].to == v ||   // null transition
-               base::subtle::Acquire_CompareAndSwap(w, v, trans[i].to) == v) {
+      SpinLockDelay(w, v, loop); // no matching transition
+    } else if (
+        trans[i].to == v || // null transition
+        base::subtle::Acquire_CompareAndSwap(w, v, trans[i].to) == v) {
       done = trans[i].done;
     }
   }
@@ -88,11 +97,11 @@ static int SuggestedDelayNS(int loop) {
 #ifdef BASE_HAS_ATOMIC64
   static base::subtle::Atomic64 rand;
   uint64 r = base::subtle::NoBarrier_Load(&rand);
-  r = 0x5deece66dLL * r + 0xb;   // numbers from nrand48()
+  r = 0x5deece66dLL * r + 0xb; // numbers from nrand48()
   base::subtle::NoBarrier_Store(&rand, r);
 
-  r <<= 16;   // 48-bit random number now in top 48-bits.
-  if (loop < 0 || loop > 32) {   // limit loop to 0..32
+  r <<= 16; // 48-bit random number now in top 48-bits.
+  if (loop < 0 || loop > 32) { // limit loop to 0..32
     loop = 32;
   }
   // loop>>3 cannot exceed 4 because loop cannot exceed 32.
@@ -105,11 +114,11 @@ static int SuggestedDelayNS(int loop) {
 #else
   static Atomic32 rand;
   uint32 r = base::subtle::NoBarrier_Load(&rand);
-  r = 0x343fd * r + 0x269ec3;   // numbers from MSVC++
+  r = 0x343fd * r + 0x269ec3; // numbers from MSVC++
   base::subtle::NoBarrier_Store(&rand, r);
 
-  r <<= 1;   // 31-bit random number now in top 31-bits.
-  if (loop < 0 || loop > 32) {   // limit loop to 0..32
+  r <<= 1; // 31-bit random number now in top 31-bits.
+  if (loop < 0 || loop > 32) { // limit loop to 0..32
     loop = 32;
   }
   // loop>>3 cannot exceed 4 because loop cannot exceed 32.

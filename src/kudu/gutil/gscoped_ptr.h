@@ -55,10 +55,12 @@
 //
 //   {
 //     gscoped_ptr<Foo> ptr(new Foo("yay"));  // ptr manages Foo("yay").
-//     TakesOwnership(std::move(ptr));           // ptr no longer owns Foo("yay").
-//     gscoped_ptr<Foo> ptr2 = CreateFoo();   // ptr2 owns the return Foo.
-//     gscoped_ptr<Foo> ptr3 =                // ptr3 now owns what was in ptr2.
-//         PassThru(std::move(ptr2));            // ptr2 is correspondingly NULL.
+//     TakesOwnership(std::move(ptr));           // ptr no longer owns
+//     Foo("yay"). gscoped_ptr<Foo> ptr2 = CreateFoo();   // ptr2 owns the
+//     return Foo. gscoped_ptr<Foo> ptr3 =                // ptr3 now owns what
+//     was in ptr2.
+//         PassThru(std::move(ptr2));            // ptr2 is correspondingly
+//         NULL.
 //   }
 //
 // Notice that if you do not call Pass() when returning from PassThru(), or
@@ -102,19 +104,19 @@
 #include <stddef.h>
 #include <stdlib.h>
 
-#include <algorithm>  // For std::swap().
+#include <algorithm> // For std::swap().
 
 #include "kudu/gutil/basictypes.h"
+#include "kudu/gutil/move.h"
 #include "kudu/gutil/template_util.h"
 #include "kudu/gutil/type_traits.h"
-#include "kudu/gutil/move.h"
 
 namespace kudu {
 
 namespace subtle {
 class RefCountedBase;
 class RefCountedThreadSafeBase;
-}  // namespace subtle
+} // namespace subtle
 
 // Function object which deletes its parameter, which must be a pointer.
 // If C is an array type, invokes 'delete[]' on the parameter; otherwise,
@@ -122,7 +124,8 @@ class RefCountedThreadSafeBase;
 template <class T>
 struct DefaultDeleter {
   DefaultDeleter() {}
-  template <typename U> DefaultDeleter(const DefaultDeleter<U>& other) {
+  template <typename U>
+  DefaultDeleter(const DefaultDeleter<U>& other) {
     // IMPLEMENTATION NOTE: C++11 20.7.1.1.2p2 only provides this constructor
     // if U* is implicitly convertible to T* and U is not an array type.
     //
@@ -137,8 +140,9 @@ struct DefaultDeleter {
     // cannot convert to T*.
     enum { T_must_be_complete = sizeof(T) };
     enum { U_must_be_complete = sizeof(U) };
-    KUDU_COMPILE_ASSERT((base::is_convertible<U*, T*>::value),
-                   U_ptr_must_implicitly_convert_to_T_ptr);
+    KUDU_COMPILE_ASSERT(
+        (base::is_convertible<U*, T*>::value),
+        U_ptr_must_implicitly_convert_to_T_ptr);
   }
   inline void operator()(T* ptr) const {
     enum { type_must_be_complete = sizeof(T) };
@@ -162,7 +166,8 @@ struct DefaultDeleter<T[]> {
   // References:
   //   C++98 [expr.delete]p3
   //   http://cplusplus.github.com/LWG/lwg-defects.html#938
-  template <typename U> void operator()(U* array) const;
+  template <typename U>
+  void operator()(U* array) const;
 };
 
 template <class T, int n>
@@ -184,7 +189,8 @@ struct FreeDeleter {
 
 namespace internal {
 
-template <typename T> struct IsNotRefCounted {
+template <typename T>
+struct IsNotRefCounted {
   enum {
     value = !base::is_convertible<T*, kudu::subtle::RefCountedBase*>::value &&
         !base::is_convertible<T*, kudu::subtle::RefCountedThreadSafeBase*>::
@@ -197,7 +203,7 @@ template <typename T> struct IsNotRefCounted {
 template <class T, class D>
 class gscoped_ptr_impl {
  public:
-  explicit gscoped_ptr_impl(T* p) : data_(p) { }
+  explicit gscoped_ptr_impl(T* p) : data_(p) {}
 
   // Initializer for deleters that have data parameters.
   gscoped_ptr_impl(T* p, const D& d) : data_(p, d) {}
@@ -255,10 +261,16 @@ class gscoped_ptr_impl {
     data_.ptr = p;
   }
 
-  T* get() const { return data_.ptr; }
+  T* get() const {
+    return data_.ptr;
+  }
 
-  D& get_deleter() { return data_; }
-  const D& get_deleter() const { return data_; }
+  D& get_deleter() {
+    return data_;
+  }
+  const D& get_deleter() const {
+    return data_;
+  }
 
   void swap(gscoped_ptr_impl& p2) {
     // Standard swap idiom: 'using std::swap' ensures that std::swap is
@@ -277,7 +289,8 @@ class gscoped_ptr_impl {
 
  private:
   // Needed to allow type-converting constructor.
-  template <typename U, typename V> friend class gscoped_ptr_impl;
+  template <typename U, typename V>
+  friend class gscoped_ptr_impl;
 
   // Use the empty base class optimization to allow us to have a D
   // member, while avoiding any space overhead for it when D is an
@@ -294,9 +307,9 @@ class gscoped_ptr_impl {
   DISALLOW_COPY_AND_ASSIGN(gscoped_ptr_impl);
 };
 
-}  // namespace internal
+} // namespace internal
 
-}  // namespace kudu
+} // namespace kudu
 
 // A gscoped_ptr<T> is like a T*, except that the destructor of gscoped_ptr<T>
 // automatically deletes the pointer it holds (if any).
@@ -314,12 +327,13 @@ class gscoped_ptr_impl {
 // unique_ptr<> features. Known deficiencies include not supporting move-only
 // deleteres, function pointers as deleters, and deleters with reference
 // types.
-template <class T, class D = kudu::DefaultDeleter<T> >
+template <class T, class D = kudu::DefaultDeleter<T>>
 class gscoped_ptr {
   MOVE_ONLY_TYPE_FOR_CPP_03(gscoped_ptr, RValue)
 
-  KUDU_COMPILE_ASSERT(kudu::internal::IsNotRefCounted<T>::value,
-                 T_is_refcounted_type_and_needs_scoped_refptr);
+  KUDU_COMPILE_ASSERT(
+      kudu::internal::IsNotRefCounted<T>::value,
+      T_is_refcounted_type_and_needs_scoped_refptr);
 
  public:
   // The element and deleter types.
@@ -327,13 +341,13 @@ class gscoped_ptr {
   typedef D deleter_type;
 
   // Constructor.  Defaults to initializing with NULL.
-  gscoped_ptr() : impl_(NULL) { }
+  gscoped_ptr() : impl_(NULL) {}
 
   // Constructor.  Takes ownership of p.
-  explicit gscoped_ptr(element_type* p) : impl_(p) { }
+  explicit gscoped_ptr(element_type* p) : impl_(p) {}
 
   // Constructor.  Allows initialization of a stateful deleter.
-  gscoped_ptr(element_type* p, const D& d) : impl_(p, d) { }
+  gscoped_ptr(element_type* p, const D& d) : impl_(p, d) {}
 
   // Constructor.  Allows construction from a gscoped_ptr rvalue for a
   // convertible type and deleter.
@@ -351,7 +365,7 @@ class gscoped_ptr {
   }
 
   // Constructor.  Move constructor for C++03 move emulation of this type.
-  gscoped_ptr(RValue rvalue) : impl_(&rvalue.object->impl_) { }
+  gscoped_ptr(RValue rvalue) : impl_(&rvalue.object->impl_) {}
 
   // operator=.  Allows assignment from a gscoped_ptr rvalue for a convertible
   // type and deleter.
@@ -372,7 +386,9 @@ class gscoped_ptr {
 
   // Reset.  Deletes the currently owned object, if any.
   // Then takes ownership of a new object, if given.
-  void reset(element_type* p = NULL) { impl_.reset(p); }
+  void reset(element_type* p = NULL) {
+    impl_.reset(p);
+  }
 
   // Accessors to get the owned object.
   // operator* and operator-> will assert() if there is no current object.
@@ -380,15 +396,21 @@ class gscoped_ptr {
     assert(impl_.get() != NULL);
     return *impl_.get();
   }
-  element_type* operator->() const  {
+  element_type* operator->() const {
     assert(impl_.get() != NULL);
     return impl_.get();
   }
-  element_type* get() const { return impl_.get(); }
+  element_type* get() const {
+    return impl_.get();
+  }
 
   // Access to the deleter.
-  deleter_type& get_deleter() { return impl_.get_deleter(); }
-  const deleter_type& get_deleter() const { return impl_.get_deleter(); }
+  deleter_type& get_deleter() {
+    return impl_.get_deleter();
+  }
+  const deleter_type& get_deleter() const {
+    return impl_.get_deleter();
+  }
 
   // Allow gscoped_ptr<element_type> to be used in boolean expressions, but not
   // implicitly convertible to a real bool (which is dangerous).
@@ -397,13 +419,19 @@ class gscoped_ptr {
       gscoped_ptr::*Testable;
 
  public:
-  operator Testable() const { return impl_.get() ? &gscoped_ptr::impl_ : NULL; }
+  operator Testable() const {
+    return impl_.get() ? &gscoped_ptr::impl_ : NULL;
+  }
 
   // Comparison operators.
   // These return whether two gscoped_ptr refer to the same object, not just to
   // two different but equal objects.
-  bool operator==(const element_type* p) const { return impl_.get() == p; }
-  bool operator!=(const element_type* p) const { return impl_.get() != p; }
+  bool operator==(const element_type* p) const {
+    return impl_.get() == p;
+  }
+  bool operator!=(const element_type* p) const {
+    return impl_.get() != p;
+  }
 
   // Swap two scoped pointers.
   void swap(gscoped_ptr& p2) {
@@ -432,15 +460,18 @@ class gscoped_ptr {
 
  private:
   // Needed to reach into |impl_| in the constructor.
-  template <typename U, typename V> friend class gscoped_ptr;
+  template <typename U, typename V>
+  friend class gscoped_ptr;
   kudu::internal::gscoped_ptr_impl<element_type, deleter_type> impl_;
 
   // Forbid comparison of gscoped_ptr types.  If U != T, it totally
   // doesn't make sense, and if U == T, it still doesn't make sense
   // because you should never have the same object owned by two different
   // gscoped_ptrs.
-  template <class U> bool operator==(gscoped_ptr<U> const& p2) const;
-  template <class U> bool operator!=(gscoped_ptr<U> const& p2) const;
+  template <class U>
+  bool operator==(gscoped_ptr<U> const& p2) const;
+  template <class U>
+  bool operator!=(gscoped_ptr<U> const& p2) const;
 };
 
 template <class T, class D>
@@ -453,7 +484,7 @@ class gscoped_ptr<T[], D> {
   typedef D deleter_type;
 
   // Constructor.  Defaults to initializing with NULL.
-  gscoped_ptr() : impl_(NULL) { }
+  gscoped_ptr() : impl_(NULL) {}
 
   // Constructor. Stores the given array. Note that the argument's type
   // must exactly match T*. In particular:
@@ -471,10 +502,10 @@ class gscoped_ptr<T[], D> {
   //   to work around this may use implicit_cast<const T*>().
   //   However, because of the first bullet in this comment, users MUST
   //   NOT use implicit_cast<Base*>() to upcast the static type of the array.
-  explicit gscoped_ptr(element_type* array) : impl_(array) { }
+  explicit gscoped_ptr(element_type* array) : impl_(array) {}
 
   // Constructor.  Move constructor for C++03 move emulation of this type.
-  gscoped_ptr(RValue rvalue) : impl_(&rvalue.object->impl_) { }
+  gscoped_ptr(RValue rvalue) : impl_(&rvalue.object->impl_) {}
 
   // operator=.  Move operator= for C++03 move emulation of this type.
   gscoped_ptr& operator=(RValue rhs) {
@@ -484,18 +515,26 @@ class gscoped_ptr<T[], D> {
 
   // Reset.  Deletes the currently owned array, if any.
   // Then takes ownership of a new object, if given.
-  void reset(element_type* array = NULL) { impl_.reset(array); }
+  void reset(element_type* array = NULL) {
+    impl_.reset(array);
+  }
 
   // Accessors to get the owned array.
   element_type& operator[](size_t i) const {
     assert(impl_.get() != NULL);
     return impl_.get()[i];
   }
-  element_type* get() const { return impl_.get(); }
+  element_type* get() const {
+    return impl_.get();
+  }
 
   // Access to the deleter.
-  deleter_type& get_deleter() { return impl_.get_deleter(); }
-  const deleter_type& get_deleter() const { return impl_.get_deleter(); }
+  deleter_type& get_deleter() {
+    return impl_.get_deleter();
+  }
+  const deleter_type& get_deleter() const {
+    return impl_.get_deleter();
+  }
 
   // Allow gscoped_ptr<element_type> to be used in boolean expressions, but not
   // implicitly convertible to a real bool (which is dangerous).
@@ -504,13 +543,19 @@ class gscoped_ptr<T[], D> {
       gscoped_ptr::*Testable;
 
  public:
-  operator Testable() const { return impl_.get() ? &gscoped_ptr::impl_ : NULL; }
+  operator Testable() const {
+    return impl_.get() ? &gscoped_ptr::impl_ : NULL;
+  }
 
   // Comparison operators.
   // These return whether two gscoped_ptr refer to the same object, not just to
   // two different but equal objects.
-  bool operator==(element_type* array) const { return impl_.get() == array; }
-  bool operator!=(element_type* array) const { return impl_.get() != array; }
+  bool operator==(element_type* array) const {
+    return impl_.get() == array;
+  }
+  bool operator!=(element_type* array) const {
+    return impl_.get() != array;
+  }
 
   // Swap two scoped pointers.
   void swap(gscoped_ptr& p2) {
@@ -538,20 +583,24 @@ class gscoped_ptr<T[], D> {
   // private and has no definition. This is disabled because it is not safe to
   // call delete[] on an array whose static type does not match its dynamic
   // type.
-  template <typename U> explicit gscoped_ptr(U* array);
+  template <typename U>
+  explicit gscoped_ptr(U* array);
   explicit gscoped_ptr(int disallow_construction_from_null);
 
   // Disable reset() from any type other than element_type*, for the same
   // reasons as the constructor above.
-  template <typename U> void reset(U* array);
+  template <typename U>
+  void reset(U* array);
   void reset(int disallow_reset_from_null);
 
   // Forbid comparison of gscoped_ptr types.  If U != T, it totally
   // doesn't make sense, and if U == T, it still doesn't make sense
   // because you should never have the same object owned by two different
   // gscoped_ptrs.
-  template <class U> bool operator==(gscoped_ptr<U> const& p2) const;
-  template <class U> bool operator!=(gscoped_ptr<U> const& p2) const;
+  template <class U>
+  bool operator==(gscoped_ptr<U> const& p2) const;
+  template <class U>
+  bool operator!=(gscoped_ptr<U> const& p2) const;
 };
 
 // Free functions
@@ -586,19 +635,16 @@ class gscoped_array {
   MOVE_ONLY_TYPE_FOR_CPP_03(gscoped_array, RValue)
 
  public:
-
   // The element type
   typedef C element_type;
 
   // Constructor.  Defaults to initializing with NULL.
   // There is no way to create an uninitialized gscoped_array.
   // The input parameter must be allocated with new [].
-  explicit gscoped_array(C* p = NULL) : array_(p) { }
+  explicit gscoped_array(C* p = NULL) : array_(p) {}
 
   // Constructor.  Move constructor for C++03 move emulation of this type.
-  gscoped_array(RValue rvalue)
-      : array_(rvalue.object->release()) {
-  }
+  gscoped_array(RValue rvalue) : array_(rvalue.object->release()) {}
 
   // Destructor.  If there is a C object, delete it.
   // We don't need to test ptr_ == NULL because C++ does that for us.
@@ -641,13 +687,19 @@ class gscoped_array {
   // Allow gscoped_array<C> to be used in boolean expressions, but not
   // implicitly convertible to a real bool (which is dangerous).
   typedef C* gscoped_array::*Testable;
-  operator Testable() const { return array_ ? &gscoped_array::array_ : NULL; }
+  operator Testable() const {
+    return array_ ? &gscoped_array::array_ : NULL;
+  }
 
   // Comparison operators.
-  // These return whether two gscoped_array refer to the same object, not just to
-  // two different but equal objects.
-  bool operator==(C* p) const { return array_ == p; }
-  bool operator!=(C* p) const { return array_ != p; }
+  // These return whether two gscoped_array refer to the same object, not just
+  // to two different but equal objects.
+  bool operator==(C* p) const {
+    return array_ == p;
+  }
+  bool operator!=(C* p) const {
+    return array_ != p;
+  }
 
   // Swap two scoped arrays.
   void swap(gscoped_array& p2) {
@@ -671,8 +723,10 @@ class gscoped_array {
   C* array_;
 
   // Forbid comparison of different gscoped_array types.
-  template <class C2> bool operator==(gscoped_array<C2> const& p2) const;
-  template <class C2> bool operator!=(gscoped_array<C2> const& p2) const;
+  template <class C2>
+  bool operator==(gscoped_array<C2> const& p2) const;
+  template <class C2>
+  bool operator!=(gscoped_array<C2> const& p2) const;
 };
 
 // Free functions
@@ -696,12 +750,11 @@ bool operator!=(C* p1, const gscoped_array<C>& p2) {
 // gscoped_ptr_malloc<> is similar to gscoped_ptr<>, but it accepts a
 // second template argument, the functor used to free the object.
 
-template<class C, class FreeProc = kudu::FreeDeleter>
+template <class C, class FreeProc = kudu::FreeDeleter>
 class gscoped_ptr_malloc {
   MOVE_ONLY_TYPE_FOR_CPP_03(gscoped_ptr_malloc, RValue)
 
  public:
-
   // The element type
   typedef C element_type;
 
@@ -710,12 +763,10 @@ class gscoped_ptr_malloc {
   // The input parameter must be allocated with an allocator that matches the
   // Free functor.  For the default Free functor, this is malloc, calloc, or
   // realloc.
-  explicit gscoped_ptr_malloc(C* p = NULL): ptr_(p) {}
+  explicit gscoped_ptr_malloc(C* p = NULL) : ptr_(p) {}
 
   // Constructor.  Move constructor for C++03 move emulation of this type.
-  gscoped_ptr_malloc(RValue rvalue)
-      : ptr_(rvalue.object->release()) {
-  }
+  gscoped_ptr_malloc(RValue rvalue) : ptr_(rvalue.object->release()) {}
 
   // Destructor.  If there is a C object, call the Free functor.
   ~gscoped_ptr_malloc() {
@@ -761,7 +812,9 @@ class gscoped_ptr_malloc {
   // Allow gscoped_ptr_malloc<C> to be used in boolean expressions, but not
   // implicitly convertible to a real bool (which is dangerous).
   typedef C* gscoped_ptr_malloc::*Testable;
-  operator Testable() const { return ptr_ ? &gscoped_ptr_malloc::ptr_ : NULL; }
+  operator Testable() const {
+    return ptr_ ? &gscoped_ptr_malloc::ptr_ : NULL;
+  }
 
   // Comparison operators.
   // These return whether a gscoped_ptr_malloc and a plain pointer refer
@@ -777,7 +830,7 @@ class gscoped_ptr_malloc {
   }
 
   // Swap two scoped pointers.
-  void swap(gscoped_ptr_malloc & b) {
+  void swap(gscoped_ptr_malloc& b) {
     C* tmp = b.ptr_;
     b.ptr_ = ptr_;
     ptr_ = tmp;
@@ -804,18 +857,18 @@ class gscoped_ptr_malloc {
   bool operator!=(gscoped_ptr_malloc<C2, GP> const& p) const;
 };
 
-template<class C, class FP> inline
-void swap(gscoped_ptr_malloc<C, FP>& a, gscoped_ptr_malloc<C, FP>& b) {
+template <class C, class FP>
+inline void swap(gscoped_ptr_malloc<C, FP>& a, gscoped_ptr_malloc<C, FP>& b) {
   a.swap(b);
 }
 
-template<class C, class FP> inline
-bool operator==(C* p, const gscoped_ptr_malloc<C, FP>& b) {
+template <class C, class FP>
+inline bool operator==(C* p, const gscoped_ptr_malloc<C, FP>& b) {
   return p == b.get();
 }
 
-template<class C, class FP> inline
-bool operator!=(C* p, const gscoped_ptr_malloc<C, FP>& b) {
+template <class C, class FP>
+inline bool operator!=(C* p, const gscoped_ptr_malloc<C, FP>& b) {
   return p != b.get();
 }
 
@@ -827,4 +880,4 @@ gscoped_ptr<T> make_gscoped_ptr(T* ptr) {
   return gscoped_ptr<T>(ptr);
 }
 
-#endif  // KUDU_GUTIL_GSCOPED_PTR_H_
+#endif // KUDU_GUTIL_GSCOPED_PTR_H_

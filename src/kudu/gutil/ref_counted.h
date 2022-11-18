@@ -7,7 +7,7 @@
 
 #include <cassert>
 #include <cstddef>
-#include <utility>  // IWYU pragma: keep
+#include <utility> // IWYU pragma: keep
 
 #include "kudu/gutil/atomicops.h"
 #include "kudu/gutil/macros.h"
@@ -20,7 +20,9 @@ typedef Atomic32 AtomicRefCount;
 
 class RefCountedBase {
  public:
-  bool HasOneRef() const { return ref_count_ == 1; }
+  bool HasOneRef() const {
+    return ref_count_ == 1;
+  }
 
  protected:
   RefCountedBase();
@@ -33,7 +35,7 @@ class RefCountedBase {
 
  private:
   mutable int ref_count_;
-#ifdef FB_DO_NOT_REMOVE  // #ifndef NDEBUG
+#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
   mutable bool in_dtor_;
 #endif
 
@@ -57,14 +59,14 @@ class RefCountedThreadSafeBase {
 
  private:
   mutable AtomicRefCount ref_count_;
-#ifdef FB_DO_NOT_REMOVE  // #ifndef NDEBUG
+#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
   mutable bool in_dtor_;
 #endif
 
   DISALLOW_COPY_AND_ASSIGN(RefCountedThreadSafeBase);
 };
 
-}  // namespace subtle
+} // namespace subtle
 
 //
 // A base class for reference counted classes.  Otherwise, known as a cheap
@@ -103,18 +105,19 @@ class RefCounted : public subtle::RefCountedBase {
 };
 
 // Forward declaration.
-template <class T, typename Traits> class RefCountedThreadSafe;
+template <class T, typename Traits>
+class RefCountedThreadSafe;
 
 // Default traits for RefCountedThreadSafe<T>.  Deletes the object when its ref
 // count reaches 0.  Overload to delete it on a different thread etc.
-template<typename T>
+template <typename T>
 struct DefaultRefCountedThreadSafeTraits {
   static void Destruct(const T* x) {
     // Delete through RefCountedThreadSafe to make child classes only need to be
     // friend with RefCountedThreadSafe instead of this struct, which is an
     // implementation detail.
-    RefCountedThreadSafe<T,
-                         DefaultRefCountedThreadSafeTraits>::DeleteInternal(x);
+    RefCountedThreadSafe<T, DefaultRefCountedThreadSafeTraits>::DeleteInternal(
+        x);
   }
 };
 
@@ -130,7 +133,7 @@ struct DefaultRefCountedThreadSafeTraits {
 //    private:
 //     friend class RefCountedThreadSafe<MyFoo>;
 //     ~MyFoo();
-template <class T, typename Traits = DefaultRefCountedThreadSafeTraits<T> >
+template <class T, typename Traits = DefaultRefCountedThreadSafeTraits<T>>
 class RefCountedThreadSafe : public subtle::RefCountedThreadSafeBase {
  public:
   RefCountedThreadSafe() {}
@@ -150,7 +153,9 @@ class RefCountedThreadSafe : public subtle::RefCountedThreadSafeBase {
 
  private:
   friend struct DefaultRefCountedThreadSafeTraits<T>;
-  static void DeleteInternal(const T* x) { delete x; }
+  static void DeleteInternal(const T* x) {
+    delete x;
+  }
 
   DISALLOW_COPY_AND_ASSIGN(RefCountedThreadSafe);
 };
@@ -159,9 +164,9 @@ class RefCountedThreadSafe : public subtle::RefCountedThreadSafeBase {
 // A thread-safe wrapper for some piece of data so we can place other
 // things in scoped_refptrs<>.
 //
-template<typename T>
+template <typename T>
 class RefCountedData
-    : public kudu::RefCountedThreadSafe< kudu::RefCountedData<T> > {
+    : public kudu::RefCountedThreadSafe<kudu::RefCountedData<T>> {
  public:
   RefCountedData() : data() {}
   RefCountedData(const T& in_value) : data(in_value) {}
@@ -169,11 +174,11 @@ class RefCountedData
   T data;
 
  private:
-  friend class kudu::RefCountedThreadSafe<kudu::RefCountedData<T> >;
+  friend class kudu::RefCountedThreadSafe<kudu::RefCountedData<T>>;
   ~RefCountedData() {}
 };
 
-}  // namespace kudu
+} // namespace kudu
 
 //
 // A smart pointer class for reference counted objects.  Use this class instead
@@ -228,8 +233,7 @@ class scoped_refptr {
  public:
   typedef T element_type;
 
-  scoped_refptr() : ptr_(NULL) {
-  }
+  scoped_refptr() : ptr_(NULL) {}
 
   scoped_refptr(T* p) : ptr_(p) {
     if (ptr_)
@@ -266,18 +270,25 @@ class scoped_refptr {
       ptr_->Release();
   }
 
-  T* get() const { return ptr_; }
+  T* get() const {
+    return ptr_;
+  }
 
 // The following is disabled in Cloudera's version of this file since it's
 // relatively dangerous. Chromium is planning on doing the same in their
-// tree, but hasn't done so yet. See http://code.google.com/p/chromium/issues/detail?id=110610
+// tree, but hasn't done so yet. See
+// http://code.google.com/p/chromium/issues/detail?id=110610
 #if SCOPED_REFPTR_ALLOW_IMPLICIT_CONVERSION_TO_PTR
   // Allow scoped_refptr<C> to be used in boolean expression
   // and comparison operations.
-  operator T*() const { return ptr_; }
+  operator T*() const {
+    return ptr_;
+  }
 #else
   typedef T* scoped_refptr::*Testable;
-  operator Testable() const { return ptr_ ? &scoped_refptr::ptr_ : NULL; }
+  operator Testable() const {
+    return ptr_ ? &scoped_refptr::ptr_ : NULL;
+  }
 #endif
 
   T* operator->() const {
@@ -336,7 +347,8 @@ class scoped_refptr {
   T* ptr_;
 
  private:
-  template <typename U> friend class scoped_refptr;
+  template <typename U>
+  friend class scoped_refptr;
 };
 
 // Handy utility for creating a scoped_refptr<T> out of a T* explicitly without
@@ -362,4 +374,4 @@ struct ScopedRefPtrHashFunctor {
   }
 };
 
-#endif  // BASE_MEMORY_REF_COUNTED_H_
+#endif // BASE_MEMORY_REF_COUNTED_H_

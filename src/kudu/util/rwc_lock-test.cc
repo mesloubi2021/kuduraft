@@ -42,11 +42,7 @@ class RWCLockTest : public KuduTest {};
 // Holds counters of how many threads hold the lock in each of the
 // provided modes.
 struct LockHoldersCount {
-  LockHoldersCount()
-    : num_readers(0),
-      num_writers(0),
-      num_committers(0) {
-  }
+  LockHoldersCount() : num_readers(0), num_writers(0), num_committers(0) {}
 
   // Check the invariants of the lock counts.
   void CheckInvariants() {
@@ -113,7 +109,6 @@ void WriterThread(SharedState* state) {
     state->rwc_lock.CommitUnlock();
   }
 }
-
 
 TEST_F(RWCLockTest, TestCorrectBehavior) {
   SharedState state;

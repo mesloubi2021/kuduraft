@@ -121,9 +121,11 @@ class GcFunctionHelper {
  public:
   static const int kNumReleaseBytes = 1;
 
-  explicit GcFunctionHelper(MemTracker* tracker) : tracker_(tracker) { }
+  explicit GcFunctionHelper(MemTracker* tracker) : tracker_(tracker) {}
 
-  void GcFunc() { tracker_->Release(kNumReleaseBytes); }
+  void GcFunc() {
+    tracker_->Release(kNumReleaseBytes);
+  }
 
  private:
   MemTracker* tracker_;
@@ -136,7 +138,7 @@ TEST(MemTrackerTest, STLContainerAllocator) {
 
   // Simple test: use the allocator in a vector.
   {
-    vector<int, MemTrackerAllocator<int> > v(vec_alloc);
+    vector<int, MemTrackerAllocator<int>> v(vec_alloc);
     ASSERT_EQ(0, t->consumption());
     v.reserve(5);
     ASSERT_EQ(5 * sizeof(int), t->consumption());
@@ -148,11 +150,13 @@ TEST(MemTrackerTest, STLContainerAllocator) {
   // Complex test: use it in an unordered_map, where it must be rebound in
   // order to allocate the map's buckets.
   {
-    unordered_map<int, int, hash<int>, equal_to<int>, MemTrackerAllocator<pair<const int, int>>> um(
-        10,
-        hash<int>(),
-        equal_to<int>(),
-        map_alloc);
+    unordered_map<
+        int,
+        int,
+        hash<int>,
+        equal_to<int>,
+        MemTrackerAllocator<pair<const int, int>>>
+        um(10, hash<int>(), equal_to<int>(), map_alloc);
 
     // Don't care about the value (it depends on map internals).
     ASSERT_GT(t->consumption(), 0);
@@ -179,7 +183,7 @@ TEST(MemTrackerTest, FindFunctionsTakeOwnership) {
   LOG(INFO) << ref->ToString();
   ref.reset();
 
-  vector<shared_ptr<MemTracker> > refs;
+  vector<shared_ptr<MemTracker>> refs;
   {
     shared_ptr<MemTracker> m = MemTracker::CreateTracker(-1, "test");
     MemTracker::ListTrackers(&refs);
@@ -226,13 +230,14 @@ TEST(MemTrackerTest, CollisionDetection) {
   // Only when we do a Find() operation do we crash.
 #ifndef NDEBUG
   const string kDeathMsg = "Multiple memtrackers with same id";
-  EXPECT_DEATH({
-    shared_ptr<MemTracker> found;
-    MemTracker::FindTracker("parent", &found);
-  }, kDeathMsg);
-  EXPECT_DEATH({
-    MemTracker::FindOrCreateGlobalTracker(-1, "parent");
-  }, kDeathMsg);
+  EXPECT_DEATH(
+      {
+        shared_ptr<MemTracker> found;
+        MemTracker::FindTracker("parent", &found);
+      },
+      kDeathMsg);
+  EXPECT_DEATH(
+      { MemTracker::FindOrCreateGlobalTracker(-1, "parent"); }, kDeathMsg);
 #endif
 }
 
@@ -240,12 +245,12 @@ TEST(MemTrackerTest, TestMultiThreadedRegisterAndDestroy) {
   std::atomic<bool> done(false);
   vector<std::thread> threads;
   for (int i = 0; i < 10; i++) {
-    threads.emplace_back([&done]{
-        while (!done.load()) {
-          shared_ptr<MemTracker> t = MemTracker::FindOrCreateGlobalTracker(
-              1000, "foo");
-        }
-      });
+    threads.emplace_back([&done] {
+      while (!done.load()) {
+        shared_ptr<MemTracker> t =
+            MemTracker::FindOrCreateGlobalTracker(1000, "foo");
+      }
+    });
   }
 
   SleepFor(MonoDelta::FromSeconds(AllowSlowTests() ? 5 : 1));
@@ -260,14 +265,14 @@ TEST(MemTrackerTest, TestMultiThreadedCreateFind) {
   shared_ptr<MemTracker> c1 = MemTracker::CreateTracker(-1, "c1", p);
   std::atomic<bool> done(false);
   vector<std::thread> threads;
-  threads.emplace_back([&]{
+  threads.emplace_back([&] {
     while (!done.load()) {
       shared_ptr<MemTracker> c1_copy;
       CHECK(MemTracker::FindTracker(c1->id(), &c1_copy, p));
     }
   });
   for (int i = 0; i < 5; i++) {
-    threads.emplace_back([&, i]{
+    threads.emplace_back([&, i] {
       while (!done.load()) {
         shared_ptr<MemTracker> c2 =
             MemTracker::CreateTracker(-1, Substitute("ci-$0", i), p);

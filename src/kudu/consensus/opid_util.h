@@ -63,36 +63,37 @@ int OpIdCompare(const OpId& left, const OpId& right);
 
 // OpId hash functor. Suitable for use with std::unordered_map.
 struct OpIdHashFunctor {
-  size_t operator() (const OpId& id) const;
+  size_t operator()(const OpId& id) const;
 };
 
 // OpId equals functor. Suitable for use with std::unordered_map.
 struct OpIdEqualsFunctor {
-  bool operator() (const OpId& left, const OpId& right) const;
+  bool operator()(const OpId& left, const OpId& right) const;
 };
 
-// OpId less than functor for pointers.. Suitable for use with std::sort and std::map.
+// OpId less than functor for pointers.. Suitable for use with std::sort and
+// std::map.
 struct OpIdLessThanPtrFunctor {
   // Returns true iff left < right.
-  bool operator() (const OpId* left, const OpId* right) const;
+  bool operator()(const OpId* left, const OpId* right) const;
 };
 
 // Sorts op id's by index only, disregarding the term.
 struct OpIdIndexLessThanPtrFunctor {
   // Returns true iff left.index() < right.index().
-  bool operator() (const OpId* left, const OpId* right) const;
+  bool operator()(const OpId* left, const OpId* right) const;
 };
 
 // OpId compare() functor. Suitable for use with std::sort and std::map.
 struct OpIdCompareFunctor {
   // Returns true iff left < right.
-  bool operator() (const OpId& left, const OpId& right) const;
+  bool operator()(const OpId& left, const OpId& right) const;
 };
 
 // OpId comparison functor that returns true iff left > right. Suitable for use
 // with std::sort and std::map to sort keys in increasing order.
 struct OpIdBiggerThanFunctor {
-  bool operator() (const OpId& left, const OpId& right) const;
+  bool operator()(const OpId& left, const OpId& right) const;
 };
 
 std::ostream& operator<<(std::ostream& os, const consensus::OpId& op_id);
@@ -109,7 +110,7 @@ std::string OpsRangeString(const ConsensusRequestPB& req);
 
 OpId MakeOpId(int64_t term, int64_t index);
 
-}  // namespace consensus
-}  // namespace kudu
+} // namespace consensus
+} // namespace kudu
 
 #endif /* KUDU_CONSENSUS_OPID_UTIL_H_ */

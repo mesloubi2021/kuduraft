@@ -62,8 +62,9 @@ class MemTracker : public std::enable_shared_from_this<MemTracker> {
   // Creates and adds the tracker to the tree so that it can be retrieved with
   // FindTracker/FindOrCreateTracker.
   //
-  // byte_limit < 0 means no limit; 'id' is a used as a label to uniquely identify
-  // the MemTracker for the below Find...() calls as well as the web UI.
+  // byte_limit < 0 means no limit; 'id' is a used as a label to uniquely
+  // identify the MemTracker for the below Find...() calls as well as the web
+  // UI.
   //
   // Use the two-argument form if there is no parent.
   static std::shared_ptr<MemTracker> CreateTracker(
@@ -82,7 +83,8 @@ class MemTracker : public std::enable_shared_from_this<MemTracker> {
   static bool FindTracker(
       const std::string& id,
       std::shared_ptr<MemTracker>* tracker,
-      const std::shared_ptr<MemTracker>& parent = std::shared_ptr<MemTracker>());
+      const std::shared_ptr<MemTracker>& parent =
+          std::shared_ptr<MemTracker>());
 
   // If a global tracker with the specified 'id' exists in the tree, returns a
   // shared_ptr to that instance. Otherwise, creates a new MemTracker with the
@@ -91,10 +93,11 @@ class MemTracker : public std::enable_shared_from_this<MemTracker> {
   // Note: this function will enforce that 'id' is unique amongst the children
   // of the root MemTracker.
   static std::shared_ptr<MemTracker> FindOrCreateGlobalTracker(
-      int64_t byte_limit, const std::string& id);
+      int64_t byte_limit,
+      const std::string& id);
 
   // Returns a list of all the valid trackers.
-  static void ListTrackers(std::vector<std::shared_ptr<MemTracker> >* trackers);
+  static void ListTrackers(std::vector<std::shared_ptr<MemTracker>>* trackers);
 
   // Gets a shared_ptr to the "root" tracker, creating it if necessary.
   static std::shared_ptr<MemTracker> GetRootTracker();
@@ -110,40 +113,50 @@ class MemTracker : public std::enable_shared_from_this<MemTracker> {
 
   // Decreases consumption of this tracker and its ancestors by 'bytes'.
   //
-  // This will also cause the process to periodically trigger tcmalloc "ReleaseMemory"
-  // to ensure that memory is released to the OS.
+  // This will also cause the process to periodically trigger tcmalloc
+  // "ReleaseMemory" to ensure that memory is released to the OS.
   void Release(int64_t bytes);
 
   // Returns true if a valid limit of this tracker or one of its ancestors is
   // exceeded.
   bool AnyLimitExceeded();
 
-  // If this tracker has a limit, checks the limit and attempts to free up some memory if
-  // the limit is exceeded by calling any added GC functions. Returns true if the limit is
-  // exceeded after calling the GC functions. Returns false if there is no limit.
+  // If this tracker has a limit, checks the limit and attempts to free up some
+  // memory if the limit is exceeded by calling any added GC functions. Returns
+  // true if the limit is exceeded after calling the GC functions. Returns false
+  // if there is no limit.
   bool LimitExceeded() {
     return limit_ >= 0 && limit_ < consumption();
   }
 
-  // Returns the maximum consumption that can be made without exceeding the limit on
-  // this tracker or any of its parents. Returns int64_t::max() if there are no
-  // limits and a negative value if any limit is already exceeded.
+  // Returns the maximum consumption that can be made without exceeding the
+  // limit on this tracker or any of its parents. Returns int64_t::max() if
+  // there are no limits and a negative value if any limit is already exceeded.
   int64_t SpareCapacity() const;
 
-
-  int64_t limit() const { return limit_; }
-  bool has_limit() const { return limit_ >= 0; }
-  const std::string& id() const { return id_; }
+  int64_t limit() const {
+    return limit_;
+  }
+  bool has_limit() const {
+    return limit_ >= 0;
+  }
+  const std::string& id() const {
+    return id_;
+  }
 
   // Returns the memory consumed in bytes.
   int64_t consumption() const {
     return consumption_.current_value();
   }
 
-  int64_t peak_consumption() const { return consumption_.max_value(); }
+  int64_t peak_consumption() const {
+    return consumption_.max_value();
+  }
 
   // Retrieve the parent tracker, or NULL If one is not set.
-  std::shared_ptr<MemTracker> parent() const { return parent_; }
+  std::shared_ptr<MemTracker> parent() const {
+    return parent_;
+  }
 
   // Returns a textual representation of the tracker that is likely (but not
   // guaranteed) to be globally unique.
@@ -152,7 +165,10 @@ class MemTracker : public std::enable_shared_from_this<MemTracker> {
  private:
   // byte_limit < 0 means no limit
   // 'id' is the label for LogUsage() and web UI.
-  MemTracker(int64_t byte_limit, const std::string& id, std::shared_ptr<MemTracker> parent);
+  MemTracker(
+      int64_t byte_limit,
+      const std::string& id,
+      std::shared_ptr<MemTracker> parent);
 
   // Further initializes the tracker.
   void Init();
@@ -194,7 +210,7 @@ class MemTracker : public std::enable_shared_from_this<MemTracker> {
 
 // An std::allocator that manipulates a MemTracker during allocation
 // and deallocation.
-template<typename T, typename Alloc = std::allocator<T> >
+template <typename T, typename Alloc = std::allocator<T>>
 class MemTrackerAllocator : public Alloc {
  public:
   typedef typename std::allocator_traits<Alloc>::pointer pointer;
@@ -207,12 +223,9 @@ class MemTrackerAllocator : public Alloc {
   // This constructor is used for rebinding.
   template <typename U>
   MemTrackerAllocator(const MemTrackerAllocator<U>& allocator)
-      : Alloc(allocator),
-        mem_tracker_(allocator.mem_tracker()) {
-  }
+      : Alloc(allocator), mem_tracker_(allocator.mem_tracker()) {}
 
-  ~MemTrackerAllocator() {
-  }
+  ~MemTrackerAllocator() {}
 
   pointer allocate(size_type n, const_pointer hint = 0) {
     // Ideally we'd use TryConsume() here to enforce the tracker's limit.
@@ -227,17 +240,23 @@ class MemTrackerAllocator : public Alloc {
     mem_tracker_->Release(n * sizeof(T));
   }
 
-  constexpr typename std::allocator_traits<Alloc>::size_type max_size() const noexcept {
+  constexpr typename std::allocator_traits<Alloc>::size_type max_size()
+      const noexcept {
     return std::allocator_traits<Alloc>::max_size(*this);
   }
 
   // This allows an allocator<T> to be used for a different type.
   template <class U>
   struct rebind {
-    typedef MemTrackerAllocator<U, typename std::allocator_traits<Alloc>::template rebind_alloc<U>> other;
+    typedef MemTrackerAllocator<
+        U,
+        typename std::allocator_traits<Alloc>::template rebind_alloc<U>>
+        other;
   };
 
-  const std::shared_ptr<MemTracker>& mem_tracker() const { return mem_tracker_; }
+  const std::shared_ptr<MemTracker>& mem_tracker() const {
+    return mem_tracker_;
+  }
 
  private:
   std::shared_ptr<MemTracker> mem_tracker_;
@@ -247,8 +266,9 @@ class MemTrackerAllocator : public Alloc {
 // releasing it when the end of scope is reached.
 class ScopedTrackedConsumption {
  public:
-  ScopedTrackedConsumption(std::shared_ptr<MemTracker> tracker,
-                           int64_t to_consume)
+  ScopedTrackedConsumption(
+      std::shared_ptr<MemTracker> tracker,
+      int64_t to_consume)
       : tracker_(std::move(tracker)), consumption_(to_consume) {
     DCHECK(tracker_);
     tracker_->Consume(consumption_);
@@ -264,7 +284,9 @@ class ScopedTrackedConsumption {
     tracker_->Release(consumption_);
   }
 
-  int64_t consumption() const { return consumption_; }
+  int64_t consumption() const {
+    return consumption_;
+  }
 
  private:
   std::shared_ptr<MemTracker> tracker_;

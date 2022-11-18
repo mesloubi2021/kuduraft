@@ -53,26 +53,31 @@ using std::thread;
 using std::unique_ptr;
 using std::vector;
 
-DEFINE_int32(client_threads, 16,
-             "Number of client threads. For the synchronous benchmark, each thread has "
-             "a single outstanding synchronous request at a time. For the async "
-             "benchmark, this determines the number of client reactors.");
+DEFINE_int32(
+    client_threads,
+    16,
+    "Number of client threads. For the synchronous benchmark, each thread has "
+    "a single outstanding synchronous request at a time. For the async "
+    "benchmark, this determines the number of client reactors.");
 
-DEFINE_int32(async_call_concurrency, 60,
-             "Number of concurrent requests that will be outstanding at a time for the "
-             "async benchmark. The requests are multiplexed across the number of "
-             "reactors specified by the 'client_threads' flag.");
+DEFINE_int32(
+    async_call_concurrency,
+    60,
+    "Number of concurrent requests that will be outstanding at a time for the "
+    "async benchmark. The requests are multiplexed across the number of "
+    "reactors specified by the 'client_threads' flag.");
 
-DEFINE_int32(worker_threads, 1,
-             "Number of server worker threads");
+DEFINE_int32(worker_threads, 1, "Number of server worker threads");
 
-DEFINE_int32(server_reactors, 4,
-             "Number of server reactor threads");
+DEFINE_int32(server_reactors, 4, "Number of server reactor threads");
 
 DEFINE_int32(run_seconds, 1, "Seconds to run the test");
 
 DECLARE_bool(rpc_encrypt_loopback_connections);
-DEFINE_bool(enable_encryption, false, "Whether to enable TLS encryption for rpc-bench");
+DEFINE_bool(
+    enable_encryption,
+    false,
+    "Whether to enable TLS encryption for rpc-bench");
 
 METRIC_DECLARE_histogram(reactor_load_percent);
 METRIC_DECLARE_histogram(reactor_active_latency_us);
@@ -82,10 +87,7 @@ namespace rpc {
 
 class RpcBench : public RpcTestBase {
  public:
-  RpcBench()
-      : should_run_(true),
-        stop_(0)
-  {}
+  RpcBench() : should_run_(true), stop_(0) {}
 
   void SetUp() override {
     RpcTestBase::SetUp();
@@ -96,19 +98,28 @@ class RpcBench : public RpcTestBase {
 
     // Set up server.
     FLAGS_rpc_encrypt_loopback_connections = FLAGS_enable_encryption;
-    ASSERT_OK(StartTestServerWithGeneratedCode(&server_addr_, FLAGS_enable_encryption));
+    ASSERT_OK(StartTestServerWithGeneratedCode(
+        &server_addr_, FLAGS_enable_encryption));
   }
 
   void SummarizePerf(CpuTimes elapsed, int total_reqs, bool sync) {
-    float reqs_per_second = static_cast<float>(total_reqs / elapsed.wall_seconds());
-    float user_cpu_micros_per_req = static_cast<float>(elapsed.user / 1000.0 / total_reqs);
-    float sys_cpu_micros_per_req = static_cast<float>(elapsed.system / 1000.0 / total_reqs);
-    float csw_per_req = static_cast<float>(elapsed.context_switches) / total_reqs;
+    float reqs_per_second =
+        static_cast<float>(total_reqs / elapsed.wall_seconds());
+    float user_cpu_micros_per_req =
+        static_cast<float>(elapsed.user / 1000.0 / total_reqs);
+    float sys_cpu_micros_per_req =
+        static_cast<float>(elapsed.system / 1000.0 / total_reqs);
+    float csw_per_req =
+        static_cast<float>(elapsed.context_switches) / total_reqs;
 
-    HdrHistogram reactor_load(*METRIC_reactor_load_percent.Instantiate(
-        server_messenger_->metric_entity())->histogram());
-    HdrHistogram reactor_latency(*METRIC_reactor_active_latency_us.Instantiate(
-        server_messenger_->metric_entity())->histogram());
+    HdrHistogram reactor_load(
+        *METRIC_reactor_load_percent
+             .Instantiate(server_messenger_->metric_entity())
+             ->histogram());
+    HdrHistogram reactor_latency(
+        *METRIC_reactor_active_latency_us
+             .Instantiate(server_messenger_->metric_entity())
+             ->histogram());
 
     LOG(INFO) << "Mode:            " << (sync ? "Sync" : "Async");
     if (sync) {
@@ -126,15 +137,14 @@ class RpcBench : public RpcTestBase {
     LOG(INFO) << "User CPU per req: " << user_cpu_micros_per_req << "us";
     LOG(INFO) << "Sys CPU per req:  " << sys_cpu_micros_per_req << "us";
     LOG(INFO) << "Ctx Sw. per req:  " << csw_per_req;
-    LOG(INFO) << "Server Reactor load (mean):     "
-              << reactor_load.MeanValue() << "%";
+    LOG(INFO) << "Server Reactor load (mean):     " << reactor_load.MeanValue()
+              << "%";
     LOG(INFO) << "Server Reactor load (95p):      "
               << reactor_load.ValueAtPercentile(95) << "%";
     LOG(INFO) << "Server Reactor Latency (mean):  "
               << reactor_latency.MeanValue() << "us";
     LOG(INFO) << "Server Reactor Latency (95p):   "
               << reactor_latency.ValueAtPercentile(95) << "us";
-
   }
 
  protected:
@@ -148,10 +158,7 @@ class RpcBench : public RpcTestBase {
 
 class ClientThread {
  public:
-  explicit ClientThread(RpcBench *bench)
-    : bench_(bench),
-      request_count_(0) {
-  }
+  explicit ClientThread(RpcBench* bench) : bench_(bench), request_count_(0) {}
 
   void Start() {
     thread_.reset(new thread(&ClientThread::Run, this));
@@ -165,7 +172,8 @@ class ClientThread {
     shared_ptr<Messenger> client_messenger;
     CHECK_OK(bench_->CreateMessenger("Client", &client_messenger));
 
-    CalculatorServiceProxy p(client_messenger, bench_->server_addr_, "localhost");
+    CalculatorServiceProxy p(
+        client_messenger, bench_->server_addr_, "localhost");
 
     AddRequestPB req;
     AddResponsePB resp;
@@ -181,10 +189,9 @@ class ClientThread {
   }
 
   unique_ptr<thread> thread_;
-  RpcBench *bench_;
+  RpcBench* bench_;
   int request_count_;
 };
-
 
 // Test making successful RPC calls.
 TEST_F(RpcBench, BenchmarkCalls) {
@@ -213,12 +220,11 @@ TEST_F(RpcBench, BenchmarkCalls) {
 
 class ClientAsyncWorkload {
  public:
-  ClientAsyncWorkload(RpcBench *bench, shared_ptr<Messenger> messenger)
-    : bench_(bench),
-      messenger_(std::move(messenger)),
-      request_count_(0) {
+  ClientAsyncWorkload(RpcBench* bench, shared_ptr<Messenger> messenger)
+      : bench_(bench), messenger_(std::move(messenger)), request_count_(0) {
     controller_.set_timeout(MonoDelta::FromSeconds(10));
-    proxy_.reset(new CalculatorServiceProxy(messenger_, bench_->server_addr_, "localhost"));
+    proxy_.reset(new CalculatorServiceProxy(
+        messenger_, bench_->server_addr_, "localhost"));
   }
 
   void CallOneRpc() {
@@ -234,17 +240,18 @@ class ClientAsyncWorkload {
     req_.set_x(request_count_);
     req_.set_y(request_count_);
     request_count_++;
-    proxy_->AddAsync(req_,
-                     &resp_,
-                     &controller_,
-                     bind(&ClientAsyncWorkload::CallOneRpc, this));
+    proxy_->AddAsync(
+        req_,
+        &resp_,
+        &controller_,
+        bind(&ClientAsyncWorkload::CallOneRpc, this));
   }
 
   void Start() {
     CallOneRpc();
   }
 
-  RpcBench *bench_;
+  RpcBench* bench_;
   shared_ptr<Messenger> messenger_;
   unique_ptr<CalculatorServiceProxy> proxy_;
   uint32_t request_count_;
@@ -295,4 +302,3 @@ TEST_F(RpcBench, BenchmarkCallsAsync) {
 
 } // namespace rpc
 } // namespace kudu
-

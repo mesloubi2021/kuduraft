@@ -29,8 +29,8 @@
 #include "kudu/client/value.h"
 #include "kudu/client/write_op.h"
 #include "kudu/common/partial_row.h"
-#include "kudu/integration-tests/external_mini_cluster-itest-base.h"
 #include "kudu/gutil/gscoped_ptr.h"
+#include "kudu/integration-tests/external_mini_cluster-itest-base.h"
 #include "kudu/util/decimal_util.h"
 #include "kudu/util/int128.h"
 #include "kudu/util/status.h"
@@ -44,8 +44,7 @@ namespace client {
 
 using sp::shared_ptr;
 
-class DecimalItest : public ExternalMiniClusterITestBase {
-};
+class DecimalItest : public ExternalMiniClusterITestBase {};
 
 // Tests writing and reading various decimal columns with various
 // precisions and scales to ensure the values match expectations.
@@ -57,50 +56,66 @@ TEST_F(DecimalItest, TestDecimalTypes) {
 
   // Create Schema
   KuduSchemaBuilder builder;
-  builder.AddColumn("key")->Type(KuduColumnSchema::DECIMAL)
-      ->Precision(kMaxDecimal64Precision)->NotNull()->PrimaryKey();
-  builder.AddColumn("numeric32")->Type(KuduColumnSchema::DECIMAL)
+  builder.AddColumn("key")
+      ->Type(KuduColumnSchema::DECIMAL)
+      ->Precision(kMaxDecimal64Precision)
+      ->NotNull()
+      ->PrimaryKey();
+  builder.AddColumn("numeric32")
+      ->Type(KuduColumnSchema::DECIMAL)
       ->Precision(kMaxDecimal32Precision);
-  builder.AddColumn("scale32")->Type(KuduColumnSchema::DECIMAL)
+  builder.AddColumn("scale32")
+      ->Type(KuduColumnSchema::DECIMAL)
       ->Precision(kMaxDecimal32Precision)
       ->Scale(kMaxDecimal32Precision);
-  builder.AddColumn("numeric64")->Type(KuduColumnSchema::DECIMAL)
+  builder.AddColumn("numeric64")
+      ->Type(KuduColumnSchema::DECIMAL)
       ->Precision(kMaxDecimal64Precision);
-  builder.AddColumn("scale64")->Type(KuduColumnSchema::DECIMAL)
+  builder.AddColumn("scale64")
+      ->Type(KuduColumnSchema::DECIMAL)
       ->Precision(kMaxDecimal64Precision)
       ->Scale(kMaxDecimal64Precision);
-  builder.AddColumn("numeric128")->Type(KuduColumnSchema::DECIMAL)
+  builder.AddColumn("numeric128")
+      ->Type(KuduColumnSchema::DECIMAL)
       ->Precision(kMaxDecimal128Precision);
-  builder.AddColumn("scale128")->Type(KuduColumnSchema::DECIMAL)
+  builder.AddColumn("scale128")
+      ->Type(KuduColumnSchema::DECIMAL)
       ->Precision(kMaxDecimal128Precision)
       ->Scale(kMaxDecimal128Precision);
-  builder.AddColumn("default")->Type(KuduColumnSchema::DECIMAL)
-      ->Precision(5)->Scale(2)
+  builder.AddColumn("default")
+      ->Type(KuduColumnSchema::DECIMAL)
+      ->Precision(5)
+      ->Scale(2)
       ->Default(KuduValue::FromDecimal(12345, 2));
-  builder.AddColumn("alteredDefault")->Type(KuduColumnSchema::DECIMAL)
-      ->Precision(5)->Scale(2);
-  builder.AddColumn("money")->Type(KuduColumnSchema::DECIMAL)
-      ->Precision(6)->Scale(2);
-  builder.AddColumn("small")->Type(KuduColumnSchema::DECIMAL)
-      ->Precision(2);
-  builder.AddColumn("null")->Type(KuduColumnSchema::DECIMAL)
-      ->Precision(8);
+  builder.AddColumn("alteredDefault")
+      ->Type(KuduColumnSchema::DECIMAL)
+      ->Precision(5)
+      ->Scale(2);
+  builder.AddColumn("money")
+      ->Type(KuduColumnSchema::DECIMAL)
+      ->Precision(6)
+      ->Scale(2);
+  builder.AddColumn("small")->Type(KuduColumnSchema::DECIMAL)->Precision(2);
+  builder.AddColumn("null")->Type(KuduColumnSchema::DECIMAL)->Precision(8);
   KuduSchema schema;
   ASSERT_OK(builder.Build(&schema));
 
   // Create Table
-  gscoped_ptr<client::KuduTableCreator> table_creator(client_->NewTableCreator());
+  gscoped_ptr<client::KuduTableCreator> table_creator(
+      client_->NewTableCreator());
   ASSERT_OK(table_creator->table_name(kTableName)
-      .schema(&schema)
-      .num_replicas(kNumServers)
-      .add_hash_partitions({ "key" }, kNumTablets)
-      .Create());
+                .schema(&schema)
+                .num_replicas(kNumServers)
+                .add_hash_partitions({"key"}, kNumTablets)
+                .Create());
   shared_ptr<KuduTable> table;
   ASSERT_OK(client_->OpenTable(kTableName, &table));
 
   // Alter Default Value
-  gscoped_ptr<client::KuduTableAlterer> table_alterer(client_->NewTableAlterer(kTableName));
-  table_alterer->AlterColumn("alteredDefault")->Default(KuduValue::FromDecimal(456789, 2));
+  gscoped_ptr<client::KuduTableAlterer> table_alterer(
+      client_->NewTableAlterer(kTableName));
+  table_alterer->AlterColumn("alteredDefault")
+      ->Default(KuduValue::FromDecimal(456789, 2));
   ASSERT_OK(table_alterer->Alter());
 
   // Insert Row
@@ -113,15 +128,18 @@ TEST_F(DecimalItest, TestDecimalTypes) {
   ASSERT_OK(write->SetUnscaledDecimal("scale32", 123456789));
   ASSERT_OK(write->SetUnscaledDecimal("numeric64", 12345678910111213L));
   ASSERT_OK(write->SetUnscaledDecimal("scale64", 12345678910111213L));
-  ASSERT_OK(write->SetUnscaledDecimal("numeric128",
+  ASSERT_OK(write->SetUnscaledDecimal(
+      "numeric128",
       static_cast<int128_t>(12345678910111213L) * 1000000000000000000L));
-  ASSERT_OK(write->SetUnscaledDecimal("scale128",
+  ASSERT_OK(write->SetUnscaledDecimal(
+      "scale128",
       static_cast<int128_t>(12345678910111213L) * 1000000000000000000L));
   ASSERT_OK(write->SetUnscaledDecimal("money", 123400));
   // Test a value thats too large
   Status s = write->SetUnscaledDecimal("small", 999);
-  EXPECT_EQ("Invalid argument: value 999 out of range for decimal column 'small'",
-            s.ToString());
+  EXPECT_EQ(
+      "Invalid argument: value 999 out of range for decimal column 'small'",
+      s.ToString());
   ASSERT_OK(session->Apply(insert));
   ASSERT_OK(session->Flush());
 
@@ -142,23 +160,28 @@ TEST_F(DecimalItest, TestDecimalTypes) {
       ASSERT_EQ("123456789", DecimalToString(numeric32, kDefaultDecimalScale));
       int128_t scale32;
       ASSERT_OK(read.GetUnscaledDecimal("scale32", &scale32));
-      ASSERT_EQ("0.123456789",
-                DecimalToString(scale32, kMaxDecimal32Precision));
+      ASSERT_EQ(
+          "0.123456789", DecimalToString(scale32, kMaxDecimal32Precision));
       int128_t numeric64;
       ASSERT_OK(read.GetUnscaledDecimal("numeric64", &numeric64));
-      ASSERT_EQ("12345678910111213", DecimalToString(numeric64, kDefaultDecimalScale));
+      ASSERT_EQ(
+          "12345678910111213",
+          DecimalToString(numeric64, kDefaultDecimalScale));
       int128_t scale64;
       ASSERT_OK(read.GetUnscaledDecimal("scale64", &scale64));
-      ASSERT_EQ("0.012345678910111213",
-                DecimalToString(scale64, kMaxDecimal64Precision));
+      ASSERT_EQ(
+          "0.012345678910111213",
+          DecimalToString(scale64, kMaxDecimal64Precision));
       int128_t numeric128;
       ASSERT_OK(read.GetUnscaledDecimal("numeric128", &numeric128));
-      ASSERT_EQ("12345678910111213000000000000000000",
-                DecimalToString(numeric128, kDefaultDecimalScale));
+      ASSERT_EQ(
+          "12345678910111213000000000000000000",
+          DecimalToString(numeric128, kDefaultDecimalScale));
       int128_t scale128;
       ASSERT_OK(read.GetUnscaledDecimal("scale128", &scale128));
-      ASSERT_EQ("0.00012345678910111213000000000000000000",
-                DecimalToString(scale128, kMaxDecimal128Precision));
+      ASSERT_EQ(
+          "0.00012345678910111213000000000000000000",
+          DecimalToString(scale128, kMaxDecimal128Precision));
       int128_t money;
       ASSERT_OK(read.GetUnscaledDecimal("money", &money));
       ASSERT_EQ("1234.00", DecimalToString(money, 2));
@@ -172,8 +195,10 @@ TEST_F(DecimalItest, TestDecimalTypes) {
       // Try to read a decimal as an integer.
       int32_t int32;
       Status s = read.GetInt32("numeric32", &int32);
-      EXPECT_EQ("Invalid argument: invalid type int32 provided for column "
-                "'numeric32' (expected decimal)", s.ToString());
+      EXPECT_EQ(
+          "Invalid argument: invalid type int32 provided for column "
+          "'numeric32' (expected decimal)",
+          s.ToString());
     }
   }
 }

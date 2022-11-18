@@ -68,10 +68,7 @@ namespace kudu {
 class SecurityComponentsFaultsITest : public KuduTest {
  public:
   SecurityComponentsFaultsITest()
-      : krb_lifetime_seconds_(120),
-        num_masters_(3),
-        num_tservers_(3) {
-
+      : krb_lifetime_seconds_(120), num_masters_(3), num_tservers_(3) {
     // Reopen client-->server connections on every RPC. This is to make sure the
     // servers authenticate the client on every RPC call.
     FLAGS_rpc_reopen_outbound_connections = true;
@@ -90,23 +87,29 @@ class SecurityComponentsFaultsITest : public KuduTest {
 
     // Add common flags for both masters and tservers.
     const vector<string> common_flags = {
-      // Enable tracing of successful KRPC negotiations as well.
-      "--rpc_trace_negotiation",
+        // Enable tracing of successful KRPC negotiations as well.
+        "--rpc_trace_negotiation",
 
-      // Speed up Raft elections.
-      "--raft_heartbeat_interval_ms=25",
-      "--leader_failure_exp_backoff_max_delta_ms=1000",
+        // Speed up Raft elections.
+        "--raft_heartbeat_interval_ms=25",
+        "--leader_failure_exp_backoff_max_delta_ms=1000",
     };
-    std::copy(common_flags.begin(), common_flags.end(),
+    std::copy(
+        common_flags.begin(),
+        common_flags.end(),
         std::back_inserter(cluster_opts_.extra_master_flags));
-    std::copy(common_flags.begin(), common_flags.end(),
+    std::copy(
+        common_flags.begin(),
+        common_flags.end(),
         std::back_inserter(cluster_opts_.extra_tserver_flags));
 
     const vector<string> tserver_flags = {
-      // Decreasing TS->master heartbeat interval speeds up the test.
-      "--heartbeat_interval_ms=25",
+        // Decreasing TS->master heartbeat interval speeds up the test.
+        "--heartbeat_interval_ms=25",
     };
-    std::copy(tserver_flags.begin(), tserver_flags.end(),
+    std::copy(
+        tserver_flags.begin(),
+        tserver_flags.end(),
         std::back_inserter(cluster_opts_.extra_tserver_flags));
   }
 
@@ -122,14 +125,15 @@ class SecurityComponentsFaultsITest : public KuduTest {
     RETURN_NOT_OK(cluster_->CreateClient(nullptr, &client));
 
     // Create a table.
-    KuduSchema schema = client::KuduSchemaFromSchema(CreateKeyValueTestSchema());
+    KuduSchema schema =
+        client::KuduSchemaFromSchema(CreateKeyValueTestSchema());
     gscoped_ptr<KuduTableCreator> table_creator(client->NewTableCreator());
 
     RETURN_NOT_OK(table_creator->table_name(kTableName)
-                  .set_range_partition_columns({ "key" })
-                  .schema(&schema)
-                  .num_replicas(num_tservers_)
-                  .Create());
+                      .set_range_partition_columns({"key"})
+                      .schema(&schema)
+                      .num_replicas(num_tservers_)
+                      .Create());
 
     // Insert a row.
     shared_ptr<KuduTable> table;
@@ -191,16 +195,16 @@ TEST_F(SecurityComponentsFaultsITest, NoKdcOnStart) {
     ASSERT_NE(nullptr, server);
     const Status s = server->Restart();
     ASSERT_TRUE(s.IsRuntimeError()) << s.ToString();
-    ASSERT_STR_CONTAINS(s.ToString(),
-                        "kudu-master: process exited on signal 6");
+    ASSERT_STR_CONTAINS(
+        s.ToString(), "kudu-master: process exited on signal 6");
   }
   {
     auto server = cluster_->tablet_server(0);
     ASSERT_NE(nullptr, server);
     const Status s = server->Restart();
     ASSERT_TRUE(s.IsRuntimeError()) << s.ToString();
-    ASSERT_STR_CONTAINS(s.ToString(),
-                        "kudu-tserver: process exited on signal 6");
+    ASSERT_STR_CONTAINS(
+        s.ToString(), "kudu-tserver: process exited on signal 6");
   }
 }
 
@@ -230,7 +234,8 @@ TEST_F(SecurityComponentsFaultsITest, KdcRestartsInTheMiddle) {
 
   const Status s = SmokeTestCluster();
   ASSERT_TRUE(s.IsNotAuthorized()) << s.ToString();
-  ASSERT_STR_MATCHES(s.ToString(),
+  ASSERT_STR_MATCHES(
+      s.ToString(),
       "Not authorized: Could not connect to the cluster: "
       "Client connection negotiation failed: client connection to .*: "
       "server requires authentication, but client does not have Kerberos credentials available");

@@ -37,9 +37,7 @@ namespace rpc {
 
 class ReactorTest : public RpcTestBase {
  public:
-  ReactorTest()
-    : latch_(1) {
-  }
+  ReactorTest() : latch_(1) {}
 
   void SetUp() override {
     RpcTestBase::SetUp();
@@ -59,8 +57,11 @@ class ReactorTest : public RpcTestBase {
 
   void ScheduledTaskScheduleAgain(const Status& status) {
     messenger_->ScheduleOnReactor(
-        boost::bind(&ReactorTest::ScheduledTaskCheckThread, this, _1,
-                    Thread::current_thread()),
+        boost::bind(
+            &ReactorTest::ScheduledTaskCheckThread,
+            this,
+            _1,
+            Thread::current_thread()),
         MonoDelta::FromMilliseconds(0));
     latch_.CountDown();
   }
@@ -90,8 +91,11 @@ TEST_F(ReactorTest, TestFunctionIsCalledAtTheRightTime) {
 
 TEST_F(ReactorTest, TestFunctionIsCalledIfReactorShutdown) {
   messenger_->ScheduleOnReactor(
-      boost::bind(&ReactorTest::ScheduledTask, this, _1,
-                  Status::Aborted("doesn't matter")),
+      boost::bind(
+          &ReactorTest::ScheduledTask,
+          this,
+          _1,
+          Status::Aborted("doesn't matter")),
       MonoDelta::FromSeconds(60));
   messenger_->Shutdown();
   latch_.Wait();

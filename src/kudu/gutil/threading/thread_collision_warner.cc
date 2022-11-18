@@ -19,7 +19,9 @@
 
 namespace base {
 
-void DCheckAsserter::warn(int64_t previous_thread_id, int64_t current_thread_id) {
+void DCheckAsserter::warn(
+    int64_t previous_thread_id,
+    int64_t current_thread_id) {
   LOG(FATAL) << "Thread Collision! Previous thread id: " << previous_thread_id
              << ", current thread id: " << current_thread_id;
 }
@@ -58,9 +60,8 @@ void ThreadCollisionWarner::EnterSelf() {
   // write on valid_thread_id_ the current thread ID.
   subtle::Atomic64 current_thread_id = CurrentThread();
 
-  int64_t previous_thread_id = subtle::NoBarrier_CompareAndSwap(&valid_thread_id_,
-                                                                0,
-                                                                current_thread_id);
+  int64_t previous_thread_id =
+      subtle::NoBarrier_CompareAndSwap(&valid_thread_id_, 0, current_thread_id);
   if (previous_thread_id != 0 && previous_thread_id != current_thread_id) {
     // gotcha! a thread is trying to use the same class and that is
     // not current thread.
@@ -73,9 +74,8 @@ void ThreadCollisionWarner::EnterSelf() {
 void ThreadCollisionWarner::Enter() {
   subtle::Atomic64 current_thread_id = CurrentThread();
 
-  int64_t previous_thread_id = subtle::NoBarrier_CompareAndSwap(&valid_thread_id_,
-                                                                0,
-                                                                current_thread_id);
+  int64_t previous_thread_id =
+      subtle::NoBarrier_CompareAndSwap(&valid_thread_id_, 0, current_thread_id);
   if (previous_thread_id != 0) {
     // gotcha! another thread is trying to use the same class.
     asserter_->warn(previous_thread_id, current_thread_id);
@@ -90,4 +90,4 @@ void ThreadCollisionWarner::Leave() {
   }
 }
 
-}  // namespace base
+} // namespace base

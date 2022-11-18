@@ -11,9 +11,9 @@
 
 #include <glog/logging.h>
 
-#include "kudu/gutil/integral_types.h"
 #include "kudu/gutil/hash/jenkins.h"
 #include "kudu/gutil/hash/jenkins_lookup2.h"
+#include "kudu/gutil/integral_types.h"
 
 // For components that ship code externally (notably the Google Search
 // Appliance) we want to change the fingerprint function so that
@@ -36,7 +36,7 @@ static inline uint32 char2unsigned(char c) {
   return static_cast<uint32>(static_cast<unsigned char>(c));
 }
 
-uint64 FingerprintReferenceImplementation(const char *s, uint32 len) {
+uint64 FingerprintReferenceImplementation(const char* s, uint32 len) {
   uint32 hi = Hash32StringWithSeed(s, len, kFingerprintSeed0);
   uint32 lo = Hash32StringWithSeed(s, len, kFingerprintSeed1);
   return CombineFingerprintHalves(hi, lo);
@@ -46,11 +46,11 @@ uint64 FingerprintReferenceImplementation(const char *s, uint32 len) {
 // making use of the fact that we're hashing the same string twice.
 // The code is tedious to read, but it's just two interleaved copies of
 // Hash32StringWithSeed().
-uint64 FingerprintInterleavedImplementation(const char *s, uint32 len) {
+uint64 FingerprintInterleavedImplementation(const char* s, uint32 len) {
   uint32 a, b, c = kFingerprintSeed0, d, e, f = kFingerprintSeed1;
   uint32 keylen;
 
-  a = b = d = e = 0x9e3779b9UL;   // the golden ratio; an arbitrary value
+  a = b = d = e = 0x9e3779b9UL; // the golden ratio; an arbitrary value
 
   keylen = len;
   if (keylen >= 4 * sizeof(a)) {
@@ -82,14 +82,14 @@ uint64 FingerprintInterleavedImplementation(const char *s, uint32 len) {
       DCHECK_LT(keylen, sizeof(a));
       c += len;
       f += len;
-      switch ( keylen ) {           // deal with rest.  Cases fall through
-        case 3 :
+      switch (keylen) { // deal with rest.  Cases fall through
+        case 3:
           a += char2unsigned(s[2]) << 16;
           d += char2unsigned(s[2]) << 16;
-        case 2 :
+        case 2:
           a += char2unsigned(s[1]) << 8;
           d += char2unsigned(s[1]) << 8;
-        case 1 :
+        case 1:
           a += char2unsigned(s[0]);
           d += char2unsigned(s[0]);
       }
@@ -97,30 +97,32 @@ uint64 FingerprintInterleavedImplementation(const char *s, uint32 len) {
       DCHECK(sizeof(a) <= keylen && keylen < 3 * sizeof(a));
       c += len;
       f += len;
-      switch ( keylen ) {           // deal with rest.  Cases fall through
+      switch (keylen) { // deal with rest.  Cases fall through
         case 11:
           c += char2unsigned(s[10]) << 24;
           f += char2unsigned(s[10]) << 24;
         case 10:
           c += char2unsigned(s[9]) << 16;
           f += char2unsigned(s[9]) << 16;
-        case 9 :
+        case 9:
           c += char2unsigned(s[8]) << 8;
           f += char2unsigned(s[8]) << 8;
-        case 8 :
-          b += Google1At(s+4);  a += word32AtOffset0;
-          e += Google1At(s+4);  d += word32AtOffset0;
+        case 8:
+          b += Google1At(s + 4);
+          a += word32AtOffset0;
+          e += Google1At(s + 4);
+          d += word32AtOffset0;
           break;
-        case 7 :
+        case 7:
           b += char2unsigned(s[6]) << 16;
           e += char2unsigned(s[6]) << 16;
-        case 6 :
+        case 6:
           b += char2unsigned(s[5]) << 8;
           e += char2unsigned(s[5]) << 8;
-        case 5 :
+        case 5:
           b += char2unsigned(s[4]);
           e += char2unsigned(s[4]);
-        case 4 :
+        case 4:
           a += word32AtOffset0;
           d += word32AtOffset0;
       }
@@ -140,40 +142,42 @@ uint64 FingerprintInterleavedImplementation(const char *s, uint32 len) {
     }
     c += len;
     f += len;
-    switch ( keylen ) {           // deal with rest.  Cases fall through
+    switch (keylen) { // deal with rest.  Cases fall through
       case 11:
         c += char2unsigned(s[10]) << 24;
         f += char2unsigned(s[10]) << 24;
       case 10:
         c += char2unsigned(s[9]) << 16;
         f += char2unsigned(s[9]) << 16;
-      case 9 :
+      case 9:
         c += char2unsigned(s[8]) << 8;
         f += char2unsigned(s[8]) << 8;
-      case 8 :
-        b += Google1At(s+4);  a += Google1At(s);
-        e += Google1At(s+4);  d += Google1At(s);
+      case 8:
+        b += Google1At(s + 4);
+        a += Google1At(s);
+        e += Google1At(s + 4);
+        d += Google1At(s);
         break;
-      case 7 :
+      case 7:
         b += char2unsigned(s[6]) << 16;
         e += char2unsigned(s[6]) << 16;
-      case 6 :
+      case 6:
         b += char2unsigned(s[5]) << 8;
         e += char2unsigned(s[5]) << 8;
-      case 5 :
+      case 5:
         b += char2unsigned(s[4]);
         e += char2unsigned(s[4]);
-      case 4 :
+      case 4:
         a += Google1At(s);
         d += Google1At(s);
         break;
-      case 3 :
+      case 3:
         a += char2unsigned(s[2]) << 16;
         d += char2unsigned(s[2]) << 16;
-      case 2 :
+      case 2:
         a += char2unsigned(s[1]) << 8;
         d += char2unsigned(s[1]) << 8;
-      case 1 :
+      case 1:
         a += char2unsigned(s[0]);
         d += char2unsigned(s[0]);
     }

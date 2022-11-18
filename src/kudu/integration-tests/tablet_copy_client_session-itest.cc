@@ -71,8 +71,9 @@ class TabletCopyClientSessionITest : public ExternalMiniClusterITestBase {
  protected:
   // Bring up two tablet servers. Load tablet(s) onto TS 0, while TS 1 is left
   // blank. Prevent the master from tombstoning evicted replicas.
-  void PrepareClusterForTabletCopy(ExternalMiniClusterOptions opts = ExternalMiniClusterOptions(),
-                                   int num_tablets = kDefaultNumTablets);
+  void PrepareClusterForTabletCopy(
+      ExternalMiniClusterOptions opts = ExternalMiniClusterOptions(),
+      int num_tablets = kDefaultNumTablets);
 
   static const int kDefaultNumTablets;
   const MonoDelta kDefaultTimeout = MonoDelta::FromSeconds(30);
@@ -86,7 +87,8 @@ void TabletCopyClientSessionITest::PrepareClusterForTabletCopy(
   const int kNumTabletServers = 2;
   // We don't want the master to interfere when we manually make copies of
   // tablets onto servers it doesn't know about.
-  opts.extra_master_flags.emplace_back("--master_tombstone_evicted_tablet_replicas=false");
+  opts.extra_master_flags.emplace_back(
+      "--master_tombstone_evicted_tablet_replicas=false");
   opts.num_tablet_servers = kNumTabletServers;
   NO_FATALS(StartClusterWithOpts(std::move(opts)));
   // Shut down the 2nd tablet server; we'll create tablets on the first one.
@@ -95,7 +97,8 @@ void TabletCopyClientSessionITest::PrepareClusterForTabletCopy(
   // Restart the Master so it doesn't try to assign tablets to the dead TS.
   cluster_->master()->Shutdown();
   ASSERT_OK(cluster_->master()->Restart());
-  ASSERT_OK(cluster_->WaitForTabletServerCount(kNumTabletServers - 1, kDefaultTimeout));
+  ASSERT_OK(cluster_->WaitForTabletServerCount(
+      kNumTabletServers - 1, kDefaultTimeout));
 
   // Write a bunch of data to the first tablet server.
   TestWorkload workload(cluster_.get());
@@ -121,12 +124,15 @@ void TabletCopyClientSessionITest::PrepareClusterForTabletCopy(
 
 // Regression test for KUDU-1785. Ensure that starting a tablet copy session
 // while a tablet is bootstrapping will result in a simple failure, not a crash.
-TEST_F(TabletCopyClientSessionITest, TestStartTabletCopyWhileSourceBootstrapping) {
+TEST_F(
+    TabletCopyClientSessionITest,
+    TestStartTabletCopyWhileSourceBootstrapping) {
   if (!AllowSlowTests()) {
     LOG(INFO) << "Test only runs in slow test mode";
     return;
   }
-  const MonoDelta kTimeout = MonoDelta::FromSeconds(90); // Can be very slow on TSAN.
+  const MonoDelta kTimeout =
+      MonoDelta::FromSeconds(90); // Can be very slow on TSAN.
   NO_FATALS(PrepareClusterForTabletCopy());
 
   TServerDetails* ts0 = ts_map_[cluster_->tablet_server(0)->uuid()];
@@ -149,30 +155,42 @@ TEST_F(TabletCopyClientSessionITest, TestStartTabletCopyWhileSourceBootstrapping
     vector<scoped_refptr<Thread>> threads;
     for (int j = 0; j < kNumStartTabletThreads; j++) {
       scoped_refptr<Thread> t;
-      CHECK_OK(Thread::Create("test", "start-tablet-copy", [&]() {
-        // Retry until it succeeds (we will intially race against TS 0 startup).
-        MonoTime deadline = MonoTime::Now() + kTimeout;
-        Status s;
-        while (true) {
-          if (MonoTime::Now() > deadline) {
-            LOG(WARNING) << "Test thread timed out waiting for bootstrap: " << s.ToString();
-            return;
-          }
-          s = StartTabletCopy(ts1, tablet_id, ts0->uuid(), src_addr, 0,
-                              deadline - MonoTime::Now());
-          if (s.ok()) {
-            break;
-          }
-          s = CheckIfTabletRunning(ts1, tablet_id, deadline - MonoTime::Now());
-          if (s.ok()) {
-            break;
-          }
-          SleepFor(MonoDelta::FromMilliseconds(rand() % 50));
-          continue;
-        }
-        // If we got here, we either successfully started a tablet copy or we
-        // observed the tablet running.
-      }, &t));
+      CHECK_OK(Thread::Create(
+          "test",
+          "start-tablet-copy",
+          [&]() {
+            // Retry until it succeeds (we will intially race against TS 0
+            // startup).
+            MonoTime deadline = MonoTime::Now() + kTimeout;
+            Status s;
+            while (true) {
+              if (MonoTime::Now() > deadline) {
+                LOG(WARNING) << "Test thread timed out waiting for bootstrap: "
+                             << s.ToString();
+                return;
+              }
+              s = StartTabletCopy(
+                  ts1,
+                  tablet_id,
+                  ts0->uuid(),
+                  src_addr,
+                  0,
+                  deadline - MonoTime::Now());
+              if (s.ok()) {
+                break;
+              }
+              s = CheckIfTabletRunning(
+                  ts1, tablet_id, deadline - MonoTime::Now());
+              if (s.ok()) {
+                break;
+              }
+              SleepFor(MonoDelta::FromMilliseconds(rand() % 50));
+              continue;
+            }
+            // If we got here, we either successfully started a tablet copy or
+            // we observed the tablet running.
+          },
+          &t));
       threads.push_back(t);
     }
 
@@ -193,9 +211,8 @@ TEST_F(TabletCopyClientSessionITest, TestStartTabletCopyWhileSourceBootstrapping
     // tablet copy operation completing, so we retry tablet deletion attempts.
     // We want a clean deletion so only one thread wins, then we have to
     // restart TS 1 to clear knowledge of the replica from memory.
-    ASSERT_OK(DeleteTabletWithRetries(ts1, tablet_id,
-                                      TabletDataState::TABLET_DATA_DELETED,
-                                      kTimeout));
+    ASSERT_OK(DeleteTabletWithRetries(
+        ts1, tablet_id, TabletDataState::TABLET_DATA_DELETED, kTimeout));
     cluster_->tablet_server(1)->Shutdown();
     ASSERT_OK(cluster_->tablet_server(1)->Restart());
   }
@@ -208,28 +225,36 @@ TEST_F(TabletCopyClientSessionITest, TestStartTabletCopy) {
   TServerDetails* ts0 = ts_map_[cluster_->tablet_server(0)->uuid()];
   TServerDetails* ts1 = ts_map_[cluster_->tablet_server(1)->uuid()];
   vector<ListTabletsResponsePB::StatusAndSchemaPB> tablets;
-  ASSERT_OK(WaitForNumTabletsOnTS(ts0, kDefaultNumTablets, kDefaultTimeout, &tablets));
+  ASSERT_OK(WaitForNumTabletsOnTS(
+      ts0, kDefaultNumTablets, kDefaultTimeout, &tablets));
   ASSERT_EQ(kDefaultNumTablets, tablets.size());
   const string& tablet_id = tablets[0].tablet_status().tablet_id();
 
   // Scenarios to run tablet copy on top of:
   enum Scenarios {
-    kPristine,    // No tablets.
-    kTombstoned,  // A tombstoned tablet.
+    kPristine, // No tablets.
+    kTombstoned, // A tombstoned tablet.
     kLast
   };
   for (int scenario = 0; scenario < kLast; scenario++) {
     if (scenario == kTombstoned) {
-      ASSERT_OK(DeleteTabletWithRetries(ts1, tablet_id,
-                                        TabletDataState::TABLET_DATA_TOMBSTONED,
-                                        kDefaultTimeout));
+      ASSERT_OK(DeleteTabletWithRetries(
+          ts1,
+          tablet_id,
+          TabletDataState::TABLET_DATA_TOMBSTONED,
+          kDefaultTimeout));
     }
 
     // Run tablet copy.
     HostPort src_addr;
     ASSERT_OK(HostPortFromPB(ts0->registration.rpc_addresses(0), &src_addr));
-    ASSERT_OK(StartTabletCopy(ts1, tablet_id, ts0->uuid(), src_addr,
-                              std::numeric_limits<int64_t>::max(), kDefaultTimeout));
+    ASSERT_OK(StartTabletCopy(
+        ts1,
+        tablet_id,
+        ts0->uuid(),
+        src_addr,
+        std::numeric_limits<int64_t>::max(),
+        kDefaultTimeout));
     ASSERT_OK(WaitUntilTabletRunning(ts1, tablet_id, kDefaultTimeout));
   }
 }
@@ -242,23 +267,32 @@ TEST_F(TabletCopyClientSessionITest, TestCopyFromCrashedSource) {
   TServerDetails* ts0 = ts_map_[cluster_->tablet_server(0)->uuid()];
   TServerDetails* ts1 = ts_map_[cluster_->tablet_server(1)->uuid()];
   vector<ListTabletsResponsePB::StatusAndSchemaPB> tablets;
-  ASSERT_OK(WaitForNumTabletsOnTS(ts0, kDefaultNumTablets, kDefaultTimeout, &tablets));
+  ASSERT_OK(WaitForNumTabletsOnTS(
+      ts0, kDefaultNumTablets, kDefaultTimeout, &tablets));
   ASSERT_EQ(kDefaultNumTablets, tablets.size());
   const string& tablet_id = tablets[0].tablet_status().tablet_id();
 
   // Crash when serving tablet copy.
-  ASSERT_OK(cluster_->SetFlag(cluster_->tablet_server(0),
-                              "fault_crash_on_handle_tc_fetch_data",
-                              "1.0"));
+  ASSERT_OK(cluster_->SetFlag(
+      cluster_->tablet_server(0),
+      "fault_crash_on_handle_tc_fetch_data",
+      "1.0"));
 
   HostPort src_addr;
   ASSERT_OK(HostPortFromPB(ts0->registration.rpc_addresses(0), &src_addr));
-  ASSERT_OK(StartTabletCopy(ts1, tablet_id, ts0->uuid(), src_addr,
-                            std::numeric_limits<int64_t>::max(), kDefaultTimeout));
+  ASSERT_OK(StartTabletCopy(
+      ts1,
+      tablet_id,
+      ts0->uuid(),
+      src_addr,
+      std::numeric_limits<int64_t>::max(),
+      kDefaultTimeout));
 
-  ASSERT_OK(inspect_->WaitForTabletDataStateOnTS(1, tablet_id,
-                                                 { TabletDataState::TABLET_DATA_TOMBSTONED },
-                                                 kDefaultTimeout));
+  ASSERT_OK(inspect_->WaitForTabletDataStateOnTS(
+      1,
+      tablet_id,
+      {TabletDataState::TABLET_DATA_TOMBSTONED},
+      kDefaultTimeout));
 
   // The source server will crash.
   ASSERT_OK(cluster_->tablet_server(0)->WaitForInjectedCrash(kDefaultTimeout));
@@ -272,9 +306,14 @@ TEST_F(TabletCopyClientSessionITest, TestCopyFromCrashedSource) {
   // KUDU-2444: Even though the copy failed and the tablet replica is
   // tombstoned, the tablet manager may not have transitioned the replica out
   // of the 'copying' phase yet, so we retry here.
-  ASSERT_EVENTUALLY([&]{
-    ASSERT_OK(StartTabletCopy(ts1, tablet_id, ts0->uuid(), src_addr,
-                              std::numeric_limits<int64_t>::max(), kDefaultTimeout));
+  ASSERT_EVENTUALLY([&] {
+    ASSERT_OK(StartTabletCopy(
+        ts1,
+        tablet_id,
+        ts0->uuid(),
+        src_addr,
+        std::numeric_limits<int64_t>::max(),
+        kDefaultTimeout));
   });
   ASSERT_OK(WaitUntilTabletRunning(ts1, tablet_id, kDefaultTimeout));
 }
@@ -289,14 +328,16 @@ TEST_F(TabletCopyClientSessionITest, TestTabletCopyWithBusySource) {
   const int kNumTablets = 20;
 
   ExternalMiniClusterOptions opts;
-  opts.extra_tserver_flags.emplace_back(Substitute("--num_tablets_to_copy_simultaneously=$0",
-                                                      kNumTablets));
+  opts.extra_tserver_flags.emplace_back(
+      Substitute("--num_tablets_to_copy_simultaneously=$0", kNumTablets));
   NO_FATALS(PrepareClusterForTabletCopy(opts, kNumTablets));
 
   // Tune down the RPC capacity on the source server to ensure
   // ERROR_SERVER_TOO_BUSY errors occur.
-  cluster_->tablet_server(0)->mutable_flags()->emplace_back("--rpc_service_queue_length=1");
-  cluster_->tablet_server(0)->mutable_flags()->emplace_back("--rpc_num_service_threads=1");
+  cluster_->tablet_server(0)->mutable_flags()->emplace_back(
+      "--rpc_service_queue_length=1");
+  cluster_->tablet_server(0)->mutable_flags()->emplace_back(
+      "--rpc_num_service_threads=1");
 
   // Restart the TS for the new flags to take effect.
   cluster_->tablet_server(0)->Shutdown();
@@ -305,8 +346,12 @@ TEST_F(TabletCopyClientSessionITest, TestTabletCopyWithBusySource) {
   TServerDetails* ts0 = ts_map_[cluster_->tablet_server(0)->uuid()];
   TServerDetails* ts1 = ts_map_[cluster_->tablet_server(1)->uuid()];
   vector<ListTabletsResponsePB::StatusAndSchemaPB> tablets;
-  ASSERT_OK(WaitForNumTabletsOnTS(ts0, kNumTablets, kDefaultTimeout,
-                                  &tablets, tablet::TabletStatePB::RUNNING));
+  ASSERT_OK(WaitForNumTabletsOnTS(
+      ts0,
+      kNumTablets,
+      kDefaultTimeout,
+      &tablets,
+      tablet::TabletStatePB::RUNNING));
   ASSERT_EQ(kNumTablets, tablets.size());
 
   HostPort src_addr;
@@ -317,8 +362,13 @@ TEST_F(TabletCopyClientSessionITest, TestTabletCopyWithBusySource) {
     threads.emplace_back(thread([&] {
       const string& tablet_id = tablet.tablet_status().tablet_id();
       // Run tablet copy.
-      CHECK_OK(StartTabletCopy(ts1, tablet_id, ts0->uuid(), src_addr,
-                               std::numeric_limits<int64_t>::max(), kDefaultTimeout));
+      CHECK_OK(StartTabletCopy(
+          ts1,
+          tablet_id,
+          ts0->uuid(),
+          src_addr,
+          std::numeric_limits<int64_t>::max(),
+          kDefaultTimeout));
       CHECK_OK(WaitUntilTabletRunning(ts1, tablet_id, kDefaultTimeout));
     }));
   }
@@ -339,16 +389,15 @@ TEST_F(TabletCopyClientSessionITest, TestStopCopyOnClientDiskFailure) {
   const MonoDelta kTimeout = MonoDelta::FromSeconds(90);
   ExternalMiniClusterOptions opts;
   opts.extra_tserver_flags = {
-    Substitute("--num_tablets_to_copy_simultaneously=$0", kNumTablets),
+      Substitute("--num_tablets_to_copy_simultaneously=$0", kNumTablets),
 
-    // Ensure we get some blocks to copy. This also serves to stress more
-    // complex, concurrent codepaths.
-    "--flush_threshold_mb=1",
-    "--flush_threshold_secs=1",
+      // Ensure we get some blocks to copy. This also serves to stress more
+      // complex, concurrent codepaths.
+      "--flush_threshold_mb=1",
+      "--flush_threshold_secs=1",
 
-    // Ensure we don't crash when we start injecting errors.
-    "--crash_on_eio=false"
-  };
+      // Ensure we don't crash when we start injecting errors.
+      "--crash_on_eio=false"};
 
   // Create a cluster with multiple directories per server so we can fail a
   // directory without crashing.
@@ -366,7 +415,8 @@ TEST_F(TabletCopyClientSessionITest, TestStopCopyOnClientDiskFailure) {
   // Wait a bit for some flushes to occur and blocks to appear.
   ASSERT_EVENTUALLY([&] {
     // Each data dir has '.', '..', and 'block_manager_instance'.
-    const string& dir_with_data = JoinPathSegments(ext_ts0->data_dirs()[0], "data");
+    const string& dir_with_data =
+        JoinPathSegments(ext_ts0->data_dirs()[0], "data");
     ASSERT_GT(inspect_->CountFilesInDir(dir_with_data), 3);
   });
 
@@ -374,20 +424,24 @@ TEST_F(TabletCopyClientSessionITest, TestStopCopyOnClientDiskFailure) {
   HostPort src_addr;
   ASSERT_OK(HostPortFromPB(ts0->registration.rpc_addresses(0), &src_addr));
   vector<thread> threads;
-  auto CopyTabletWithNum = [&] (int i) {
+  auto CopyTabletWithNum = [&](int i) {
     LOG(INFO) << Substitute("Copying over tablet $0 / $1", i + 1, kNumTablets);
     const string& tablet_id = tablets[i].tablet_status().tablet_id();
     // The copy can fail if the tablet in the middle of some maintenance
     // operations, complaining about missing blocks. Just try again.
-    while (!StartTabletCopy(ts1, tablet_id, ts0->uuid(), src_addr,
-           std::numeric_limits<int64_t>::max(), kDefaultTimeout).ok()) {
+    while (!StartTabletCopy(
+                ts1,
+                tablet_id,
+                ts0->uuid(),
+                src_addr,
+                std::numeric_limits<int64_t>::max(),
+                kDefaultTimeout)
+                .ok()) {
       SleepFor(MonoDelta::FromMilliseconds(50));
     }
   };
   for (int i = 0; i < tablets.size() - 1; i++) {
-    threads.emplace_back([=] {
-      CopyTabletWithNum(i);
-    });
+    threads.emplace_back([=] { CopyTabletWithNum(i); });
   }
   for (auto& thread : threads) {
     thread.join();
@@ -396,8 +450,8 @@ TEST_F(TabletCopyClientSessionITest, TestStopCopyOnClientDiskFailure) {
   // Inject failures into a directory on the receiving server.
   const string& dir_to_fail = ext_ts1->data_dirs()[1];
   LOG(INFO) << "Injecting failures to " << dir_to_fail;
-  ASSERT_OK(cluster_->SetFlag(ext_ts1, "env_inject_eio_globs",
-      JoinPathSegments(dir_to_fail, "**")));
+  ASSERT_OK(cluster_->SetFlag(
+      ext_ts1, "env_inject_eio_globs", JoinPathSegments(dir_to_fail, "**")));
 
   // Copy over the last tablet and immediately try failing it.
   CopyTabletWithNum(kNumTablets - 1);
@@ -409,9 +463,15 @@ TEST_F(TabletCopyClientSessionITest, TestStopCopyOnClientDiskFailure) {
   // not necessarily all, tablets have failed.
   ASSERT_EVENTUALLY([&] {
     int64_t failed_on_ts = 0;
-    ASSERT_OK(itest::GetInt64Metric(ext_ts1->bound_http_hostport(),
-        &METRIC_ENTITY_server, nullptr, &METRIC_tablets_num_failed, "value", &failed_on_ts));
-    LOG(INFO) << Substitute("Waiting for tablets to fail: $0 / $1", failed_on_ts, kNumTablets);
+    ASSERT_OK(itest::GetInt64Metric(
+        ext_ts1->bound_http_hostport(),
+        &METRIC_ENTITY_server,
+        nullptr,
+        &METRIC_tablets_num_failed,
+        "value",
+        &failed_on_ts));
+    LOG(INFO) << Substitute(
+        "Waiting for tablets to fail: $0 / $1", failed_on_ts, kNumTablets);
     ASSERT_GE(failed_on_ts, kNumTablets - 1);
     LOG(INFO) << "Asserted success!";
   });

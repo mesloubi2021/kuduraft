@@ -39,8 +39,11 @@ typedef std::function<void(const Status& status)> StdStatusCallback;
 // is needed.
 extern void DoNothingStatusCB(const Status& status);
 
-// A callback that crashes with a FATAL log message if the given Status is not OK.
-extern void CrashIfNotOkStatusCB(const std::string& message, const Status& status);
+// A callback that crashes with a FATAL log message if the given Status is not
+// OK.
+extern void CrashIfNotOkStatusCB(
+    const std::string& message,
+    const Status& status);
 
 // A closure (callback without arguments) that returns a Status indicating
 // whether it was successful or not.

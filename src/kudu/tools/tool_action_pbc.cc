@@ -19,7 +19,7 @@
 
 #include <cstdlib>
 #include <exception>
-#include <fstream>  // IWYU pragma: keep
+#include <fstream> // IWYU pragma: keep
 #include <iostream>
 #include <memory>
 #include <string>
@@ -58,7 +58,10 @@ TAG_FLAG(oneline, stable);
 DEFINE_bool(json, false, "Print protobufs in JSON format");
 TAG_FLAG(json, stable);
 
-DEFINE_bool(debug, false, "Print extra debugging information about each protobuf");
+DEFINE_bool(
+    debug,
+    false,
+    "Print extra debugging information about each protobuf");
 TAG_FLAG(debug, stable);
 
 DEFINE_bool(backup, true, "Write a backup file");
@@ -76,11 +79,13 @@ const char* const kPathArg = "path";
 
 Status DumpPBContainerFile(const RunnerContext& context) {
   if (FLAGS_oneline && FLAGS_json) {
-    return Status::InvalidArgument("only one of --json or --oneline may be provided");
+    return Status::InvalidArgument(
+        "only one of --json or --oneline may be provided");
   }
 
   if (FLAGS_debug && (FLAGS_oneline || FLAGS_json)) {
-    return Status::InvalidArgument("--debug is not compatible with --json or --oneline");
+    return Status::InvalidArgument(
+        "--debug is not compatible with --json or --oneline");
   }
 
   const string& path = FindOrDie(context.required_args, kPathArg);
@@ -122,8 +127,7 @@ Status RunEditor(const string& path) {
   return Status::OK();
 }
 
-Status LoadFileToLines(const string& path,
-                       vector<string>* lines) {
+Status LoadFileToLines(const string& path, vector<string>* lines) {
   try {
     string line;
     std::ifstream f(path);
@@ -134,7 +138,6 @@ Status LoadFileToLines(const string& path,
     return Status::IOError(e.what());
   }
   return Status::OK();
-
 }
 
 Status EditFile(const RunnerContext& context) {
@@ -149,13 +152,16 @@ Status EditFile(const RunnerContext& context) {
   RETURN_NOT_OK(pb_reader.Open());
 
   // Make a new RWFile where we'll write the changed PBC file.
-  // Do this up front so that we fail early if the user doesn't have appropriate permissions.
+  // Do this up front so that we fail early if the user doesn't have appropriate
+  // permissions.
   const string tmp_out_path = path + ".new";
   unique_ptr<RWFile> out_rwfile;
-  RETURN_NOT_OK_PREPEND(env->NewRWFile(tmp_out_path, &out_rwfile), "couldn't open output PBC file");
+  RETURN_NOT_OK_PREPEND(
+      env->NewRWFile(tmp_out_path, &out_rwfile),
+      "couldn't open output PBC file");
   auto delete_tmp_output = MakeScopedCleanup([&]() {
-    WARN_NOT_OK(env->DeleteFile(tmp_out_path),
-                "Could not delete file " + tmp_out_path);
+    WARN_NOT_OK(
+        env->DeleteFile(tmp_out_path), "Could not delete file " + tmp_out_path);
   });
 
   // Also make a tmp file where we'll write the PBC in JSON format for
@@ -163,13 +169,17 @@ Status EditFile(const RunnerContext& context) {
   unique_ptr<WritableFile> tmp_json_file;
   string tmp_json_path;
   const string tmp_template = Substitute("pbc-edit$0.XXXXXX", kTmpInfix);
-  RETURN_NOT_OK_PREPEND(env->NewTempWritableFile(WritableFileOptions(),
-                                                 JoinPathSegments(dir, tmp_template),
-                                                 &tmp_json_path, &tmp_json_file),
-                        "couldn't create temporary file");
+  RETURN_NOT_OK_PREPEND(
+      env->NewTempWritableFile(
+          WritableFileOptions(),
+          JoinPathSegments(dir, tmp_template),
+          &tmp_json_path,
+          &tmp_json_file),
+      "couldn't create temporary file");
   auto delete_tmp_json = MakeScopedCleanup([&]() {
-    WARN_NOT_OK(env->DeleteFile(tmp_json_path),
-                "Could not delete file " + tmp_json_path);
+    WARN_NOT_OK(
+        env->DeleteFile(tmp_json_path),
+        "Could not delete file " + tmp_json_path);
   });
 
   // Dump the contents in JSON to the temporary file.
@@ -177,22 +187,29 @@ Status EditFile(const RunnerContext& context) {
     // It is quite difficult to get a C++ ostream pointed at a temporary file,
     // so we just dump to a string and then write it to a file.
     std::ostringstream stream;
-    RETURN_NOT_OK(pb_reader.Dump(&stream, ReadablePBContainerFile::Format::JSON));
-    RETURN_NOT_OK_PREPEND(tmp_json_file->Append(stream.str()), "couldn't write to temporary file");
-    RETURN_NOT_OK_PREPEND(tmp_json_file->Close(), "couldn't close temporary file");
+    RETURN_NOT_OK(
+        pb_reader.Dump(&stream, ReadablePBContainerFile::Format::JSON));
+    RETURN_NOT_OK_PREPEND(
+        tmp_json_file->Append(stream.str()),
+        "couldn't write to temporary file");
+    RETURN_NOT_OK_PREPEND(
+        tmp_json_file->Close(), "couldn't close temporary file");
   }
 
-  // Open the temporary file in the editor for the user to edit, and load the content
-  // back into a list of lines.
+  // Open the temporary file in the editor for the user to edit, and load the
+  // content back into a list of lines.
   RETURN_NOT_OK(RunEditor(tmp_json_path));
 
   {
     const google::protobuf::Message* prototype;
-    RETURN_NOT_OK_PREPEND(pb_reader.GetPrototype(&prototype),
-                          "couldn't load message prototype from file");
+    RETURN_NOT_OK_PREPEND(
+        pb_reader.GetPrototype(&prototype),
+        "couldn't load message prototype from file");
 
-    pb_util::WritablePBContainerFile pb_writer(std::shared_ptr<RWFile>(out_rwfile.release()));
-    RETURN_NOT_OK_PREPEND(pb_writer.CreateNew(*prototype), "couldn't init PBC writer");
+    pb_util::WritablePBContainerFile pb_writer(
+        std::shared_ptr<RWFile>(out_rwfile.release()));
+    RETURN_NOT_OK_PREPEND(
+        pb_writer.CreateNew(*prototype), "couldn't init PBC writer");
 
     // Parse the edited file.
     unique_ptr<google::protobuf::Message> m(prototype->New());
@@ -200,13 +217,15 @@ Status EditFile(const RunnerContext& context) {
     RETURN_NOT_OK(LoadFileToLines(tmp_json_path, &lines));
     for (const string& l : lines) {
       m->Clear();
-      const auto& google_status = google::protobuf::util::JsonStringToMessage(l, m.get());
+      const auto& google_status =
+          google::protobuf::util::JsonStringToMessage(l, m.get());
       if (!google_status.ok()) {
         return Status::InvalidArgument(
             Substitute("Unable to parse JSON line: $0", l),
             google_status.error_message().ToString());
       }
-      RETURN_NOT_OK_PREPEND(pb_writer.Append(*m), "unable to append PB to output");
+      RETURN_NOT_OK_PREPEND(
+          pb_writer.Append(*m), "unable to append PB to output");
     }
     RETURN_NOT_OK_PREPEND(pb_writer.Sync(), "failed to sync output");
     RETURN_NOT_OK_PREPEND(pb_writer.Close(), "failed to close output");
@@ -215,13 +234,13 @@ Status EditFile(const RunnerContext& context) {
   if (FLAGS_backup) {
     // Move the old file to a backup location.
     string backup_path = Substitute("$0.bak.$1", path, GetCurrentTimeMicros());
-    RETURN_NOT_OK_PREPEND(env->RenameFile(path, backup_path),
-                          "couldn't back up original file");
+    RETURN_NOT_OK_PREPEND(
+        env->RenameFile(path, backup_path), "couldn't back up original file");
     LOG(INFO) << "Moved original file to " << backup_path;
   }
   // Move the new file to the final location.
-  RETURN_NOT_OK_PREPEND(env->RenameFile(tmp_out_path, path),
-                        "couldn't move new file into place");
+  RETURN_NOT_OK_PREPEND(
+      env->RenameFile(tmp_out_path, path), "couldn't move new file into place");
   delete_tmp_output.cancel();
   WARN_NOT_OK(env->SyncDir(dir), "couldn't sync directory");
 
@@ -233,19 +252,19 @@ Status EditFile(const RunnerContext& context) {
 unique_ptr<Mode> BuildPbcMode() {
   unique_ptr<Action> dump =
       ActionBuilder("dump", &DumpPBContainerFile)
-      .Description("Dump a PBC (protobuf container) file")
-      .AddOptionalParameter("debug")
-      .AddOptionalParameter("oneline")
-      .AddOptionalParameter("json")
-      .AddRequiredParameter({kPathArg, "path to PBC file"})
-      .Build();
+          .Description("Dump a PBC (protobuf container) file")
+          .AddOptionalParameter("debug")
+          .AddOptionalParameter("oneline")
+          .AddOptionalParameter("json")
+          .AddRequiredParameter({kPathArg, "path to PBC file"})
+          .Build();
 
   unique_ptr<Action> edit =
       ActionBuilder("edit", &EditFile)
-      .Description("Edit a PBC (protobuf container) file")
-      .AddOptionalParameter("backup")
-      .AddRequiredParameter({kPathArg, "path to PBC file"})
-      .Build();
+          .Description("Edit a PBC (protobuf container) file")
+          .AddOptionalParameter("backup")
+          .AddRequiredParameter({kPathArg, "path to PBC file"})
+          .Build();
 
   return ModeBuilder("pbc")
       .Description("Operate on PBC (protobuf container) files")

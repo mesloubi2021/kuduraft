@@ -63,38 +63,43 @@
 //
 // - "runtime":
 //         These flags can be safely changed at runtime via an RPC to the
-//         server. Changing a flag at runtime that does not have this tag is allowed
-//         only if the user specifies a "force_unsafe_change" flag in the RPC.
+//         server. Changing a flag at runtime that does not have this tag is
+//         allowed only if the user specifies a "force_unsafe_change" flag in
+//         the RPC.
 //
 //         NOTE: because gflags are simple global variables, it's important to
-//         think very carefully before tagging a flag with 'runtime'. In particular,
-//         if a string-type flag is marked 'runtime', you should never access it
-//         using the raw 'FLAGS_foo_bar' name. Instead, you must use the
-//         google::GetCommandLineFlagInfo(...) API to make a copy of the flag value
-//         under a lock. Otherwise, the 'std::string' instance could be mutated
-//         underneath the reader causing a crash.
+//         think very carefully before tagging a flag with 'runtime'. In
+//         particular, if a string-type flag is marked 'runtime', you should
+//         never access it using the raw 'FLAGS_foo_bar' name. Instead, you must
+//         use the google::GetCommandLineFlagInfo(...) API to make a copy of the
+//         flag value under a lock. Otherwise, the 'std::string' instance could
+//         be mutated underneath the reader causing a crash.
 //
-//         For primitive-type flags, we assume that reading a variable is atomic.
-//         That is to say that a reader will either see the old value or the new
-//         one, but not some invalid value. However, for the runtime change to
-//         have any effect, you must be sure to use the FLAGS_foo_bar variable directly
-//         rather than initializing some instance variable during program startup.
+//         For primitive-type flags, we assume that reading a variable is
+//         atomic. That is to say that a reader will either see the old value or
+//         the new one, but not some invalid value. However, for the runtime
+//         change to have any effect, you must be sure to use the FLAGS_foo_bar
+//         variable directly rather than initializing some instance variable
+//         during program startup.
 //
 // - "sensitive":
-//         The values of these flags are considered sensitive and will be redacted
-//         if redaction is enabled.
+//         The values of these flags are considered sensitive and will be
+//         redacted if redaction is enabled.
 //
 // A given flag may have zero or more tags associated with it. The system does
 // not make any attempt to check integrity of the tags - for example, it allows
 // you to mark a flag as both stable and unstable, even though this makes no
-// real sense. Nevertheless, you should strive to meet the following requirements:
+// real sense. Nevertheless, you should strive to meet the following
+// requirements:
 //
 // - A flag should have exactly no more than one of stable/evolving/experimental
 //   indicating its stability. 'evolving' is considered the default.
-// - A flag should have no more than one of advanced/hidden indicating visibility
+// - A flag should have no more than one of advanced/hidden indicating
+// visibility
 //   in documentation. If neither is specified, the flag will be in the main
 //   section of the documentation.
-// - It is likely that most 'experimental' flags will also be 'advanced' or 'hidden',
+// - It is likely that most 'experimental' flags will also be 'advanced' or
+// 'hidden',
 //   and that 'stable' flags are not likely to be 'hidden' or 'unsafe'.
 //
 // To add a tag to a flag, use the TAG_FLAG macro. For example:
@@ -135,19 +140,22 @@ struct FlagTags {
 //
 // This also validates that 'tag' is a valid flag as defined in the FlagTags
 // enum above.
-#define TAG_FLAG(flag_name, tag) \
-  KUDU_COMPILE_ASSERT(sizeof(decltype(FLAGS_##flag_name)), flag_does_not_exist); \
-  KUDU_COMPILE_ASSERT(sizeof(::kudu::FlagTags::tag), invalid_tag);   \
-  namespace {                                                     \
-    ::kudu::flag_tags_internal::FlagTagger t_##flag_name##_##tag( \
-        AS_STRING(flag_name), AS_STRING(tag));                    \
+#define TAG_FLAG(flag_name, tag)                                   \
+  KUDU_COMPILE_ASSERT(                                             \
+      sizeof(decltype(FLAGS_##flag_name)), flag_does_not_exist);   \
+  KUDU_COMPILE_ASSERT(sizeof(::kudu::FlagTags::tag), invalid_tag); \
+  namespace {                                                      \
+  ::kudu::flag_tags_internal::FlagTagger t_##flag_name##_##tag(    \
+      AS_STRING(flag_name),                                        \
+      AS_STRING(tag));                                             \
   }
 
 // Fetch the list of flags associated with the given flag.
 //
 // If the flag is invalid or has no tags, sets 'tags' to be empty.
-void GetFlagTags(const std::string& flag_name,
-                 std::unordered_set<std::string>* tags);
+void GetFlagTags(
+    const std::string& flag_name,
+    std::unordered_set<std::string>* tags);
 
 // ------------------------------------------------------------
 // Internal implementation details

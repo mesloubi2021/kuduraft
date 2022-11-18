@@ -22,8 +22,11 @@ const char* Status::CopyState(const char* state) {
   return result;
 }
 
-Status::Status(Code code, const Slice& msg, const Slice& msg2,
-               int16_t posix_code) {
+Status::Status(
+    Code code,
+    const Slice& msg,
+    const Slice& msg2,
+    int16_t posix_code) {
   DCHECK(code != kOk);
   const uint32_t len1 = msg.size();
   const uint32_t len2 = msg2.size();
@@ -167,4 +170,4 @@ size_t Status::memory_footprint_excluding_this() const {
 size_t Status::memory_footprint_including_this() const {
   return kudu_malloc_usable_size(this) + memory_footprint_excluding_this();
 }
-}  // namespace kudu
+} // namespace kudu

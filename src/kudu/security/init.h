@@ -37,21 +37,22 @@ static const std::string kKrb5CCName = "MEMORY:kudu";
 
 // Initializes Kerberos for a server. In particular, this processes
 // the '--keytab_file' command line flag.
-// 'raw_principal' is the principal to Kinit with after calling GetConfiguredPrincipal()
-// on it.
-// 'keytab_file' is the path to the kerberos keytab file. If it's an empty string, kerberos
-// will not be initialized.
+// 'raw_principal' is the principal to Kinit with after calling
+// GetConfiguredPrincipal() on it. 'keytab_file' is the path to the kerberos
+// keytab file. If it's an empty string, kerberos will not be initialized.
 // 'krb5ccname' is passed into the KRB5CCNAME env var.
-// 'disable_krb5_replay_cache' if set to true, disables the kerberos replay cache by setting
-// the KRB5RCACHETYPE env var to "none".
-Status InitKerberosForServer(const std::string& raw_principal,
-                             const std::string& keytab_file,
-                             const std::string& krb5ccname = kKrb5CCName,
-                             bool disable_krb5_replay_cache = true);
+// 'disable_krb5_replay_cache' if set to true, disables the kerberos replay
+// cache by setting the KRB5RCACHETYPE env var to "none".
+Status InitKerberosForServer(
+    const std::string& raw_principal,
+    const std::string& keytab_file,
+    const std::string& krb5ccname = kKrb5CCName,
+    bool disable_krb5_replay_cache = true);
 
 // Returns the process lock 'kerberos_reinit_lock'
 // This lock is taken in write mode while the ticket is being reacquired, and
-// taken in read mode before using the SASL library which might require a ticket.
+// taken in read mode before using the SASL library which might require a
+// ticket.
 RWMutex* KerberosReinitLock();
 
 // Return the full principal (user/host@REALM) that the server has used to
@@ -63,22 +64,25 @@ boost::optional<std::string> GetLoggedInPrincipalFromKeytab();
 // Same, but returns the mapped short username.
 boost::optional<std::string> GetLoggedInUsernameFromKeytab();
 
-// Canonicalize the given principal name by adding '@DEFAULT_REALM' in the case that
-// the principal has no realm.
+// Canonicalize the given principal name by adding '@DEFAULT_REALM' in the case
+// that the principal has no realm.
 //
-// TODO(todd): move to kerberos_util.h in the later patch in this series (the file doesn't
-// exist yet, and trying to avoid rebase pain).
+// TODO(todd): move to kerberos_util.h in the later patch in this series (the
+// file doesn't exist yet, and trying to avoid rebase pain).
 Status CanonicalizeKrb5Principal(std::string* principal);
 
-// Map the given Kerberos principal 'principal' to a short username (i.e. with no realm or
-// host component).
+// Map the given Kerberos principal 'principal' to a short username (i.e. with
+// no realm or host component).
 //
-// This respects the "auth-to-local" mappings from the system krb5.conf. However, if no such
-// mapping can be found, we fall back to simply taking the first component of the principal.
+// This respects the "auth-to-local" mappings from the system krb5.conf.
+// However, if no such mapping can be found, we fall back to simply taking the
+// first component of the principal.
 //
-// TODO(todd): move to kerberos_util.h in the later patch in this series (the file doesn't
-// exist yet, and trying to avoid rebase pain).
-Status MapPrincipalToLocalName(const std::string& principal, std::string* local_name);
+// TODO(todd): move to kerberos_util.h in the later patch in this series (the
+// file doesn't exist yet, and trying to avoid rebase pain).
+Status MapPrincipalToLocalName(
+    const std::string& principal,
+    std::string* local_name);
 
 } // namespace security
 } // namespace kudu

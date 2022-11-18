@@ -35,8 +35,7 @@ using strings::Substitute;
 namespace kudu {
 namespace log {
 
-class LogAnchorRegistryTest : public KuduTest {
-};
+class LogAnchorRegistryTest : public KuduTest {};
 
 TEST_F(LogAnchorRegistryTest, TestUpdateRegistration) {
   const string test_name = CURRENT_TEST_NAME();
@@ -77,9 +76,11 @@ TEST_F(LogAnchorRegistryTest, TestDuplicateInserts) {
 
   // We should see none registered.
   Status s = reg->GetEarliestRegisteredLogIndex(&first_index);
-  ASSERT_TRUE(s.IsNotFound())
-      << Substitute("Should have empty OpId registry. Status: $0, anchor: $1, Num anchors: $2",
-                    s.ToString(), first_index, reg->GetAnchorCountForTests());
+  ASSERT_TRUE(s.IsNotFound()) << Substitute(
+      "Should have empty OpId registry. Status: $0, anchor: $1, Num anchors: $2",
+      s.ToString(),
+      first_index,
+      reg->GetAnchorCountForTests());
 
   ASSERT_EQ(0, reg->GetAnchorCountForTests());
 }

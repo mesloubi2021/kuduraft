@@ -22,17 +22,15 @@ void CallbackBase::Reset() {
 
 bool CallbackBase::Equals(const CallbackBase& other) const {
   return bind_state_.get() == other.bind_state_.get() &&
-         polymorphic_invoke_ == other.polymorphic_invoke_;
+      polymorphic_invoke_ == other.polymorphic_invoke_;
 }
 
 CallbackBase::CallbackBase(BindStateBase* bind_state)
-    : bind_state_(bind_state),
-      polymorphic_invoke_(nullptr) {
+    : bind_state_(bind_state), polymorphic_invoke_(nullptr) {
   DCHECK(!bind_state_.get() || bind_state_->HasOneRef());
 }
 
-CallbackBase::~CallbackBase() {
-}
+CallbackBase::~CallbackBase() {}
 
-}  // namespace internal
-}  // namespace kudu
+} // namespace internal
+} // namespace kudu

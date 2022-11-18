@@ -52,8 +52,8 @@ class CertTest : public KuduTest {
     ASSERT_OK(ca_private_key_.FromString(kCaPrivateKey, DataFormat::PEM));
     ASSERT_OK(ca_public_key_.FromString(kCaPublicKey, DataFormat::PEM));
     ASSERT_OK(ca_exp_cert_.FromString(kCaExpiredCert, DataFormat::PEM));
-    ASSERT_OK(ca_exp_private_key_.FromString(kCaExpiredPrivateKey,
-                                             DataFormat::PEM));
+    ASSERT_OK(
+        ca_exp_private_key_.FromString(kCaExpiredPrivateKey, DataFormat::PEM));
     // Sanity checks.
     ASSERT_OK(ca_cert_.CheckKeyMatch(ca_private_key_));
     ASSERT_OK(ca_exp_cert_.CheckKeyMatch(ca_exp_private_key_));
@@ -76,9 +76,9 @@ TEST_F(CertTest, GetKuduKerberosPrincipalOidNidConcurrent) {
 
   vector<thread> threads;
   for (int i = 0; i < kConcurrency; i++) {
-    threads.emplace_back([&] () {
-        barrier.Wait();
-        CHECK_NE(NID_undef, GetKuduKerberosPrincipalOidNid());
+    threads.emplace_back([&]() {
+      barrier.Wait();
+      CHECK_NE(NID_undef, GetKuduKerberosPrincipalOidNid());
     });
   }
 
@@ -111,8 +111,8 @@ TEST_F(CertTest, CertInvalidInput) {
 // Check X509 certificate/private key matching: match cases.
 TEST_F(CertTest, CertMatchesRsaPrivateKey) {
   const pair<const Cert*, const PrivateKey*> cases[] = {
-    { &ca_cert_,      &ca_private_key_      },
-    { &ca_exp_cert_,  &ca_exp_private_key_  },
+      {&ca_cert_, &ca_private_key_},
+      {&ca_exp_cert_, &ca_exp_private_key_},
   };
   for (const auto& e : cases) {
     EXPECT_OK(e.first->CheckKeyMatch(*e.second));
@@ -122,8 +122,8 @@ TEST_F(CertTest, CertMatchesRsaPrivateKey) {
 // Check X509 certificate/private key matching: mismatch cases.
 TEST_F(CertTest, CertMismatchesRsaPrivateKey) {
   const pair<const Cert*, const PrivateKey*> cases[] = {
-    { &ca_cert_,      &ca_exp_private_key_  },
-    { &ca_exp_cert_,  &ca_private_key_      },
+      {&ca_cert_, &ca_exp_private_key_},
+      {&ca_exp_cert_, &ca_private_key_},
   };
   for (const auto& e : cases) {
     const Status s = e.first->CheckKeyMatch(*e.second);
@@ -152,8 +152,9 @@ TEST_F(CertTest, DnsHostnameInSanField) {
   Cert cert;
   ASSERT_OK(cert.FromString(kCertDnsHostnamesInSan, DataFormat::PEM));
 
-  EXPECT_EQ("C = US, ST = CA, O = MyCompany, CN = MyName, emailAddress = my@email.com",
-            cert.IssuerName());
+  EXPECT_EQ(
+      "C = US, ST = CA, O = MyCompany, CN = MyName, emailAddress = my@email.com",
+      cert.IssuerName());
   vector<string> hostnames = cert.Hostnames();
   ASSERT_EQ(3, hostnames.size());
   EXPECT_EQ(hostname_mega_giga, hostnames[0]);

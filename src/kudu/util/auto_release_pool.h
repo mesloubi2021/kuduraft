@@ -30,7 +30,7 @@ namespace kudu {
 // Thread-safe.
 class AutoReleasePool {
  public:
-  AutoReleasePool(): objects_() { }
+  AutoReleasePool() : objects_() {}
 
   ~AutoReleasePool() {
     for (auto& object : objects_) {
@@ -39,7 +39,7 @@ class AutoReleasePool {
   }
 
   template <class T>
-  T *Add(T *t) {
+  T* Add(T* t) {
     base::SpinLockHolder l(&lock_);
     objects_.push_back(new SpecificElement<T>(t));
     return t;
@@ -47,8 +47,8 @@ class AutoReleasePool {
 
   // Add an array-allocated object to the pool. This is identical to
   // Add() except that it will be freed with 'delete[]' instead of 'delete'.
-  template<class T>
-  T* AddArray(T *t) {
+  template <class T>
+  T* AddArray(T* t) {
     base::SpinLockHolder l(&lock_);
     objects_.push_back(new SpecificArrayElement<T>(t));
     return t;
@@ -71,29 +71,28 @@ class AutoReleasePool {
 
   template <class T>
   struct SpecificElement : GenericElement {
-    explicit SpecificElement(T *t): t(t) {}
+    explicit SpecificElement(T* t) : t(t) {}
     ~SpecificElement() {
       delete t;
     }
 
-    T *t;
+    T* t;
   };
 
   template <class T>
   struct SpecificArrayElement : GenericElement {
-    explicit SpecificArrayElement(T *t): t(t) {}
+    explicit SpecificArrayElement(T* t) : t(t) {}
     ~SpecificArrayElement() {
-      delete [] t;
+      delete[] t;
     }
 
-    T *t;
+    T* t;
   };
 
-  typedef std::vector<GenericElement *> ElementVector;
+  typedef std::vector<GenericElement*> ElementVector;
   ElementVector objects_;
   base::SpinLock lock_;
 };
-
 
 } // namespace kudu
 #endif

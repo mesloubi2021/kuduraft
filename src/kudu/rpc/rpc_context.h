@@ -17,8 +17,8 @@
 #ifndef KUDU_RPC_RPC_CONTEXT_H
 #define KUDU_RPC_RPC_CONTEXT_H
 
-#include <memory>
 #include <stddef.h>
+#include <memory>
 #include <string>
 
 #include <glog/logging.h>
@@ -48,13 +48,13 @@ class RemoteUser;
 class ResultTracker;
 class RpcSidecar;
 
-#define PANIC_RPC(rpc_context, message) \
-  do { \
-    if (rpc_context) {                              \
-      (rpc_context)->Panic(__FILE__, __LINE__, (message));  \
-    } else { \
-      LOG(FATAL) << (message); \
-    } \
+#define PANIC_RPC(rpc_context, message)                    \
+  do {                                                     \
+    if (rpc_context) {                                     \
+      (rpc_context)->Panic(__FILE__, __LINE__, (message)); \
+    } else {                                               \
+      LOG(FATAL) << (message);                             \
+    }                                                      \
   } while (0)
 
 // The context provided to a generated ServiceIf. This provides
@@ -67,9 +67,10 @@ class RpcContext {
  public:
   // Create an RpcContext. This is called only from generated code
   // and is not a public API.
-  RpcContext(InboundCall *call,
-             const google::protobuf::Message *request_pb,
-             google::protobuf::Message *response_pb);
+  RpcContext(
+      InboundCall* call,
+      const google::protobuf::Message* request_pb,
+      google::protobuf::Message* response_pb);
 
   ~RpcContext();
 
@@ -94,10 +95,10 @@ class RpcContext {
   // and response protobufs are also destroyed.
   void RespondSuccess();
 
-  // Like the above, but doesn't store the results of the service call, if results
-  // are being tracked.
-  // Used in cases where a call specific error was set on the response protobuf,
-  // the call should be considered failed, thus results shouldn't be cached.
+  // Like the above, but doesn't store the results of the service call, if
+  // results are being tracked. Used in cases where a call specific error was
+  // set on the response protobuf, the call should be considered failed, thus
+  // results shouldn't be cached.
   void RespondNoCache();
 
   // Respond with an error to the client. This sends back an error with the code
@@ -109,7 +110,7 @@ class RpcContext {
   //
   // After this method returns, this RpcContext object is destroyed. The request
   // and response protobufs are also destroyed.
-  void RespondFailure(const Status &status);
+  void RespondFailure(const Status& status);
 
   // Respond with an RPC-level error. This typically manifests to the client as
   // a remote error, one whose handling is agnostic to the particulars of the
@@ -118,7 +119,9 @@ class RpcContext {
   //
   // After this method returns, this RpcContext object is destroyed. The request
   // and response protobufs are also destroyed.
-  void RespondRpcFailure(ErrorStatusPB_RpcErrorCodePB err, const Status& status);
+  void RespondRpcFailure(
+      ErrorStatusPB_RpcErrorCodePB err,
+      const Status& status);
 
   // Respond with an application-level error. This causes the caller to get a
   // RemoteError status with the provided string message. Additionally, a
@@ -152,9 +155,10 @@ class RpcContext {
   //
   // After this method returns, this RpcContext object is destroyed. The request
   // and response protobufs are also destroyed.
-  void RespondApplicationError(int error_ext_id, const std::string& message,
-                               const google::protobuf::Message& app_error_pb);
-
+  void RespondApplicationError(
+      int error_ext_id,
+      const std::string& message,
+      const google::protobuf::Message& app_error_pb);
 
   // Adds an RpcSidecar to the response. This is the preferred method for
   // transferring large amounts of binary data, because this avoids additional
@@ -167,8 +171,8 @@ class RpcContext {
   // by the RPC response.
   Status AddOutboundSidecar(std::unique_ptr<RpcSidecar> car, int* idx);
 
-  // Fills 'sidecar' with a sidecar sent by the client. Returns an error if 'idx' is out
-  // of bounds.
+  // Fills 'sidecar' with a sidecar sent by the client. Returns an error if
+  // 'idx' is out of bounds.
   Status GetInboundSidecar(int idx, Slice* slice) const;
 
   // Return the identity of remote user who made this call.
@@ -181,19 +185,19 @@ class RpcContext {
   // encrypted connection.
   bool is_confidential() const;
 
-  // Discards the memory associated with the inbound call's payload. All previously
-  // obtained sidecar slices will be invalidated by this call. It is an error to call
-  // GetInboundSidecar() after this method. request_pb() remains valid.
-  // This is useful in the case where the server wishes to delay responding to an RPC
-  // (perhaps to control the rate of RPC requests), but knows that the RPC payload itself
-  // won't be processed any further.
+  // Discards the memory associated with the inbound call's payload. All
+  // previously obtained sidecar slices will be invalidated by this call. It is
+  // an error to call GetInboundSidecar() after this method. request_pb()
+  // remains valid. This is useful in the case where the server wishes to delay
+  // responding to an RPC (perhaps to control the rate of RPC requests), but
+  // knows that the RPC payload itself won't be processed any further.
   void DiscardTransfer();
 
   // Return the remote IP address and port which sent the current RPC call.
   const Sockaddr& remote_address() const;
 
-  // A string identifying the requestor -- both the user info and the IP address.
-  // Suitable for use in log messages.
+  // A string identifying the requestor -- both the user info and the IP
+  // address. Suitable for use in log messages.
   std::string requestor_string() const;
 
   // Return the name of the RPC service method being called.
@@ -202,8 +206,12 @@ class RpcContext {
   // Return the name of the RPC service being called.
   std::string service_name() const;
 
-  const google::protobuf::Message *request_pb() const { return request_pb_.get(); }
-  google::protobuf::Message *response_pb() const { return response_pb_.get(); }
+  const google::protobuf::Message* request_pb() const {
+    return request_pb_.get();
+  }
+  google::protobuf::Message* response_pb() const {
+    return response_pb_.get();
+  }
 
   // Return an upper bound on the client timeout deadline. This does not
   // account for transmission delays between the client and the server.
@@ -214,8 +222,11 @@ class RpcContext {
   MonoTime GetTimeReceived() const;
 
   // Whether the results of this RPC are tracked with a ResultTracker.
-  // If this returns true, both result_tracker() and request_id() should return non-null results.
-  bool AreResultsTracked() const { return result_tracker_.get() != nullptr; }
+  // If this returns true, both result_tracker() and request_id() should return
+  // non-null results.
+  bool AreResultsTracked() const {
+    return result_tracker_.get() != nullptr;
+  }
 
   // Returns this call's result tracker, if it is set.
   const scoped_refptr<ResultTracker>& result_tracker() const {
@@ -236,7 +247,7 @@ class RpcContext {
   //
   // Call this via the PANIC_RPC() macro.
   void Panic(const char* filepath, int line_number, const std::string& message)
-    __attribute__((noreturn));
+      __attribute__((noreturn));
 
  private:
   friend class ResultTracker;

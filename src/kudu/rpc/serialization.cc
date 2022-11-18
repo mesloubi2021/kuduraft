@@ -23,8 +23,8 @@
 
 #include <gflags/gflags_declare.h>
 #include <glog/logging.h>
-#include <google/protobuf/message_lite.h>
 #include <google/protobuf/io/coded_stream.h>
+#include <google/protobuf/message_lite.h>
 
 #include "kudu/gutil/endian.h"
 #include "kudu/gutil/port.h"
@@ -53,27 +53,34 @@ enum {
   kHeaderPosAuthProto = 2
 };
 
-void SerializeMessage(const MessageLite& message, faststring* param_buf,
-                        int additional_size, bool use_cached_size) {
+void SerializeMessage(
+    const MessageLite& message,
+    faststring* param_buf,
+    int additional_size,
+    bool use_cached_size) {
   DCHECK_GE(additional_size, 0);
   int pb_size = use_cached_size ? message.GetCachedSize() : message.ByteSize();
   DCHECK_EQ(message.ByteSize(), pb_size);
-  // Use 8-byte integers to avoid overflowing when additional_size approaches INT_MAX.
-  int64_t recorded_size = static_cast<int64_t>(pb_size) +
-      static_cast<int64_t>(additional_size);
+  // Use 8-byte integers to avoid overflowing when additional_size approaches
+  // INT_MAX.
+  int64_t recorded_size =
+      static_cast<int64_t>(pb_size) + static_cast<int64_t>(additional_size);
   int64_t size_with_delim = static_cast<int64_t>(pb_size) +
       static_cast<int64_t>(CodedOutputStream::VarintSize32(recorded_size));
   int64_t total_size = size_with_delim + static_cast<int64_t>(additional_size);
-  // The message format relies on an unsigned 32-bit integer to express the size, so
-  // the message must not exceed this size. Since additional_size is limited to INT_MAX,
-  // this is a safe limitation.
+  // The message format relies on an unsigned 32-bit integer to express the
+  // size, so the message must not exceed this size. Since additional_size is
+  // limited to INT_MAX, this is a safe limitation.
   CHECK_LE(total_size, std::numeric_limits<uint32_t>::max());
 
   if (total_size > FLAGS_rpc_max_message_size) {
-    LOG(WARNING) << Substitute("Serialized $0 ($1 bytes) is larger than the maximum configured "
-                               "RPC message size ($2 bytes). "
-                               "Sending anyway, but peer may reject the data.",
-                               message.GetTypeName(), total_size, FLAGS_rpc_max_message_size);
+    LOG(WARNING) << Substitute(
+        "Serialized $0 ($1 bytes) is larger than the maximum configured "
+        "RPC message size ($2 bytes). "
+        "Sending anyway, but peer may reject the data.",
+        message.GetTypeName(),
+        total_size,
+        FLAGS_rpc_max_message_size);
   }
 
   param_buf->resize(size_with_delim);
@@ -83,18 +90,20 @@ void SerializeMessage(const MessageLite& message, faststring* param_buf,
   CHECK_EQ(dst, param_buf->data() + size_with_delim);
 }
 
-void SerializeHeader(const MessageLite& header,
-                     size_t param_len,
-                     faststring* header_buf) {
-
+void SerializeHeader(
+    const MessageLite& header,
+    size_t param_len,
+    faststring* header_buf) {
   CHECK(header.IsInitialized())
       << "RPC header missing fields: " << header.InitializationErrorString();
 
   // Compute all the lengths for the packet.
   size_t header_pb_len = header.ByteSize();
-  size_t header_tot_len = kMsgLengthPrefixLength        // Int prefix for the total length.
-      + CodedOutputStream::VarintSize32(header_pb_len)  // Varint delimiter for header PB.
-      + header_pb_len;                                  // Length for the header PB itself.
+  size_t header_tot_len =
+      kMsgLengthPrefixLength // Int prefix for the total length.
+      + CodedOutputStream::VarintSize32(
+            header_pb_len) // Varint delimiter for header PB.
+      + header_pb_len; // Length for the header PB itself.
   size_t total_size = header_tot_len + param_len;
 
   header_buf->resize(header_tot_len);
@@ -113,24 +122,27 @@ void SerializeHeader(const MessageLite& header,
   CHECK_EQ(dst, header_buf->data() + header_tot_len);
 }
 
-Status ParseMessage(const Slice& buf,
-                    MessageLite* parsed_header,
-                    Slice* parsed_main_message) {
-
+Status ParseMessage(
+    const Slice& buf,
+    MessageLite* parsed_header,
+    Slice* parsed_main_message) {
   // First grab the total length
   if (PREDICT_FALSE(buf.size() < kMsgLengthPrefixLength)) {
-    return Status::Corruption("Invalid packet: not enough bytes for length header",
-                              KUDU_REDACT(buf.ToDebugString()));
+    return Status::Corruption(
+        "Invalid packet: not enough bytes for length header",
+        KUDU_REDACT(buf.ToDebugString()));
   }
 
   uint32_t total_len = NetworkByteOrder::Load32(buf.data());
   DCHECK_EQ(total_len, buf.size() - kMsgLengthPrefixLength)
-    << "Got mis-sized buffer: " << KUDU_REDACT(buf.ToDebugString());
+      << "Got mis-sized buffer: " << KUDU_REDACT(buf.ToDebugString());
 
   if (total_len > std::numeric_limits<int32_t>::max()) {
-    return Status::Corruption(Substitute("Invalid packet: message had a length of $0, "
+    return Status::Corruption(Substitute(
+        "Invalid packet: message had a length of $0, "
         "but we only support messages up to $1 bytes\n",
-        total_len, std::numeric_limits<int32_t>::max()));
+        total_len,
+        std::numeric_limits<int32_t>::max()));
   }
 
   CodedInputStream in(buf.data(), buf.size());
@@ -146,43 +158,49 @@ Status ParseMessage(const Slice& buf,
 
   uint32_t header_len;
   if (PREDICT_FALSE(!in.ReadVarint32(&header_len))) {
-    return Status::Corruption("Invalid packet: missing header delimiter",
-                              KUDU_REDACT(buf.ToDebugString()));
+    return Status::Corruption(
+        "Invalid packet: missing header delimiter",
+        KUDU_REDACT(buf.ToDebugString()));
   }
 
   CodedInputStream::Limit l;
   l = in.PushLimit(header_len);
   if (PREDICT_FALSE(!parsed_header->ParseFromCodedStream(&in))) {
-    return Status::Corruption("Invalid packet: header too short",
-                              KUDU_REDACT(buf.ToDebugString()));
+    return Status::Corruption(
+        "Invalid packet: header too short", KUDU_REDACT(buf.ToDebugString()));
   }
   in.PopLimit(l);
 
   uint32_t main_msg_len;
   if (PREDICT_FALSE(!in.ReadVarint32(&main_msg_len))) {
-    return Status::Corruption("Invalid packet: missing main msg length",
-                              KUDU_REDACT(buf.ToDebugString()));
+    return Status::Corruption(
+        "Invalid packet: missing main msg length",
+        KUDU_REDACT(buf.ToDebugString()));
   }
 
   if (PREDICT_FALSE(!in.Skip(main_msg_len))) {
     return Status::Corruption(
-        StringPrintf("Invalid packet: data too short, expected %d byte main_msg", main_msg_len),
+        StringPrintf(
+            "Invalid packet: data too short, expected %d byte main_msg",
+            main_msg_len),
         KUDU_REDACT(buf.ToDebugString()));
   }
 
   if (PREDICT_FALSE(in.BytesUntilLimit() > 0)) {
     return Status::Corruption(
-      StringPrintf("Invalid packet: %d extra bytes at end of packet", in.BytesUntilLimit()),
-      KUDU_REDACT(buf.ToDebugString()));
+        StringPrintf(
+            "Invalid packet: %d extra bytes at end of packet",
+            in.BytesUntilLimit()),
+        KUDU_REDACT(buf.ToDebugString()));
   }
 
-  *parsed_main_message = Slice(buf.data() + buf.size() - main_msg_len,
-                              main_msg_len);
+  *parsed_main_message =
+      Slice(buf.data() + buf.size() - main_msg_len, main_msg_len);
   return Status::OK();
 }
 
 void SerializeConnHeader(uint8_t* buf) {
-  memcpy(reinterpret_cast<char *>(buf), kMagicNumber, kMagicNumberLength);
+  memcpy(reinterpret_cast<char*>(buf), kMagicNumber, kMagicNumberLength);
   buf += kMagicNumberLength;
   buf[kHeaderPosVersion] = kCurrentRpcVersion;
   buf[kHeaderPosServiceClass] = 0; // TODO: implement
@@ -192,27 +210,31 @@ void SerializeConnHeader(uint8_t* buf) {
 // validate the entire rpc header (magic number + flags)
 Status ValidateConnHeader(const Slice& slice) {
   DCHECK_EQ(kMagicNumberLength + kHeaderFlagsLength, slice.size())
-    << "Invalid RPC header length";
+      << "Invalid RPC header length";
 
   // validate actual magic
   if (!slice.starts_with(kMagicNumber)) {
-    if (slice.starts_with("GET ") ||
-        slice.starts_with("POST") ||
+    if (slice.starts_with("GET ") || slice.starts_with("POST") ||
         slice.starts_with("HEAD")) {
-      return Status::InvalidArgument("invalid negotation, appears to be an HTTP client on "
-                                     "the RPC port");
+      return Status::InvalidArgument(
+          "invalid negotation, appears to be an HTTP client on "
+          "the RPC port");
     }
-    return Status::InvalidArgument("connection must begin with magic number", kMagicNumber);
+    return Status::InvalidArgument(
+        "connection must begin with magic number", kMagicNumber);
   }
 
-  const uint8_t *data = slice.data();
+  const uint8_t* data = slice.data();
   data += kMagicNumberLength;
 
   // validate version
   if (data[kHeaderPosVersion] != kCurrentRpcVersion) {
-    return Status::InvalidArgument("Unsupported RPC version",
-        StringPrintf("Received: %d, Supported: %d",
-            data[kHeaderPosVersion], kCurrentRpcVersion));
+    return Status::InvalidArgument(
+        "Unsupported RPC version",
+        StringPrintf(
+            "Received: %d, Supported: %d",
+            data[kHeaderPosVersion],
+            kCurrentRpcVersion));
   }
 
   // TODO: validate additional header flags:

@@ -85,14 +85,22 @@ class FixedArray {
   ~FixedArray();
 
   // Returns the length of the array.
-  inline size_type size() const { return size_; }
+  inline size_type size() const {
+    return size_;
+  }
 
   // Returns the memory size of the array in bytes.
-  inline size_t memsize() const { return size_ * sizeof(T); }
+  inline size_t memsize() const {
+    return size_ * sizeof(T);
+  }
 
   // Returns a pointer to the underlying element array.
-  inline const T* get() const { return reinterpret_cast<T *>(array_); }
-  inline T* get() { return reinterpret_cast<T *>(array_); }
+  inline const T* get() const {
+    return reinterpret_cast<T*>(array_);
+  }
+  inline T* get() {
+    return reinterpret_cast<T*>(array_);
+  }
 
   // REQUIRES: 0 <= i < size()
   // Returns a reference to the "i"th element.
@@ -110,11 +118,19 @@ class FixedArray {
     return array_[i].element;
   }
 
-  inline iterator begin() { return get(); }
-  inline iterator end() { return get() + size_; }
+  inline iterator begin() {
+    return get();
+  }
+  inline iterator end() {
+    return get() + size_;
+  }
 
-  inline const_iterator begin() const { return get(); }
-  inline const_iterator end() const { return get() + size_; }
+  inline const_iterator begin() const {
+    return get();
+  }
+  inline const_iterator end() const {
+    return get() + size_;
+  }
 
  private:
   // Container to hold elements of type T.  This is necessary to handle
@@ -124,8 +140,9 @@ class FixedArray {
   struct InnerContainer {
     T element;
   };
-  KUDU_COMPILE_ASSERT(sizeof(InnerContainer) == sizeof(T),
-                 fixedarray_inner_container_size_mismatch);
+  KUDU_COMPILE_ASSERT(
+      sizeof(InnerContainer) == sizeof(T),
+      fixedarray_inner_container_size_mismatch);
 
   // How many elements should we store inline?
   //   a. If not specified, use a default of 256 bytes (256 bytes
@@ -133,18 +150,17 @@ class FixedArray {
   //      stack pollution, while still allowing stack allocation for
   //      reasonably long character arrays.
   //   b. Never use 0 length arrays (not ISO C++)
-  static const size_type S1 = ((inline_elements < 0)
-                               ? (256/sizeof(T)) : inline_elements);
+  static const size_type S1 =
+      ((inline_elements < 0) ? (256 / sizeof(T)) : inline_elements);
   static const size_type S2 = (S1 <= 0) ? 1 : S1;
   static const size_type kInlineElements = S2;
 
-  size_type const       size_;
+  size_type const size_;
   InnerContainer* const array_;
 
   // Allocate some space, not an array of elements of type T, so that we can
   // skip calling the T constructors and destructors for space we never use.
-  base::ManualConstructor<InnerContainer>
-      inline_space_[kInlineElements];
+  base::ManualConstructor<InnerContainer> inline_space_[kInlineElements];
 
   DISALLOW_EVIL_CONSTRUCTORS(FixedArray);
 };
@@ -154,9 +170,10 @@ class FixedArray {
 template <class T, ssize_t S>
 inline FixedArray<T, S>::FixedArray(typename FixedArray<T, S>::size_type n)
     : size_(n),
-      array_((n <= kInlineElements
-              ? reinterpret_cast<InnerContainer*>(inline_space_)
-              : new InnerContainer[n])) {
+      array_(
+          (n <= kInlineElements
+               ? reinterpret_cast<InnerContainer*>(inline_space_)
+               : new InnerContainer[n])) {
   DCHECK_GE(n, 0);
 
   // Construct only the elements actually used.
@@ -178,4 +195,4 @@ inline FixedArray<T, S>::~FixedArray() {
   }
 }
 
-#endif  // UTIL_GTL_FIXEDARRAY_H__
+#endif // UTIL_GTL_FIXEDARRAY_H__

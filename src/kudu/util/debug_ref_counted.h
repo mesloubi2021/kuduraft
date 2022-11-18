@@ -27,7 +27,7 @@ namespace kudu {
 
 // For use in debugging. Change a ref-counted class to inherit from this,
 // instead of RefCountedThreadSafe, and fill your logs with stack traces.
-template <class T, typename Traits = DefaultRefCountedThreadSafeTraits<T> >
+template <class T, typename Traits = DefaultRefCountedThreadSafeTraits<T>>
 class DebugRefCountedThreadSafe : public RefCountedThreadSafe<T, Traits> {
  public:
   DebugRefCountedThreadSafe() {}

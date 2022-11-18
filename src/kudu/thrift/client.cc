@@ -35,9 +35,9 @@ namespace apache {
 namespace thrift {
 namespace transport {
 class TTransport;
-}  // namespace transport
-}  // namespace thrift
-}  // namespace apache
+} // namespace transport
+} // namespace thrift
+} // namespace apache
 
 using apache::thrift::protocol::TBinaryProtocol;
 using apache::thrift::protocol::TProtocol;
@@ -57,11 +57,13 @@ void ThriftOutputFunction(const char* output) {
 }
 } // anonymous namespace
 
-shared_ptr<TProtocol> CreateClientProtocol(const HostPort& address, const ClientOptions& options) {
+shared_ptr<TProtocol> CreateClientProtocol(
+    const HostPort& address,
+    const ClientOptions& options) {
   // Initialize the global Thrift logging callback.
   static std::once_flag set_thrift_logging_callback;
   std::call_once(set_thrift_logging_callback, [] {
-      apache::thrift::GlobalOutput.setOutputFunction(ThriftOutputFunction);
+    apache::thrift::GlobalOutput.setOutputFunction(ThriftOutputFunction);
   });
 
   auto socket = make_shared<TSocket>(address.host(), address.port());
@@ -72,10 +74,11 @@ shared_ptr<TProtocol> CreateClientProtocol(const HostPort& address, const Client
 
   if (options.enable_kerberos) {
     DCHECK(!options.service_principal.empty());
-    transport = make_shared<SaslClientTransport>(options.service_principal,
-                                                 address.host(),
-                                                 std::move(socket),
-                                                 options.max_buf_size);
+    transport = make_shared<SaslClientTransport>(
+        options.service_principal,
+        address.host(),
+        std::move(socket),
+        options.max_buf_size);
   } else {
     transport = make_shared<TBufferedTransport>(std::move(socket));
   }
@@ -89,11 +92,10 @@ bool IsFatalError(const Status& error) {
   // unnecessary reconnect. If a fatal error is not recognized it could cause
   // another RPC to fail, since there is no way to check the status of the
   // connection before sending an RPC.
-  return !(error.IsAlreadyPresent()
-        || error.IsNotFound()
-        || error.IsInvalidArgument()
-        || error.IsIllegalState()
-        || error.IsRemoteError());
+  return !(
+      error.IsAlreadyPresent() || error.IsNotFound() ||
+      error.IsInvalidArgument() || error.IsIllegalState() ||
+      error.IsRemoteError());
 }
 } // namespace thrift
 } // namespace kudu

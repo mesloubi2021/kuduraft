@@ -46,30 +46,33 @@ class LogVerifier {
   explicit LogVerifier(cluster::MiniCluster* cluster);
   ~LogVerifier();
 
-  // Verify that, for every tablet in the cluster, the logs of each of that tablet's replicas
-  // have matching committed operations. In other words, if any replica has a log entry
-  // 'COMMIT term.index', then verifies that no other replica has a COMMIT entry for the
-  // same index with a different term.
+  // Verify that, for every tablet in the cluster, the logs of each of that
+  // tablet's replicas have matching committed operations. In other words, if
+  // any replica has a log entry 'COMMIT term.index', then verifies that no
+  // other replica has a COMMIT entry for the same index with a different term.
   //
-  // This is the most basic correctness condition of Raft: all replicas should commit the
-  // same operations.
+  // This is the most basic correctness condition of Raft: all replicas should
+  // commit the same operations.
   //
-  // NOTE: if the cluster is not shut down, it is possible for this method to fail spuriously
-  // trying to read a WAL that is currently being written. In this case, it's advisable to
-  // loop and retry on failure.
+  // NOTE: if the cluster is not shut down, it is possible for this method to
+  // fail spuriously trying to read a WAL that is currently being written. In
+  // this case, it's advisable to loop and retry on failure.
   Status VerifyCommittedOpIdsMatch();
 
-  // Scans the WAL on the given tablet server to find the COMMIT message with the highest
-  // index.
-  Status ScanForHighestCommittedOpIdInLog(int ts_idx,
-                                          const std::string& tablet_id,
-                                          consensus::OpId* commit_id);
+  // Scans the WAL on the given tablet server to find the COMMIT message with
+  // the highest index.
+  Status ScanForHighestCommittedOpIdInLog(
+      int ts_idx,
+      const std::string& tablet_id,
+      consensus::OpId* commit_id);
 
  private:
   // Scan the WALs for tablet 'tablet_id' on the server specified by 'ts_idx'.
   // Sets entries in '*index_to_term' for each COMMIT entry found in the WALs.
-  Status ScanForCommittedOpIds(int ts_idx, const std::string& tablet_id,
-                               std::map<int64_t, int64_t>* index_to_term);
+  Status ScanForCommittedOpIds(
+      int ts_idx,
+      const std::string& tablet_id,
+      std::map<int64_t, int64_t>* index_to_term);
 
   cluster::MiniCluster* const cluster_;
   Env* const env_;

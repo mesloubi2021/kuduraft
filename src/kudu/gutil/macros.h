@@ -10,7 +10,7 @@
 #ifndef BASE_MACROS_H_
 #define BASE_MACROS_H_
 
-#include <stddef.h>         // For size_t
+#include <stddef.h> // For size_t
 #include "kudu/gutil/port.h"
 
 // The swigged version of an abstract class must be concrete if any methods
@@ -24,7 +24,8 @@
 // expression is true. For example, you could use it to verify the
 // size of a static array:
 //
-//   KUDU_COMPILE_ASSERT(KUDU_ARRAYSIZE(content_type_names) == CONTENT_NUM_TYPES,
+//   KUDU_COMPILE_ASSERT(KUDU_ARRAYSIZE(content_type_names) ==
+//   CONTENT_NUM_TYPES,
 //                  content_type_names_incorrect_size);
 //
 // or to make sure a struct is smaller than a certain size:
@@ -36,8 +37,7 @@
 // containing the name of the variable.
 
 template <bool>
-struct CompileAssert {
-};
+struct CompileAssert {};
 
 #ifndef KUDU_COMPILE_ASSERT
 #define KUDU_COMPILE_ASSERT(expr, msg) \
@@ -84,7 +84,6 @@ struct CompileAssert {
 //
 //   This is to avoid running into a bug in MS VC 7.1, which
 //   causes ((0.0) ? 1 : -1) to incorrectly evaluate to 1.
-
 
 // A macro to disallow the copy constructor and operator= functions
 // This should be used in the private: declarations for a class
@@ -185,22 +184,22 @@ char (&ArraySizeHelper(const T (&array)[N]))[N];
 //
 // Starting with Visual C++ 2005, WinNT.h includes KUDU_ARRAYSIZE.
 #if !defined(_MSC_VER) || (defined(_MSC_VER) && _MSC_VER < 1400)
-#define KUDU_ARRAYSIZE(a) \
+#define KUDU_ARRAYSIZE(a)       \
   ((sizeof(a) / sizeof(*(a))) / \
    static_cast<size_t>(!(sizeof(a) % sizeof(*(a)))))
 #endif
 
 // A macro to turn a symbol into a string
-#define AS_STRING(x)   AS_STRING_INTERNAL(x)
-#define AS_STRING_INTERNAL(x)   #x
+#define AS_STRING(x) AS_STRING_INTERNAL(x)
+#define AS_STRING_INTERNAL(x) #x
 
 // Macro that allows definition of a variable appended with the current line
 // number in the source file. Typically for use by other macros to allow the
 // user to declare multiple variables with the same "base" name inside the same
 // lexical block.
-#define VARNAME_LINENUM(varname) VARNAME_LINENUM_INTERNAL(varname ## _L, __LINE__)
+#define VARNAME_LINENUM(varname) VARNAME_LINENUM_INTERNAL(varname##_L, __LINE__)
 #define VARNAME_LINENUM_INTERNAL(v, line) VARNAME_LINENUM_INTERNAL2(v, line)
-#define VARNAME_LINENUM_INTERNAL2(v, line) v ## line
+#define VARNAME_LINENUM_INTERNAL2(v, line) v##line
 
 // The following enum should be used only as a constructor argument to indicate
 // that the variable has static storage class, and that the constructor should
@@ -253,34 +252,42 @@ enum LinkerInitialized { LINKER_INITIALIZED };
 //  of code.
 #if defined(__clang__) && defined(LANG_CXX11) && defined(__has_warning)
 #if __has_feature(cxx_attributes) && __has_warning("-Wimplicit-fallthrough")
-#define FALLTHROUGH_INTENDED [[clang::fallthrough]]  // NOLINT
+#define FALLTHROUGH_INTENDED [[clang::fallthrough]] // NOLINT
 #endif
 #endif
 
 #ifndef FALLTHROUGH_INTENDED
-#define FALLTHROUGH_INTENDED do { } while (0)
+#define FALLTHROUGH_INTENDED \
+  do {                       \
+  } while (0)
 #endif
 
 // Retry on EINTR for functions like read() that return -1 on error.
-#define RETRY_ON_EINTR(err, expr) do { \
-  static_assert(std::is_signed<decltype(err)>::value, \
-                #err " must be a signed integer"); \
-  (err) = (expr); \
-} while ((err) == -1 && errno == EINTR)
+#define RETRY_ON_EINTR(err, expr)             \
+  do {                                        \
+    static_assert(                            \
+        std::is_signed<decltype(err)>::value, \
+        #err " must be a signed integer");    \
+    (err) = (expr);                           \
+  } while ((err) == -1 && errno == EINTR)
 
 // Same as above but for stream API calls like fread() and fwrite().
-#define STREAM_RETRY_ON_EINTR(nread, stream, expr) do { \
-  static_assert(std::is_unsigned<decltype(nread)>::value == true, \
-                #nread " must be an unsigned integer"); \
-  (nread) = (expr); \
-} while ((nread) == 0 && ferror(stream) == EINTR)
+#define STREAM_RETRY_ON_EINTR(nread, stream, expr)        \
+  do {                                                    \
+    static_assert(                                        \
+        std::is_unsigned<decltype(nread)>::value == true, \
+        #nread " must be an unsigned integer");           \
+    (nread) = (expr);                                     \
+  } while ((nread) == 0 && ferror(stream) == EINTR)
 
 // Same as above but for functions that return pointer types (like
 // fopen() and freopen()).
-#define POINTER_RETRY_ON_EINTR(ptr, expr) do { \
-  static_assert(std::is_pointer<decltype(ptr)>::value == true, \
-                #ptr " must be a pointer"); \
-  (ptr) = (expr); \
-} while ((ptr) == nullptr && errno == EINTR)
+#define POINTER_RETRY_ON_EINTR(ptr, expr)              \
+  do {                                                 \
+    static_assert(                                     \
+        std::is_pointer<decltype(ptr)>::value == true, \
+        #ptr " must be a pointer");                    \
+    (ptr) = (expr);                                    \
+  } while ((ptr) == nullptr && errno == EINTR)
 
-#endif  // BASE_MACROS_H_
+#endif // BASE_MACROS_H_

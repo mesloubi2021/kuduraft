@@ -49,13 +49,15 @@ class TabletServerIntegrationTestBase : public TabletServerTestBase {
 
   void SetUp() override;
 
-  void AddExtraFlags(const std::string& flags_str,
-                     std::vector<std::string>* flags);
+  void AddExtraFlags(
+      const std::string& flags_str,
+      std::vector<std::string>* flags);
 
-  void CreateCluster(const std::string& data_root_path,
-                     const std::vector<std::string>& non_default_ts_flags,
-                     const std::vector<std::string>& non_default_master_flags,
-                     uint32_t num_data_dirs = 1);
+  void CreateCluster(
+      const std::string& data_root_path,
+      const std::vector<std::string>& non_default_ts_flags,
+      const std::vector<std::string>& non_default_master_flags,
+      uint32_t num_data_dirs = 1);
 
   // Creates TSServerDetails instance for each TabletServer and stores them
   // in 'tablet_servers_'.
@@ -63,50 +65,58 @@ class TabletServerIntegrationTestBase : public TabletServerTestBase {
 
   // Waits that all replicas for a all tablets of 'table_id' table are online
   // and creates the tablet_replicas_ map.
-  void WaitForReplicasAndUpdateLocations(const std::string& table_id = kTableId);
+  void WaitForReplicasAndUpdateLocations(
+      const std::string& table_id = kTableId);
 
-  // Returns the last committed leader of the consensus configuration. Tries to get it from master
-  // but then actually tries to the get the committed consensus configuration to make sure.
+  // Returns the last committed leader of the consensus configuration. Tries to
+  // get it from master but then actually tries to the get the committed
+  // consensus configuration to make sure.
   itest::TServerDetails* GetLeaderReplicaOrNull(const std::string& tablet_id);
 
   // For the last committed consensus configuration, return the last committed
   // leader of the consensus configuration and its followers.
-  Status GetTabletLeaderAndFollowers(const std::string& tablet_id,
-                                     itest::TServerDetails** leader,
-                                     std::vector<itest::TServerDetails*>* followers);
+  Status GetTabletLeaderAndFollowers(
+      const std::string& tablet_id,
+      itest::TServerDetails** leader,
+      std::vector<itest::TServerDetails*>* followers);
 
-  Status GetLeaderReplicaWithRetries(const std::string& tablet_id,
-                                     itest::TServerDetails** leader,
-                                     int max_attempts = 100);
+  Status GetLeaderReplicaWithRetries(
+      const std::string& tablet_id,
+      itest::TServerDetails** leader,
+      int max_attempts = 100);
 
-  Status GetTabletLeaderUUIDFromMaster(const std::string& tablet_id,
-                                       std::string* leader_uuid);
+  Status GetTabletLeaderUUIDFromMaster(
+      const std::string& tablet_id,
+      std::string* leader_uuid);
 
-  itest::TServerDetails* GetReplicaWithUuidOrNull(const std::string& tablet_id,
-                                                  const std::string& uuid);
+  itest::TServerDetails* GetReplicaWithUuidOrNull(
+      const std::string& tablet_id,
+      const std::string& uuid);
 
-  // Gets the the locations of the consensus configuration and waits until all replicas
-  // are available for all tablets.
+  // Gets the the locations of the consensus configuration and waits until all
+  // replicas are available for all tablets.
   void WaitForTSAndReplicas(const std::string& table_id = kTableId);
 
   // Removes a set of servers from the replicas_ list.
   // Handy for controlling who to validate against after killing servers.
   void PruneFromReplicas(const std::unordered_set<std::string>& uuids);
 
-  void GetOnlyLiveFollowerReplicas(const std::string& tablet_id,
-                                   std::vector<itest::TServerDetails*>* followers);
+  void GetOnlyLiveFollowerReplicas(
+      const std::string& tablet_id,
+      std::vector<itest::TServerDetails*>* followers);
 
   // Return the index within 'replicas' for the replica which is farthest ahead.
-  int64_t GetFurthestAheadReplicaIdx(const std::string& tablet_id,
-                                     const std::vector<itest::TServerDetails*>& replicas);
+  int64_t GetFurthestAheadReplicaIdx(
+      const std::string& tablet_id,
+      const std::vector<itest::TServerDetails*>& replicas);
 
   Status ShutdownServerWithUUID(const std::string& uuid);
 
   Status RestartServerWithUUID(const std::string& uuid);
 
   // Since we're fault-tolerant we might mask when a tablet server is
-  // dead. This returns Status::IllegalState() if fewer than 'num_tablet_servers'
-  // are alive.
+  // dead. This returns Status::IllegalState() if fewer than
+  // 'num_tablet_servers' are alive.
   Status CheckTabletServersAreAlive(int num_tablet_servers);
 
   void TearDown() override;
@@ -116,11 +126,12 @@ class TabletServerIntegrationTestBase : public TabletServerTestBase {
   // Create a table with a single tablet, with 'num_replicas'.
   void CreateTable(const std::string& table_id = kTableId);
 
-  // Starts an external cluster with a single tablet and a number of replicas equal
-  // to 'FLAGS_num_replicas'. The caller can pass 'ts_flags' to specify non-default
-  // flags to pass to the tablet servers.
-  void BuildAndStart(const std::vector<std::string>& ts_flags = {},
-                     const std::vector<std::string>& master_flags = {});
+  // Starts an external cluster with a single tablet and a number of replicas
+  // equal to 'FLAGS_num_replicas'. The caller can pass 'ts_flags' to specify
+  // non-default flags to pass to the tablet servers.
+  void BuildAndStart(
+      const std::vector<std::string>& ts_flags = {},
+      const std::vector<std::string>& master_flags = {});
 
   void AssertAllReplicasAgree(int expected_result_count);
 
@@ -137,17 +148,21 @@ class TabletServerIntegrationTestBase : public TabletServerTestBase {
   // to commence a Raft configuration change. Otherwise, any Raft configuration
   // change attempt ends up with error:
   // 'Illegal state: Leader has not yet committed an operation in its own term'.
-  Status WaitForLeaderWithCommittedOp(const std::string& tablet_id,
-                                      const MonoDelta& timeout,
-                                      itest::TServerDetails** leader);
+  Status WaitForLeaderWithCommittedOp(
+      const std::string& tablet_id,
+      const MonoDelta& timeout,
+      itest::TServerDetails** leader);
 
   // Get UUIDs of tablet servers that have a replica of the tablet identified
   // by the 'tablet_id' parameter. The result is sorted in ascending order.
-  std::vector<std::string> GetServersWithReplica(const std::string& tablet_id) const;
+  std::vector<std::string> GetServersWithReplica(
+      const std::string& tablet_id) const;
 
   // Get UUIDs of tablet servers that do not have replicas of the tablet
-  // identified by the 'tablet_id' parameter. The result is sorted in ascending order.
-  std::vector<std::string> GetServersWithoutReplica(const std::string& tablet_id) const;
+  // identified by the 'tablet_id' parameter. The result is sorted in ascending
+  // order.
+  std::vector<std::string> GetServersWithoutReplica(
+      const std::string& tablet_id) const;
 
  protected:
   gscoped_ptr<cluster::ExternalMiniCluster> cluster_;
@@ -165,5 +180,5 @@ class TabletServerIntegrationTestBase : public TabletServerTestBase {
   ThreadSafeRandom random_;
 };
 
-}  // namespace tserver
-}  // namespace kudu
+} // namespace tserver
+} // namespace kudu

@@ -40,9 +40,11 @@
 #include "kudu/util/status.h"
 #include "kudu/util/stopwatch.h"
 
-DEFINE_double(fault_crash_before_cmeta_flush, 0.0,
-              "Fraction of the time when the server will crash just before flushing "
-              "consensus metadata. (For testing only!)");
+DEFINE_double(
+    fault_crash_before_cmeta_flush,
+    0.0,
+    "Fraction of the time when the server will crash just before flushing "
+    "consensus metadata. (For testing only!)");
 TAG_FLAG(fault_crash_before_cmeta_flush, unsafe);
 DECLARE_bool(enable_flexi_raft);
 
@@ -95,10 +97,9 @@ void ConsensusMetadata::populate_previous_vote_history(
   // Step 1: Prune all the way until last known leader's term.
   google::protobuf::Map<int64_t, PreviousVotePB>::iterator begin_it =
       previous_vote_history->begin();
-  google::protobuf::Map<int64_t, PreviousVotePB>::iterator end_it =
-      begin_it;
+  google::protobuf::Map<int64_t, PreviousVotePB>::iterator end_it = begin_it;
   while (end_it != previous_vote_history->end() &&
-      end_it->first <= last_known_leader_term) {
+         end_it->first <= last_known_leader_term) {
     last_pruned_term = end_it->first;
     end_it++;
   }
@@ -131,14 +132,16 @@ void ConsensusMetadata::set_voted_for(const string& uuid) {
   populate_previous_vote_history(prev_vote);
 }
 
-bool ConsensusMetadata::IsVoterInConfig(const string& uuid,
-                                        RaftConfigState type) {
+bool ConsensusMetadata::IsVoterInConfig(
+    const string& uuid,
+    RaftConfigState type) {
   DFAKE_SCOPED_RECURSIVE_LOCK(fake_lock_);
   return IsRaftConfigVoter(uuid, GetConfig(type));
 }
 
-bool ConsensusMetadata::IsMemberInConfig(const string& uuid,
-                                         RaftConfigState type) {
+bool ConsensusMetadata::IsMemberInConfig(
+    const string& uuid,
+    RaftConfigState type) {
   DFAKE_SCOPED_RECURSIVE_LOCK(fake_lock_);
   return IsRaftConfigMember(uuid, GetConfig(type));
 }
@@ -146,11 +149,12 @@ bool ConsensusMetadata::IsMemberInConfig(const string& uuid,
 bool ConsensusMetadata::IsMemberInConfigWithDetail(
     const std::string& uuid,
     RaftConfigState type,
-    std::string *hostname_port,
-    bool *is_voter, std::string *region) {
+    std::string* hostname_port,
+    bool* is_voter,
+    std::string* region) {
   DFAKE_SCOPED_RECURSIVE_LOCK(fake_lock_);
-  return IsRaftConfigMemberWithDetail(uuid, GetConfig(type), hostname_port,
-      is_voter, region);
+  return IsRaftConfigMemberWithDetail(
+      uuid, GetConfig(type), hostname_port, is_voter, region);
 }
 
 int ConsensusMetadata::CountVotersInConfig(RaftConfigState type) {
@@ -182,7 +186,8 @@ const RaftConfigPB& ConsensusMetadata::GetConfig(RaftConfigState type) const {
     case PENDING_CONFIG:
       CHECK(has_pending_config_) << LogPrefix() << "There is no pending config";
       return pending_config_;
-    default: LOG(FATAL) << "Unknown RaftConfigState type: " << type;
+    default:
+      LOG(FATAL) << "Unknown RaftConfigState type: " << type;
   }
 }
 
@@ -194,15 +199,17 @@ void ConsensusMetadata::set_committed_config(const RaftConfigPB& config) {
   }
 }
 
-void ConsensusMetadata::set_committed_config_raw(const RaftConfigPB &config) {
+void ConsensusMetadata::set_committed_config_raw(const RaftConfigPB& config) {
   DFAKE_SCOPED_RECURSIVE_LOCK(fake_lock_);
   *pb_.mutable_committed_config() = config;
 }
 
-kudu::Status ConsensusMetadata::voter_distribution(std::map<std::string, int32> *vd) const {
+kudu::Status ConsensusMetadata::voter_distribution(
+    std::map<std::string, int32>* vd) const {
   DFAKE_SCOPED_RECURSIVE_LOCK(fake_lock_);
   if (!pb_.has_committed_config()) {
-    return kudu::Status::NotFound("Committed config not present to get voter distribution");
+    return kudu::Status::NotFound(
+        "Committed config not present to get voter distribution");
   }
   vd->insert(
       pb_.committed_config().voter_distribution().begin(),
@@ -217,7 +224,8 @@ bool ConsensusMetadata::has_pending_config() const {
 
 const RaftConfigPB& ConsensusMetadata::PendingConfig() const {
   DFAKE_SCOPED_RECURSIVE_LOCK(fake_lock_);
-  return GetConfig(PENDING_CONFIG);;
+  return GetConfig(PENDING_CONFIG);
+  ;
 }
 
 void ConsensusMetadata::clear_pending_config() {
@@ -258,13 +266,12 @@ LastKnownLeaderPB ConsensusMetadata::last_known_leader() const {
   return pb_.last_known_leader();
 }
 
-std::map<int64_t, PreviousVotePB>
-ConsensusMetadata::previous_vote_history() const {
+std::map<int64_t, PreviousVotePB> ConsensusMetadata::previous_vote_history()
+    const {
   DFAKE_SCOPED_RECURSIVE_LOCK(fake_lock_);
   std::map<int64_t, PreviousVotePB> pvh;
   pvh.insert(
-      pb_.previous_vote_history().begin(),
-      pb_.previous_vote_history().end());
+      pb_.previous_vote_history().begin(), pb_.previous_vote_history().end());
   return pvh;
 }
 
@@ -280,7 +287,8 @@ void ConsensusMetadata::set_leader_uuid(string uuid) {
   // cmeta not persisted untill we sync to LKL
 }
 
-Status ConsensusMetadata::sync_last_known_leader(std::optional<int64_t> cas_term) {
+Status ConsensusMetadata::sync_last_known_leader(
+    std::optional<int64_t> cas_term) {
   // Only update last_known_leader when the current node
   // 1) has won a leader election (LEADER)
   // 2) receives AppendEntries from a legitimate leader (FOLLOWER)
@@ -315,7 +323,7 @@ std::pair<string, unsigned int> ConsensusMetadata::leader_hostport() const {
 
 Status ConsensusMetadata::GetConfigMemberCopy(
     const std::string& uuid,
-    RaftPeerPB *member) {
+    RaftPeerPB* member) {
   DFAKE_SCOPED_RECURSIVE_LOCK(fake_lock_);
   for (const RaftPeerPB& peer : ActiveConfig().peers()) {
     if (peer.permanent_uuid() == uuid) {
@@ -323,7 +331,8 @@ Status ConsensusMetadata::GetConfigMemberCopy(
       return Status::OK();
     }
   }
-  return Status::NotFound(Substitute("Peer with uuid $0 not found in consensus config", uuid));
+  return Status::NotFound(
+      Substitute("Peer with uuid $0 not found in consensus config", uuid));
 }
 
 RaftPeerPB::Role ConsensusMetadata::active_role() const {
@@ -345,7 +354,8 @@ ConsensusStatePB ConsensusMetadata::ToConsensusStatePB() const {
   return cstate;
 }
 
-void ConsensusMetadata::MergeCommittedConsensusStatePB(const ConsensusStatePB& cstate) {
+void ConsensusMetadata::MergeCommittedConsensusStatePB(
+    const ConsensusStatePB& cstate) {
   DFAKE_SCOPED_RECURSIVE_LOCK(fake_lock_);
   if (cstate.current_term() > current_term()) {
     set_current_term(cstate.current_term());
@@ -360,44 +370,54 @@ void ConsensusMetadata::MergeCommittedConsensusStatePB(const ConsensusStatePB& c
 Status ConsensusMetadata::Flush(FlushMode flush_mode) {
   DFAKE_SCOPED_RECURSIVE_LOCK(fake_lock_);
   MAYBE_FAULT(FLAGS_fault_crash_before_cmeta_flush);
-  SCOPED_LOG_SLOW_EXECUTION_PREFIX(WARNING, 500, LogPrefix(), "flushing consensus metadata");
+  SCOPED_LOG_SLOW_EXECUTION_PREFIX(
+      WARNING, 500, LogPrefix(), "flushing consensus metadata");
 
   flush_count_for_tests_++;
   // Sanity test to ensure we never write out a bad configuration.
-  RETURN_NOT_OK_PREPEND(VerifyRaftConfig(pb_.committed_config()),
-                        "Invalid config in ConsensusMetadata, cannot flush to disk");
+  RETURN_NOT_OK_PREPEND(
+      VerifyRaftConfig(pb_.committed_config()),
+      "Invalid config in ConsensusMetadata, cannot flush to disk");
 
   // Create directories if needed.
   string dir = fs_manager_->GetConsensusMetadataDir();
   bool created_dir = false;
-  RETURN_NOT_OK_PREPEND(env_util::CreateDirIfMissing(
-      fs_manager_->env(), dir, &created_dir),
-                        "Unable to create consensus metadata root dir");
+  RETURN_NOT_OK_PREPEND(
+      env_util::CreateDirIfMissing(fs_manager_->env(), dir, &created_dir),
+      "Unable to create consensus metadata root dir");
   // fsync() parent dir if we had to create the dir.
   if (PREDICT_FALSE(created_dir)) {
     string parent_dir = DirName(dir);
-    RETURN_NOT_OK_PREPEND(Env::Default()->SyncDir(parent_dir),
-                          "Unable to fsync consensus parent dir " + parent_dir);
+    RETURN_NOT_OK_PREPEND(
+        Env::Default()->SyncDir(parent_dir),
+        "Unable to fsync consensus parent dir " + parent_dir);
   }
 
   string meta_file_path = fs_manager_->GetConsensusMetadataPath(tablet_id_);
-  RETURN_NOT_OK_PREPEND(pb_util::WritePBContainerToPath(
-      fs_manager_->env(), meta_file_path, pb_,
-      flush_mode == OVERWRITE ? pb_util::OVERWRITE : pb_util::NO_OVERWRITE,
-      // We use FLAGS_log_force_fsync_all here because the consensus metadata is
-      // essentially an extension of the primary durability mechanism of the
-      // consensus subsystem: the WAL. Using the same flag ensures that the WAL
-      // and the consensus metadata get the same durability guarantees.
-      FLAGS_log_force_fsync_all ? pb_util::SYNC : pb_util::NO_SYNC),
-          Substitute("Unable to write consensus meta file for tablet $0 to path $1",
-                     tablet_id_, meta_file_path));
+  RETURN_NOT_OK_PREPEND(
+      pb_util::WritePBContainerToPath(
+          fs_manager_->env(),
+          meta_file_path,
+          pb_,
+          flush_mode == OVERWRITE ? pb_util::OVERWRITE : pb_util::NO_OVERWRITE,
+          // We use FLAGS_log_force_fsync_all here because the consensus
+          // metadata is essentially an extension of the primary durability
+          // mechanism of the consensus subsystem: the WAL. Using the same flag
+          // ensures that the WAL and the consensus metadata get the same
+          // durability guarantees.
+          FLAGS_log_force_fsync_all ? pb_util::SYNC : pb_util::NO_SYNC),
+      Substitute(
+          "Unable to write consensus meta file for tablet $0 to path $1",
+          tablet_id_,
+          meta_file_path));
   RETURN_NOT_OK(UpdateOnDiskSize());
   return Status::OK();
 }
 
-ConsensusMetadata::ConsensusMetadata(FsManager* fs_manager,
-                                     std::string tablet_id,
-                                     std::string peer_uuid)
+ConsensusMetadata::ConsensusMetadata(
+    FsManager* fs_manager,
+    std::string tablet_id,
+    std::string peer_uuid)
     : fs_manager_(CHECK_NOTNULL(fs_manager)),
       tablet_id_(std::move(tablet_id)),
       peer_uuid_(std::move(peer_uuid)),
@@ -411,15 +431,16 @@ ConsensusMetadata::ConsensusMetadata(FsManager* fs_manager,
   pb_.set_last_pruned_term(-1);
 }
 
-Status ConsensusMetadata::Create(FsManager* fs_manager,
-                                 const string& tablet_id,
-                                 const std::string& peer_uuid,
-                                 const RaftConfigPB& config,
-                                 int64_t current_term,
-                                 ConsensusMetadataCreateMode create_mode,
-                                 scoped_refptr<ConsensusMetadata>* cmeta_out) {
-
-  scoped_refptr<ConsensusMetadata> cmeta(new ConsensusMetadata(fs_manager, tablet_id, peer_uuid));
+Status ConsensusMetadata::Create(
+    FsManager* fs_manager,
+    const string& tablet_id,
+    const std::string& peer_uuid,
+    const RaftConfigPB& config,
+    int64_t current_term,
+    ConsensusMetadataCreateMode create_mode,
+    scoped_refptr<ConsensusMetadata>* cmeta_out) {
+  scoped_refptr<ConsensusMetadata> cmeta(
+      new ConsensusMetadata(fs_manager, tablet_id, peer_uuid));
   cmeta->set_committed_config(config);
   cmeta->set_current_term(current_term);
 
@@ -432,30 +453,39 @@ Status ConsensusMetadata::Create(FsManager* fs_manager,
       return Status::AlreadyPresent(Substitute("File $0 already exists", path));
     }
   }
-  if (cmeta_out) *cmeta_out = std::move(cmeta);
+  if (cmeta_out)
+    *cmeta_out = std::move(cmeta);
   return Status::OK();
 }
 
-Status ConsensusMetadata::Load(FsManager* fs_manager,
-                               const std::string& tablet_id,
-                               const std::string& peer_uuid,
-                               scoped_refptr<ConsensusMetadata>* cmeta_out) {
-  scoped_refptr<ConsensusMetadata> cmeta(new ConsensusMetadata(fs_manager, tablet_id, peer_uuid));
-  RETURN_NOT_OK(pb_util::ReadPBContainerFromPath(fs_manager->env(),
-                                                 fs_manager->GetConsensusMetadataPath(tablet_id),
-                                                 &cmeta->pb_));
-  cmeta->UpdateActiveRole(); // Needs to happen here as we sidestep the accessor APIs.
+Status ConsensusMetadata::Load(
+    FsManager* fs_manager,
+    const std::string& tablet_id,
+    const std::string& peer_uuid,
+    scoped_refptr<ConsensusMetadata>* cmeta_out) {
+  scoped_refptr<ConsensusMetadata> cmeta(
+      new ConsensusMetadata(fs_manager, tablet_id, peer_uuid));
+  RETURN_NOT_OK(pb_util::ReadPBContainerFromPath(
+      fs_manager->env(),
+      fs_manager->GetConsensusMetadataPath(tablet_id),
+      &cmeta->pb_));
+  cmeta->UpdateActiveRole(); // Needs to happen here as we sidestep the accessor
+                             // APIs.
 
   RETURN_NOT_OK(cmeta->UpdateOnDiskSize());
-  if (cmeta_out) *cmeta_out = std::move(cmeta);
+  if (cmeta_out)
+    *cmeta_out = std::move(cmeta);
   return Status::OK();
 }
 
-Status ConsensusMetadata::DeleteOnDiskData(FsManager* fs_manager, const string& tablet_id) {
+Status ConsensusMetadata::DeleteOnDiskData(
+    FsManager* fs_manager,
+    const string& tablet_id) {
   string cmeta_path = fs_manager->GetConsensusMetadataPath(tablet_id);
-  RETURN_NOT_OK_PREPEND(fs_manager->env()->DeleteFile(cmeta_path),
-                        Substitute("Unable to delete consensus metadata file for tablet $0",
-                                   tablet_id));
+  RETURN_NOT_OK_PREPEND(
+      fs_manager->env()->DeleteFile(cmeta_path),
+      Substitute(
+          "Unable to delete consensus metadata file for tablet $0", tablet_id));
   return Status::OK();
 }
 
@@ -467,7 +497,8 @@ std::string ConsensusMetadata::LogPrefix() const {
 void ConsensusMetadata::UpdateActiveRole() {
   DFAKE_SCOPED_RECURSIVE_LOCK(fake_lock_);
   active_role_ = GetConsensusRole(peer_uuid_, leader_uuid_, ActiveConfig());
-  VLOG_WITH_PREFIX(1) << "Updating active role to " << RaftPeerPB::Role_Name(active_role_)
+  VLOG_WITH_PREFIX(1) << "Updating active role to "
+                      << RaftPeerPB::Role_Name(active_role_)
                       << ". Consensus state: "
                       << pb_util::SecureShortDebugString(ToConsensusStatePB());
 }

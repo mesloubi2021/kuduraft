@@ -58,7 +58,8 @@ TEST_F(FaststringTest, TestShrinkToFit_Random) {
     memcpy(s.data(), random_bytes.get(), new_size);
     s.shrink_to_fit();
     ASSERT_EQ(0, memcmp(s.data(), random_bytes.get(), new_size));
-    ASSERT_EQ(std::max<int>(faststring::kInitialCapacity, new_size), s.capacity());
+    ASSERT_EQ(
+        std::max<int>(faststring::kInitialCapacity, new_size), s.capacity());
   }
 }
 

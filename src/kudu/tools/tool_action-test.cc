@@ -43,8 +43,8 @@ TEST(ToolActionTest, TestActionBuildHelpXML) {
       ActionBuilder("sample", nullptr)
           .Description("d")
           .ExtraDescription("ed")
-          .AddRequiredParameter({ "required", "rpd" })
-          .AddRequiredVariadicParameter({ "variadic", "vpd" })
+          .AddRequiredParameter({"required", "rpd"})
+          .AddRequiredVariadicParameter({"variadic", "vpd"})
           .AddOptionalParameter("opt_string")
           .AddOptionalParameter("opt_bool")
           .Build();
@@ -76,23 +76,20 @@ TEST(ToolActionTest, TestActionBuildHelpXML) {
 }
 
 TEST(ToolActionTest, TestModeBuildHelpXML) {
-  unique_ptr<Action> action =
-      ActionBuilder("action", nullptr)
-          .Description("ad")
-          .AddRequiredParameter({ "required", "rpd" })
-          .Build();
+  unique_ptr<Action> action = ActionBuilder("action", nullptr)
+                                  .Description("ad")
+                                  .AddRequiredParameter({"required", "rpd"})
+                                  .Build();
 
   unique_ptr<Mode> submode = ModeBuilder("submode")
-      .Description("subd")
-      .AddAction(std::move(action))
-      .Build();
+                                 .Description("subd")
+                                 .AddAction(std::move(action))
+                                 .Build();
 
-  unique_ptr<Mode> mode = ModeBuilder("mode")
-      .Description("md")
-      .AddMode(std::move(submode))
-      .Build();
+  unique_ptr<Mode> mode =
+      ModeBuilder("mode").Description("md").AddMode(std::move(submode)).Build();
 
-  vector<Mode*> chain = { mode.get() };
+  vector<Mode*> chain = {mode.get()};
 
   string xml = mode->BuildHelpXML(chain);
   SCOPED_TRACE(xml);

@@ -35,15 +35,13 @@ using std::vector;
 // implemention change, it would help to have tests that make sure
 // invariants are preserved in a multi-threaded environment.
 
-template<typename T>
+template <typename T>
 class AtomicIntTest : public KuduTest {
  public:
-
   AtomicIntTest()
-      : max_(numeric_limits<T>::max()),
-        min_(numeric_limits<T>::min()) {
-    acquire_release_ = { kMemOrderNoBarrier, kMemOrderAcquire, kMemOrderRelease };
-    barrier_ = { kMemOrderNoBarrier, kMemOrderBarrier };
+      : max_(numeric_limits<T>::max()), min_(numeric_limits<T>::min()) {
+    acquire_release_ = {kMemOrderNoBarrier, kMemOrderAcquire, kMemOrderRelease};
+    barrier_ = {kMemOrderNoBarrier, kMemOrderBarrier};
   }
 
   vector<MemoryOrder> acquire_release_;
@@ -116,7 +114,8 @@ TYPED_TEST(AtomicIntTest, Increment) {
 }
 
 TEST(Atomic, AtomicBool) {
-  vector<MemoryOrder> memory_orders = { kMemOrderNoBarrier, kMemOrderRelease, kMemOrderAcquire };
+  vector<MemoryOrder> memory_orders = {
+      kMemOrderNoBarrier, kMemOrderRelease, kMemOrderAcquire};
   for (const MemoryOrder mem_order : memory_orders) {
     AtomicBool b(false);
     EXPECT_FALSE(b.Load(mem_order));

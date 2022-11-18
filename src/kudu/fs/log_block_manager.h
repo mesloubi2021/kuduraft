@@ -27,7 +27,7 @@
 #include <utility>
 #include <vector>
 
-#include <boost/optional/optional.hpp>  // IWYU pragma: keep
+#include <boost/optional/optional.hpp> // IWYU pragma: keep
 #include <gtest/gtest_prod.h>
 #include <sparsepp/spp.h>
 
@@ -184,20 +184,23 @@ class LogBlockManager : public BlockManager {
 
   // Note: all objects passed as pointers should remain alive for the lifetime
   // of the block manager.
-  LogBlockManager(Env* env,
-                  DataDirManager* dd_manager,
-                  FsErrorManager* error_manager,
-                  BlockManagerOptions opts);
+  LogBlockManager(
+      Env* env,
+      DataDirManager* dd_manager,
+      FsErrorManager* error_manager,
+      BlockManagerOptions opts);
 
   virtual ~LogBlockManager();
 
   Status Open(FsReport* report) override;
 
-  Status CreateBlock(const CreateBlockOptions& opts,
-                     std::unique_ptr<WritableBlock>* block) override;
+  Status CreateBlock(
+      const CreateBlockOptions& opts,
+      std::unique_ptr<WritableBlock>* block) override;
 
-  Status OpenBlock(const BlockId& block_id,
-                   std::unique_ptr<ReadableBlock>* block) override;
+  Status OpenBlock(
+      const BlockId& block_id,
+      std::unique_ptr<ReadableBlock>* block) override;
 
   std::unique_ptr<BlockCreationTransaction> NewCreationTransaction() override;
 
@@ -207,7 +210,9 @@ class LogBlockManager : public BlockManager {
 
   void NotifyBlockId(BlockId block_id) override;
 
-  FsErrorManager* error_manager() override { return error_manager_; }
+  FsErrorManager* error_manager() override {
+    return error_manager_;
+  }
 
  private:
   FRIEND_TEST(LogBlockManagerTest, TestAbortBlock);
@@ -229,13 +234,15 @@ class LogBlockManager : public BlockManager {
   // Type for the actual block map used to store all live blocks.
   // We use sparse_hash_map<> here to reduce memory overhead.
   typedef MemTrackerAllocator<
-      std::pair<const BlockId, scoped_refptr<internal::LogBlock>>> BlockAllocator;
+      std::pair<const BlockId, scoped_refptr<internal::LogBlock>>>
+      BlockAllocator;
   typedef spp::sparse_hash_map<
       BlockId,
       scoped_refptr<internal::LogBlock>,
       BlockIdHash,
       BlockIdEqual,
-      BlockAllocator> BlockMap;
+      BlockAllocator>
+      BlockMap;
 
   // Simpler typedef for a block map which isn't tracked in the memory tracker.
   //
@@ -244,23 +251,21 @@ class LogBlockManager : public BlockManager {
       const BlockId,
       scoped_refptr<internal::LogBlock>,
       BlockIdHash,
-      BlockIdEqual> UntrackedBlockMap;
+      BlockIdEqual>
+      UntrackedBlockMap;
 
   // Map used to store live block records during container metadata processing.
   //
   // Only used during startup.
-  typedef std::unordered_map<
-      const BlockId,
-      BlockRecordPB,
-      BlockIdHash,
-      BlockIdEqual> BlockRecordMap;
+  typedef std::
+      unordered_map<const BlockId, BlockRecordPB, BlockIdHash, BlockIdEqual>
+          BlockRecordMap;
 
   // Map used to aggregate BlockRecordMap instances across containers.
   //
   // Only used during startup.
-  typedef std::unordered_map<
-      std::string,
-      std::vector<BlockRecordPB>> BlockRecordsByContainerMap;
+  typedef std::unordered_map<std::string, std::vector<BlockRecordPB>>
+      BlockRecordsByContainerMap;
 
   // Adds an as of yet unseen container to this block manager.
   //
@@ -279,8 +284,9 @@ class LogBlockManager : public BlockManager {
   // After returning, the container is considered to be in use. When
   // writing is finished, call MakeContainerAvailable() to make it
   // available to other writers.
-  Status GetOrCreateContainer(const CreateBlockOptions& opts,
-                              internal::LogBlockContainer** container);
+  Status GetOrCreateContainer(
+      const CreateBlockOptions& opts,
+      internal::LogBlockContainer** container);
 
   // Indicate that this container is no longer in use and can be handed out
   // to other writers.
@@ -307,29 +313,33 @@ class LogBlockManager : public BlockManager {
       int64_t offset,
       int64_t length);
 
-  // Unlocked variant of AddLogBlock() for an already-constructed LogBlock object.
-  // Must hold 'lock_'.
+  // Unlocked variant of AddLogBlock() for an already-constructed LogBlock
+  // object. Must hold 'lock_'.
   //
-  // Returns true if the LogBlock was successfully added, false if it was already present.
+  // Returns true if the LogBlock was successfully added, false if it was
+  // already present.
   bool AddLogBlockUnlocked(scoped_refptr<internal::LogBlock> lb);
 
   // Removes the given set of LogBlocks from in-memory data structures, and
   // appends the block deletion metadata to record the on-disk deletion.
   // The 'log_blocks' out parameter will be set with the LogBlocks that were
   // successfully removed. The 'deleted' out parameter will be set with the
-  // blocks were already deleted, e.g encountered 'NotFound' error during removal.
+  // blocks were already deleted, e.g encountered 'NotFound' error during
+  // removal.
   //
   // Returns the first deletion failure that was seen, if any.
-  Status RemoveLogBlocks(std::vector<BlockId> block_ids,
-                         std::vector<scoped_refptr<internal::LogBlock>>* log_blocks,
-                         std::vector<BlockId>* deleted);
+  Status RemoveLogBlocks(
+      std::vector<BlockId> block_ids,
+      std::vector<scoped_refptr<internal::LogBlock>>* log_blocks,
+      std::vector<BlockId>* deleted);
 
   // Removes a LogBlock from in-memory data structures. Must hold 'lock_'.
   // The 'lb' out parameter will be set with the successfully deleted LogBlock.
   //
   // Returns an error of LogBlock cannot be successfully removed.
-  Status RemoveLogBlockUnlocked(const BlockId& block_id,
-                                scoped_refptr<internal::LogBlock>* lb);
+  Status RemoveLogBlockUnlocked(
+      const BlockId& block_id,
+      scoped_refptr<internal::LogBlock>* lb);
 
   // Repairs any inconsistencies for 'dir' described in 'report'.
   //
@@ -340,13 +350,13 @@ class LogBlockManager : public BlockManager {
   //    files compacted.
   //
   // Returns an error if repairing a fatal inconsistency failed.
-  Status Repair(DataDir* dir,
-                FsReport* report,
-                std::vector<scoped_refptr<internal::LogBlock>> need_repunching,
-                std::vector<std::string> dead_containers,
-                std::unordered_map<
-                    std::string,
-                    std::vector<BlockRecordPB>> low_live_block_containers);
+  Status Repair(
+      DataDir* dir,
+      FsReport* report,
+      std::vector<scoped_refptr<internal::LogBlock>> need_repunching,
+      std::vector<std::string> dead_containers,
+      std::unordered_map<std::string, std::vector<BlockRecordPB>>
+          low_live_block_containers);
 
   // Rewrites a container metadata file, appending all entries in 'records'.
   // The new metadata file is created as a temporary file and renamed over the
@@ -356,28 +366,32 @@ class LogBlockManager : public BlockManager {
   // failure, an effort is made to delete the temporary file.
   //
   // Note: the new file is synced but its parent directory is not.
-  Status RewriteMetadataFile(const internal::LogBlockContainer& container,
-                             const std::vector<BlockRecordPB>& records,
-                             int64_t* file_bytes_delta);
+  Status RewriteMetadataFile(
+      const internal::LogBlockContainer& container,
+      const std::vector<BlockRecordPB>& records,
+      int64_t* file_bytes_delta);
 
   // Opens a particular data directory belonging to the block manager. The
   // results of consistency checking (and repair, if applicable) are written to
   // 'report'.
   //
   // Success or failure is set in 'result_status'.
-  void OpenDataDir(DataDir* dir,
-                   FsReport* report,
-                   Status* result_status);
+  void OpenDataDir(DataDir* dir, FsReport* report, Status* result_status);
 
   // Perform basic initialization.
   Status Init();
 
-  ObjectIdGenerator* oid_generator() { return &oid_generator_; }
+  ObjectIdGenerator* oid_generator() {
+    return &oid_generator_;
+  }
 
-  Env* env() const { return env_; }
+  Env* env() const {
+    return env_;
+  }
 
   // Returns the path of the given container. Only for use by tests.
-  static std::string ContainerPathForTests(internal::LogBlockContainer* container);
+  static std::string ContainerPathForTests(
+      internal::LogBlockContainer* container);
 
   // Returns whether the given kernel release is vulnerable to KUDU-1508.
   static bool IsBuggyEl6Kernel(const std::string& kernel_release);
@@ -386,7 +400,9 @@ class LogBlockManager : public BlockManager {
   // using the given filesystem block size.
   static int64_t LookupBlockLimit(int64_t fs_block_size);
 
-  const internal::LogBlockManagerMetrics* metrics() const { return metrics_.get(); }
+  const internal::LogBlockManagerMetrics* metrics() const {
+    return metrics_.get();
+  }
 
   // For kernels affected by KUDU-1508, tracks a known good upper bound on the
   // number of blocks per container, given a particular filesystem block size.
@@ -414,8 +430,8 @@ class LogBlockManager : public BlockManager {
 
   // Maps a data directory to an upper bound on the number of blocks that a
   // container residing in that directory should observe, if one is necessary.
-  std::unordered_map<const DataDir*,
-                     boost::optional<int64_t>> block_limits_by_data_dir_;
+  std::unordered_map<const DataDir*, boost::optional<int64_t>>
+      block_limits_by_data_dir_;
 
   // Manages files opened for reading.
   FileCache<RWFile> file_cache_;
@@ -433,15 +449,15 @@ class LogBlockManager : public BlockManager {
   BlockIdSet open_block_ids_;
 
   // Holds (and owns) all containers loaded from disk.
-  std::unordered_map<std::string,
-                     internal::LogBlockContainer*> all_containers_by_name_;
+  std::unordered_map<std::string, internal::LogBlockContainer*>
+      all_containers_by_name_;
 
   // Holds only those containers that are currently available for writing,
   // excluding containers that are either in use or full.
   //
   // Does not own the containers.
-  std::unordered_map<const DataDir*,
-                     std::deque<internal::LogBlockContainer*>> available_containers_by_data_dir_;
+  std::unordered_map<const DataDir*, std::deque<internal::LogBlockContainer*>>
+      available_containers_by_data_dir_;
 
   // Tracks dirty container directories.
   //
@@ -467,4 +483,3 @@ class LogBlockManager : public BlockManager {
 
 } // namespace fs
 } // namespace kudu
-

@@ -32,9 +32,11 @@
 using std::string;
 using strings::Substitute;
 
-DEFINE_bool(cononicalize_uuid, true,
-            "If set this strips -/dashes from all uuids and makes "
-            "it a 16 character string at generation time.");
+DEFINE_bool(
+    cononicalize_uuid,
+    true,
+    "If set this strips -/dashes from all uuids and makes "
+    "it a 16 character string at generation time.");
 
 namespace kudu {
 
@@ -43,9 +45,24 @@ namespace {
 string ConvertUuidToString(const boost::uuids::uuid& to_convert) {
   if (FLAGS_cononicalize_uuid) {
     const uint8_t* uuid = to_convert.data;
-    return StringPrintf("%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
-                 uuid[0], uuid[1], uuid[2], uuid[3], uuid[4], uuid[5], uuid[6], uuid[7],
-                 uuid[8], uuid[9], uuid[10], uuid[11], uuid[12], uuid[13], uuid[14], uuid[15]);
+    return StringPrintf(
+        "%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
+        uuid[0],
+        uuid[1],
+        uuid[2],
+        uuid[3],
+        uuid[4],
+        uuid[5],
+        uuid[6],
+        uuid[7],
+        uuid[8],
+        uuid[9],
+        uuid[10],
+        uuid[11],
+        uuid[12],
+        uuid[13],
+        uuid[14],
+        uuid[15]);
   } else {
     return boost::uuids::to_string(to_convert);
   }
@@ -59,15 +76,15 @@ string ObjectIdGenerator::Next() {
   return ConvertUuidToString(uuid);
 }
 
-Status ObjectIdGenerator::Canonicalize(const string& input,
-                                       string* output) const {
+Status ObjectIdGenerator::Canonicalize(const string& input, string* output)
+    const {
   try {
     boost::uuids::uuid uuid = oid_validator_(input);
     *output = ConvertUuidToString(uuid);
     return Status::OK();
   } catch (std::exception& e) {
-    return Status::InvalidArgument(Substitute("invalid uuid $0: $1",
-                                              input, e.what()));
+    return Status::InvalidArgument(
+        Substitute("invalid uuid $0: $1", input, e.what()));
   }
 }
 

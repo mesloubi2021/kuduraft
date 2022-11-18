@@ -31,8 +31,7 @@ namespace clock {
 class LogicalClockTest : public KuduTest {
  public:
   LogicalClockTest()
-      : clock_(LogicalClock::CreateStartingAt(Timestamp::kInitialTimestamp)) {
-  }
+      : clock_(LogicalClock::CreateStartingAt(Timestamp::kInitialTimestamp)) {}
 
  protected:
   scoped_refptr<LogicalClock> clock_;
@@ -65,8 +64,7 @@ TEST_F(LogicalClockTest, TestUpdate_LogicalValueDoesNotIncrease) {
 }
 
 TEST_F(LogicalClockTest, TestWaitUntilAfterIsUnavailable) {
-  Status status = clock_->WaitUntilAfter(
-      Timestamp(10), MonoTime::Now());
+  Status status = clock_->WaitUntilAfter(Timestamp(10), MonoTime::Now());
   ASSERT_TRUE(status.IsServiceUnavailable());
 }
 
@@ -85,6 +83,5 @@ TEST_F(LogicalClockTest, TestIsAfter) {
   ASSERT_TRUE(clock_->IsAfter(ts2));
 }
 
-}  // namespace clock
-}  // namespace kudu
-
+} // namespace clock
+} // namespace kudu

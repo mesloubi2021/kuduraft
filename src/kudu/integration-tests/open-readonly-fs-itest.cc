@@ -63,7 +63,6 @@ const char kTableName[] = "test-table";
 const int kNumColumns = 50;
 
 class OpenReadonlyFsITest : public KuduTest {
-
   void SetUp() override {
     KuduTest::SetUp();
 
@@ -76,8 +75,10 @@ class OpenReadonlyFsITest : public KuduTest {
     // threads to encourage frequent compactions. The net effect of both of
     // these changes: more blocks are written to disk. Turning off container
     // file preallocation forces every append to increase the file size.
-    opts.extra_tserver_flags.emplace_back("--log_container_preallocate_bytes=0");
-    opts.extra_tserver_flags.emplace_back("--maintenance_manager_num_threads=16");
+    opts.extra_tserver_flags.emplace_back(
+        "--log_container_preallocate_bytes=0");
+    opts.extra_tserver_flags.emplace_back(
+        "--maintenance_manager_num_threads=16");
     opts.extra_tserver_flags.emplace_back("--flush_threshold_mb=1");
 
     cluster_.reset(new ExternalMiniCluster(std::move(opts)));
@@ -92,13 +93,15 @@ class OpenReadonlyFsITest : public KuduTest {
 };
 
 // Integration test that creates a tablet, then in parallel:
-//  - writes as fast as possible to the tablet, causing as many flushes as possible
+//  - writes as fast as possible to the tablet, causing as many flushes as
+//  possible
 //  - opens read-only instances of the FS manager on the tablet's data directory
 //
 // This is a regression test for KUDU-1657. It typically takes about 35 seconds
 // to trigger that bug.
 TEST_F(OpenReadonlyFsITest, TestWriteAndVerify) {
-  if (!AllowSlowTests()) return;
+  if (!AllowSlowTests())
+    return;
 
   KuduSchema schema;
   KuduSchemaBuilder b;
@@ -106,16 +109,16 @@ TEST_F(OpenReadonlyFsITest, TestWriteAndVerify) {
 
   for (int i = 1; i < kNumColumns; i++) {
     b.AddColumn(strings::Substitute("value-$0", i))
-                       ->Type(KuduColumnSchema::INT64)
-                       ->NotNull();
+        ->Type(KuduColumnSchema::INT64)
+        ->NotNull();
   }
 
   ASSERT_OK(b.Build(&schema));
   unique_ptr<KuduTableCreator> table_creator(client_->NewTableCreator());
   table_creator->table_name(kTableName)
-                .schema(&schema)
-                .set_range_partition_columns({ })
-                .num_replicas(1);
+      .schema(&schema)
+      .set_range_partition_columns({})
+      .num_replicas(1);
 
   ASSERT_OK(table_creator->Create());
 
@@ -128,15 +131,15 @@ TEST_F(OpenReadonlyFsITest, TestWriteAndVerify) {
   Random rng(SeedRandom());
   auto deadline = MonoTime::Now() + kTimeout;
 
-  auto t = std::thread([this, deadline] () {
-      FsManagerOpts fs_opts;
-      fs_opts.read_only = true;
-      fs_opts.wal_root = cluster_->tablet_server(0)->wal_dir();
-      fs_opts.data_roots = cluster_->tablet_server(0)->data_dirs();
-      while (MonoTime::Now() < deadline) {
-        FsManager fs(Env::Default(), fs_opts);
-        CHECK_OK(fs.Open());
-      }
+  auto t = std::thread([this, deadline]() {
+    FsManagerOpts fs_opts;
+    fs_opts.read_only = true;
+    fs_opts.wal_root = cluster_->tablet_server(0)->wal_dir();
+    fs_opts.data_roots = cluster_->tablet_server(0)->data_dirs();
+    while (MonoTime::Now() < deadline) {
+      FsManager fs(Env::Default(), fs_opts);
+      CHECK_OK(fs.Open());
+    }
   });
 
   int64_t count = 0;

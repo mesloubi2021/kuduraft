@@ -53,34 +53,38 @@ void TlsHandshake::SetSSLVerify() {
       ssl_mode = SSL_VERIFY_NONE;
       break;
     case TlsVerificationMode::VERIFY_REMOTE_CERT_AND_HOST:
-      // Server mode: the server sends a client certificate request to the client. The
-      // certificate returned (if any) is checked. If the verification process fails, the TLS/SSL
-      // handshake is immediately terminated with an alert message containing the reason for the
+      // Server mode: the server sends a client certificate request to the
+      // client. The certificate returned (if any) is checked. If the
+      // verification process fails, the TLS/SSL handshake is immediately
+      // terminated with an alert message containing the reason for the
       // verification failure. The behaviour can be controlled by the additional
       // SSL_VERIFY_FAIL_IF_NO_PEER_CERT and SSL_VERIFY_CLIENT_ONCE flags.
 
-      // Client mode: the server certificate is verified. If the verification process fails, the
-      // TLS/SSL handshake is immediately terminated with an alert message containing the reason
-      // for the verification failure. If no server certificate is sent, because an anonymous
-      // cipher is used, SSL_VERIFY_PEER is ignored.
+      // Client mode: the server certificate is verified. If the verification
+      // process fails, the TLS/SSL handshake is immediately terminated with an
+      // alert message containing the reason for the verification failure. If no
+      // server certificate is sent, because an anonymous cipher is used,
+      // SSL_VERIFY_PEER is ignored.
       ssl_mode |= SSL_VERIFY_PEER;
 
-      // Server mode: if the client did not return a certificate, the TLS/SSL handshake is
-      // immediately terminated with a "handshake failure" alert. This flag must be used
-      // together with SSL_VERIFY_PEER.
+      // Server mode: if the client did not return a certificate, the TLS/SSL
+      // handshake is immediately terminated with a "handshake failure" alert.
+      // This flag must be used together with SSL_VERIFY_PEER.
       ssl_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
-      // Server mode: only request a client certificate on the initial TLS/SSL handshake. Do
-      // not ask for a client certificate again in case of a renegotiation. This flag must be
-      // used together with SSL_VERIFY_PEER.
+      // Server mode: only request a client certificate on the initial TLS/SSL
+      // handshake. Do not ask for a client certificate again in case of a
+      // renegotiation. This flag must be used together with SSL_VERIFY_PEER.
       ssl_mode |= SSL_VERIFY_CLIENT_ONCE;
       break;
   }
 
-  SSL_set_verify(ssl_.get(), ssl_mode, /* callback = */nullptr);
+  SSL_set_verify(ssl_.get(), ssl_mode, /* callback = */ nullptr);
 }
 
 // Perform a normal TLS handshake
-Status TlsHandshake::SSLHandshake(std::unique_ptr<Socket>* socket, bool is_server) {
+Status TlsHandshake::SSLHandshake(
+    std::unique_ptr<Socket>* socket,
+    bool is_server) {
   SCOPED_OPENSSL_NO_PENDING_ERRORS;
   if (!has_started_) {
     SetSSLVerify();
@@ -148,7 +152,8 @@ Status TlsHandshake::Continue(const string& recv, string* send) {
     int ssl_err = SSL_get_error(ssl_.get(), rc);
     // WANT_READ and WANT_WRITE indicate that the handshake is not yet complete.
     if (ssl_err != SSL_ERROR_WANT_READ && ssl_err != SSL_ERROR_WANT_WRITE) {
-      return Status::RuntimeError("TLS Handshake error", GetSSLErrorDescription(ssl_err));
+      return Status::RuntimeError(
+          "TLS Handshake error", GetSSLErrorDescription(ssl_err));
     }
     // In the case that we got SSL_ERROR_WANT_READ or SSL_ERROR_WANT_WRITE,
     // the OpenSSL implementation guarantees that there is no error entered into
@@ -179,20 +184,24 @@ Status TlsHandshake::Verify(const Socket& socket) const {
   if (verification_mode_ == TlsVerificationMode::VERIFY_NONE) {
     return Status::OK();
   }
-  DCHECK(verification_mode_ == TlsVerificationMode::VERIFY_REMOTE_CERT_AND_HOST);
+  DCHECK(
+      verification_mode_ == TlsVerificationMode::VERIFY_REMOTE_CERT_AND_HOST);
 
   int rc = SSL_get_verify_result(ssl_.get());
   if (rc != X509_V_OK) {
-    return Status::NotAuthorized(Substitute("SSL cert verification failed: $0",
-                                            X509_verify_cert_error_string(rc)),
-                                 GetOpenSSLErrors());
+    return Status::NotAuthorized(
+        Substitute(
+            "SSL cert verification failed: $0",
+            X509_verify_cert_error_string(rc)),
+        GetOpenSSLErrors());
   }
 
   // Get the peer certificate.
   X509* cert = remote_cert_.GetTopOfChainX509();
   if (!cert) {
     if (SSL_get_verify_mode(ssl_.get()) & SSL_VERIFY_FAIL_IF_NO_PEER_CERT) {
-      return Status::NotAuthorized("Handshake failed: unable to retreive peer certificate");
+      return Status::NotAuthorized(
+          "Handshake failed: unable to retreive peer certificate");
     }
     // No cert, but we weren't requiring one.
     TRACE("Got no cert from peer, but not required");
@@ -207,13 +216,16 @@ Status TlsHandshake::Verify(const Socket& socket) const {
   Sockaddr peer_addr;
   if (!socket.GetPeerAddress(&peer_addr).ok()) {
     return Status::NotAuthorized(
-        "TLS certificate hostname verification failed: unable to get peer address");
+        "TLS certificate hostname verification failed: unable to get peer
+  address");
   }
   string peer_hostname;
   RETURN_NOT_OK_PREPEND(peer_addr.LookupHostname(&peer_hostname),
-      "TLS certificate hostname verification failed: unable to lookup peer hostname");
+      "TLS certificate hostname verification failed: unable to lookup peer
+  hostname");
 
-  // Check if the hostname matches with either the Common Name or any of the Subject Alternative
+  // Check if the hostname matches with either the Common Name or any of the
+  Subject Alternative
   // Names of the certificate.
   int match = X509_check_host(cert,
                               peer_hostname.c_str(),
@@ -221,10 +233,12 @@ Status TlsHandshake::Verify(const Socket& socket) const {
                               0,
                               nullptr);
   if (match == 0) {
-    return Status::NotAuthorized("TLS certificate hostname verification failed");
+    return Status::NotAuthorized("TLS certificate hostname verification
+  failed");
   }
   if (match < 0) {
-    return Status::RuntimeError("TLS certificate hostname verification error", GetOpenSSLErrors());
+    return Status::RuntimeError("TLS certificate hostname verification error",
+  GetOpenSSLErrors());
   }
   DCHECK_EQ(match, 1);
   */
@@ -235,8 +249,8 @@ Status TlsHandshake::GetCerts() {
   SCOPED_OPENSSL_NO_PENDING_ERRORS;
   X509* cert = SSL_get_certificate(ssl_.get());
   if (cert) {
-    // For whatever reason, SSL_get_certificate (unlike SSL_get_peer_certificate)
-    // does not increment the X509's reference count.
+    // For whatever reason, SSL_get_certificate (unlike
+    // SSL_get_peer_certificate) does not increment the X509's reference count.
     local_cert_.AdoptAndAddRefX509(cert);
   }
 

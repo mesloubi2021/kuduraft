@@ -66,13 +66,13 @@ DECLARE_double(leader_failure_max_missed_heartbeat_periods);
 METRIC_DECLARE_gauge_int32(tablet_copy_open_client_sessions);
 METRIC_DECLARE_gauge_int32(tablet_copy_open_source_sessions);
 
-using kudu::client::sp::shared_ptr;
 using kudu::client::KuduClient;
 using kudu::client::KuduClientBuilder;
 using kudu::client::KuduScanToken;
 using kudu::client::KuduScanTokenBuilder;
 using kudu::client::KuduTable;
 using kudu::client::internal::ReplicaController;
+using kudu::client::sp::shared_ptr;
 using kudu::cluster::ExternalDaemon;
 using kudu::cluster::ExternalMaster;
 using kudu::cluster::ExternalTabletServer;
@@ -88,8 +88,8 @@ using kudu::itest::GetTabletLocations;
 using kudu::itest::LeaderStepDown;
 using kudu::itest::RemoveServer;
 using kudu::itest::StartElection;
-using kudu::itest::TServerDetails;
 using kudu::itest::TabletServerMap;
+using kudu::itest::TServerDetails;
 using kudu::itest::WAIT_FOR_LEADER;
 using kudu::itest::WaitForNumTabletsOnTS;
 using kudu::itest::WaitForReplicasReportedToMaster;
@@ -114,45 +114,60 @@ class RaftConsensusNonVoterITest : public RaftConsensusITestBase {
 
  protected:
   // Get number of source tablet copy sessions at the specified server.
-  Status GetTabletCopySourceSessionsCount(const ExternalDaemon& server,
-                                          int64_t* count);
+  Status GetTabletCopySourceSessionsCount(
+      const ExternalDaemon& server,
+      int64_t* count);
 
   // Get number of target/client tablet copy sessions at the specified server.
-  Status GetTabletCopyTargetSessionsCount(const ExternalDaemon& server,
-                                          int64_t* count);
+  Status GetTabletCopyTargetSessionsCount(
+      const ExternalDaemon& server,
+      int64_t* count);
 
   // Add replica of the specified type for the specified tablet.
-  Status AddReplica(const string& tablet_id,
-                    const TServerDetails* replica,
-                    RaftPeerPB::MemberType replica_type,
-                    const MonoDelta& timeout);
+  Status AddReplica(
+      const string& tablet_id,
+      const TServerDetails* replica,
+      RaftPeerPB::MemberType replica_type,
+      const MonoDelta& timeout);
 
   // Remove replica of the specified tablet.
-  Status RemoveReplica(const string& tablet_id,
-                       const TServerDetails* replica,
-                       const MonoDelta& timeout);
+  Status RemoveReplica(
+      const string& tablet_id,
+      const TServerDetails* replica,
+      const MonoDelta& timeout);
 
   // Change replica membership to the specified type, i.e. promote a replica
   // in case of RaftPeerPB::VOTER member_type, and demote a replica in case of
   // RaftPeerPB::NON_VOTER member_type.
-  Status ChangeReplicaMembership(RaftPeerPB::MemberType member_type,
-                                 const string& tablet_id,
-                                 const TServerDetails* replica,
-                                 const MonoDelta& timeout);
+  Status ChangeReplicaMembership(
+      RaftPeerPB::MemberType member_type,
+      const string& tablet_id,
+      const TServerDetails* replica,
+      const MonoDelta& timeout);
 };
 
 Status RaftConsensusNonVoterITest::GetTabletCopySourceSessionsCount(
-    const ExternalDaemon& server, int64_t* count) {
-  return GetInt64Metric(server.bound_http_hostport(),
-      &METRIC_ENTITY_server, "kudu.tabletserver",
-      &METRIC_tablet_copy_open_source_sessions, "value", count);
+    const ExternalDaemon& server,
+    int64_t* count) {
+  return GetInt64Metric(
+      server.bound_http_hostport(),
+      &METRIC_ENTITY_server,
+      "kudu.tabletserver",
+      &METRIC_tablet_copy_open_source_sessions,
+      "value",
+      count);
 }
 
 Status RaftConsensusNonVoterITest::GetTabletCopyTargetSessionsCount(
-    const ExternalDaemon& server, int64_t* count) {
-  return GetInt64Metric(server.bound_http_hostport(),
-      &METRIC_ENTITY_server, "kudu.tabletserver",
-      &METRIC_tablet_copy_open_client_sessions, "value", count);
+    const ExternalDaemon& server,
+    int64_t* count) {
+  return GetInt64Metric(
+      server.bound_http_hostport(),
+      &METRIC_ENTITY_server,
+      "kudu.tabletserver",
+      &METRIC_tablet_copy_open_client_sessions,
+      "value",
+      count);
 }
 
 static bool IsConfigurationLeaderError(const Status& s) {
@@ -160,10 +175,11 @@ static bool IsConfigurationLeaderError(const Status& s) {
   return s.IsIllegalState() && MatchPattern(s.ToString(), kPattern);
 }
 
-Status RaftConsensusNonVoterITest::AddReplica(const string& tablet_id,
-                                              const TServerDetails* replica,
-                                              RaftPeerPB::MemberType replica_type,
-                                              const MonoDelta& timeout) {
+Status RaftConsensusNonVoterITest::AddReplica(
+    const string& tablet_id,
+    const TServerDetails* replica,
+    RaftPeerPB::MemberType replica_type,
+    const MonoDelta& timeout) {
   const MonoTime deadline = MonoTime::Now() + timeout;
   while (MonoTime::Now() < deadline) {
     TServerDetails* leader = nullptr;
@@ -175,13 +191,14 @@ Status RaftConsensusNonVoterITest::AddReplica(const string& tablet_id,
     }
     return s;
   }
-  return Status::TimedOut(Substitute("timeout adding replica $0 for tablet $1",
-                                     replica->uuid(), tablet_id));
+  return Status::TimedOut(Substitute(
+      "timeout adding replica $0 for tablet $1", replica->uuid(), tablet_id));
 }
 
-Status RaftConsensusNonVoterITest::RemoveReplica(const string& tablet_id,
-                                                 const TServerDetails* replica,
-                                                 const MonoDelta& timeout) {
+Status RaftConsensusNonVoterITest::RemoveReplica(
+    const string& tablet_id,
+    const TServerDetails* replica,
+    const MonoDelta& timeout) {
   const MonoTime deadline = MonoTime::Now() + timeout;
   while (MonoTime::Now() < deadline) {
     TServerDetails* leader = nullptr;
@@ -193,8 +210,8 @@ Status RaftConsensusNonVoterITest::RemoveReplica(const string& tablet_id,
     }
     return s;
   }
-  return Status::TimedOut(Substitute("timeout removing replica $0 for tablet $1",
-                                     replica->uuid(), tablet_id));
+  return Status::TimedOut(Substitute(
+      "timeout removing replica $0 for tablet $1", replica->uuid(), tablet_id));
 }
 
 Status RaftConsensusNonVoterITest::ChangeReplicaMembership(
@@ -206,16 +223,18 @@ Status RaftConsensusNonVoterITest::ChangeReplicaMembership(
   while (MonoTime::Now() < deadline) {
     TServerDetails* leader = nullptr;
     RETURN_NOT_OK(WaitForLeaderWithCommittedOp(tablet_id, timeout, &leader));
-    Status s = ChangeReplicaType(leader, tablet_id, replica, member_type, timeout);
+    Status s =
+        ChangeReplicaType(leader, tablet_id, replica, member_type, timeout);
     if (IsConfigurationLeaderError(s)) {
       // The leader has changed, retry.
       continue;
     }
     return s;
   }
-  return Status::TimedOut(
-      Substitute("tablet $0: timeout changing replica $0 membership type",
-                 tablet_id, replica->uuid()));
+  return Status::TimedOut(Substitute(
+      "tablet $0: timeout changing replica $0 membership type",
+      tablet_id,
+      replica->uuid()));
 }
 
 // Verify that GetTableLocations() and GetTabletLocations() return the expected
@@ -224,10 +243,10 @@ TEST_F(RaftConsensusNonVoterITest, GetTableAndTabletLocations) {
   const MonoDelta kTimeout = MonoDelta::FromSeconds(60);
   const int kOriginalReplicasNum = 3;
   const vector<string> kMasterFlags = {
-    // In the 3-4-3 replication scheme, the catalog manager removes excess
-    // replicas, so it's necessary to disable that default behavior since we
-    // want the newly added non-voter replica to stay.
-    "--catalog_manager_evict_excess_replicas=false",
+      // In the 3-4-3 replication scheme, the catalog manager removes excess
+      // replicas, so it's necessary to disable that default behavior since we
+      // want the newly added non-voter replica to stay.
+      "--catalog_manager_evict_excess_replicas=false",
   };
   FLAGS_num_tablet_servers = kOriginalReplicasNum + 1;
   FLAGS_num_replicas = kOriginalReplicasNum;
@@ -253,13 +272,16 @@ TEST_F(RaftConsensusNonVoterITest, GetTableAndTabletLocations) {
   }
   ASSERT_NE(nullptr, new_replica);
 
-  ASSERT_OK(AddReplica(tablet_id, new_replica, RaftPeerPB::NON_VOTER, kTimeout));
+  ASSERT_OK(
+      AddReplica(tablet_id, new_replica, RaftPeerPB::NON_VOTER, kTimeout));
   // Wait the newly added replica to start.
   ASSERT_OK(WaitForNumTabletsOnTS(
       new_replica, 1, kTimeout, nullptr, tablet::RUNNING));
 
   const auto count_roles = [](const TabletLocationsPB& tablet_locations,
-      int* num_leaders, int* num_followers, int* num_learners) {
+                              int* num_leaders,
+                              int* num_followers,
+                              int* num_learners) {
     *num_leaders = 0;
     *num_followers = 0;
     *num_learners = 0;
@@ -274,8 +296,12 @@ TEST_F(RaftConsensusNonVoterITest, GetTableAndTabletLocations) {
   // GetTableLocations() RPC.
   {
     GetTableLocationsResponsePB table_locations;
-    ASSERT_OK(GetTableLocations(cluster_->master_proxy(), table_->name(),
-                                kTimeout, VOTER_REPLICA, &table_locations));
+    ASSERT_OK(GetTableLocations(
+        cluster_->master_proxy(),
+        table_->name(),
+        kTimeout,
+        VOTER_REPLICA,
+        &table_locations));
     ASSERT_EQ(1, table_locations.tablet_locations().size());
     const TabletLocationsPB& locations = table_locations.tablet_locations(0);
     ASSERT_EQ(tablet_id_, locations.tablet_id());
@@ -287,8 +313,12 @@ TEST_F(RaftConsensusNonVoterITest, GetTableAndTabletLocations) {
   }
   {
     GetTableLocationsResponsePB table_locations;
-    ASSERT_OK(GetTableLocations(cluster_->master_proxy(), table_->name(),
-                                kTimeout, ANY_REPLICA, &table_locations));
+    ASSERT_OK(GetTableLocations(
+        cluster_->master_proxy(),
+        table_->name(),
+        kTimeout,
+        ANY_REPLICA,
+        &table_locations));
     ASSERT_EQ(1, table_locations.tablet_locations().size());
     const TabletLocationsPB& locations = table_locations.tablet_locations(0);
     ASSERT_EQ(tablet_id_, locations.tablet_id());
@@ -303,8 +333,12 @@ TEST_F(RaftConsensusNonVoterITest, GetTableAndTabletLocations) {
   // GetTabletLocations() RPC.
   {
     TabletLocationsPB tablet_locations;
-    ASSERT_OK(GetTabletLocations(cluster_->master_proxy(), tablet_id_,
-                                 kTimeout, VOTER_REPLICA, &tablet_locations));
+    ASSERT_OK(GetTabletLocations(
+        cluster_->master_proxy(),
+        tablet_id_,
+        kTimeout,
+        VOTER_REPLICA,
+        &tablet_locations));
     ASSERT_EQ(kOriginalReplicasNum, tablet_locations.replicas_size());
     int num_leaders = 0, num_followers = 0, num_learners = 0;
     count_roles(tablet_locations, &num_leaders, &num_followers, &num_learners);
@@ -313,8 +347,12 @@ TEST_F(RaftConsensusNonVoterITest, GetTableAndTabletLocations) {
   }
   {
     TabletLocationsPB tablet_locations;
-    ASSERT_OK(GetTabletLocations(cluster_->master_proxy(), tablet_id_,
-                                 kTimeout, ANY_REPLICA, &tablet_locations));
+    ASSERT_OK(GetTabletLocations(
+        cluster_->master_proxy(),
+        tablet_id_,
+        kTimeout,
+        ANY_REPLICA,
+        &tablet_locations));
     ASSERT_EQ(kOriginalReplicasNum + 1, tablet_locations.replicas_size());
     int num_leaders = 0, num_followers = 0, num_learners = 0;
     count_roles(tablet_locations, &num_leaders, &num_followers, &num_learners);
@@ -331,10 +369,10 @@ TEST_F(RaftConsensusNonVoterITest, ReplicaMatchPolicy) {
   FLAGS_num_tablet_servers = kOriginalReplicasNum + 1;
   FLAGS_num_replicas = kOriginalReplicasNum;
   const vector<string> kMasterFlags = {
-    // In the 3-4-3 replication scheme, the catalog manager removes excess
-    // replicas, so it's necessary to disable that default behavior since we
-    // want the newly added non-voter replica to stay.
-    "--catalog_manager_evict_excess_replicas=false",
+      // In the 3-4-3 replication scheme, the catalog manager removes excess
+      // replicas, so it's necessary to disable that default behavior since we
+      // want the newly added non-voter replica to stay.
+      "--catalog_manager_evict_excess_replicas=false",
   };
   NO_FATALS(BuildAndStart({}, kMasterFlags));
   ASSERT_EQ(FLAGS_num_tablet_servers, tablet_servers_.size());
@@ -358,7 +396,8 @@ TEST_F(RaftConsensusNonVoterITest, ReplicaMatchPolicy) {
   }
   ASSERT_NE(nullptr, new_replica);
 
-  ASSERT_OK(AddReplica(tablet_id, new_replica, RaftPeerPB::NON_VOTER, kTimeout));
+  ASSERT_OK(
+      AddReplica(tablet_id, new_replica, RaftPeerPB::NON_VOTER, kTimeout));
   // Wait the newly added replica to start.
   ASSERT_OK(WaitForNumTabletsOnTS(
       new_replica, 1, kTimeout, nullptr, tablet::RUNNING));
@@ -369,7 +408,9 @@ TEST_F(RaftConsensusNonVoterITest, ReplicaMatchPolicy) {
     KuduScanTokenBuilder builder(table);
     RETURN_NOT_OK(builder.Build(&tokens));
     size_t replicas_count = std::accumulate(
-        tokens.begin(), tokens.end(), 0,
+        tokens.begin(),
+        tokens.end(),
+        0,
         [](size_t sum, const KuduScanToken* token) {
           return sum + token->tablet().replicas().size();
         });
@@ -388,11 +429,13 @@ TEST_F(RaftConsensusNonVoterITest, ReplicaMatchPolicy) {
   // replicas should be visible.
   {
     KuduClientBuilder builder;
-    ReplicaController::SetVisibility(&builder, ReplicaController::Visibility::ALL);
+    ReplicaController::SetVisibility(
+        &builder, ReplicaController::Visibility::ALL);
     shared_ptr<KuduClient> client;
     ASSERT_OK(builder
-              .add_master_server_addr(cluster_->master()->bound_rpc_addr().ToString())
-              .Build(&client));
+                  .add_master_server_addr(
+                      cluster_->master()->bound_rpc_addr().ToString())
+                  .Build(&client));
     ASSERT_NE(nullptr, client.get());
     shared_ptr<KuduTable> t;
     ASSERT_OK(client->OpenTable(table_->name(), &t));
@@ -427,17 +470,17 @@ TEST_F(RaftConsensusNonVoterITest, ReplicaMatchPolicy) {
 TEST_F(RaftConsensusNonVoterITest, AddNonVoterReplica) {
   const MonoDelta kTimeout = MonoDelta::FromSeconds(60);
   const vector<string> kMasterFlags = {
-    // Allow replication factor of 2.
-    "--allow_unsafe_replication_factor=true",
+      // Allow replication factor of 2.
+      "--allow_unsafe_replication_factor=true",
 
-    // In the 3-4-3 replication scheme, the catalog manager removes excess
-    // replicas, so it's necessary to disable that default behavior since we
-    // want the newly added non-voter replica to stay.
-    "--catalog_manager_evict_excess_replicas=false",
+      // In the 3-4-3 replication scheme, the catalog manager removes excess
+      // replicas, so it's necessary to disable that default behavior since we
+      // want the newly added non-voter replica to stay.
+      "--catalog_manager_evict_excess_replicas=false",
   };
   const vector<string> kTserverFlags = {
-    // Slow down tablet copy to observe active source and target sessions.
-    "--tablet_copy_download_file_inject_latency_ms=1000",
+      // Slow down tablet copy to observe active source and target sessions.
+      "--tablet_copy_download_file_inject_latency_ms=1000",
   };
   const int kOriginalReplicasNum = 2;
 
@@ -479,13 +522,14 @@ TEST_F(RaftConsensusNonVoterITest, AddNonVoterReplica) {
   }
   ASSERT_NE(nullptr, new_replica);
 
-  ASSERT_OK(AddReplica(tablet_id, new_replica, RaftPeerPB::NON_VOTER, kTimeout));
+  ASSERT_OK(
+      AddReplica(tablet_id, new_replica, RaftPeerPB::NON_VOTER, kTimeout));
 
   const int new_replica_idx =
       cluster_->tablet_server_index_by_uuid(new_replica->uuid());
   // Wait for the tablet copying to start.
   ASSERT_OK(inspect_->WaitForTabletDataStateOnTS(
-      new_replica_idx, tablet_id, { TABLET_DATA_COPYING }, kTimeout));
+      new_replica_idx, tablet_id, {TABLET_DATA_COPYING}, kTimeout));
 
   TServerDetails* leader = nullptr;
   ASSERT_OK(GetLeaderReplicaWithRetries(tablet_id, &leader));
@@ -513,20 +557,26 @@ TEST_F(RaftConsensusNonVoterITest, AddNonVoterReplica) {
   // is a little racy: it takes some time to end tablet copy sessions at both
   // sides. So, using ASSERT_EVENTUALLY here to avoid flakiness.
   ASSERT_EVENTUALLY([&]() {
-      int64_t num_sessions;
-      ASSERT_OK(GetTabletCopySourceSessionsCount(ed_leader, &num_sessions));
-      EXPECT_EQ(0, num_sessions);
-      ASSERT_OK(GetTabletCopyTargetSessionsCount(ed_new_replica, &num_sessions));
-      EXPECT_EQ(0, num_sessions);
-    });
+    int64_t num_sessions;
+    ASSERT_OK(GetTabletCopySourceSessionsCount(ed_leader, &num_sessions));
+    EXPECT_EQ(0, num_sessions);
+    ASSERT_OK(GetTabletCopyTargetSessionsCount(ed_new_replica, &num_sessions));
+    EXPECT_EQ(0, num_sessions);
+  });
 
   // The master should report about the newly added NON_VOTER tablet replica
   // to the established leader.
   bool has_leader;
   TabletLocationsPB tablet_locations;
   ASSERT_OK(WaitForReplicasReportedToMaster(
-      cluster_->master_proxy(), kOriginalReplicasNum + 1, tablet_id, kTimeout,
-      WAIT_FOR_LEADER, ANY_REPLICA, &has_leader, &tablet_locations));
+      cluster_->master_proxy(),
+      kOriginalReplicasNum + 1,
+      tablet_id,
+      kTimeout,
+      WAIT_FOR_LEADER,
+      ANY_REPLICA,
+      &has_leader,
+      &tablet_locations));
   ASSERT_TRUE(has_leader);
 
   // Check the update cluster is able to elect a leader.
@@ -554,9 +604,10 @@ TEST_F(RaftConsensusNonVoterITest, AddNonVoterReplica) {
   v.SetOperationsTimeout(kTimeout);
   v.SetVerificationTimeout(kTimeout);
   NO_FATALS(v.CheckCluster());
-  NO_FATALS(v.CheckRowCount(workload.table_name(),
-                            ClusterVerifier::EXACTLY,
-                            workload.rows_inserted()));
+  NO_FATALS(v.CheckRowCount(
+      workload.table_name(),
+      ClusterVerifier::EXACTLY,
+      workload.rows_inserted()));
 }
 
 // Test how the system reacts on removing a NON_VOTER replica from
@@ -583,13 +634,13 @@ TEST_F(RaftConsensusNonVoterITest, AddNonVoterReplica) {
 TEST_F(RaftConsensusNonVoterITest, AddThenRemoveNonVoterReplica) {
   const MonoDelta kTimeout = MonoDelta::FromSeconds(60);
   const vector<string> kMasterFlags = {
-    // Allow replication factor of 2.
-    "--allow_unsafe_replication_factor=true",
+      // Allow replication factor of 2.
+      "--allow_unsafe_replication_factor=true",
 
-    // In the 3-4-3 replication scheme, the catalog manager removes excess
-    // replicas, so it's necessary to disable that default behavior since we
-    // want the newly added non-voter replica to stay.
-    "--catalog_manager_evict_excess_replicas=false",
+      // In the 3-4-3 replication scheme, the catalog manager removes excess
+      // replicas, so it's necessary to disable that default behavior since we
+      // want the newly added non-voter replica to stay.
+      "--catalog_manager_evict_excess_replicas=false",
   };
   const int kOriginalReplicasNum = 2;
 
@@ -616,7 +667,8 @@ TEST_F(RaftConsensusNonVoterITest, AddThenRemoveNonVoterReplica) {
     }
   }
   ASSERT_NE(nullptr, new_replica);
-  ASSERT_OK(AddReplica(tablet_id, new_replica, RaftPeerPB::NON_VOTER, kTimeout));
+  ASSERT_OK(
+      AddReplica(tablet_id, new_replica, RaftPeerPB::NON_VOTER, kTimeout));
 
   TestWorkload workload(cluster_.get());
   workload.set_table_name(kTableId);
@@ -638,9 +690,10 @@ TEST_F(RaftConsensusNonVoterITest, AddThenRemoveNonVoterReplica) {
   v.SetOperationsTimeout(kTimeout);
   v.SetVerificationTimeout(kTimeout);
   NO_FATALS(v.CheckCluster());
-  NO_FATALS(v.CheckRowCount(workload.table_name(),
-                            ClusterVerifier::EXACTLY,
-                            workload.rows_inserted()));
+  NO_FATALS(v.CheckRowCount(
+      workload.table_name(),
+      ClusterVerifier::EXACTLY,
+      workload.rows_inserted()));
 
   // Remove the newly added replica.
   ASSERT_OK(RemoveReplica(tablet_id, new_replica, kTimeout));
@@ -650,7 +703,7 @@ TEST_F(RaftConsensusNonVoterITest, AddThenRemoveNonVoterReplica) {
   const int new_replica_idx =
       cluster_->tablet_server_index_by_uuid(new_replica->uuid());
   ASSERT_OK(inspect_->WaitForTabletDataStateOnTS(
-      new_replica_idx, tablet_id, { TABLET_DATA_TOMBSTONED }, kTimeout));
+      new_replica_idx, tablet_id, {TABLET_DATA_TOMBSTONED}, kTimeout));
 
   // The added and then removed tablet replica should be gone, and the master
   // should report appropriate replica count at this point. The tablet leader
@@ -658,8 +711,14 @@ TEST_F(RaftConsensusNonVoterITest, AddThenRemoveNonVoterReplica) {
   bool has_leader;
   TabletLocationsPB tablet_locations;
   ASSERT_OK(WaitForReplicasReportedToMaster(
-      cluster_->master_proxy(), kOriginalReplicasNum, tablet_id, kTimeout,
-      WAIT_FOR_LEADER, ANY_REPLICA, &has_leader, &tablet_locations));
+      cluster_->master_proxy(),
+      kOriginalReplicasNum,
+      tablet_id,
+      kTimeout,
+      WAIT_FOR_LEADER,
+      ANY_REPLICA,
+      &has_leader,
+      &tablet_locations));
   ASSERT_TRUE(has_leader);
 
   // Make sure it's possible to insert data into the tablet once the NON_VOTER
@@ -674,9 +733,10 @@ TEST_F(RaftConsensusNonVoterITest, AddThenRemoveNonVoterReplica) {
   // Ensure that nothing crashed and the replicas converge.
   NO_FATALS(cluster_->AssertNoCrashes());
   NO_FATALS(v.CheckCluster());
-  NO_FATALS(v.CheckRowCount(workload.table_name(),
-                            ClusterVerifier::EXACTLY,
-                            workload.rows_inserted()));
+  NO_FATALS(v.CheckRowCount(
+      workload.table_name(),
+      ClusterVerifier::EXACTLY,
+      workload.rows_inserted()));
 }
 
 // Test to ensure that a non-voter replica:
@@ -694,18 +754,19 @@ TEST_F(RaftConsensusNonVoterITest, NonVoterReplicasDoNotVote) {
   const int kHbIntervalMs = 64;
   const int kHbLeaderMissedNum = 1;
   const vector<string> kMasterFlags = {
-    // Allow replication factor of 2.
-    "--allow_unsafe_replication_factor=true",
+      // Allow replication factor of 2.
+      "--allow_unsafe_replication_factor=true",
 
-    // In the 3-4-3 replication scheme, the catalog manager removes excess
-    // replicas, so it's necessary to disable that default behavior since we
-    // want the newly added non-voter replica to stay.
-    "--catalog_manager_evict_excess_replicas=false",
+      // In the 3-4-3 replication scheme, the catalog manager removes excess
+      // replicas, so it's necessary to disable that default behavior since we
+      // want the newly added non-voter replica to stay.
+      "--catalog_manager_evict_excess_replicas=false",
   };
   const vector<string> kTserverFlags = {
-    Substitute("--raft_heartbeat_interval_ms=$0", kHbIntervalMs),
-    Substitute("--leader_failure_max_missed_heartbeat_periods=$0",
-        kHbLeaderMissedNum),
+      Substitute("--raft_heartbeat_interval_ms=$0", kHbIntervalMs),
+      Substitute(
+          "--leader_failure_max_missed_heartbeat_periods=$0",
+          kHbLeaderMissedNum),
   };
 
   FLAGS_num_tablet_servers = 3;
@@ -734,7 +795,8 @@ TEST_F(RaftConsensusNonVoterITest, NonVoterReplicasDoNotVote) {
   }
   ASSERT_NE(nullptr, new_replica);
 
-  ASSERT_OK(AddReplica(tablet_id, new_replica, RaftPeerPB::NON_VOTER, kTimeout));
+  ASSERT_OK(
+      AddReplica(tablet_id, new_replica, RaftPeerPB::NON_VOTER, kTimeout));
 
   // The newly copied replica should be able to start.
   ASSERT_OK(WaitForNumTabletsOnTS(
@@ -758,9 +820,7 @@ TEST_F(RaftConsensusNonVoterITest, NonVoterReplicasDoNotVote) {
     ASSERT_OK(GetTermMetricValue(leader_ts, &term_leader));
 
     ASSERT_OK(leader_ts->Pause());
-    SCOPED_CLEANUP({
-      ASSERT_OK(leader_ts->Resume());
-    });
+    SCOPED_CLEANUP({ ASSERT_OK(leader_ts->Resume()); });
     TServerDetails* new_leader;
     const Status s = GetLeaderReplicaWithRetries(tablet_id, &new_leader, 10);
     ASSERT_TRUE(s.IsNotFound()) << s.ToString();
@@ -776,8 +836,8 @@ TEST_F(RaftConsensusNonVoterITest, NonVoterReplicasDoNotVote) {
     // Disable failure detection for all replicas.
     for (int i = 0; i < cluster_->num_tablet_servers(); ++i) {
       ExternalTabletServer* ts = cluster_->tablet_server(i);
-      ASSERT_OK(cluster_->SetFlag(ts,
-          "enable_leader_failure_detection", "false"));
+      ASSERT_OK(
+          cluster_->SetFlag(ts, "enable_leader_failure_detection", "false"));
     }
     ExternalTabletServer* new_replica_ts =
         cluster_->tablet_server_by_uuid(new_replica->uuid());
@@ -798,8 +858,8 @@ TEST_F(RaftConsensusNonVoterITest, NonVoterReplicasDoNotVote) {
     // However, it's not and no election should be started, and the term
     // must be the same as before starting this NON_VOTER replica.
     // So, give a chance for a new election to happen and compare the terms.
-    SleepFor(MonoDelta::FromMilliseconds(
-        3L * kHbLeaderMissedNum * kHbIntervalMs));
+    SleepFor(
+        MonoDelta::FromMilliseconds(3L * kHbLeaderMissedNum * kHbIntervalMs));
 
     int64_t term_after_restart = 0;
     ASSERT_OK(GetTermMetricValue(new_replica_ts, &term_after_restart));
@@ -828,31 +888,33 @@ TEST_F(RaftConsensusNonVoterITest, PromoteAndDemote) {
   const int kInitialReplicasNum = 3;
   const int kHbIntervalMs = 50;
   const vector<string> kTserverFlags = {
-    // Run the test faster: shorten the default interval for Raft heartbeats.
-    Substitute("--raft_heartbeat_interval_ms=$0", kHbIntervalMs),
+      // Run the test faster: shorten the default interval for Raft heartbeats.
+      Substitute("--raft_heartbeat_interval_ms=$0", kHbIntervalMs),
 
-    // The scenario does not assume replicas might be evicted while running.
-    "--evict_failed_followers=false",
+      // The scenario does not assume replicas might be evicted while running.
+      "--evict_failed_followers=false",
 
-    // To avoid flakiness, this scenario disables leader re-elections.
-    "--enable_leader_failure_detection=false",
+      // To avoid flakiness, this scenario disables leader re-elections.
+      "--enable_leader_failure_detection=false",
   };
   const vector<string> kMasterFlags = {
-    // The election is run manually after BuildAndStart().
-    "--catalog_manager_wait_for_new_tablets_to_elect_leader=false",
+      // The election is run manually after BuildAndStart().
+      "--catalog_manager_wait_for_new_tablets_to_elect_leader=false",
 
-    // In the 3-4-3 replication scheme, the catalog manager removes excess
-    // replicas, so it's necessary to disable that default behavior since we
-    // want the newly added non-voter replica to stay.
-    "--catalog_manager_evict_excess_replicas=false",
+      // In the 3-4-3 replication scheme, the catalog manager removes excess
+      // replicas, so it's necessary to disable that default behavior since we
+      // want the newly added non-voter replica to stay.
+      "--catalog_manager_evict_excess_replicas=false",
   };
 
   FLAGS_num_tablet_servers = 4;
   FLAGS_num_replicas = kInitialReplicasNum;
   NO_FATALS(BuildAndStart(kTserverFlags, kMasterFlags));
   ASSERT_FALSE(tablet_replicas_.empty());
-  ASSERT_OK(StartElection(tablet_replicas_.begin()->second, tablet_id_, kTimeout));
-  ASSERT_OK(WaitUntilLeader(tablet_replicas_.begin()->second, tablet_id_, kTimeout));
+  ASSERT_OK(
+      StartElection(tablet_replicas_.begin()->second, tablet_id_, kTimeout));
+  ASSERT_OK(
+      WaitUntilLeader(tablet_replicas_.begin()->second, tablet_id_, kTimeout));
 
   ASSERT_EQ(4, tablet_servers_.size());
   ASSERT_EQ(kInitialReplicasNum, tablet_replicas_.size());
@@ -880,26 +942,26 @@ TEST_F(RaftConsensusNonVoterITest, PromoteAndDemote) {
 
   // Wait for tablet copy to complete: the scenario assumes the newly added
   // replica is up-to-date.
-  ASSERT_OK(WaitForNumTabletsOnTS(
-      replica, 1, kTimeout, nullptr, tablet::RUNNING));
+  ASSERT_OK(
+      WaitForNumTabletsOnTS(replica, 1, kTimeout, nullptr, tablet::RUNNING));
 
   // It should be impossible to demote a non-voter.
   {
-    Status s = ChangeReplicaMembership(RaftPeerPB::NON_VOTER,
-                                       tablet_id, replica, kTimeout);
+    Status s = ChangeReplicaMembership(
+        RaftPeerPB::NON_VOTER, tablet_id, replica, kTimeout);
     const auto s_str = s.ToString();
     ASSERT_TRUE(s.IsInvalidArgument()) << s_str;
     ASSERT_STR_CONTAINS(s_str, "must modify a field when calling MODIFY_PEER");
   }
 
   // It should be possible to promote a non-voter to voter.
-  ASSERT_OK(ChangeReplicaMembership(RaftPeerPB::VOTER, tablet_id,
-                                    replica, kTimeout));
+  ASSERT_OK(
+      ChangeReplicaMembership(RaftPeerPB::VOTER, tablet_id, replica, kTimeout));
 
   // It should be impossible to promote a voter since it's a voter already.
   {
-    Status s = ChangeReplicaMembership(RaftPeerPB::VOTER,
-                                       tablet_id, replica, kTimeout);
+    Status s = ChangeReplicaMembership(
+        RaftPeerPB::VOTER, tablet_id, replica, kTimeout);
     const auto s_str = s.ToString();
     ASSERT_TRUE(s.IsInvalidArgument()) << s_str;
     ASSERT_STR_CONTAINS(s_str, "must modify a field when calling MODIFY_PEER");
@@ -909,25 +971,27 @@ TEST_F(RaftConsensusNonVoterITest, PromoteAndDemote) {
     // It should be impossible to demote the tablet leader.
     TServerDetails* leader;
     ASSERT_OK(GetLeaderReplicaWithRetries(tablet_id, &leader));
-    const Status s_demote = ChangeReplicaMembership(RaftPeerPB::NON_VOTER,
-                                                    tablet_id, leader, kTimeout);
+    const Status s_demote = ChangeReplicaMembership(
+        RaftPeerPB::NON_VOTER, tablet_id, leader, kTimeout);
     const auto s_demote_str = s_demote.ToString();
     ASSERT_TRUE(s_demote.IsInvalidArgument()) << s_demote_str;
-    ASSERT_STR_MATCHES(s_demote_str,
+    ASSERT_STR_MATCHES(
+        s_demote_str,
         "Cannot modify member type of peer .* because it is the leader");
 
     // It should be impossible to promote a leader replica since it's
     // already a voter.
-    const Status s_promote = ChangeReplicaMembership(RaftPeerPB::VOTER,
-                                                     tablet_id, leader, kTimeout);
+    const Status s_promote =
+        ChangeReplicaMembership(RaftPeerPB::VOTER, tablet_id, leader, kTimeout);
     const auto s_promote_str = s_promote.ToString();
     ASSERT_TRUE(s_promote.IsInvalidArgument()) << s_promote_str;
-    ASSERT_STR_CONTAINS(s_promote_str, "must modify a field when calling MODIFY_PEER");
+    ASSERT_STR_CONTAINS(
+        s_promote_str, "must modify a field when calling MODIFY_PEER");
   }
 
   // Demote the replica back.
-  ASSERT_OK(ChangeReplicaMembership(RaftPeerPB::NON_VOTER,
-                                    tablet_id, replica, kTimeout));
+  ASSERT_OK(ChangeReplicaMembership(
+      RaftPeerPB::NON_VOTER, tablet_id, replica, kTimeout));
 
   // Promote/demote a replica under active workload.
   {
@@ -939,15 +1003,15 @@ TEST_F(RaftConsensusNonVoterITest, PromoteAndDemote) {
       SleepFor(MonoDelta::FromMilliseconds(10));
     }
 
-    ASSERT_OK(ChangeReplicaMembership(RaftPeerPB::VOTER,
-                                      tablet_id, replica, kTimeout));
+    ASSERT_OK(ChangeReplicaMembership(
+        RaftPeerPB::VOTER, tablet_id, replica, kTimeout));
     auto rows_inserted = workload.rows_inserted();
     while (workload.rows_inserted() < rows_inserted * 2) {
       SleepFor(MonoDelta::FromMilliseconds(10));
     }
 
-    ASSERT_OK(ChangeReplicaMembership(RaftPeerPB::NON_VOTER,
-                                      tablet_id, replica, kTimeout));
+    ASSERT_OK(ChangeReplicaMembership(
+        RaftPeerPB::NON_VOTER, tablet_id, replica, kTimeout));
     rows_inserted = workload.rows_inserted();
     while (workload.rows_inserted() < rows_inserted * 2) {
       SleepFor(MonoDelta::FromMilliseconds(10));
@@ -960,16 +1024,17 @@ TEST_F(RaftConsensusNonVoterITest, PromoteAndDemote) {
     v.SetOperationsTimeout(kTimeout);
     v.SetVerificationTimeout(kTimeout);
     NO_FATALS(v.CheckCluster());
-    NO_FATALS(v.CheckRowCount(workload.table_name(),
-                              ClusterVerifier::EXACTLY,
-                              workload.rows_inserted()));
+    NO_FATALS(v.CheckRowCount(
+        workload.table_name(),
+        ClusterVerifier::EXACTLY,
+        workload.rows_inserted()));
   }
 
   // Promote the non-voter replica again and then remove it when it's a voter,
   // making sure it gets tombstoned.
   {
-    ASSERT_OK(ChangeReplicaMembership(RaftPeerPB::VOTER,
-                                      tablet_id, replica, kTimeout));
+    ASSERT_OK(ChangeReplicaMembership(
+        RaftPeerPB::VOTER, tablet_id, replica, kTimeout));
     ASSERT_OK(WaitForServersToAgree(kTimeout, replica_servers, tablet_id, 1));
 
     ASSERT_OK(RemoveReplica(tablet_id, replica, kTimeout));
@@ -978,15 +1043,21 @@ TEST_F(RaftConsensusNonVoterITest, PromoteAndDemote) {
     const int replica_idx =
         cluster_->tablet_server_index_by_uuid(replica->uuid());
     ASSERT_OK(inspect_->WaitForTabletDataStateOnTS(
-        replica_idx, tablet_id, { TABLET_DATA_TOMBSTONED }, kTimeout));
+        replica_idx, tablet_id, {TABLET_DATA_TOMBSTONED}, kTimeout));
 
     // The removed tablet replica should be gone, and the master should report
     // appropriate replica count at this point.
     bool has_leader;
     TabletLocationsPB tablet_locations;
     ASSERT_OK(WaitForReplicasReportedToMaster(
-        cluster_->master_proxy(), kInitialReplicasNum, tablet_id, kTimeout,
-        WAIT_FOR_LEADER, ANY_REPLICA, &has_leader, &tablet_locations));
+        cluster_->master_proxy(),
+        kInitialReplicasNum,
+        tablet_id,
+        kTimeout,
+        WAIT_FOR_LEADER,
+        ANY_REPLICA,
+        &has_leader,
+        &tablet_locations));
     ASSERT_TRUE(has_leader);
   }
 
@@ -1012,17 +1083,17 @@ TEST_F(RaftConsensusNonVoterITest, PromotedReplicaCanVote) {
   const int kInitialReplicasNum = 3;
   const int kHbIntervalMs = 50;
   const vector<string> kMasterFlags = {
-    // In the 3-4-3 replication scheme, the catalog manager removes excess
-    // replicas, so it's necessary to disable that default behavior since we
-    // want the newly added non-voter replica to stay.
-    "--catalog_manager_evict_excess_replicas=false",
+      // In the 3-4-3 replication scheme, the catalog manager removes excess
+      // replicas, so it's necessary to disable that default behavior since we
+      // want the newly added non-voter replica to stay.
+      "--catalog_manager_evict_excess_replicas=false",
   };
   const vector<string> kTserverFlags = {
-    // Run the test faster: shorten the default interval for Raft heartbeats.
-    Substitute("--raft_heartbeat_interval_ms=$0", kHbIntervalMs),
+      // Run the test faster: shorten the default interval for Raft heartbeats.
+      Substitute("--raft_heartbeat_interval_ms=$0", kHbIntervalMs),
 
-    // The scenario does not assume replicas might be evicted while running.
-    "--evict_failed_followers=false",
+      // The scenario does not assume replicas might be evicted while running.
+      "--evict_failed_followers=false",
   };
 
   FLAGS_num_tablet_servers = 4;
@@ -1057,11 +1128,11 @@ TEST_F(RaftConsensusNonVoterITest, PromotedReplicaCanVote) {
 
   // Wait for tablet copy to complete. Otherwise, in the sequence below,
   // the leader may be paused before the copying is complete.
-  ASSERT_OK(WaitForNumTabletsOnTS(
-      replica, 1, kTimeout, nullptr, tablet::RUNNING));
+  ASSERT_OK(
+      WaitForNumTabletsOnTS(replica, 1, kTimeout, nullptr, tablet::RUNNING));
 
-  ASSERT_OK(ChangeReplicaMembership(RaftPeerPB::VOTER, tablet_id,
-                                    replica, kTimeout));
+  ASSERT_OK(
+      ChangeReplicaMembership(RaftPeerPB::VOTER, tablet_id, replica, kTimeout));
   // The newly added voter needs to be registered in the internal replica map
   // tablet_replicas_: this is necessary for the future calls like
   // GetLeaderReplicaWithRetries() when the replica becomes a leader.
@@ -1085,16 +1156,14 @@ TEST_F(RaftConsensusNonVoterITest, PromotedReplicaCanVote) {
     ExternalTabletServer* replica_ts =
         cluster_->tablet_server_by_uuid(replica->uuid());
     ASSERT_OK(replica_ts->Pause());
-    auto cleanup_replica = MakeScopedCleanup([&]() {
-      ASSERT_OK(replica_ts->Resume());
-    });
+    auto cleanup_replica =
+        MakeScopedCleanup([&]() { ASSERT_OK(replica_ts->Resume()); });
 
     ExternalTabletServer* leader_ts =
         cluster_->tablet_server_by_uuid(leader->uuid());
     ASSERT_OK(leader_ts->Pause());
-    auto cleanup_leader = MakeScopedCleanup([&]() {
-      ASSERT_OK(leader_ts->Resume());
-    });
+    auto cleanup_leader =
+        MakeScopedCleanup([&]() { ASSERT_OK(leader_ts->Resume()); });
 
     // With both the current leader and the new voter paused, no new leader
     // can be elected since the majority is now 3 out of 4 voters, while
@@ -1127,11 +1196,12 @@ TEST_F(RaftConsensusNonVoterITest, PromotedReplicaCanVote) {
     // replicas should be able to elect a new leader, since the majority is 3
     // out of 4 replicas.
     ASSERT_OK(leader_ts->Pause());
-    auto cleanup_leader = MakeScopedCleanup([&]() {
-      ASSERT_OK(leader_ts->Resume());
-    });
-    SleepFor(MonoDelta::FromMilliseconds(kHbIntervalMs *
-        static_cast<int64_t>(FLAGS_leader_failure_max_missed_heartbeat_periods + 1.0)));
+    auto cleanup_leader =
+        MakeScopedCleanup([&]() { ASSERT_OK(leader_ts->Resume()); });
+    SleepFor(MonoDelta::FromMilliseconds(
+        kHbIntervalMs *
+        static_cast<int64_t>(
+            FLAGS_leader_failure_max_missed_heartbeat_periods + 1.0)));
   }
   ASSERT_NE(nullptr, leader);
   ASSERT_EQ(new_replica_uuid, leader->uuid());
@@ -1152,17 +1222,19 @@ TEST_F(RaftConsensusNonVoterITest, CatalogManagerEvictsExcessNonVoter) {
   // Need one extra tserver for a new non-voter replica.
   FLAGS_num_tablet_servers = kReplicasNum + 1;
   const vector<string> kMasterFlags = {
-    // The scenario runs with the new replica management scheme.
-    "--raft_prepare_replacement_before_eviction=true",
-    // Don't evict excess replicas to avoid races in the scenario.
-    "--catalog_manager_evict_excess_replicas=false",
+      // The scenario runs with the new replica management scheme.
+      "--raft_prepare_replacement_before_eviction=true",
+      // Don't evict excess replicas to avoid races in the scenario.
+      "--catalog_manager_evict_excess_replicas=false",
   };
   const vector<string> kTserverFlags = {
-    // The scenario runs with the new replica management scheme.
-    "--raft_prepare_replacement_before_eviction=true",
-    Substitute("--consensus_rpc_timeout_ms=$0", 1000 * kReplicaUnavailableSec),
-    Substitute("--follower_unavailable_considered_failed_sec=$0",
-              kReplicaUnavailableSec),
+      // The scenario runs with the new replica management scheme.
+      "--raft_prepare_replacement_before_eviction=true",
+      Substitute(
+          "--consensus_rpc_timeout_ms=$0", 1000 * kReplicaUnavailableSec),
+      Substitute(
+          "--follower_unavailable_considered_failed_sec=$0",
+          kReplicaUnavailableSec),
   };
 
   NO_FATALS(BuildAndStart(kTserverFlags, kMasterFlags));
@@ -1185,19 +1257,21 @@ TEST_F(RaftConsensusNonVoterITest, CatalogManagerEvictsExcessNonVoter) {
     }
   }
   ASSERT_NE(nullptr, new_replica);
-  ASSERT_OK(AddReplica(tablet_id_, new_replica, RaftPeerPB::NON_VOTER, kTimeout));
+  ASSERT_OK(
+      AddReplica(tablet_id_, new_replica, RaftPeerPB::NON_VOTER, kTimeout));
 
   bool has_leader = false;
   TabletLocationsPB tablet_locations;
   // Make sure the extra replica is seen by the master.
-  ASSERT_OK(WaitForReplicasReportedToMaster(cluster_->master_proxy(),
-                                            kReplicasNum + 1,
-                                            tablet_id_,
-                                            kTimeout,
-                                            WAIT_FOR_LEADER,
-                                            ANY_REPLICA,
-                                            &has_leader,
-                                            &tablet_locations));
+  ASSERT_OK(WaitForReplicasReportedToMaster(
+      cluster_->master_proxy(),
+      kReplicasNum + 1,
+      tablet_id_,
+      kTimeout,
+      WAIT_FOR_LEADER,
+      ANY_REPLICA,
+      &has_leader,
+      &tablet_locations));
 
   // Switch the catalog manager to start evicting excess replicas
   // (that's how it runs by default in the new replica management scheme).
@@ -1206,29 +1280,28 @@ TEST_F(RaftConsensusNonVoterITest, CatalogManagerEvictsExcessNonVoter) {
   // WaitForReplicasReportedToMaster() call above.
   for (auto i = 0; i < cluster_->num_masters(); ++i) {
     ExternalMaster* m = cluster_->master(i);
-    ASSERT_OK(cluster_->SetFlag(m,
-        "catalog_manager_evict_excess_replicas", "true"));
+    ASSERT_OK(
+        cluster_->SetFlag(m, "catalog_manager_evict_excess_replicas", "true"));
   }
 
   ExternalTabletServer* new_replica_ts =
       cluster_->tablet_server_by_uuid(new_replica->uuid());
   ASSERT_NE(nullptr, new_replica_ts);
   ASSERT_OK(new_replica_ts->Pause());
-  SCOPED_CLEANUP({
-    ASSERT_OK(new_replica_ts->Resume());
-  });
+  SCOPED_CLEANUP({ ASSERT_OK(new_replica_ts->Resume()); });
   SleepFor(MonoDelta::FromSeconds(2 * kReplicaUnavailableSec));
   ASSERT_OK(new_replica_ts->Resume());
 
   // Make sure the excess non-voter replica is gone.
-  ASSERT_OK(WaitForReplicasReportedToMaster(cluster_->master_proxy(),
-                                            kReplicasNum,
-                                            tablet_id_,
-                                            kTimeout,
-                                            WAIT_FOR_LEADER,
-                                            ANY_REPLICA,
-                                            &has_leader,
-                                            &tablet_locations));
+  ASSERT_OK(WaitForReplicasReportedToMaster(
+      cluster_->master_proxy(),
+      kReplicasNum,
+      tablet_id_,
+      kTimeout,
+      WAIT_FOR_LEADER,
+      ANY_REPLICA,
+      &has_leader,
+      &tablet_locations));
   NO_FATALS(cluster_->AssertNoCrashes());
 }
 
@@ -1251,16 +1324,17 @@ TEST_F(RaftConsensusNonVoterITest, CatalogManagerAddsNonVoter) {
   // a new non-voter replacement replica.
   FLAGS_num_tablet_servers = kReplicasNum + 1;
   const vector<string> kMasterFlags = {
-    // The scenario runs with the new replica management scheme.
-    "--raft_prepare_replacement_before_eviction=true",
-    // Don't evict excess replicas to avoid races in the scenario.
-    "--catalog_manager_evict_excess_replicas=false",
+      // The scenario runs with the new replica management scheme.
+      "--raft_prepare_replacement_before_eviction=true",
+      // Don't evict excess replicas to avoid races in the scenario.
+      "--catalog_manager_evict_excess_replicas=false",
   };
   const vector<string> kTserverFlags = {
-    // The scenario runs with the new replica management scheme.
-    "--raft_prepare_replacement_before_eviction=true",
-    Substitute("--follower_unavailable_considered_failed_sec=$0",
-               kReplicaUnavailableSec),
+      // The scenario runs with the new replica management scheme.
+      "--raft_prepare_replacement_before_eviction=true",
+      Substitute(
+          "--follower_unavailable_considered_failed_sec=$0",
+          kReplicaUnavailableSec),
   };
 
   NO_FATALS(BuildAndStart(kTserverFlags, kMasterFlags));
@@ -1278,14 +1352,15 @@ TEST_F(RaftConsensusNonVoterITest, CatalogManagerAddsNonVoter) {
   // replace the failed one.
   bool has_leader = false;
   TabletLocationsPB tablet_locations;
-  ASSERT_OK(WaitForReplicasReportedToMaster(cluster_->master_proxy(),
-                                            kReplicasNum + 1,
-                                            tablet_id_,
-                                            kTimeout,
-                                            WAIT_FOR_LEADER,
-                                            ANY_REPLICA,
-                                            &has_leader,
-                                            &tablet_locations));
+  ASSERT_OK(WaitForReplicasReportedToMaster(
+      cluster_->master_proxy(),
+      kReplicasNum + 1,
+      tablet_id_,
+      kTimeout,
+      WAIT_FOR_LEADER,
+      ANY_REPLICA,
+      &has_leader,
+      &tablet_locations));
   NO_FATALS(cluster_->AssertNoCrashes());
 }
 
@@ -1313,21 +1388,24 @@ TEST_F(RaftConsensusNonVoterITest, TabletServerIsGoneAndBack) {
   // replacement replicas elsewhere.
   FLAGS_num_tablet_servers = kReplicasNum + 1;
   const vector<string> kMasterFlags = {
-    // The scenario runs with the 3-4-3 replica management scheme.
-    "--raft_prepare_replacement_before_eviction=true",
+      // The scenario runs with the 3-4-3 replica management scheme.
+      "--raft_prepare_replacement_before_eviction=true",
   };
   const vector<string> kTserverFlags = {
-    // The scenario runs with the 3-4-3 replica management scheme.
-    "--raft_prepare_replacement_before_eviction=true",
-    Substitute("--follower_unavailable_considered_failed_sec=$0",
-               kReplicaUnavailableSec),
-    // Slow down tablet copy to avoid new non-voter replicas catching up with
-    // the leader replicas, otherwise they might be promoted to voters before
-    // the replicas from the 'failed' tablet server is back.
-    Substitute("--tablet_copy_download_file_inject_latency_ms=$0",
-               MonoDelta::FromSeconds(3 * kTimeoutSec).ToMilliseconds()),
-    // Don't wait for the RPC timeout for too long.
-    Substitute("--consensus_rpc_timeout_ms=$0", 1000 * kReplicaUnavailableSec),
+      // The scenario runs with the 3-4-3 replica management scheme.
+      "--raft_prepare_replacement_before_eviction=true",
+      Substitute(
+          "--follower_unavailable_considered_failed_sec=$0",
+          kReplicaUnavailableSec),
+      // Slow down tablet copy to avoid new non-voter replicas catching up with
+      // the leader replicas, otherwise they might be promoted to voters before
+      // the replicas from the 'failed' tablet server is back.
+      Substitute(
+          "--tablet_copy_download_file_inject_latency_ms=$0",
+          MonoDelta::FromSeconds(3 * kTimeoutSec).ToMilliseconds()),
+      // Don't wait for the RPC timeout for too long.
+      Substitute(
+          "--consensus_rpc_timeout_ms=$0", 1000 * kReplicaUnavailableSec),
   };
 
   NO_FATALS(BuildAndStart(kTserverFlags, kMasterFlags));
@@ -1359,14 +1437,15 @@ TEST_F(RaftConsensusNonVoterITest, TabletServerIsGoneAndBack) {
   // replacement.
   bool has_leader = false;
   TabletLocationsPB tablet_locations;
-  ASSERT_OK(WaitForReplicasReportedToMaster(cluster_->master_proxy(),
-                                            kReplicasNum + 1,
-                                            tablet_id_,
-                                            kTimeout,
-                                            WAIT_FOR_LEADER,
-                                            ANY_REPLICA,
-                                            &has_leader,
-                                            &tablet_locations));
+  ASSERT_OK(WaitForReplicasReportedToMaster(
+      cluster_->master_proxy(),
+      kReplicasNum + 1,
+      tablet_id_,
+      kTimeout,
+      WAIT_FOR_LEADER,
+      ANY_REPLICA,
+      &has_leader,
+      &tablet_locations));
 
   // Restart the tablet server with the replica which has been marked as failed.
   ASSERT_OK(ts_with_replica->Restart());
@@ -1374,14 +1453,15 @@ TEST_F(RaftConsensusNonVoterITest, TabletServerIsGoneAndBack) {
   // Since the new non-voter replica is still not ready for promotion because
   // the tablet copy is in progress, and all the original voter replicas are in
   // good health, the catalog manager should evict an excess non-voter replica.
-  ASSERT_OK(WaitForReplicasReportedToMaster(cluster_->master_proxy(),
-                                            kReplicasNum,
-                                            tablet_id_,
-                                            kTimeout,
-                                            WAIT_FOR_LEADER,
-                                            ANY_REPLICA,
-                                            &has_leader,
-                                            &tablet_locations));
+  ASSERT_OK(WaitForReplicasReportedToMaster(
+      cluster_->master_proxy(),
+      kReplicasNum,
+      tablet_id_,
+      kTimeout,
+      WAIT_FOR_LEADER,
+      ANY_REPLICA,
+      &has_leader,
+      &tablet_locations));
   // Make sure the replica from the gone-and-back server is part of the config.
   consensus::ConsensusStatePB cstate;
   ASSERT_EVENTUALLY([&] {
@@ -1389,9 +1469,11 @@ TEST_F(RaftConsensusNonVoterITest, TabletServerIsGoneAndBack) {
     ASSERT_OK(GetLeaderReplicaWithRetries(tablet_id_, &leader));
     // The reason for the outside ASSERT_EVENTUALLY is that the leader might
     // have changed in between of these two calls.
-    ASSERT_OK(GetConsensusState(leader, tablet_id_, kTimeout, EXCLUDE_HEALTH_REPORT, &cstate));
+    ASSERT_OK(GetConsensusState(
+        leader, tablet_id_, kTimeout, EXCLUDE_HEALTH_REPORT, &cstate));
   });
-  ASSERT_TRUE(IsRaftConfigMember(ts_with_replica->uuid(), cstate.committed_config()));
+  ASSERT_TRUE(
+      IsRaftConfigMember(ts_with_replica->uuid(), cstate.committed_config()));
 
   NO_FATALS(cluster_->AssertNoCrashes());
 }
@@ -1400,10 +1482,11 @@ TEST_F(RaftConsensusNonVoterITest, TabletServerIsGoneAndBack) {
 // falls behind the threshold of the GCed WAL segment threshold. The catalog
 // manager should notice that and evict it right away. Then it should add a new
 // non-voter replica in attempt to replace the evicted one. The newly added
-// non-voter replica becomes unavailable before completing the tablet copy phase.
-// The catalog manager should add a new non-voter replica to make it possible to
-// replace the failed voter replica, so eventually the tablet has appropriate
-// number of functional replicas to guarantee the tablet's replication factor.
+// non-voter replica becomes unavailable before completing the tablet copy
+// phase. The catalog manager should add a new non-voter replica to make it
+// possible to replace the failed voter replica, so eventually the tablet has
+// appropriate number of functional replicas to guarantee the tablet's
+// replication factor.
 TEST_F(RaftConsensusNonVoterITest, FailedTabletCopy) {
   if (!AllowSlowTests()) {
     LOG(WARNING) << "test is skipped; set KUDU_ALLOW_SLOW_TESTS=1 to run";
@@ -1419,22 +1502,26 @@ TEST_F(RaftConsensusNonVoterITest, FailedTabletCopy) {
   FLAGS_num_tablet_servers = kReplicasNum + 2;
 
   const vector<string> kMasterFlags = {
-    // The scenario runs with the 3-4-3 replica management scheme.
-    "--raft_prepare_replacement_before_eviction=true",
+      // The scenario runs with the 3-4-3 replica management scheme.
+      "--raft_prepare_replacement_before_eviction=true",
 
-    // Detect unavailable tablet servers faster.
-    Substitute("--tserver_unresponsive_timeout_ms=$0",
-        kConsensusRpcTimeout.ToMilliseconds() / 2),
+      // Detect unavailable tablet servers faster.
+      Substitute(
+          "--tserver_unresponsive_timeout_ms=$0",
+          kConsensusRpcTimeout.ToMilliseconds() / 2),
   };
   vector<string> tserver_flags = {
-    // The scenario runs with the 3-4-3 replica management scheme.
-    "--raft_prepare_replacement_before_eviction=true",
+      // The scenario runs with the 3-4-3 replica management scheme.
+      "--raft_prepare_replacement_before_eviction=true",
 
-    Substitute("--follower_unavailable_considered_failed_sec=$0",
-        2 * static_cast<int>(kConsensusRpcTimeout.ToSeconds())),
+      Substitute(
+          "--follower_unavailable_considered_failed_sec=$0",
+          2 * static_cast<int>(kConsensusRpcTimeout.ToSeconds())),
 
-    // Don't wait for the RPC timeout for too long.
-    Substitute("--consensus_rpc_timeout_ms=$0", kConsensusRpcTimeout.ToMilliseconds()),
+      // Don't wait for the RPC timeout for too long.
+      Substitute(
+          "--consensus_rpc_timeout_ms=$0",
+          kConsensusRpcTimeout.ToMilliseconds()),
   };
   AddFlagsForLogRolls(&tserver_flags); // For CauseFollowerToFallBehindLogGC().
 
@@ -1449,8 +1536,8 @@ TEST_F(RaftConsensusNonVoterITest, FailedTabletCopy) {
   ExternalTabletServer* ts0 =
       cluster_->tablet_server_by_uuid(server_uuids_no_replica.front());
   ASSERT_NE(nullptr, ts0);
-  ASSERT_OK(cluster_->SetFlag(ts0,
-                              "tablet_copy_fault_crash_on_fetch_all", "1.0"));
+  ASSERT_OK(
+      cluster_->SetFlag(ts0, "tablet_copy_fault_crash_on_fetch_all", "1.0"));
   // Make sure the second tablet server is not available as a candidate for
   // the new non-voter replica.
   ExternalTabletServer* ts1 =
@@ -1475,11 +1562,10 @@ TEST_F(RaftConsensusNonVoterITest, FailedTabletCopy) {
 
     // Make sure this tablet server is not to host a functional tablet replica,
     // even if the system tries to place one there after evicting current one.
-    ExternalTabletServer* ts =
-        cluster_->tablet_server_by_uuid(follower_uuid);
+    ExternalTabletServer* ts = cluster_->tablet_server_by_uuid(follower_uuid);
     ASSERT_NE(nullptr, ts);
-    ASSERT_OK(cluster_->SetFlag(ts,
-                                "tablet_copy_fault_crash_on_fetch_all", "1.0"));
+    ASSERT_OK(
+        cluster_->SetFlag(ts, "tablet_copy_fault_crash_on_fetch_all", "1.0"));
   }
 
   // The leader replica marks the non-responsive replica as failed after it
@@ -1488,14 +1574,15 @@ TEST_F(RaftConsensusNonVoterITest, FailedTabletCopy) {
   // unrecoverable way.
   bool has_leader = false;
   TabletLocationsPB tablet_locations;
-  ASSERT_OK(WaitForReplicasReportedToMaster(cluster_->master_proxy(),
-                                            kReplicasNum - 1,
-                                            tablet_id_,
-                                            kTimeout,
-                                            WAIT_FOR_LEADER,
-                                            VOTER_REPLICA,
-                                            &has_leader,
-                                            &tablet_locations));
+  ASSERT_OK(WaitForReplicasReportedToMaster(
+      cluster_->master_proxy(),
+      kReplicasNum - 1,
+      tablet_id_,
+      kTimeout,
+      WAIT_FOR_LEADER,
+      VOTER_REPLICA,
+      &has_leader,
+      &tablet_locations));
 
   // The system should add a new non-voter as a replacement.
   // However, the tablet server with the new non-voter replica crashes during
@@ -1503,24 +1590,26 @@ TEST_F(RaftConsensusNonVoterITest, FailedTabletCopy) {
   // and purge the failed non-voter from the configuration. Also, the TS manager
   // should detect that the crashed server is not a candidate for new replicas
   // anymore.
-  ASSERT_OK(WaitForReplicasReportedToMaster(cluster_->master_proxy(),
-                                            kReplicasNum,
-                                            tablet_id_,
-                                            kTimeout,
-                                            WAIT_FOR_LEADER,
-                                            ANY_REPLICA,
-                                            &has_leader,
-                                            &tablet_locations));
+  ASSERT_OK(WaitForReplicasReportedToMaster(
+      cluster_->master_proxy(),
+      kReplicasNum,
+      tablet_id_,
+      kTimeout,
+      WAIT_FOR_LEADER,
+      ANY_REPLICA,
+      &has_leader,
+      &tablet_locations));
   consensus::ConsensusStatePB cstate;
   ASSERT_EVENTUALLY([&] {
     TServerDetails* leader = nullptr;
     ASSERT_OK(GetLeaderReplicaWithRetries(tablet_id_, &leader));
     // The reason for the outside ASSERT_EVENTUALLY is that the leader might
     // have changed in between of these two calls.
-    ASSERT_OK(GetConsensusState(leader, tablet_id_, kTimeout, EXCLUDE_HEALTH_REPORT, &cstate));
+    ASSERT_OK(GetConsensusState(
+        leader, tablet_id_, kTimeout, EXCLUDE_HEALTH_REPORT, &cstate));
   });
-  // The original voter replica that fell behind the WAL catchup threshold should
-  // not be there, it should be evicted.
+  // The original voter replica that fell behind the WAL catchup threshold
+  // should not be there, it should be evicted.
   EXPECT_FALSE(IsRaftConfigMember(follower_uuid, cstate.committed_config()))
       << pb_util::SecureDebugString(cstate.committed_config())
       << "fell behind WAL replica UUID: " << follower_uuid;
@@ -1545,18 +1634,20 @@ TEST_F(RaftConsensusNonVoterITest, FailedTabletCopy) {
   ASSERT_EVENTUALLY([&] {
     bool has_leader = false;
     TabletLocationsPB tablet_locations;
-    ASSERT_OK(WaitForReplicasReportedToMaster(cluster_->master_proxy(),
-                                              kReplicasNum,
-                                              tablet_id_,
-                                              kTimeout,
-                                              WAIT_FOR_LEADER,
-                                              ANY_REPLICA,
-                                              &has_leader,
-                                              &tablet_locations));
+    ASSERT_OK(WaitForReplicasReportedToMaster(
+        cluster_->master_proxy(),
+        kReplicasNum,
+        tablet_id_,
+        kTimeout,
+        WAIT_FOR_LEADER,
+        ANY_REPLICA,
+        &has_leader,
+        &tablet_locations));
 
     TServerDetails* leader = nullptr;
     ASSERT_OK(GetLeaderReplicaWithRetries(tablet_id_, &leader));
-    ASSERT_OK(GetConsensusState(leader, tablet_id_, kTimeout, EXCLUDE_HEALTH_REPORT, &cstate));
+    ASSERT_OK(GetConsensusState(
+        leader, tablet_id_, kTimeout, EXCLUDE_HEALTH_REPORT, &cstate));
     // The original voter replica that fell behind the WAL catchup threshold
     // should be evicted.
     ASSERT_FALSE(IsRaftConfigMember(follower_uuid, cstate.committed_config()))
@@ -1603,25 +1694,28 @@ TEST_F(RaftConsensusNonVoterITest, RestartClusterWithNonVoter) {
   FLAGS_num_tablet_servers = 2 * kReplicasNum + 1;
 
   const vector<string> kMasterFlags = {
-    // The scenario runs with the 3-4-3 replica management scheme.
-    "--raft_prepare_replacement_before_eviction=true",
+      // The scenario runs with the 3-4-3 replica management scheme.
+      "--raft_prepare_replacement_before_eviction=true",
   };
   vector<string> tserver_flags = {
-    // The scenario runs with the 3-4-3 replica management scheme.
-    "--raft_prepare_replacement_before_eviction=true",
+      // The scenario runs with the 3-4-3 replica management scheme.
+      "--raft_prepare_replacement_before_eviction=true",
 
-    // Inject delay into the tablet copying: this is to allow for shutting
-    // down the all the replicas but the leader and the new non-voter before
-    // the tablet copy completes.
-    Substitute("--tablet_copy_download_file_inject_latency_ms=$0",
-               kConsensusRpcTimeout.ToMilliseconds() * 2),
+      // Inject delay into the tablet copying: this is to allow for shutting
+      // down the all the replicas but the leader and the new non-voter before
+      // the tablet copy completes.
+      Substitute(
+          "--tablet_copy_download_file_inject_latency_ms=$0",
+          kConsensusRpcTimeout.ToMilliseconds() * 2),
 
-    Substitute("--follower_unavailable_considered_failed_sec=$0",
-               static_cast<int>(kConsensusRpcTimeout.ToSeconds() / 2)),
+      Substitute(
+          "--follower_unavailable_considered_failed_sec=$0",
+          static_cast<int>(kConsensusRpcTimeout.ToSeconds() / 2)),
 
-    // Don't wait for the RPC timeout for too long.
-    Substitute("--consensus_rpc_timeout_ms=$0",
-               kConsensusRpcTimeout.ToMilliseconds()),
+      // Don't wait for the RPC timeout for too long.
+      Substitute(
+          "--consensus_rpc_timeout_ms=$0",
+          kConsensusRpcTimeout.ToMilliseconds()),
   };
 
   NO_FATALS(BuildAndStart(tserver_flags, kMasterFlags));
@@ -1650,14 +1744,15 @@ TEST_F(RaftConsensusNonVoterITest, RestartClusterWithNonVoter) {
 
   bool has_leader = false;
   TabletLocationsPB tablet_locations;
-  ASSERT_OK(WaitForReplicasReportedToMaster(cluster_->master_proxy(),
-                                            kReplicasNum + 1,
-                                            tablet_id_,
-                                            kTimeout,
-                                            WAIT_FOR_LEADER,
-                                            ANY_REPLICA,
-                                            &has_leader,
-                                            &tablet_locations));
+  ASSERT_OK(WaitForReplicasReportedToMaster(
+      cluster_->master_proxy(),
+      kReplicasNum + 1,
+      tablet_id_,
+      kTimeout,
+      WAIT_FOR_LEADER,
+      ANY_REPLICA,
+      &has_leader,
+      &tablet_locations));
   // Find the location of the new non-voter replica.
   string new_replica_uuid;
   for (const auto& r : tablet_locations.replicas()) {
@@ -1675,7 +1770,8 @@ TEST_F(RaftConsensusNonVoterITest, RestartClusterWithNonVoter) {
   // Shutdown all servers with tablet replicas but the leader and the non-voter.
   TServerDetails* leader = nullptr;
   ASSERT_OK(GetLeaderReplicaWithRetries(tablet_id_, &leader));
-  const ExternalDaemon* ts_leader = cluster_->tablet_server_by_uuid(leader->uuid());
+  const ExternalDaemon* ts_leader =
+      cluster_->tablet_server_by_uuid(leader->uuid());
 
   // There should be only one tablet.
   ASSERT_EQ(tablet_replicas_.count(tablet_id_), tablet_replicas_.size());
@@ -1703,17 +1799,18 @@ TEST_F(RaftConsensusNonVoterITest, RestartClusterWithNonVoter) {
   for (auto i = 0; i < cluster_->num_masters(); ++i) {
     ASSERT_OK(cluster_->master(i)->Restart());
   }
-  ASSERT_OK(cluster_->WaitForTabletServerCount(cluster_->num_tablet_servers() - 1,
-                                               kTimeout));
+  ASSERT_OK(cluster_->WaitForTabletServerCount(
+      cluster_->num_tablet_servers() - 1, kTimeout));
 
-  ASSERT_OK(WaitForReplicasReportedToMaster(cluster_->master_proxy(),
-                                            kReplicasNum,
-                                            tablet_id_,
-                                            kTimeout,
-                                            WAIT_FOR_LEADER,
-                                            ANY_REPLICA,
-                                            &has_leader,
-                                            &tablet_locations));
+  ASSERT_OK(WaitForReplicasReportedToMaster(
+      cluster_->master_proxy(),
+      kReplicasNum,
+      tablet_id_,
+      kTimeout,
+      WAIT_FOR_LEADER,
+      ANY_REPLICA,
+      &has_leader,
+      &tablet_locations));
   // The newly added replica needs to be registered in the internal
   // tablet_replicas_: this is necessary for the future calls like
   // GetLeaderReplicaWithRetries() when the replica becomes a leader.
@@ -1725,10 +1822,12 @@ TEST_F(RaftConsensusNonVoterITest, RestartClusterWithNonVoter) {
     ASSERT_OK(GetLeaderReplicaWithRetries(tablet_id_, &leader));
     // The reason for the outside ASSERT_EVENTUALLY is that the leader might
     // have changed in between of these two calls.
-    ASSERT_OK(GetConsensusState(leader, tablet_id_, kTimeout, EXCLUDE_HEALTH_REPORT, &cstate));
+    ASSERT_OK(GetConsensusState(
+        leader, tablet_id_, kTimeout, EXCLUDE_HEALTH_REPORT, &cstate));
   });
   // The failed voter replica should be evicted.
-  EXPECT_FALSE(IsRaftConfigMember(failed_replica_uuid, cstate.committed_config()))
+  EXPECT_FALSE(
+      IsRaftConfigMember(failed_replica_uuid, cstate.committed_config()))
       << pb_util::SecureDebugString(cstate.committed_config())
       << "failed replica UUID: " << failed_replica_uuid;
   // The replacement replica should become a voter.
@@ -1755,11 +1854,11 @@ TEST_F(RaftConsensusNonVoterITest, NonVoterReplicasInConsensusQueue) {
   const int kOriginalReplicasNum = 3;
   const int kHbIntervalMs = 50;
   const vector<string> kMasterFlags = {
-    // Don't evict excess replicas to avoid races in the scenario.
-    "--catalog_manager_evict_excess_replicas=false",
+      // Don't evict excess replicas to avoid races in the scenario.
+      "--catalog_manager_evict_excess_replicas=false",
   };
   const vector<string> kTserverFlags = {
-    Substitute("--raft_heartbeat_interval_ms=$0", kHbIntervalMs),
+      Substitute("--raft_heartbeat_interval_ms=$0", kHbIntervalMs),
   };
 
   FLAGS_num_replicas = kOriginalReplicasNum;
@@ -1790,8 +1889,8 @@ TEST_F(RaftConsensusNonVoterITest, NonVoterReplicasInConsensusQueue) {
   // Disable failure detection for all replicas.
   for (int i = 0; i < cluster_->num_tablet_servers(); ++i) {
     ExternalTabletServer* ts = cluster_->tablet_server(i);
-    ASSERT_OK(cluster_->SetFlag(ts,
-        "enable_leader_failure_detection", "false"));
+    ASSERT_OK(
+        cluster_->SetFlag(ts, "enable_leader_failure_detection", "false"));
   }
 
   // Pause all but the leader replica and try to add a new non-voter into the
@@ -1803,13 +1902,14 @@ TEST_F(RaftConsensusNonVoterITest, NonVoterReplicasInConsensusQueue) {
   LOG(INFO) << "Shutting down non-leader replicas...";
   for (auto& e : replica_servers) {
     const auto& uuid = e.first;
-    if (uuid == leader->uuid()) continue;
+    if (uuid == leader->uuid())
+      continue;
     cluster_->tablet_server_by_uuid(uuid)->Shutdown();
   }
 
   LOG(INFO) << "Adding NON_VOTER replica...";
   std::thread t([&] {
-      AddServer(leader, tablet_id, new_replica, RaftPeerPB::NON_VOTER, kTimeout);
+    AddServer(leader, tablet_id, new_replica, RaftPeerPB::NON_VOTER, kTimeout);
   });
   SCOPED_CLEANUP({ t.join(); });
 
@@ -1817,13 +1917,15 @@ TEST_F(RaftConsensusNonVoterITest, NonVoterReplicasInConsensusQueue) {
   LOG(INFO) << "Waiting for pending config...";
   consensus::ConsensusStatePB cstate;
   ASSERT_EVENTUALLY([&] {
-    ASSERT_OK(GetConsensusState(leader, tablet_id, kTimeout, EXCLUDE_HEALTH_REPORT, &cstate));
+    ASSERT_OK(GetConsensusState(
+        leader, tablet_id, kTimeout, EXCLUDE_HEALTH_REPORT, &cstate));
     ASSERT_TRUE(cstate.has_pending_config());
   });
 
   // Ensure it does not commit.
   SleepFor(MonoDelta::FromSeconds(5));
-  ASSERT_OK(GetConsensusState(leader, tablet_id, kTimeout, EXCLUDE_HEALTH_REPORT, &cstate));
+  ASSERT_OK(GetConsensusState(
+      leader, tablet_id, kTimeout, EXCLUDE_HEALTH_REPORT, &cstate));
   ASSERT_TRUE(cstate.has_pending_config());
 
   const auto& new_replica_uuid = new_replica->uuid();
@@ -1835,13 +1937,15 @@ TEST_F(RaftConsensusNonVoterITest, NonVoterReplicasInConsensusQueue) {
   // Restart the tablet servers.
   for (auto& e : replica_servers) {
     const auto& uuid = e.first;
-    if (uuid == leader->uuid()) continue;
+    if (uuid == leader->uuid())
+      continue;
     ASSERT_OK(cluster_->tablet_server_by_uuid(uuid)->Restart());
   }
 
   // Once the new replicas come back online, this should be committed.
   ASSERT_EVENTUALLY([&] {
-    ASSERT_OK(GetConsensusState(leader, tablet_id, kTimeout, EXCLUDE_HEALTH_REPORT, &cstate));
+    ASSERT_OK(GetConsensusState(
+        leader, tablet_id, kTimeout, EXCLUDE_HEALTH_REPORT, &cstate));
     ASSERT_FALSE(cstate.has_pending_config());
   });
 
@@ -1852,13 +1956,13 @@ TEST_F(RaftConsensusNonVoterITest, NonVoterReplicasInConsensusQueue) {
 // schemes and makes sure that the tablet server is not registered with the
 // master in such case.
 // Also, it makes sure the tablet server crashes to signal the misconfiguration.
-class IncompatibleReplicaReplacementSchemesITest :
-    public RaftConsensusNonVoterITest,
-    public ::testing::WithParamInterface<std::tuple<bool, bool>> {
-};
-INSTANTIATE_TEST_CASE_P(, IncompatibleReplicaReplacementSchemesITest,
-                        ::testing::Combine(::testing::Bool(),
-                                           ::testing::Bool()));
+class IncompatibleReplicaReplacementSchemesITest
+    : public RaftConsensusNonVoterITest,
+      public ::testing::WithParamInterface<std::tuple<bool, bool>> {};
+INSTANTIATE_TEST_CASE_P(
+    ,
+    IncompatibleReplicaReplacementSchemesITest,
+    ::testing::Combine(::testing::Bool(), ::testing::Bool()));
 TEST_P(IncompatibleReplicaReplacementSchemesITest, MasterAndTserverMisconfig) {
   FLAGS_num_tablet_servers = 1;
   FLAGS_num_replicas = 1;
@@ -1871,19 +1975,21 @@ TEST_P(IncompatibleReplicaReplacementSchemesITest, MasterAndTserverMisconfig) {
   // The easiest way to have everything setup is to start the cluster with
   // compatible parameters.
   const vector<string> kMasterFlags = {
-    Substitute("--raft_prepare_replacement_before_eviction=$0", is_3_4_3),
+      Substitute("--raft_prepare_replacement_before_eviction=$0", is_3_4_3),
   };
   const vector<string> kTsFlags = {
-    Substitute("--heartbeat_incompatible_replica_management_is_fatal=$0",
-        is_incompatible_replica_management_fatal),
-    Substitute("--heartbeat_interval_ms=$0", heartbeat_interval_ms),
-    Substitute("--raft_prepare_replacement_before_eviction=$0", is_3_4_3),
+      Substitute(
+          "--heartbeat_incompatible_replica_management_is_fatal=$0",
+          is_incompatible_replica_management_fatal),
+      Substitute("--heartbeat_interval_ms=$0", heartbeat_interval_ms),
+      Substitute("--raft_prepare_replacement_before_eviction=$0", is_3_4_3),
   };
 
   NO_FATALS(BuildAndStart(kTsFlags, kMasterFlags));
 
   vector<master::ListTabletServersResponsePB_Entry> tservers;
-  ASSERT_OK(itest::ListTabletServers(cluster_->master_proxy(), kTimeout, &tservers));
+  ASSERT_OK(
+      itest::ListTabletServers(cluster_->master_proxy(), kTimeout, &tservers));
   ASSERT_EQ(1, tservers.size());
 
   ASSERT_EQ(1, cluster_->num_tablet_servers());
@@ -1906,13 +2012,15 @@ TEST_P(IncompatibleReplicaReplacementSchemesITest, MasterAndTserverMisconfig) {
   SleepFor(MonoDelta::FromMilliseconds(heartbeat_interval_ms * 3));
 
   // The tablet server should not be registered with the master.
-  ASSERT_OK(itest::ListTabletServers(cluster_->master_proxy(), kTimeout, &tservers));
+  ASSERT_OK(
+      itest::ListTabletServers(cluster_->master_proxy(), kTimeout, &tservers));
   ASSERT_EQ(0, tservers.size());
 
   // Inject feature flag not supported by the master and make sure the tablet
   // server will not be registered with incompatible master.
   ts->mutable_flags()->pop_back();
-  ts->mutable_flags()->emplace_back("--heartbeat_inject_required_feature_flag=999");
+  ts->mutable_flags()->emplace_back(
+      "--heartbeat_inject_required_feature_flag=999");
   ts->Shutdown();
   ASSERT_OK(ts->Restart());
   if (is_incompatible_replica_management_fatal) {
@@ -1921,7 +2029,8 @@ TEST_P(IncompatibleReplicaReplacementSchemesITest, MasterAndTserverMisconfig) {
   SleepFor(MonoDelta::FromMilliseconds(heartbeat_interval_ms * 3));
 
   // The tablet server should not be registered with the master.
-  ASSERT_OK(itest::ListTabletServers(cluster_->master_proxy(), kTimeout, &tservers));
+  ASSERT_OK(
+      itest::ListTabletServers(cluster_->master_proxy(), kTimeout, &tservers));
   ASSERT_EQ(0, tservers.size());
 
   if (!is_incompatible_replica_management_fatal) {
@@ -1939,17 +2048,18 @@ TEST_P(IncompatibleReplicaReplacementSchemesITest, MasterAndTserverMisconfig) {
 // failed replica is:
 //   ** paused and then resumed, emulating a lagging tablet server
 //   ** shut down and then started back up
-class ReplicaBehindWalGcThresholdITest :
-    public RaftConsensusNonVoterITest,
-    public ::testing::WithParamInterface<
-        std::tuple<RaftConsensusITestBase::BehindWalGcBehavior, bool>> {
-};
-INSTANTIATE_TEST_CASE_P(,
+class ReplicaBehindWalGcThresholdITest
+    : public RaftConsensusNonVoterITest,
+      public ::testing::WithParamInterface<
+          std::tuple<RaftConsensusITestBase::BehindWalGcBehavior, bool>> {};
+INSTANTIATE_TEST_CASE_P(
+    ,
     ReplicaBehindWalGcThresholdITest,
     ::testing::Combine(
-        ::testing::Values(RaftConsensusITestBase::BehindWalGcBehavior::STOP_CONTINUE,
-                          RaftConsensusITestBase::BehindWalGcBehavior::SHUTDOWN_RESTART,
-                          RaftConsensusITestBase::BehindWalGcBehavior::SHUTDOWN),
+        ::testing::Values(
+            RaftConsensusITestBase::BehindWalGcBehavior::STOP_CONTINUE,
+            RaftConsensusITestBase::BehindWalGcBehavior::SHUTDOWN_RESTART,
+            RaftConsensusITestBase::BehindWalGcBehavior::SHUTDOWN),
         ::testing::Bool()));
 TEST_P(ReplicaBehindWalGcThresholdITest, ReplicaReplacement) {
   if (!AllowSlowTests()) {
@@ -1967,8 +2077,8 @@ TEST_P(ReplicaBehindWalGcThresholdITest, ReplicaReplacement) {
   const bool do_delay_workload = std::get<1>(GetParam());
 
   vector<string> master_flags = {
-    // This scenario runs with the 3-4-3 replica management scheme.
-    "--raft_prepare_replacement_before_eviction=true",
+      // This scenario runs with the 3-4-3 replica management scheme.
+      "--raft_prepare_replacement_before_eviction=true",
   };
   if (tserver_behavior != BehindWalGcBehavior::SHUTDOWN) {
     // This scenario verifies that the system evicts the replica that's falling
@@ -1979,11 +2089,13 @@ TEST_P(ReplicaBehindWalGcThresholdITest, ReplicaReplacement) {
   }
 
   vector<string> tserver_flags = {
-    // This scenario is specific for the 3-4-3 replica management scheme.
-    "--raft_prepare_replacement_before_eviction=true",
+      // This scenario is specific for the 3-4-3 replica management scheme.
+      "--raft_prepare_replacement_before_eviction=true",
 
-    // Detect unavailable replicas faster.
-    Substitute("--follower_unavailable_considered_failed_sec=$0", kUnavaiableFailedSec),
+      // Detect unavailable replicas faster.
+      Substitute(
+          "--follower_unavailable_considered_failed_sec=$0",
+          kUnavaiableFailedSec),
   };
   AddFlagsForLogRolls(&tserver_flags); // For CauseFollowerToFallBehindLogGC().
 
@@ -2001,30 +2113,37 @@ TEST_P(ReplicaBehindWalGcThresholdITest, ReplicaReplacement) {
     delay = MonoDelta::FromSeconds(3 * kUnavaiableFailedSec);
   }
   NO_FATALS(CauseFollowerToFallBehindLogGC(
-      tablet_servers_, &leader_uuid, &orig_term, &follower_uuid,
-      tserver_behavior, delay));
+      tablet_servers_,
+      &leader_uuid,
+      &orig_term,
+      &follower_uuid,
+      tserver_behavior,
+      delay));
 
   // The catalog manager should evict the replicas which fell behing the WAL
   // segment GC threshold right away.
   bool has_leader = false;
   TabletLocationsPB tablet_locations;
   const auto num_replicas = (tserver_behavior == BehindWalGcBehavior::SHUTDOWN)
-      ? kReplicasNum : kReplicasNum - 1;
-  ASSERT_OK(WaitForReplicasReportedToMaster(cluster_->master_proxy(),
-                                            num_replicas,
-                                            tablet_id_,
-                                            kTimeout,
-                                            WAIT_FOR_LEADER,
-                                            ANY_REPLICA,
-                                            &has_leader,
-                                            &tablet_locations));
+      ? kReplicasNum
+      : kReplicasNum - 1;
+  ASSERT_OK(WaitForReplicasReportedToMaster(
+      cluster_->master_proxy(),
+      num_replicas,
+      tablet_id_,
+      kTimeout,
+      WAIT_FOR_LEADER,
+      ANY_REPLICA,
+      &has_leader,
+      &tablet_locations));
   consensus::ConsensusStatePB cstate;
   ASSERT_EVENTUALLY([&] {
     TServerDetails* leader = nullptr;
     ASSERT_OK(GetLeaderReplicaWithRetries(tablet_id_, &leader));
     // The reason for the outside ASSERT_EVENTUALLY is that the leader might
     // have changed in between of these two calls.
-    ASSERT_OK(GetConsensusState(leader, tablet_id_, kTimeout, EXCLUDE_HEALTH_REPORT, &cstate));
+    ASSERT_OK(GetConsensusState(
+        leader, tablet_id_, kTimeout, EXCLUDE_HEALTH_REPORT, &cstate));
   });
 
   if (tserver_behavior == BehindWalGcBehavior::SHUTDOWN) {
@@ -2060,14 +2179,15 @@ TEST_P(ReplicaBehindWalGcThresholdITest, ReplicaReplacement) {
   }
 
   // The system should be able to recover, replacing the failed replica.
-  ASSERT_OK(WaitForReplicasReportedToMaster(cluster_->master_proxy(),
-                                            kReplicasNum,
-                                            tablet_id_,
-                                            kTimeout,
-                                            WAIT_FOR_LEADER,
-                                            VOTER_REPLICA,
-                                            &has_leader,
-                                            &tablet_locations));
+  ASSERT_OK(WaitForReplicasReportedToMaster(
+      cluster_->master_proxy(),
+      kReplicasNum,
+      tablet_id_,
+      kTimeout,
+      WAIT_FOR_LEADER,
+      VOTER_REPLICA,
+      &has_leader,
+      &tablet_locations));
   NO_FATALS(cluster_->AssertNoCrashes());
   ClusterVerifier v(cluster_.get());
   v.SetOperationsTimeout(kTimeout);
@@ -2075,5 +2195,5 @@ TEST_P(ReplicaBehindWalGcThresholdITest, ReplicaReplacement) {
   NO_FATALS(v.CheckCluster());
 }
 
-}  // namespace tserver
-}  // namespace kudu
+} // namespace tserver
+} // namespace kudu

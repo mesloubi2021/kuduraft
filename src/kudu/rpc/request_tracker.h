@@ -28,18 +28,19 @@ namespace kudu {
 namespace rpc {
 
 // RequestTracker implementation, inspired by:
-// "Implementing Linearizability at Large Scale and Low Latency" by Colin Lee et al.
+// "Implementing Linearizability at Large Scale and Low Latency" by Colin Lee et
+// al.
 //
-// This generates sequence numbers for retriable RPCs and tracks the ongoing ones.
-// The main point of this is to enable exactly-once semantics, i.e. making sure that
-// an RPC is only executed once, by uniquely identifying each RPC that is sent to
-// the server.
+// This generates sequence numbers for retriable RPCs and tracks the ongoing
+// ones. The main point of this is to enable exactly-once semantics, i.e. making
+// sure that an RPC is only executed once, by uniquely identifying each RPC that
+// is sent to the server.
 //
-// Note that the sequence numbers here are differet from RPC 'call ids'. A call id
-// uniquely identifies a call _to a server_. All calls have a call id that is
-// assigned incrementally. Sequence numbers, on the other hand, uniquely identify
-// the RPC operation itself. That is, if an RPC is retried on another server it will
-// have a different call id, but the same sequence number.
+// Note that the sequence numbers here are differet from RPC 'call ids'. A call
+// id uniquely identifies a call _to a server_. All calls have a call id that is
+// assigned incrementally. Sequence numbers, on the other hand, uniquely
+// identify the RPC operation itself. That is, if an RPC is retried on another
+// server it will have a different call id, but the same sequence number.
 //
 // By keeping track of the RPCs that are in-flight and which ones are completed
 // we can determine the first incomplete RPC. When this information is sent
@@ -55,9 +56,9 @@ class RequestTracker : public RefCountedThreadSafe<RequestTracker> {
 
   // Creates a new, unique, sequence number.
   // Sequence numbers are assigned in increasing integer order.
-  // Returns Status::OK() and sets 'seq_no' if it was able to generate a sequence number
-  // or returns Status::ServiceUnavailable() if too many RPCs are in-flight, in which case
-  // the caller should try again later.
+  // Returns Status::OK() and sets 'seq_no' if it was able to generate a
+  // sequence number or returns Status::ServiceUnavailable() if too many RPCs
+  // are in-flight, in which case the caller should try again later.
   Status NewSeqNo(SequenceNumber* seq_no);
 
   // Returns the sequence number of the first incomplete RPC.
@@ -68,7 +69,10 @@ class RequestTracker : public RefCountedThreadSafe<RequestTracker> {
   void RpcCompleted(const SequenceNumber& seq_no);
 
   // Returns the client id for this request tracker.
-  const std::string& client_id() { return client_id_; }
+  const std::string& client_id() {
+    return client_id_;
+  }
+
  private:
   // The client id for this request tracker.
   const std::string client_id_;

@@ -30,7 +30,6 @@ TEST(TestStringCase, TestSnakeToCamel) {
   SnakeToCamelCase("foo_bar", &out);
   ASSERT_EQ("FooBar", out);
 
-
   SnakeToCamelCase("foo-bar", &out);
   ASSERT_EQ("FooBar", out);
 

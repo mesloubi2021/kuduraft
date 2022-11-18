@@ -34,8 +34,10 @@
 #include "kudu/util/status.h"
 #include "kudu/util/test_macros.h"
 
-DEFINE_bool(test_dump_stacks_on_failure, true,
-            "Whether to dump ExternalMiniCluster process stacks on test failure");
+DEFINE_bool(
+    test_dump_stacks_on_failure,
+    true,
+    "Whether to dump ExternalMiniCluster process stacks on test failure");
 
 namespace kudu {
 
@@ -65,9 +67,8 @@ void ExternalMiniClusterITestBase::StartClusterWithOpts(
   cluster_.reset(new ExternalMiniCluster(std::move(opts)));
   ASSERT_OK(cluster_->Start());
   inspect_.reset(new itest::MiniClusterFsInspector(cluster_.get()));
-  ASSERT_OK(itest::CreateTabletServerMap(cluster_->master_proxy(),
-                                         cluster_->messenger(),
-                                         &ts_map_));
+  ASSERT_OK(itest::CreateTabletServerMap(
+      cluster_->master_proxy(), cluster_->messenger(), &ts_map_));
   ASSERT_OK(cluster_->CreateClient(nullptr, &client_));
 }
 
@@ -80,14 +81,16 @@ void ExternalMiniClusterITestBase::StopCluster() {
     LOG(INFO) << "Found fatal failure";
     for (int i = 0; i < cluster_->num_tablet_servers(); i++) {
       if (!cluster_->tablet_server(i)->IsProcessAlive()) {
-        LOG(INFO) << "Tablet server " << i << " is not running. Cannot dump its stacks.";
+        LOG(INFO) << "Tablet server " << i
+                  << " is not running. Cannot dump its stacks.";
         continue;
       }
-      LOG(INFO) << "Attempting to dump stacks of TS " << i
-                << " with UUID " << cluster_->tablet_server(i)->uuid()
-                << " and pid " << cluster_->tablet_server(i)->pid();
-      WARN_NOT_OK(PstackWatcher::DumpPidStacks(cluster_->tablet_server(i)->pid()),
-                  "Couldn't dump stacks");
+      LOG(INFO) << "Attempting to dump stacks of TS " << i << " with UUID "
+                << cluster_->tablet_server(i)->uuid() << " and pid "
+                << cluster_->tablet_server(i)->pid();
+      WARN_NOT_OK(
+          PstackWatcher::DumpPidStacks(cluster_->tablet_server(i)->pid()),
+          "Couldn't dump stacks");
     }
   }
   cluster_->Shutdown();

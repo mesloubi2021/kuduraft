@@ -19,8 +19,8 @@
 #include <ostream>
 #include <string>
 
-#include <gtest/gtest.h>
 #include <glog/logging.h>
+#include <gtest/gtest.h>
 
 #include "kudu/gutil/integral_types.h"
 #include "kudu/gutil/ref_counted.h"
@@ -37,10 +37,11 @@
 // symbols are chosen when provided via shared libraries.
 //
 // Further reading:
-// - http://stackoverflow.com/questions/20658809/dynamic-loading-and-weak-symbol-resolution
+// -
+// http://stackoverflow.com/questions/20658809/dynamic-loading-and-weak-symbol-resolution
 // - http://notmysock.org/blog/php/weak-symbols-arent.html
 namespace gutil {
-extern void SubmitSpinLockProfileData(const void *, int64);
+extern void SubmitSpinLockProfileData(const void*, int64);
 } // namespace gutil
 
 namespace kudu {

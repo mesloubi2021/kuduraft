@@ -36,7 +36,6 @@ class Thread;
 // the results to stdout.  It does this after a certain timeout has occured.
 class PstackWatcher {
  public:
-
   enum Flags {
     NO_FLAGS = 0,
 
@@ -44,8 +43,8 @@ class PstackWatcher {
     DUMP_FULL = 1
   };
 
-  // Static method to collect and write stack dump output to stdout of the current
-  // process.
+  // Static method to collect and write stack dump output to stdout of the
+  // current process.
   static Status DumpStacks(int flags = NO_FLAGS);
 
   // Like the above but for any process, not just the current one.

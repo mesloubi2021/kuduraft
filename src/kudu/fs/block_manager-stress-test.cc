@@ -40,7 +40,7 @@
 #include "kudu/fs/fs.pb.h"
 #include "kudu/fs/fs_report.h"
 #include "kudu/fs/log_block_manager-test-util.h"
-#include "kudu/fs/log_block_manager.h"  // IWYU pragma: keep
+#include "kudu/fs/log_block_manager.h" // IWYU pragma: keep
 #include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/map-util.h"
 #include "kudu/gutil/ref_counted.h"
@@ -71,24 +71,35 @@ DEFINE_double(test_duration_secs, 2, "Number of seconds to run the test");
 DEFINE_int32(num_writer_threads, 4, "Number of writer threads to run");
 DEFINE_int32(num_reader_threads, 8, "Number of reader threads to run");
 DEFINE_int32(num_deleter_threads, 1, "Number of deleter threads to run");
-DEFINE_int32(minimum_live_blocks_for_delete, 1000,
-             "If there are fewer than this number of live blocks, the deleter "
-             "threads will not delete any");
-DEFINE_int32(block_group_size, 8, "Number of blocks to write per block "
-             "group. Must be power of 2");
+DEFINE_int32(
+    minimum_live_blocks_for_delete,
+    1000,
+    "If there are fewer than this number of live blocks, the deleter "
+    "threads will not delete any");
+DEFINE_int32(
+    block_group_size,
+    8,
+    "Number of blocks to write per block "
+    "group. Must be power of 2");
 DEFINE_int32(block_group_number, 2, "Total number of block groups.");
-DEFINE_int32(block_group_bytes, 32 * 1024,
-             "Total amount of data (in bytes) to write per block group");
-DEFINE_int32(num_bytes_per_write, 32,
-             "Number of bytes to write at a time");
-DEFINE_int32(num_inconsistencies, 16,
-             "Number of on-disk inconsistencies to inject in between test runs");
-DEFINE_string(block_manager_paths, "", "Comma-separated list of paths to "
-              "use for block storage. If empty, will use the default unit "
-              "test path");
+DEFINE_int32(
+    block_group_bytes,
+    32 * 1024,
+    "Total amount of data (in bytes) to write per block group");
+DEFINE_int32(num_bytes_per_write, 32, "Number of bytes to write at a time");
+DEFINE_int32(
+    num_inconsistencies,
+    16,
+    "Number of on-disk inconsistencies to inject in between test runs");
+DEFINE_string(
+    block_manager_paths,
+    "",
+    "Comma-separated list of paths to "
+    "use for block storage. If empty, will use the default unit "
+    "test path");
 
-using std::string;
 using std::shared_ptr;
+using std::string;
 using std::unique_ptr;
 using std::unordered_map;
 using std::vector;
@@ -118,17 +129,16 @@ namespace fs {
 template <typename T>
 class BlockManagerStressTest : public KuduTest {
  public:
-  BlockManagerStressTest() :
-    rand_seed_(SeedRandom()),
-    stop_latch_(1),
-    test_error_manager_(new FsErrorManager()),
-    test_tablet_name_("test_tablet"),
-    total_blocks_written_(0),
-    total_bytes_written_(0),
-    total_blocks_read_(0),
-    total_bytes_read_(0),
-    total_blocks_deleted_(0) {
-
+  BlockManagerStressTest()
+      : rand_seed_(SeedRandom()),
+        stop_latch_(1),
+        test_error_manager_(new FsErrorManager()),
+        test_tablet_name_("test_tablet"),
+        total_blocks_written_(0),
+        total_bytes_written_(0),
+        total_blocks_read_(0),
+        total_bytes_read_(0),
+        total_blocks_deleted_(0) {
     // Increase the number of containers created.
     FLAGS_log_container_max_size = 1 * 1024 * 1024;
     FLAGS_log_container_preallocate_bytes = 1 * 1024 * 1024;
@@ -142,15 +152,16 @@ class BlockManagerStressTest : public KuduTest {
     // Compact block manager metadata aggressively.
     FLAGS_log_container_live_metadata_before_compact_ratio = 0.99;
 
-    // Use a single cache shard. Otherwise, the cache can be a little bit "sloppy"
-    // depending on the number of CPUs on the system.
+    // Use a single cache shard. Otherwise, the cache can be a little bit
+    // "sloppy" depending on the number of CPUs on the system.
     FLAGS_cache_force_single_shard = true;
 
     // Defer block manager creation until after the above flags are set.
     bm_.reset(CreateBlockManager());
     bm_->Open(nullptr);
     dd_manager_->CreateDataDirGroup(test_tablet_name_);
-    CHECK_OK(dd_manager_->GetDataDirGroupPB(test_tablet_name_, &test_group_pb_));
+    CHECK_OK(
+        dd_manager_->GetDataDirGroupPB(test_tablet_name_, &test_group_pb_));
   }
 
   virtual void TearDown() override {
@@ -162,8 +173,9 @@ class BlockManagerStressTest : public KuduTest {
     // test runs.
     if (!FLAGS_block_manager_paths.empty()) {
       for (const auto& dd : dd_manager_->GetDataRoots()) {
-        WARN_NOT_OK(env_->DeleteRecursively(dd),
-                    Substitute("Couldn't recursively delete $0", dd));
+        WARN_NOT_OK(
+            env_->DeleteRecursively(dd),
+            Substitute("Couldn't recursively delete $0", dd));
       }
     }
     dd_manager_.reset();
@@ -178,20 +190,23 @@ class BlockManagerStressTest : public KuduTest {
     if (FLAGS_block_manager_paths.empty()) {
       data_dirs.push_back(test_dir_);
     } else {
-      data_dirs = strings::Split(FLAGS_block_manager_paths, ",",
-                                 strings::SkipEmpty());
+      data_dirs =
+          strings::Split(FLAGS_block_manager_paths, ",", strings::SkipEmpty());
     }
     if (!dd_manager_) {
       // Create a new directory manager if necessary.
-      CHECK_OK(DataDirManager::CreateNewForTests(env_, data_dirs,
-          DataDirManagerOptions(), &dd_manager_));
+      CHECK_OK(DataDirManager::CreateNewForTests(
+          env_, data_dirs, DataDirManagerOptions(), &dd_manager_));
     } else {
       // Open a existing directory manager, wiping away in-memory maps.
-      CHECK_OK(DataDirManager::OpenExistingForTests(env_, data_dirs,
-          DataDirManagerOptions(), &dd_manager_));
+      CHECK_OK(DataDirManager::OpenExistingForTests(
+          env_, data_dirs, DataDirManagerOptions(), &dd_manager_));
     }
-    return new T(env_, dd_manager_.get(), test_error_manager_.get(),
-                 BlockManagerOptions());
+    return new T(
+        env_,
+        dd_manager_.get(),
+        test_error_manager_.get(),
+        BlockManagerOptions());
   }
 
   void RunTest(double secs) {
@@ -207,18 +222,30 @@ class BlockManagerStressTest : public KuduTest {
   void StartThreads() {
     scoped_refptr<Thread> new_thread;
     for (int i = 0; i < FLAGS_num_writer_threads; i++) {
-      CHECK_OK(Thread::Create("BlockManagerStressTest", Substitute("writer-$0", i),
-                              &BlockManagerStressTest::WriterThread, this, &new_thread));
+      CHECK_OK(Thread::Create(
+          "BlockManagerStressTest",
+          Substitute("writer-$0", i),
+          &BlockManagerStressTest::WriterThread,
+          this,
+          &new_thread));
       threads_.push_back(new_thread);
     }
     for (int i = 0; i < FLAGS_num_reader_threads; i++) {
-      CHECK_OK(Thread::Create("BlockManagerStressTest", Substitute("reader-$0", i),
-                              &BlockManagerStressTest::ReaderThread, this, &new_thread));
+      CHECK_OK(Thread::Create(
+          "BlockManagerStressTest",
+          Substitute("reader-$0", i),
+          &BlockManagerStressTest::ReaderThread,
+          this,
+          &new_thread));
       threads_.push_back(new_thread);
     }
     for (int i = 0; i < FLAGS_num_deleter_threads; i++) {
-      CHECK_OK(Thread::Create("BlockManagerStressTest", Substitute("deleter-$0", i),
-                              &BlockManagerStressTest::DeleterThread, this, &new_thread));
+      CHECK_OK(Thread::Create(
+          "BlockManagerStressTest",
+          Substitute("deleter-$0", i),
+          &BlockManagerStressTest::DeleterThread,
+          this,
+          &new_thread));
       threads_.push_back(new_thread);
     }
   }
@@ -233,7 +260,7 @@ class BlockManagerStressTest : public KuduTest {
 
   void JoinThreads() {
     for (const scoped_refptr<kudu::Thread>& thr : threads_) {
-     CHECK_OK(ThreadJoiner(thr.get()).Join());
+      CHECK_OK(ThreadJoiner(thr.get()).Join());
     }
   }
 
@@ -284,7 +311,7 @@ class BlockManagerStressTest : public KuduTest {
   string test_tablet_name_;
 
   // The running threads.
-  vector<scoped_refptr<Thread> > threads_;
+  vector<scoped_refptr<Thread>> threads_;
 
   // Some performance counters.
 
@@ -314,7 +341,8 @@ void BlockManagerStressTest<T>::WriterThread() {
       // Create the blocks and write out the PRNG seeds.
       for (int j = 0; j < FLAGS_block_group_size; j++) {
         unique_ptr<WritableBlock> block;
-        CHECK_OK(bm_->CreateBlock(CreateBlockOptions({test_tablet_name_}), &block));
+        CHECK_OK(
+            bm_->CreateBlock(CreateBlockOptions({test_tablet_name_}), &block));
 
         const uint32_t seed = rand.Next() + 1;
         Slice seed_slice(reinterpret_cast<const uint8_t*>(&seed), sizeof(seed));
@@ -421,8 +449,8 @@ void BlockManagerStressTest<T>::ReaderThread() {
     // Verify every subsequent number using the PRNG.
     size_t bytes_processed;
     for (bytes_processed = 4; // start after the PRNG seed
-        bytes_processed < data.size();
-        bytes_processed += sizeof(uint32_t)) {
+         bytes_processed < data.size();
+         bytes_processed += sizeof(uint32_t)) {
       uint32_t expected_num = rand.Next();
       uint32_t actual_num;
       memcpy(&actual_num, data.data() + bytes_processed, sizeof(uint32_t));
@@ -488,7 +516,8 @@ template <>
 int BlockManagerStressTest<FileBlockManager>::GetMaxFdCount() const {
   return FLAGS_block_manager_max_open_files +
       // Each open block exists outside the file cache.
-      (FLAGS_num_writer_threads * FLAGS_block_group_size * FLAGS_block_group_number) +
+      (FLAGS_num_writer_threads * FLAGS_block_group_size *
+       FLAGS_block_group_number) +
       // Each reader thread can open a file outside the cache if its lookup
       // misses. It'll immediately evict an existing fd, but in that brief
       // window of time both fds may be open simultaneously.
@@ -501,7 +530,8 @@ int BlockManagerStressTest<LogBlockManager>::GetMaxFdCount() const {
       // If all containers are full, each open block could theoretically
       // result in a new container, which is two files briefly outside the
       // cache (before they are inserted and evict other cached files).
-      (FLAGS_num_writer_threads * FLAGS_block_group_size * FLAGS_block_group_number * 2);
+      (FLAGS_num_writer_threads * FLAGS_block_group_size *
+       FLAGS_block_group_number * 2);
 }
 
 template <>
@@ -540,8 +570,8 @@ TYPED_TEST(BlockManagerStressTest, StressTest) {
                << " is not a power of 2";
   }
 
-  PeriodicOpenFdChecker checker(this->env_, this->GetTestPath("*"),
-                                this->GetMaxFdCount());
+  PeriodicOpenFdChecker checker(
+      this->env_, this->GetTestPath("*"), this->GetMaxFdCount());
 
   LOG(INFO) << "Running on fresh block manager";
   checker.Start();
@@ -553,8 +583,8 @@ TYPED_TEST(BlockManagerStressTest, StressTest) {
     this->bm_.reset(this->CreateBlockManager());
     FsReport report;
     ASSERT_OK(this->bm_->Open(&report));
-    ASSERT_OK(this->dd_manager_->LoadDataDirGroupFromPB(this->test_tablet_name_,
-                                                              this->test_group_pb_));
+    ASSERT_OK(this->dd_manager_->LoadDataDirGroupFromPB(
+        this->test_tablet_name_, this->test_group_pb_));
     ASSERT_OK(report.LogAndCheckForFatalErrors());
     this->RunTest(FLAGS_test_duration_secs / kNumStarts);
   }
@@ -562,17 +592,20 @@ TYPED_TEST(BlockManagerStressTest, StressTest) {
 
   LOG(INFO) << "Printing test totals";
   LOG(INFO) << "--------------------";
-  LOG(INFO) << Substitute("Wrote $0 blocks ($1 bytes) via $2 threads",
-                          this->total_blocks_written_.Load(),
-                          this->total_bytes_written_.Load(),
-                          FLAGS_num_writer_threads);
-  LOG(INFO) << Substitute("Read $0 blocks ($1 bytes) via $2 threads",
-                          this->total_blocks_read_.Load(),
-                          this->total_bytes_read_.Load(),
-                          FLAGS_num_reader_threads);
-  LOG(INFO) << Substitute("Deleted $0 blocks via $1 threads",
-                          this->total_blocks_deleted_.Load(),
-                          FLAGS_num_deleter_threads);
+  LOG(INFO) << Substitute(
+      "Wrote $0 blocks ($1 bytes) via $2 threads",
+      this->total_blocks_written_.Load(),
+      this->total_bytes_written_.Load(),
+      FLAGS_num_writer_threads);
+  LOG(INFO) << Substitute(
+      "Read $0 blocks ($1 bytes) via $2 threads",
+      this->total_blocks_read_.Load(),
+      this->total_bytes_read_.Load(),
+      FLAGS_num_reader_threads);
+  LOG(INFO) << Substitute(
+      "Deleted $0 blocks via $1 threads",
+      this->total_blocks_deleted_.Load(),
+      FLAGS_num_deleter_threads);
 }
 
 } // namespace fs

@@ -34,7 +34,6 @@ namespace fs {
 //
 // Error type: fatal and irreparable.
 struct MissingBlockCheck {
-
   // Merges the contents of another check into this one.
   void MergeFrom(const MissingBlockCheck& other);
 
@@ -54,7 +53,6 @@ struct MissingBlockCheck {
 //
 // Error type: non-fatal and repairable (by deleting the blocks).
 struct OrphanedBlockCheck {
-
   // Merges the contents of another check into this one.
   void MergeFrom(const OrphanedBlockCheck& other);
 
@@ -77,7 +75,6 @@ struct OrphanedBlockCheck {
 // Error type: non-fatal and repairable (by punching out the holes again and
 // truncating the container data files).
 struct LBMFullContainerSpaceCheck {
-
   // Merges the contents of another check into this one.
   void MergeFrom(const LBMFullContainerSpaceCheck& other);
 
@@ -98,7 +95,6 @@ struct LBMFullContainerSpaceCheck {
 //
 // Error type: non-fatal and repairable (by deleting the container files).
 struct LBMIncompleteContainerCheck {
-
   // Merges the contents of another check into this one.
   void MergeFrom(const LBMIncompleteContainerCheck& other);
 
@@ -117,7 +113,6 @@ struct LBMIncompleteContainerCheck {
 //
 // Error type: fatal and irreparable.
 struct LBMMalformedRecordCheck {
-
   // Merges the contents of another check into this one.
   void MergeFrom(const LBMMalformedRecordCheck& other);
 
@@ -139,7 +134,6 @@ struct LBMMalformedRecordCheck {
 //
 // Error type: non-fatal and irreparable.
 struct LBMMisalignedBlockCheck {
-
   // Merges the contents of another check into this one.
   void MergeFrom(const LBMMisalignedBlockCheck& other);
 
@@ -156,9 +150,9 @@ struct LBMMisalignedBlockCheck {
 
 // Checks for partial LBM metadata records at the end of container files.
 //
-// Error type: fatal and repairable (by truncating the container metadata files).
+// Error type: fatal and repairable (by truncating the container metadata
+// files).
 struct LBMPartialRecordCheck {
-
   // Merges the contents of another check into this one.
   void MergeFrom(const LBMPartialRecordCheck& other);
 
@@ -196,7 +190,6 @@ struct LBMPartialRecordCheck {
 // - Non-fatal and repairable. These inconsistencies may be repaired
 //   opportunistically, but can also be ignored or worked around.
 struct FsReport {
-
   // Merges the contents of another FsReport into this one.
   void MergeFrom(const FsReport& other);
 
@@ -224,7 +217,6 @@ struct FsReport {
 
   // General statistics about the block manager.
   struct Stats {
-
     // Merges the contents of another Stats into this one.
     void MergeFrom(const Stats& other);
 

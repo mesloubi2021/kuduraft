@@ -69,9 +69,11 @@ struct ReactorMetrics {
   // Total number of server RPC connections opened during Reactor's lifetime.
   uint64_t total_server_connections_;
 
-  // Total number of client normal TLS RPC connections opened during Reactor's lifetime.
+  // Total number of client normal TLS RPC connections opened during Reactor's
+  // lifetime.
   uint64_t total_client_normal_tls_connections_;
-  // Total number of server normal TLS RPC connections opened during Reactor's lifetime.
+  // Total number of server normal TLS RPC connections opened during Reactor's
+  // lifetime.
   uint64_t total_server_normal_tls_connections_;
 };
 
@@ -81,7 +83,7 @@ class ReactorTask : public boost::intrusive::list_base_hook<> {
   ReactorTask();
 
   // Run the task. 'reactor' is guaranteed to be the current thread.
-  virtual void Run(ReactorThread *reactor) = 0;
+  virtual void Run(ReactorThread* reactor) = 0;
 
   // Abort the task, in the case that the reactor shut down before the
   // task could be processed. This may or may not run on the reactor thread
@@ -89,7 +91,7 @@ class ReactorTask : public boost::intrusive::list_base_hook<> {
   //
   // The Reactor guarantees that the Reactor lock is free when this
   // method is called.
-  virtual void Abort(const Status &abort_status) {}
+  virtual void Abort(const Status& abort_status) {}
 
   virtual ~ReactorTask();
 
@@ -106,7 +108,7 @@ class ReactorTask : public boost::intrusive::list_base_hook<> {
 //    receives a Status as its first argument.
 class DelayedTask : public ReactorTask {
  public:
-  DelayedTask(boost::function<void(const Status &)> func, MonoDelta when);
+  DelayedTask(boost::function<void(const Status&)> func, MonoDelta when);
 
   // Schedules the task for running later but doesn't actually run it yet.
   void Run(ReactorThread* thread) override;
@@ -135,26 +137,30 @@ class DelayedTask : public ReactorTask {
 // on a list of sockets.
 //
 // All methods in this class are _only_ called from the reactor thread itself
-// except where otherwise specified. New methods should DCHECK(IsCurrentThread())
-// to ensure this.
+// except where otherwise specified. New methods should
+// DCHECK(IsCurrentThread()) to ensure this.
 class ReactorThread {
  public:
   friend class Connection;
 
   // Client-side connection map. Multiple connections could be open to a remote
   // server if multiple credential policies are used for individual RPCs.
-  typedef std::unordered_multimap<ConnectionId, scoped_refptr<Connection>,
-                                  ConnectionIdHash, ConnectionIdEqual>
+  typedef std::unordered_multimap<
+      ConnectionId,
+      scoped_refptr<Connection>,
+      ConnectionIdHash,
+      ConnectionIdEqual>
       conn_multimap_t;
 
-  ReactorThread(Reactor *reactor, const MessengerBuilder &bld);
+  ReactorThread(Reactor* reactor, const MessengerBuilder& bld);
 
   // This may be called from another thread.
   Status Init();
 
   // Add any connections on this reactor thread into the given status dump.
-  Status DumpRunningRpcs(const DumpRunningRpcsRequestPB& req,
-                         DumpRunningRpcsResponsePB* resp);
+  Status DumpRunningRpcs(
+      const DumpRunningRpcsRequestPB& req,
+      DumpRunningRpcsResponsePB* resp);
 
   void IncrementNormalTLSConnections(bool is_server);
 
@@ -168,22 +174,22 @@ class ReactorThread {
   void WakeThread();
 
   // libev callback for handling async notifications in our epoll thread.
-  void AsyncHandler(ev::async &watcher, int revents);
+  void AsyncHandler(ev::async& watcher, int revents);
 
   // libev callback for handling timer events in our epoll thread.
-  void TimerHandler(ev::timer &watcher, int revents);
+  void TimerHandler(ev::timer& watcher, int revents);
 
   // Register an epoll timer watcher with our event loop.
   // Does not set a timeout or start it.
-  void RegisterTimeout(ev::timer *watcher);
+  void RegisterTimeout(ev::timer* watcher);
 
   // This may be called from another thread.
-  const std::string &name() const;
+  const std::string& name() const;
 
   MonoTime cur_time() const;
 
   // This may be called from another thread.
-  Reactor *reactor();
+  Reactor* reactor();
 
   // Return true if this reactor thread is the thread currently
   // running. Should be used in DCHECK assertions.
@@ -195,13 +201,14 @@ class ReactorThread {
 
   // Transition back from negotiating to processing requests.
   // Must be called from the reactor thread.
-  void CompleteConnectionNegotiation(const scoped_refptr<Connection>& conn,
-                                     const Status& status,
-                                     std::unique_ptr<ErrorStatusPB> rpc_error);
+  void CompleteConnectionNegotiation(
+      const scoped_refptr<Connection>& conn,
+      const Status& status,
+      std::unique_ptr<ErrorStatusPB> rpc_error);
 
   // Collect metrics.
   // Must be called from the reactor thread.
-  Status GetMetrics(ReactorMetrics *metrics);
+  Status GetMetrics(ReactorMetrics* metrics);
 
  private:
   friend class AssignOutboundCallTask;
@@ -229,17 +236,19 @@ class ReactorThread {
 
   // Find a connection to the given remote and returns it in 'conn'.
   // Returns true if a connection is found. Returns false otherwise.
-  bool FindConnection(const ConnectionId& conn_id,
-                      CredentialsPolicy cred_policy,
-                      scoped_refptr<Connection>* conn);
+  bool FindConnection(
+      const ConnectionId& conn_id,
+      CredentialsPolicy cred_policy,
+      scoped_refptr<Connection>* conn);
 
   // Find or create a new connection to the given remote.
-  // If such a connection already exists, returns that, otherwise creates a new one.
-  // May return a bad Status if the connect() call fails.
-  // The resulting connection object is managed internally by the reactor thread.
-  Status FindOrStartConnection(const ConnectionId& conn_id,
-                               CredentialsPolicy cred_policy,
-                               scoped_refptr<Connection>* conn);
+  // If such a connection already exists, returns that, otherwise creates a new
+  // one. May return a bad Status if the connect() call fails. The resulting
+  // connection object is managed internally by the reactor thread.
+  Status FindOrStartConnection(
+      const ConnectionId& conn_id,
+      CredentialsPolicy cred_policy,
+      scoped_refptr<Connection>* conn);
 
   // Shut down the given connection, removing it from the connection tracking
   // structures of this reactor.
@@ -247,8 +256,10 @@ class ReactorThread {
   // The connection is not explicitly deleted -- shared_ptr reference counting
   // may hold on to the object after this, but callers should assume that it
   // _may_ be deleted by this call.
-  void DestroyConnection(Connection *conn, const Status &conn_status,
-                         std::unique_ptr<ErrorStatusPB> rpc_error = {});
+  void DestroyConnection(
+      Connection* conn,
+      const Status& conn_status,
+      std::unique_ptr<ErrorStatusPB> rpc_error = {});
 
   // Scan any open connections for idle ones that have been idle longer than
   // connection_keepalive_time_. If connection_keepalive_time_ < 0, the scan
@@ -257,10 +268,10 @@ class ReactorThread {
 
   // Create a new client socket (non-blocking, NODELAY)
   // buf_size can be specified to set SO_RCVBUF. 0 to skip setting
-  static Status CreateClientSocket(Socket *sock, int buf_size = 0);
+  static Status CreateClientSocket(Socket* sock, int buf_size = 0);
 
   // Initiate a new connection on the given socket.
-  static Status StartConnect(Socket *sock, const Sockaddr &remote);
+  static Status StartConnect(Socket* sock, const Sockaddr& remote);
 
   // Assign a new outbound call to the appropriate connection object.
   // If this fails, the call is marked failed and completed.
@@ -271,7 +282,7 @@ class ReactorThread {
   // Also mark the call as slated for cancellation so the callback
   // may be invoked early if the RPC hasn't yet been sent or if it's
   // waiting for a response from the remote.
-  void CancelOutboundCall(const std::shared_ptr<OutboundCall> &call);
+  void CancelOutboundCall(const std::shared_ptr<OutboundCall>& call);
 
   // Register a new connection.
   void RegisterConnection(scoped_refptr<Connection> conn);
@@ -312,7 +323,7 @@ class ReactorThread {
   // List of current connections coming into the server.
   conn_list_t server_conns_;
 
-  Reactor *reactor_;
+  Reactor* reactor_;
 
   // If a connection has been idle for this much time, it is torn down.
   const MonoDelta connection_keepalive_time_;
@@ -330,10 +341,12 @@ class ReactorThread {
   // Total number of server connections opened during Reactor's lifetime.
   uint64_t total_server_conns_cnt_;
 
-  // Total number of client normal TLS connections opened during Reactor's lifetime.
+  // Total number of client normal TLS connections opened during Reactor's
+  // lifetime.
   uint64_t total_client_normal_tls_conns_cnt_;
 
-  // Total number of server normal TLS connections opened during Reactor's lifetime.
+  // Total number of server normal TLS connections opened during Reactor's
+  // lifetime.
   uint64_t total_server_normal_tls_conns_cnt_;
 
   // Set prior to calling epoll and then reset back to -1 after each invocation
@@ -356,9 +369,10 @@ class ReactorThread {
 // A Reactor manages a ReactorThread
 class Reactor {
  public:
-  Reactor(std::shared_ptr<Messenger> messenger,
-          int index,
-          const MessengerBuilder &bld);
+  Reactor(
+      std::shared_ptr<Messenger> messenger,
+      int index,
+      const MessengerBuilder& bld);
   Status Init();
 
   // Shuts down the reactor and its corresponding thread, optionally waiting
@@ -367,26 +381,27 @@ class Reactor {
 
   ~Reactor();
 
-  const std::string &name() const;
+  const std::string& name() const;
 
   // Collect metrics about the reactor.
-  Status GetMetrics(ReactorMetrics *metrics);
+  Status GetMetrics(ReactorMetrics* metrics);
 
   // Add any connections on this reactor thread into the given status dump.
-  Status DumpRunningRpcs(const DumpRunningRpcsRequestPB& req,
-                         DumpRunningRpcsResponsePB* resp);
+  Status DumpRunningRpcs(
+      const DumpRunningRpcsRequestPB& req,
+      DumpRunningRpcsResponsePB* resp);
 
   // Queue a new incoming connection. Takes ownership of the underlying fd from
   // 'socket', but not the Socket object itself.
   // If the reactor is already shut down, takes care of closing the socket.
-  void RegisterInboundSocket(Socket *socket, const Sockaddr &remote);
+  void RegisterInboundSocket(Socket* socket, const Sockaddr& remote);
 
   // Queue a new call to be sent. If the reactor is already shut down, marks
   // the call as failed.
-  void QueueOutboundCall(const std::shared_ptr<OutboundCall> &call);
+  void QueueOutboundCall(const std::shared_ptr<OutboundCall>& call);
 
   // Queue a new reactor task to cancel an outbound call.
-  void QueueCancellation(const std::shared_ptr<OutboundCall> &call);
+  void QueueCancellation(const std::shared_ptr<OutboundCall>& call);
 
   // Queues a task to reset this reactor's connections
   void QueueResetConnections();
@@ -397,15 +412,15 @@ class Reactor {
   // called.
   // Does _not_ take ownership of 'task' -- the task should take care of
   // deleting itself after running if it is allocated on the heap.
-  void ScheduleReactorTask(ReactorTask *task);
+  void ScheduleReactorTask(ReactorTask* task);
 
   Status RunOnReactorThread(const boost::function<Status()>& f);
 
   // If the Reactor is closing, returns false.
   // Otherwise, drains the pending_tasks_ queue into the provided list.
-  bool DrainTaskQueue(boost::intrusive::list<ReactorTask> *tasks);
+  bool DrainTaskQueue(boost::intrusive::list<ReactorTask>* tasks);
 
-  Messenger *messenger() const {
+  Messenger* messenger() const {
     return messenger_.get();
   }
 
@@ -435,7 +450,8 @@ class Reactor {
 
   // Tasks to be run within the reactor thread.
   // Guarded by lock_.
-  boost::intrusive::list<ReactorTask> pending_tasks_; // NOLINT(build/include_what_you_use)
+  boost::intrusive::list<ReactorTask>
+      pending_tasks_; // NOLINT(build/include_what_you_use)
 
   ReactorThread thread_;
 

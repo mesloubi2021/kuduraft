@@ -55,19 +55,19 @@ using tserver::ListTabletsResponsePB_StatusAndSchemaPB;
 
 class ReplaceTabletITest : public ExternalMiniClusterITestBase {
  public:
-  ReplaceTabletITest() :
-    rand_(SeedRandom()) {
-  }
+  ReplaceTabletITest() : rand_(SeedRandom()) {}
 
   Status RandomTabletId(string* tablet_id) {
-    // 3 tablets servers and 3 replicas per tablet, so it doesn't matter which TS we choose.
+    // 3 tablets servers and 3 replicas per tablet, so it doesn't matter which
+    // TS we choose.
     auto* ts = ts_map_.begin()->second;
     vector<ListTabletsResponsePB_StatusAndSchemaPB> tablets;
     RETURN_NOT_OK(ListTablets(ts, MonoDelta::FromSeconds(30), &tablets));
     if (tablets.empty()) {
       return Status::NotFound("no tablets");
     }
-    *tablet_id = tablets[rand_.Uniform(tablets.size())].tablet_status().tablet_id();
+    *tablet_id =
+        tablets[rand_.Uniform(tablets.size())].tablet_status().tablet_id();
     return Status::OK();
   }
 
@@ -120,7 +120,8 @@ TEST_F(ReplaceTabletITest, DISABLED_ReplaceTabletsWhileWriting) {
     SleepFor(MonoDelta::FromMilliseconds(100));
   }
 
-  // Make sure we insert a few more rows that hopefully interleave with replaces.
+  // Make sure we insert a few more rows that hopefully interleave with
+  // replaces.
   while (workload.rows_inserted() < 2 * kNumRows) {
     SleepFor(MonoDelta::FromMilliseconds(10));
   }

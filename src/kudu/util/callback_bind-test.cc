@@ -45,15 +45,15 @@ TEST(CallbackBindTest, TestFreeFunction) {
 
 class Ref : public RefCountedThreadSafe<Ref> {
  public:
-  int Foo() { return 3; }
+  int Foo() {
+    return 3;
+  }
 };
 
 // Simple class that helps with verifying ref counting.
 // Not thread-safe.
 struct RefCountable {
-  RefCountable()
-      : refs(0) {
-  }
+  RefCountable() : refs(0) {}
   void AddRef() const {
     refs++;
   }

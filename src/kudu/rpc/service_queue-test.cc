@@ -41,14 +41,11 @@ using std::string;
 using std::unique_ptr;
 using std::vector;
 
-DEFINE_int32(num_producers, 4,
-             "Number of producer threads");
+DEFINE_int32(num_producers, 4, "Number of producer threads");
 
-DEFINE_int32(num_consumers, 20,
-             "Number of consumer threads");
+DEFINE_int32(num_consumers, 20, "Number of consumer threads");
 
-DEFINE_int32(max_queue_size, 50,
-             "Max queue length");
+DEFINE_int32(max_queue_size, 50, "Max queue length");
 
 namespace kudu {
 namespace rpc {
@@ -136,15 +133,20 @@ TEST(TestServiceQueue, LifoServiceQueuePerf) {
     consumers[i].join();
   }
 
-  float reqs_per_second = static_cast<float>(delta / sw.elapsed().wall_seconds());
-  float user_cpu_micros_per_req = static_cast<float>(sw.elapsed().user / 1000.0 / delta);
-  float sys_cpu_micros_per_req = static_cast<float>(sw.elapsed().system / 1000.0 / delta);
+  float reqs_per_second =
+      static_cast<float>(delta / sw.elapsed().wall_seconds());
+  float user_cpu_micros_per_req =
+      static_cast<float>(sw.elapsed().user / 1000.0 / delta);
+  float sys_cpu_micros_per_req =
+      static_cast<float>(sw.elapsed().system / 1000.0 / delta);
 
   LOG(INFO) << "Reqs/sec:         " << (int32_t)reqs_per_second;
   LOG(INFO) << "User CPU per req: " << user_cpu_micros_per_req << "us";
   LOG(INFO) << "Sys CPU per req:  " << sys_cpu_micros_per_req << "us";
-  LOG(INFO) << "Avg rpc queue length: " << total_queue_len / static_cast<double>(total_sample);
-  LOG(INFO) << "Avg idle workers:     " << total_idle_workers / static_cast<double>(total_sample);
+  LOG(INFO) << "Avg rpc queue length: "
+            << total_queue_len / static_cast<double>(total_sample);
+  LOG(INFO) << "Avg idle workers:     "
+            << total_idle_workers / static_cast<double>(total_sample);
 }
 
 } // namespace rpc

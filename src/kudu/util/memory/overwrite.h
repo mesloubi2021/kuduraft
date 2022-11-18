@@ -30,4 +30,3 @@ void OverwriteWithPattern(char* p, size_t len, StringPiece pattern);
 
 } // namespace kudu
 #endif /* KUDU_MEMORY_OVERWRITE_H */
-

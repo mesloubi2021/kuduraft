@@ -36,30 +36,29 @@
 
 #else
 
-#define DEF_COMMON_LIMITS(Type) \
-const bool MathLimits<Type>::kIsSigned; \
-const bool MathLimits<Type>::kIsInteger; \
-const int MathLimits<Type>::kMin10Exp; \
-const int MathLimits<Type>::kMax10Exp;
+#define DEF_COMMON_LIMITS(Type)            \
+  const bool MathLimits<Type>::kIsSigned;  \
+  const bool MathLimits<Type>::kIsInteger; \
+  const int MathLimits<Type>::kMin10Exp;   \
+  const int MathLimits<Type>::kMax10Exp;
 
-#define DEF_UNSIGNED_INT_LIMITS(Type) \
-DEF_COMMON_LIMITS(Type) \
-const Type MathLimits<Type>::kPosMin; \
-const Type MathLimits<Type>::kPosMax; \
-const Type MathLimits<Type>::kMin; \
-const Type MathLimits<Type>::kMax; \
-const Type MathLimits<Type>::kEpsilon; \
-const Type MathLimits<Type>::kStdError;
+#define DEF_UNSIGNED_INT_LIMITS(Type)    \
+  DEF_COMMON_LIMITS(Type)                \
+  const Type MathLimits<Type>::kPosMin;  \
+  const Type MathLimits<Type>::kPosMax;  \
+  const Type MathLimits<Type>::kMin;     \
+  const Type MathLimits<Type>::kMax;     \
+  const Type MathLimits<Type>::kEpsilon; \
+  const Type MathLimits<Type>::kStdError;
 
-#define DEF_SIGNED_INT_LIMITS(Type) \
-DEF_UNSIGNED_INT_LIMITS(Type) \
-const Type MathLimits<Type>::kNegMin; \
-const Type MathLimits<Type>::kNegMax;
+#define DEF_SIGNED_INT_LIMITS(Type)     \
+  DEF_UNSIGNED_INT_LIMITS(Type)         \
+  const Type MathLimits<Type>::kNegMin; \
+  const Type MathLimits<Type>::kNegMax;
 
-#define DEF_PRECISION_LIMITS(Type) \
-const int MathLimits<Type>::kPrecisionDigits;
+#define DEF_PRECISION_LIMITS(Type) const int MathLimits<Type>::kPrecisionDigits;
 
-#endif  // not _MSC_VER
+#endif // not _MSC_VER
 
 // http://en.wikipedia.org/wiki/Quadruple_precision_floating-point_format#Double-double_arithmetic
 // With some compilers (gcc 4.6.x) on some platforms (powerpc64),
@@ -85,23 +84,24 @@ const int MathLimits<Type>::kPrecisionDigits;
 // Therefore, we define kStdError as a multiple of
 // max(DBL_EPSILON * DBL_EPSILON, kEpsilon) rather than a multiple of kEpsilon.
 
-#define DEF_FP_LIMITS(Type, PREFIX) \
-DEF_COMMON_LIMITS(Type) \
-const Type MathLimits<Type>::kPosMin = PREFIX##_MIN; \
-const Type MathLimits<Type>::kPosMax = PREFIX##_MAX; \
-const Type MathLimits<Type>::kMin = -MathLimits<Type>::kPosMax; \
-const Type MathLimits<Type>::kMax = MathLimits<Type>::kPosMax; \
-const Type MathLimits<Type>::kNegMin = -MathLimits<Type>::kPosMin; \
-const Type MathLimits<Type>::kNegMax = -MathLimits<Type>::kPosMax; \
-const Type MathLimits<Type>::kEpsilon = PREFIX##_EPSILON; \
-/* 32 is 5 bits of mantissa error; should be adequate for common errors */ \
-const Type MathLimits<Type>::kStdError = \
-  32 * (DBL_EPSILON * DBL_EPSILON > MathLimits<Type>::kEpsilon \
-      ? DBL_EPSILON * DBL_EPSILON : MathLimits<Type>::kEpsilon); \
-DEF_PRECISION_LIMITS(Type) \
-const Type MathLimits<Type>::kNaN = HUGE_VAL - HUGE_VAL; \
-const Type MathLimits<Type>::kPosInf = HUGE_VAL; \
-const Type MathLimits<Type>::kNegInf = -HUGE_VAL;
+#define DEF_FP_LIMITS(Type, PREFIX)                                          \
+  DEF_COMMON_LIMITS(Type)                                                    \
+  const Type MathLimits<Type>::kPosMin = PREFIX##_MIN;                       \
+  const Type MathLimits<Type>::kPosMax = PREFIX##_MAX;                       \
+  const Type MathLimits<Type>::kMin = -MathLimits<Type>::kPosMax;            \
+  const Type MathLimits<Type>::kMax = MathLimits<Type>::kPosMax;             \
+  const Type MathLimits<Type>::kNegMin = -MathLimits<Type>::kPosMin;         \
+  const Type MathLimits<Type>::kNegMax = -MathLimits<Type>::kPosMax;         \
+  const Type MathLimits<Type>::kEpsilon = PREFIX##_EPSILON;                  \
+  /* 32 is 5 bits of mantissa error; should be adequate for common errors */ \
+  const Type MathLimits<Type>::kStdError = 32 *                              \
+      (DBL_EPSILON * DBL_EPSILON > MathLimits<Type>::kEpsilon                \
+           ? DBL_EPSILON * DBL_EPSILON                                       \
+           : MathLimits<Type>::kEpsilon);                                    \
+  DEF_PRECISION_LIMITS(Type)                                                 \
+  const Type MathLimits<Type>::kNaN = HUGE_VAL - HUGE_VAL;                   \
+  const Type MathLimits<Type>::kPosInf = HUGE_VAL;                           \
+  const Type MathLimits<Type>::kNegInf = -HUGE_VAL;
 
 DEF_SIGNED_INT_LIMITS(int8)
 DEF_SIGNED_INT_LIMITS(int16)

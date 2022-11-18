@@ -33,7 +33,7 @@
 #include <glog/logging.h>
 
 #define CALL_ORIG(func_name, ...) \
-  ((decltype(&func_name))g_orig_ ## func_name)(__VA_ARGS__)
+  ((decltype(&func_name))g_orig_##func_name)(__VA_ARGS__)
 
 // Don't hook dl_iterate_phdr in TSAN builds since TSAN already instruments this
 // function and blocks signals while calling it. And skip it for macOS; it
@@ -42,7 +42,7 @@
 #define HOOK_DL_ITERATE_PHDR 1
 #endif
 
-typedef int (*dl_iterate_phdr_cbtype)(struct dl_phdr_info *, size_t, void *);
+typedef int (*dl_iterate_phdr_cbtype)(struct dl_phdr_info*, size_t, void*);
 
 namespace {
 
@@ -69,7 +69,7 @@ struct ScopedBumpDepth {
   }
 };
 
-void *dlsym_or_die(const char *sym) {
+void* dlsym_or_die(const char* sym) {
   dlerror();
   void* ret = dlsym(RTLD_NEXT, sym);
   char* error = dlerror();
@@ -88,14 +88,15 @@ void *dlsym_or_die(const char *sym) {
 //
 // A couple examples of the above:
 //
-// 1) In ASAN builds, the sanitizer runtime ends up calling dl_iterate_phdr from its
+// 1) In ASAN builds, the sanitizer runtime ends up calling dl_iterate_phdr from
+// its
 //    initialization.
 // 2) OpenSSL in FIPS mode calls dlopen() within its constructor.
-__attribute__((constructor))
-void InitIfNecessary() {
+__attribute__((constructor)) void InitIfNecessary() {
   // Dynamic library initialization is always single-threaded, so there's no
   // need for any synchronization here.
-  if (g_initted) return;
+  if (g_initted)
+    return;
 
   g_orig_dlopen = dlsym_or_die("dlopen");
   g_orig_dlclose = dlsym_or_die("dlclose");
@@ -141,24 +142,23 @@ bool SafeToUnwindStack() {
 
 extern "C" {
 
-void *dlopen(const char *filename, int flag) { // NOLINT
+void* dlopen(const char* filename, int flag) { // NOLINT
   InitIfNecessary();
   ScopedBumpDepth d;
   return CALL_ORIG(dlopen, filename, flag);
 }
 
-int dlclose(void *handle) { // NOLINT
+int dlclose(void* handle) { // NOLINT
   InitIfNecessary();
   ScopedBumpDepth d;
   return CALL_ORIG(dlclose, handle);
 }
 
 #ifdef HOOK_DL_ITERATE_PHDR
-int dl_iterate_phdr(dl_iterate_phdr_cbtype callback, void *data) { // NOLINT
+int dl_iterate_phdr(dl_iterate_phdr_cbtype callback, void* data) { // NOLINT
   InitIfNecessary();
   ScopedBumpDepth d;
   return CALL_ORIG(dl_iterate_phdr, callback, data);
 }
 #endif
-
 }

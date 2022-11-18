@@ -40,7 +40,7 @@ string BlockId::JoinStrings(const vector<BlockId>& blocks) {
   return ::JoinStrings(strings, ",");
 }
 
-void BlockId::CopyToPB(BlockIdPB *pb) const {
+void BlockId::CopyToPB(BlockIdPB* pb) const {
   pb->set_id(id_);
 }
 

@@ -28,45 +28,52 @@
 #include "kudu/gutil/strings/substitute.h"
 #include "kudu/util/flag_tags.h"
 
-DEFINE_string(color, "auto",
-              "Specifies whether output should be colorized. The default value "
-              "'auto' colorizes output if the output is a terminal. The other "
-              "valid values are 'always' or 'never'.");
+DEFINE_string(
+    color,
+    "auto",
+    "Specifies whether output should be colorized. The default value "
+    "'auto' colorizes output if the output is a terminal. The other "
+    "valid values are 'always' or 'never'.");
 TAG_FLAG(color, stable);
 
 static bool ValidateColorFlag(const char* flagname, const std::string& value) {
-  if (value == "always" ||
-      value == "auto" ||
-      value == "never") {
+  if (value == "always" || value == "auto" || value == "never") {
     return true;
   }
   LOG(ERROR) << "option 'color' expects \"always\", \"auto\", or \"never\"";
   return false;
 }
-static bool dummy = gflags::RegisterFlagValidator(
-    &FLAGS_color, &ValidateColorFlag);
-
+static bool dummy =
+    gflags::RegisterFlagValidator(&FLAGS_color, &ValidateColorFlag);
 
 namespace kudu {
 namespace tools {
 
 namespace {
 bool UseColor() {
-  if (FLAGS_color == "never") return false;
-  if (FLAGS_color == "always") return true;
+  if (FLAGS_color == "never")
+    return false;
+  if (FLAGS_color == "always")
+    return true;
   return isatty(STDOUT_FILENO);
 }
 
 const char* StringForCode(AnsiCode color) {
-  if (!UseColor()) return "";
+  if (!UseColor())
+    return "";
 
   // Codes from: https://en.wikipedia.org/wiki/ANSI_escape_code
   switch (color) {
-    case AnsiCode::RED:    return "\x1b[31m";
-    case AnsiCode::GREEN:  return "\x1b[32m";
-    case AnsiCode::YELLOW: return "\x1b[33m";
-    case AnsiCode::BLUE:   return "\x1b[34m";
-    case AnsiCode::RESET:  return "\x1b[m";
+    case AnsiCode::RED:
+      return "\x1b[31m";
+    case AnsiCode::GREEN:
+      return "\x1b[32m";
+    case AnsiCode::YELLOW:
+      return "\x1b[33m";
+    case AnsiCode::BLUE:
+      return "\x1b[34m";
+    case AnsiCode::RESET:
+      return "\x1b[m";
   }
   LOG(FATAL);
   return "";
@@ -74,10 +81,8 @@ const char* StringForCode(AnsiCode color) {
 } // anonymous namespace
 
 std::string Color(AnsiCode color, StringPiece s) {
-  return strings::Substitute("$0$1$2",
-                             StringForCode(color),
-                             s,
-                             StringForCode(AnsiCode::RESET));
+  return strings::Substitute(
+      "$0$1$2", StringForCode(color), s, StringForCode(AnsiCode::RESET));
 }
 
 } // namespace tools

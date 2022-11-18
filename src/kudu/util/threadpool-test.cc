@@ -74,7 +74,6 @@ static const char* kDefaultPoolName = "test";
 
 class ThreadPoolTest : public KuduTest {
  public:
-
   virtual void SetUp() override {
     KuduTest::SetUp();
     ASSERT_OK(ThreadPoolBuilder(kDefaultPoolName).Build(&pool_));
@@ -100,7 +99,7 @@ TEST_F(ThreadPoolTest, TestNoTaskOpenClose) {
   pool_->Shutdown();
 }
 
-static void SimpleTaskMethod(int n, Atomic32 *counter) {
+static void SimpleTaskMethod(int n, Atomic32* counter) {
   while (n--) {
     base::subtle::NoBarrier_AtomicIncrement(counter, 1);
     boost::detail::yield(n);
@@ -109,9 +108,7 @@ static void SimpleTaskMethod(int n, Atomic32 *counter) {
 
 class SimpleTask : public Runnable {
  public:
-  SimpleTask(int n, Atomic32 *counter)
-    : n_(n), counter_(counter) {
-  }
+  SimpleTask(int n, Atomic32* counter) : n_(n), counter_(counter) {}
 
   void Run() override {
     SimpleTaskMethod(n_, counter_);
@@ -119,7 +116,7 @@ class SimpleTask : public Runnable {
 
  private:
   int n_;
-  Atomic32 *counter_;
+  Atomic32* counter_;
 };
 
 TEST_F(ThreadPoolTest, TestSimpleTasks) {
@@ -160,15 +157,12 @@ TEST_F(ThreadPoolTest, TestSubmitAfterShutdown) {
   ASSERT_OK(RebuildPoolWithMinMax(1, 1));
   pool_->Shutdown();
   Status s = pool_->SubmitFunc(&IssueTraceStatement);
-  ASSERT_EQ("Service unavailable: The pool has been shut down.",
-            s.ToString());
+  ASSERT_EQ("Service unavailable: The pool has been shut down.", s.ToString());
 }
 
 class SlowTask : public Runnable {
  public:
-  explicit SlowTask(CountDownLatch* latch)
-    : latch_(latch) {
-  }
+  explicit SlowTask(CountDownLatch* latch) : latch_(latch) {}
 
   void Run() override {
     latch_->Wait();
@@ -183,18 +177,17 @@ class SlowTask : public Runnable {
 };
 
 TEST_F(ThreadPoolTest, TestThreadPoolWithNoMinimum) {
-  ASSERT_OK(RebuildPoolWithBuilder(ThreadPoolBuilder(kDefaultPoolName)
-                                   .set_min_threads(0)
-                                   .set_max_threads(3)
-                                   .set_idle_timeout(MonoDelta::FromMilliseconds(1))));
+  ASSERT_OK(RebuildPoolWithBuilder(
+      ThreadPoolBuilder(kDefaultPoolName)
+          .set_min_threads(0)
+          .set_max_threads(3)
+          .set_idle_timeout(MonoDelta::FromMilliseconds(1))));
 
   // There are no threads to start with.
   ASSERT_TRUE(pool_->num_threads() == 0);
   // We get up to 3 threads when submitting work.
   CountDownLatch latch(1);
-  SCOPED_CLEANUP({
-    latch.CountDown();
-  });
+  SCOPED_CLEANUP({ latch.CountDown(); });
   ASSERT_OK(pool_->Submit(SlowTask::NewSlowTask(&latch)));
   ASSERT_OK(pool_->Submit(SlowTask::NewSlowTask(&latch)));
   ASSERT_EQ(2, pool_->num_threads());
@@ -218,12 +211,11 @@ TEST_F(ThreadPoolTest, TestThreadPoolWithNoMaxThreads) {
   const int kNumCPUs = base::NumCPUs();
 
   // Build a threadpool with no limit on the maximum number of threads.
-  ASSERT_OK(RebuildPoolWithBuilder(ThreadPoolBuilder(kDefaultPoolName)
-                                   .set_max_threads(std::numeric_limits<int>::max())));
+  ASSERT_OK(RebuildPoolWithBuilder(
+      ThreadPoolBuilder(kDefaultPoolName)
+          .set_max_threads(std::numeric_limits<int>::max())));
   CountDownLatch latch(1);
-  auto cleanup_latch = MakeScopedCleanup([&]() {
-    latch.CountDown();
-  });
+  auto cleanup_latch = MakeScopedCleanup([&]() { latch.CountDown(); });
 
   // Submit tokenless tasks. Each should create a new thread.
   for (int i = 0; i < kNumCPUs * 2; i++) {
@@ -232,8 +224,10 @@ TEST_F(ThreadPoolTest, TestThreadPoolWithNoMaxThreads) {
   ASSERT_EQ((kNumCPUs * 2), pool_->num_threads());
 
   // Submit tasks on two tokens. Only two threads should be created.
-  unique_ptr<ThreadPoolToken> t1 = pool_->NewToken(ThreadPool::ExecutionMode::SERIAL);
-  unique_ptr<ThreadPoolToken> t2 = pool_->NewToken(ThreadPool::ExecutionMode::SERIAL);
+  unique_ptr<ThreadPoolToken> t1 =
+      pool_->NewToken(ThreadPool::ExecutionMode::SERIAL);
+  unique_ptr<ThreadPoolToken> t2 =
+      pool_->NewToken(ThreadPool::ExecutionMode::SERIAL);
   for (int i = 0; i < kNumCPUs * 2; i++) {
     ThreadPoolToken* t = (i % 2 == 0) ? t1.get() : t2.get();
     ASSERT_OK(t->Submit(SlowTask::NewSlowTask(&latch)));
@@ -258,10 +252,11 @@ TEST_F(ThreadPoolTest, TestRace) {
   auto cleanup = MakeScopedCleanup([]() {
     alarm(0); // Disable alarm on test exit.
   });
-  ASSERT_OK(RebuildPoolWithBuilder(ThreadPoolBuilder(kDefaultPoolName)
-                                   .set_min_threads(0)
-                                   .set_max_threads(1)
-                                   .set_idle_timeout(MonoDelta::FromMicroseconds(1))));
+  ASSERT_OK(RebuildPoolWithBuilder(
+      ThreadPoolBuilder(kDefaultPoolName)
+          .set_min_threads(0)
+          .set_max_threads(1)
+          .set_idle_timeout(MonoDelta::FromMicroseconds(1))));
 
   for (int i = 0; i < 500; i++) {
     CountDownLatch l(1);
@@ -274,10 +269,11 @@ TEST_F(ThreadPoolTest, TestRace) {
 }
 
 TEST_F(ThreadPoolTest, TestVariableSizeThreadPool) {
-  ASSERT_OK(RebuildPoolWithBuilder(ThreadPoolBuilder(kDefaultPoolName)
-                                   .set_min_threads(1)
-                                   .set_max_threads(4)
-                                   .set_idle_timeout(MonoDelta::FromMilliseconds(1))));
+  ASSERT_OK(RebuildPoolWithBuilder(
+      ThreadPoolBuilder(kDefaultPoolName)
+          .set_min_threads(1)
+          .set_max_threads(4)
+          .set_idle_timeout(MonoDelta::FromMilliseconds(1))));
 
   // There is 1 thread to start with.
   ASSERT_EQ(1, pool_->num_threads());
@@ -304,9 +300,9 @@ TEST_F(ThreadPoolTest, TestVariableSizeThreadPool) {
 
 TEST_F(ThreadPoolTest, TestMaxQueueSize) {
   ASSERT_OK(RebuildPoolWithBuilder(ThreadPoolBuilder(kDefaultPoolName)
-                                   .set_min_threads(1)
-                                   .set_max_threads(1)
-                                   .set_max_queue_size(1)));
+                                       .set_min_threads(1)
+                                       .set_max_threads(1)
+                                       .set_max_queue_size(1)));
 
   CountDownLatch latch(1);
   // We will be able to submit two tasks: one for max_threads == 1 and one for
@@ -314,7 +310,8 @@ TEST_F(ThreadPoolTest, TestMaxQueueSize) {
   ASSERT_OK(pool_->Submit(SlowTask::NewSlowTask(&latch)));
   ASSERT_OK(pool_->Submit(SlowTask::NewSlowTask(&latch)));
   Status s = pool_->Submit(SlowTask::NewSlowTask(&latch));
-  CHECK(s.IsServiceUnavailable()) << "Expected failure due to queue blowout:" << s.ToString();
+  CHECK(s.IsServiceUnavailable())
+      << "Expected failure due to queue blowout:" << s.ToString();
   latch.CountDown();
   pool_->Wait();
   pool_->Shutdown();
@@ -325,8 +322,8 @@ TEST_F(ThreadPoolTest, TestMaxQueueSize) {
 TEST_F(ThreadPoolTest, TestZeroQueueSize) {
   const int kMaxThreads = 4;
   ASSERT_OK(RebuildPoolWithBuilder(ThreadPoolBuilder(kDefaultPoolName)
-                                   .set_max_queue_size(0)
-                                   .set_max_threads(kMaxThreads)));
+                                       .set_max_queue_size(0)
+                                       .set_max_threads(kMaxThreads)));
 
   CountDownLatch latch(1);
   for (int i = 0; i < kMaxThreads; i++) {
@@ -348,9 +345,9 @@ TEST_F(ThreadPoolTest, TestSlowThreadStart) {
   // Start a pool of threads from which we'll submit tasks.
   gscoped_ptr<ThreadPool> submitter_pool;
   ASSERT_OK(ThreadPoolBuilder("submitter")
-            .set_min_threads(5)
-            .set_max_threads(5)
-            .Build(&submitter_pool));
+                .set_min_threads(5)
+                .set_max_threads(5)
+                .Build(&submitter_pool));
 
   // Start the actual test pool, which starts with one thread
   // but will start a second one on-demand.
@@ -374,13 +371,13 @@ TEST_F(ThreadPoolTest, TestSlowThreadStart) {
   std::atomic<int32_t> total_queue_time_ms(0);
   for (int i = 0; i < 10; i++) {
     ASSERT_OK(submitter_pool->SubmitFunc([&]() {
-          auto submit_time = MonoTime::Now();
-          CHECK_OK(pool_->SubmitFunc([&,submit_time]() {
-                auto queue_time = MonoTime::Now() - submit_time;
-                total_queue_time_ms += queue_time.ToMilliseconds();
-                SleepFor(MonoDelta::FromMilliseconds(10));
-              }));
-        }));
+      auto submit_time = MonoTime::Now();
+      CHECK_OK(pool_->SubmitFunc([&, submit_time]() {
+        auto queue_time = MonoTime::Now() - submit_time;
+        total_queue_time_ms += queue_time.ToMilliseconds();
+        SleepFor(MonoDelta::FromMilliseconds(10));
+      }));
+    }));
   }
   submitter_pool->Wait();
   pool_->Wait();
@@ -400,26 +397,44 @@ TEST_F(ThreadPoolTest, TestSlowThreadStart) {
 // a value on the current thread.
 TEST_F(ThreadPoolTest, TestPromises) {
   ASSERT_OK(RebuildPoolWithBuilder(ThreadPoolBuilder(kDefaultPoolName)
-                                   .set_min_threads(1)
-                                   .set_max_threads(1)
-                                   .set_max_queue_size(1)));
+                                       .set_min_threads(1)
+                                       .set_max_threads(1)
+                                       .set_max_queue_size(1)));
 
   Promise<int> my_promise;
   ASSERT_OK(pool_->SubmitClosure(
-                     Bind(&Promise<int>::Set, Unretained(&my_promise), 5)));
+      Bind(&Promise<int>::Set, Unretained(&my_promise), 5)));
   ASSERT_EQ(5, my_promise.Get());
   pool_->Shutdown();
 }
 
 METRIC_DEFINE_entity(test_entity);
-METRIC_DEFINE_histogram(test_entity, queue_length, "queue length",
-                        MetricUnit::kTasks, "queue length", 1000, 1);
+METRIC_DEFINE_histogram(
+    test_entity,
+    queue_length,
+    "queue length",
+    MetricUnit::kTasks,
+    "queue length",
+    1000,
+    1);
 
-METRIC_DEFINE_histogram(test_entity, queue_time, "queue time",
-                        MetricUnit::kMicroseconds, "queue time", 1000000, 1);
+METRIC_DEFINE_histogram(
+    test_entity,
+    queue_time,
+    "queue time",
+    MetricUnit::kMicroseconds,
+    "queue time",
+    1000000,
+    1);
 
-METRIC_DEFINE_histogram(test_entity, run_time, "run time",
-                        MetricUnit::kMicroseconds, "run time", 1000, 1);
+METRIC_DEFINE_histogram(
+    test_entity,
+    run_time,
+    "run time",
+    MetricUnit::kMicroseconds,
+    "run time",
+    1000,
+    1);
 
 TEST_F(ThreadPoolTest, TestMetrics) {
   MetricRegistry registry;
@@ -428,17 +443,16 @@ TEST_F(ThreadPoolTest, TestMetrics) {
     scoped_refptr<MetricEntity> entity = METRIC_ENTITY_test_entity.Instantiate(
         &registry, Substitute("test $0", i));
     all_metrics.emplace_back(ThreadPoolMetrics{
-      METRIC_queue_length.Instantiate(entity),
-      METRIC_queue_time.Instantiate(entity),
-      METRIC_run_time.Instantiate(entity)
-    });
+        METRIC_queue_length.Instantiate(entity),
+        METRIC_queue_time.Instantiate(entity),
+        METRIC_run_time.Instantiate(entity)});
   }
 
   // Enable metrics for the thread pool.
   ASSERT_OK(RebuildPoolWithBuilder(ThreadPoolBuilder(kDefaultPoolName)
-                                   .set_min_threads(1)
-                                   .set_max_threads(1)
-                                   .set_metrics(all_metrics[0])));
+                                       .set_min_threads(1)
+                                       .set_max_threads(1)
+                                       .set_metrics(all_metrics[0])));
 
   unique_ptr<ThreadPoolToken> t1 = pool_->NewTokenWithMetrics(
       ThreadPool::ExecutionMode::SERIAL, all_metrics[1]);
@@ -446,12 +460,12 @@ TEST_F(ThreadPoolTest, TestMetrics) {
       ThreadPool::ExecutionMode::SERIAL, all_metrics[2]);
 
   // Submit once to t1, twice to t2, and three times without a token.
-  ASSERT_OK(t1->SubmitFunc([](){}));
-  ASSERT_OK(t2->SubmitFunc([](){}));
-  ASSERT_OK(t2->SubmitFunc([](){}));
-  ASSERT_OK(pool_->SubmitFunc([](){}));
-  ASSERT_OK(pool_->SubmitFunc([](){}));
-  ASSERT_OK(pool_->SubmitFunc([](){}));
+  ASSERT_OK(t1->SubmitFunc([]() {}));
+  ASSERT_OK(t2->SubmitFunc([]() {}));
+  ASSERT_OK(t2->SubmitFunc([]() {}));
+  ASSERT_OK(pool_->SubmitFunc([]() {}));
+  ASSERT_OK(pool_->SubmitFunc([]() {}));
+  ASSERT_OK(pool_->SubmitFunc([]() {}));
   pool_->Wait();
 
   // The total counts should reflect the number of submissions to each token.
@@ -481,19 +495,23 @@ TEST_F(ThreadPoolTest, TestMetrics) {
 #ifndef THREAD_SANITIZER
 TEST_F(ThreadPoolTest, TestDeadlocks) {
   const char* death_msg = "called pool function that would result in deadlock";
-  ASSERT_DEATH({
-    ASSERT_OK(RebuildPoolWithMinMax(1, 1));
-    ASSERT_OK(pool_->SubmitClosure(
-        Bind(&ThreadPool::Shutdown, Unretained(pool_.get()))));
-    pool_->Wait();
-  }, death_msg);
+  ASSERT_DEATH(
+      {
+        ASSERT_OK(RebuildPoolWithMinMax(1, 1));
+        ASSERT_OK(pool_->SubmitClosure(
+            Bind(&ThreadPool::Shutdown, Unretained(pool_.get()))));
+        pool_->Wait();
+      },
+      death_msg);
 
-  ASSERT_DEATH({
-    ASSERT_OK(RebuildPoolWithMinMax(1, 1));
-    ASSERT_OK(pool_->SubmitClosure(
-        Bind(&ThreadPool::Wait, Unretained(pool_.get()))));
-    pool_->Wait();
-  }, death_msg);
+  ASSERT_DEATH(
+      {
+        ASSERT_OK(RebuildPoolWithMinMax(1, 1));
+        ASSERT_OK(pool_->SubmitClosure(
+            Bind(&ThreadPool::Wait, Unretained(pool_.get()))));
+        pool_->Wait();
+      },
+      death_msg);
 }
 #endif
 
@@ -506,8 +524,8 @@ class SlowDestructorRunnable : public Runnable {
   }
 };
 
-// Test that if a tasks's destructor is slow, it doesn't cause serialization of the tasks
-// in the queue.
+// Test that if a tasks's destructor is slow, it doesn't cause serialization of
+// the tasks in the queue.
 TEST_F(ThreadPoolTest, TestSlowDestructor) {
   ASSERT_OK(RebuildPoolWithMinMax(1, 20));
   MonoTime start = MonoTime::Now();
@@ -520,13 +538,16 @@ TEST_F(ThreadPoolTest, TestSlowDestructor) {
 }
 
 // For test cases that should run with both kinds of tokens.
-class ThreadPoolTestTokenTypes : public ThreadPoolTest,
-                                 public testing::WithParamInterface<ThreadPool::ExecutionMode> {};
+class ThreadPoolTestTokenTypes
+    : public ThreadPoolTest,
+      public testing::WithParamInterface<ThreadPool::ExecutionMode> {};
 
-INSTANTIATE_TEST_CASE_P(Tokens, ThreadPoolTestTokenTypes,
-                        ::testing::Values(ThreadPool::ExecutionMode::SERIAL,
-                                          ThreadPool::ExecutionMode::CONCURRENT));
-
+INSTANTIATE_TEST_CASE_P(
+    Tokens,
+    ThreadPoolTestTokenTypes,
+    ::testing::Values(
+        ThreadPool::ExecutionMode::SERIAL,
+        ThreadPool::ExecutionMode::CONCURRENT));
 
 TEST_P(ThreadPoolTestTokenTypes, TestTokenSubmitAndWait) {
   unique_ptr<ThreadPoolToken> t = pool_->NewToken(GetParam());
@@ -540,7 +561,8 @@ TEST_P(ThreadPoolTestTokenTypes, TestTokenSubmitAndWait) {
 }
 
 TEST_F(ThreadPoolTest, TestTokenSubmitsProcessedSerially) {
-  unique_ptr<ThreadPoolToken> t = pool_->NewToken(ThreadPool::ExecutionMode::SERIAL);
+  unique_ptr<ThreadPoolToken> t =
+      pool_->NewToken(ThreadPool::ExecutionMode::SERIAL);
   Random r(SeedRandom());
   string result;
   for (char c = 'a'; c < 'f'; c++) {
@@ -558,22 +580,20 @@ TEST_F(ThreadPoolTest, TestTokenSubmitsProcessedSerially) {
 
 TEST_P(ThreadPoolTestTokenTypes, TestTokenSubmitsProcessedConcurrently) {
   const int kNumTokens = 5;
-  ASSERT_OK(RebuildPoolWithBuilder(ThreadPoolBuilder(kDefaultPoolName)
-                                   .set_max_threads(kNumTokens)));
+  ASSERT_OK(RebuildPoolWithBuilder(
+      ThreadPoolBuilder(kDefaultPoolName).set_max_threads(kNumTokens)));
   vector<unique_ptr<ThreadPoolToken>> tokens;
 
   // A violation to the tested invariant would yield a deadlock, so let's set
   // up an alarm to bail us out.
   alarm(60);
   SCOPED_CLEANUP({
-      alarm(0); // Disable alarm on test exit.
+    alarm(0); // Disable alarm on test exit.
   });
   shared_ptr<Barrier> b = std::make_shared<Barrier>(kNumTokens + 1);
   for (int i = 0; i < kNumTokens; i++) {
     tokens.emplace_back(pool_->NewToken(GetParam()));
-    ASSERT_OK(tokens.back()->SubmitFunc([b]() {
-      b->Wait();
-    }));
+    ASSERT_OK(tokens.back()->SubmitFunc([b]() { b->Wait(); }));
   }
 
   // This will deadlock if the above tasks weren't all running concurrently.
@@ -582,21 +602,20 @@ TEST_P(ThreadPoolTestTokenTypes, TestTokenSubmitsProcessedConcurrently) {
 
 TEST_F(ThreadPoolTest, TestTokenSubmitsNonSequential) {
   const int kNumSubmissions = 5;
-  ASSERT_OK(RebuildPoolWithBuilder(ThreadPoolBuilder(kDefaultPoolName)
-                                   .set_max_threads(kNumSubmissions)));
+  ASSERT_OK(RebuildPoolWithBuilder(
+      ThreadPoolBuilder(kDefaultPoolName).set_max_threads(kNumSubmissions)));
 
   // A violation to the tested invariant would yield a deadlock, so let's set
   // up an alarm to bail us out.
   alarm(60);
   SCOPED_CLEANUP({
-      alarm(0); // Disable alarm on test exit.
+    alarm(0); // Disable alarm on test exit.
   });
   shared_ptr<Barrier> b = std::make_shared<Barrier>(kNumSubmissions + 1);
-  unique_ptr<ThreadPoolToken> t = pool_->NewToken(ThreadPool::ExecutionMode::CONCURRENT);
+  unique_ptr<ThreadPoolToken> t =
+      pool_->NewToken(ThreadPool::ExecutionMode::CONCURRENT);
   for (int i = 0; i < kNumSubmissions; i++) {
-    ASSERT_OK(t->SubmitFunc([b]() {
-      b->Wait();
-    }));
+    ASSERT_OK(t->SubmitFunc([b]() { b->Wait(); }));
   }
 
   // This will deadlock if the above tasks weren't all running concurrently.
@@ -604,8 +623,8 @@ TEST_F(ThreadPoolTest, TestTokenSubmitsNonSequential) {
 }
 
 TEST_P(ThreadPoolTestTokenTypes, TestTokenShutdown) {
-  ASSERT_OK(RebuildPoolWithBuilder(ThreadPoolBuilder(kDefaultPoolName)
-                                   .set_max_threads(4)));
+  ASSERT_OK(RebuildPoolWithBuilder(
+      ThreadPoolBuilder(kDefaultPoolName).set_max_threads(4)));
 
   unique_ptr<ThreadPoolToken> t1(pool_->NewToken(GetParam()));
   unique_ptr<ThreadPoolToken> t2(pool_->NewToken(GetParam()));
@@ -616,18 +635,14 @@ TEST_P(ThreadPoolTestTokenTypes, TestTokenShutdown) {
   // up an alarm to bail us out.
   alarm(60);
   SCOPED_CLEANUP({
-      alarm(0); // Disable alarm on test exit.
+    alarm(0); // Disable alarm on test exit.
   });
 
   for (int i = 0; i < 3; i++) {
-    ASSERT_OK(t1->SubmitFunc([&]() {
-      l1.Wait();
-    }));
+    ASSERT_OK(t1->SubmitFunc([&]() { l1.Wait(); }));
   }
   for (int i = 0; i < 3; i++) {
-    ASSERT_OK(t2->SubmitFunc([&]() {
-      l2.Wait();
-    }));
+    ASSERT_OK(t2->SubmitFunc([&]() { l2.Wait(); }));
   }
 
   // Unblock all of t1's tasks, but not t2's tasks.
@@ -637,8 +652,8 @@ TEST_P(ThreadPoolTestTokenTypes, TestTokenShutdown) {
   t1->Shutdown();
 
   // We can no longer submit to t1 but we can still submit to t2.
-  ASSERT_TRUE(t1->SubmitFunc([](){}).IsServiceUnavailable());
-  ASSERT_OK(t2->SubmitFunc([](){}));
+  ASSERT_TRUE(t1->SubmitFunc([]() {}).IsServiceUnavailable());
+  ASSERT_OK(t2->SubmitFunc([]() {}));
 
   // Unblock t2's tasks.
   l2.CountDown();
@@ -714,9 +729,9 @@ TEST_F(ThreadPoolTest, TestFuzz) {
       ASSERT_TRUE(s.ok() || s.IsServiceUnavailable());
     } else if (op < 85) {
       // Allocate a token with a randomly selected policy.
-      ThreadPool::ExecutionMode mode = r.Next() % 2 ?
-          ThreadPool::ExecutionMode::SERIAL :
-          ThreadPool::ExecutionMode::CONCURRENT;
+      ThreadPool::ExecutionMode mode = r.Next() % 2
+          ? ThreadPool::ExecutionMode::SERIAL
+          : ThreadPool::ExecutionMode::CONCURRENT;
       tokens.emplace_back(pool_->NewToken(mode));
     } else if (op < 92) {
       // Wait on a randomly selected token.
@@ -758,15 +773,13 @@ TEST_F(ThreadPoolTest, TestFuzz) {
 
 TEST_P(ThreadPoolTestTokenTypes, TestTokenSubmissionsAdhereToMaxQueueSize) {
   ASSERT_OK(RebuildPoolWithBuilder(ThreadPoolBuilder(kDefaultPoolName)
-                                   .set_min_threads(1)
-                                   .set_max_threads(1)
-                                   .set_max_queue_size(1)));
+                                       .set_min_threads(1)
+                                       .set_max_threads(1)
+                                       .set_max_queue_size(1)));
 
   CountDownLatch latch(1);
   unique_ptr<ThreadPoolToken> t = pool_->NewToken(GetParam());
-  SCOPED_CLEANUP({
-    latch.CountDown();
-  });
+  SCOPED_CLEANUP({ latch.CountDown(); });
   // We will be able to submit two tasks: one for max_threads == 1 and one for
   // max_queue_size == 1.
   ASSERT_OK(t->Submit(SlowTask::NewSlowTask(&latch)));
@@ -801,9 +814,8 @@ TEST_F(ThreadPoolTest, TestTokenConcurrency) {
     ThreadPool::ExecutionMode mode;
     {
       std::lock_guard<simple_spinlock> l(lock);
-      mode = rng.Next() % 2 ?
-          ThreadPool::ExecutionMode::SERIAL :
-          ThreadPool::ExecutionMode::CONCURRENT;
+      mode = rng.Next() % 2 ? ThreadPool::ExecutionMode::SERIAL
+                            : ThreadPool::ExecutionMode::CONCURRENT;
     }
     tokens.emplace_back(pool_->NewToken(mode).release());
   }
@@ -827,10 +839,11 @@ TEST_F(ThreadPoolTest, TestTokenConcurrency) {
         {
           std::lock_guard<simple_spinlock> l(lock);
           int idx = rng.Uniform(kNumTokens);
-          ThreadPool::ExecutionMode mode = rng.Next() % 2 ?
-              ThreadPool::ExecutionMode::SERIAL :
-              ThreadPool::ExecutionMode::CONCURRENT;
-          tokens[idx] = shared_ptr<ThreadPoolToken>(pool_->NewToken(mode).release());
+          ThreadPool::ExecutionMode mode = rng.Next() % 2
+              ? ThreadPool::ExecutionMode::SERIAL
+              : ThreadPool::ExecutionMode::CONCURRENT;
+          tokens[idx] =
+              shared_ptr<ThreadPoolToken>(pool_->NewToken(mode).release());
         }
         num_tokens_cycled++;
 
@@ -858,7 +871,7 @@ TEST_F(ThreadPoolTest, TestTokenConcurrency) {
   for (int i = 0; i < kWaitThreads; i++) {
     // Pick a token at random and wait for any outstanding tasks.
     threads.emplace_back([&]() {
-      int num_tokens_waited  = 0;
+      int num_tokens_waited = 0;
       while (latch.count()) {
         GetRandomToken()->Wait();
         num_tokens_waited++;
@@ -891,29 +904,35 @@ TEST_F(ThreadPoolTest, TestTokenConcurrency) {
     t.join();
   }
 
-  LOG(INFO) << Substitute("Tokens cycled ($0 threads): $1",
-                          kCycleThreads, total_num_tokens_cycled.load());
-  LOG(INFO) << Substitute("Tokens shutdown ($0 threads): $1",
-                          kShutdownThreads, total_num_tokens_shutdown.load());
-  LOG(INFO) << Substitute("Tokens waited ($0 threads): $1",
-                          kWaitThreads, total_num_tokens_waited.load());
-  LOG(INFO) << Substitute("Tokens submitted ($0 threads): $1",
-                          kSubmitThreads, total_num_tokens_submitted.load());
+  LOG(INFO) << Substitute(
+      "Tokens cycled ($0 threads): $1",
+      kCycleThreads,
+      total_num_tokens_cycled.load());
+  LOG(INFO) << Substitute(
+      "Tokens shutdown ($0 threads): $1",
+      kShutdownThreads,
+      total_num_tokens_shutdown.load());
+  LOG(INFO) << Substitute(
+      "Tokens waited ($0 threads): $1",
+      kWaitThreads,
+      total_num_tokens_waited.load());
+  LOG(INFO) << Substitute(
+      "Tokens submitted ($0 threads): $1",
+      kSubmitThreads,
+      total_num_tokens_submitted.load());
 }
 
 TEST_F(ThreadPoolTest, TestLIFOThreadWakeUps) {
   const int kNumThreads = 10;
 
   // Test with a pool that allows for kNumThreads concurrent threads.
-  ASSERT_OK(RebuildPoolWithBuilder(ThreadPoolBuilder(kDefaultPoolName)
-                                   .set_max_threads(kNumThreads)));
+  ASSERT_OK(RebuildPoolWithBuilder(
+      ThreadPoolBuilder(kDefaultPoolName).set_max_threads(kNumThreads)));
 
   // Submit kNumThreads slow tasks and unblock them, in order to produce
   // kNumThreads worker threads.
   CountDownLatch latch(1);
-  SCOPED_CLEANUP({
-    latch.CountDown();
-  });
+  SCOPED_CLEANUP({ latch.CountDown(); });
   for (int i = 0; i < kNumThreads; i++) {
     ASSERT_OK(pool_->Submit(SlowTask::NewSlowTask(&latch)));
   }
@@ -930,11 +949,14 @@ TEST_F(ThreadPoolTest, TestLIFOThreadWakeUps) {
   //
   // If LIFO order is used, the same thread will be reused for each task and
   // the other threads will eventually time out.
-  AssertEventually([&]() {
-    ASSERT_OK(pool_->SubmitFunc([](){}));
-    SleepFor(MonoDelta::FromMilliseconds(10));
-    ASSERT_EQ(1, pool_->num_threads());
-  }, MonoDelta::FromSeconds(10), AssertBackoff::NONE);
+  AssertEventually(
+      [&]() {
+        ASSERT_OK(pool_->SubmitFunc([]() {}));
+        SleepFor(MonoDelta::FromMilliseconds(10));
+        ASSERT_EQ(1, pool_->num_threads());
+      },
+      MonoDelta::FromSeconds(10),
+      AssertBackoff::NONE);
   NO_PENDING_FATALS();
 }
 

@@ -38,7 +38,9 @@ int OpIdCompare(const OpId& left, const OpId& right) {
   DCHECK(left.IsInitialized());
   DCHECK(right.IsInitialized());
   if (PREDICT_TRUE(left.term() == right.term())) {
-    return left.index() < right.index() ? -1 : left.index() == right.index() ? 0 : 1;
+    return left.index() < right.index() ? -1
+        : left.index() == right.index() ? 0
+                                        : 1;
   }
   return left.term() < right.term() ? -1 : 1;
 }
@@ -52,20 +54,26 @@ bool OpIdEquals(const OpId& left, const OpId& right) {
 bool OpIdLessThan(const OpId& left, const OpId& right) {
   DCHECK(left.IsInitialized());
   DCHECK(right.IsInitialized());
-  if (left.term() < right.term()) return true;
-  if (left.term() > right.term()) return false;
+  if (left.term() < right.term())
+    return true;
+  if (left.term() > right.term())
+    return false;
   return left.index() < right.index();
 }
 
 bool OpIdBiggerThan(const OpId& left, const OpId& right) {
   DCHECK(left.IsInitialized());
   DCHECK(right.IsInitialized());
-  if (left.term() > right.term()) return true;
-  if (left.term() < right.term()) return false;
+  if (left.term() > right.term())
+    return true;
+  if (left.term() < right.term())
+    return false;
   return left.index() > right.index();
 }
 
-bool CopyIfOpIdLessThan(const consensus::OpId& to_compare, consensus::OpId* target) {
+bool CopyIfOpIdLessThan(
+    const consensus::OpId& to_compare,
+    consensus::OpId* target) {
   if (to_compare.IsInitialized() &&
       (!target->IsInitialized() || OpIdLessThan(to_compare, *target))) {
     target->CopyFrom(to_compare);
@@ -78,27 +86,31 @@ const OpId& MinOpId(const OpId& left, const OpId& right) {
   return OpIdLessThan(left, right) ? left : right;
 }
 
-size_t OpIdHashFunctor::operator() (const OpId& id) const {
+size_t OpIdHashFunctor::operator()(const OpId& id) const {
   return (id.term() + 31) ^ id.index();
 }
 
-bool OpIdEqualsFunctor::operator() (const OpId& left, const OpId& right) const {
+bool OpIdEqualsFunctor::operator()(const OpId& left, const OpId& right) const {
   return OpIdEquals(left, right);
 }
 
-bool OpIdLessThanPtrFunctor::operator() (const OpId* left, const OpId* right) const {
+bool OpIdLessThanPtrFunctor::operator()(const OpId* left, const OpId* right)
+    const {
   return OpIdLessThan(*left, *right);
 }
 
-bool OpIdIndexLessThanPtrFunctor::operator() (const OpId* left, const OpId* right) const {
+bool OpIdIndexLessThanPtrFunctor::operator()(
+    const OpId* left,
+    const OpId* right) const {
   return left->index() < right->index();
 }
 
-bool OpIdCompareFunctor::operator() (const OpId& left, const OpId& right) const {
+bool OpIdCompareFunctor::operator()(const OpId& left, const OpId& right) const {
   return OpIdLessThan(left, right);
 }
 
-bool OpIdBiggerThanFunctor::operator() (const OpId& left, const OpId& right) const {
+bool OpIdBiggerThanFunctor::operator()(const OpId& left, const OpId& right)
+    const {
   return OpIdBiggerThan(left, right);
 }
 
@@ -118,15 +130,16 @@ OpId MaximumOpId() {
 
 // helper hash functor for delta store ids
 struct DeltaIdHashFunction {
-  size_t operator()(const std::pair<int64_t, int64_t >& id) const {
+  size_t operator()(const std::pair<int64_t, int64_t>& id) const {
     return (id.first + 31) ^ id.second;
   }
 };
 
 // helper equals functor for delta store ids
 struct DeltaIdEqualsTo {
-  bool operator()(const std::pair<int64_t, int64_t >& left,
-                  const std::pair<int64_t, int64_t >& right) const {
+  bool operator()(
+      const std::pair<int64_t, int64_t>& left,
+      const std::pair<int64_t, int64_t>& right) const {
     return left.first == right.first && left.second == right.second;
   }
 };
@@ -150,9 +163,13 @@ std::string OpsRangeString(const ConsensusRequestPB& req) {
   if (req.ops_size() > 0) {
     const OpId& first_op = req.ops(0).id();
     const OpId& last_op = req.ops(req.ops_size() - 1).id();
-    strings::SubstituteAndAppend(&ret, "$0.$1-$2.$3",
-                                 first_op.term(), first_op.index(),
-                                 last_op.term(), last_op.index());
+    strings::SubstituteAndAppend(
+        &ret,
+        "$0.$1-$2.$3",
+        first_op.term(),
+        first_op.index(),
+        last_op.term(),
+        last_op.index());
   }
   ret.push_back(']');
   return ret;
@@ -168,4 +185,4 @@ OpId MakeOpId(int64_t term, int64_t index) {
 }
 
 } // namespace consensus
-}  // namespace kudu
+} // namespace kudu

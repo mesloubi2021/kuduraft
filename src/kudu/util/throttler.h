@@ -28,20 +28,22 @@ namespace kudu {
 class Throttler {
  public:
   // Refill period is 100ms.
-  enum {
-    kRefillPeriodMicros = 100000
-  };
+  enum { kRefillPeriodMicros = 100000 };
 
-  // Construct a throttler with max operation per second, max IO bytes per second
-  // and burst factor (burst_rate = rate * burst), burst rate means maximum
-  // throughput within one refill period.
-  // Set op_per_sec to 0 to disable operation throttling.
-  // Set byte_per_sec to 0 to disable IO bytes throttling.
-  Throttler(MonoTime now, uint64_t op_per_sec, uint64_t byte_per_sec, double burst_factor);
+  // Construct a throttler with max operation per second, max IO bytes per
+  // second and burst factor (burst_rate = rate * burst), burst rate means
+  // maximum throughput within one refill period. Set op_per_sec to 0 to disable
+  // operation throttling. Set byte_per_sec to 0 to disable IO bytes throttling.
+  Throttler(
+      MonoTime now,
+      uint64_t op_per_sec,
+      uint64_t byte_per_sec,
+      double burst_factor);
 
-  // Throttle an "operation group" by taking 'op' operation tokens and 'byte' byte tokens.
-  // Return true if there are enough tokens, and operation is allowed.
-  // Return false if there are not enough tokens, and operation is throttled.
+  // Throttle an "operation group" by taking 'op' operation tokens and 'byte'
+  // byte tokens. Return true if there are enough tokens, and operation is
+  // allowed. Return false if there are not enough tokens, and operation is
+  // throttled.
   bool Take(MonoTime now, uint64_t op, uint64_t byte);
 
  private:

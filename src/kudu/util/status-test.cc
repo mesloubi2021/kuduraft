@@ -31,20 +31,26 @@ TEST(StatusTest, TestToString) {
 TEST(StatusTest, TestClonePrepend) {
   Status file_error = Status::IOError("file error", "msg2", ENOTDIR);
   Status appended = file_error.CloneAndPrepend("Heading");
-  ASSERT_EQ(string("IO error: Heading: file error: msg2 (error 20)"), appended.ToString());
+  ASSERT_EQ(
+      string("IO error: Heading: file error: msg2 (error 20)"),
+      appended.ToString());
 }
 
 TEST(StatusTest, TestCloneAppend) {
   Status remote_error = Status::RemoteError("Application error");
-  Status appended = remote_error.CloneAndAppend(Status::NotFound("Unknown tablet").ToString());
-  ASSERT_EQ(string("Remote error: Application error: Not found: Unknown tablet"),
-            appended.ToString());
+  Status appended = remote_error.CloneAndAppend(
+      Status::NotFound("Unknown tablet").ToString());
+  ASSERT_EQ(
+      string("Remote error: Application error: Not found: Unknown tablet"),
+      appended.ToString());
 }
 
 TEST(StatusTest, TestMemoryUsage) {
   ASSERT_EQ(0, Status::OK().memory_footprint_excluding_this());
-  ASSERT_GT(Status::IOError(
-      "file error", "some other thing", ENOTDIR).memory_footprint_excluding_this(), 0);
+  ASSERT_GT(
+      Status::IOError("file error", "some other thing", ENOTDIR)
+          .memory_footprint_excluding_this(),
+      0);
 }
 
 TEST(StatusTest, TestMoveConstructor) {
@@ -97,23 +103,27 @@ TEST(StatusTest, TestMoveAssignment) {
 }
 
 TEST(StatusTest, TestAndThen) {
-  ASSERT_OK(Status::OK().AndThen(Status::OK)
-                        .AndThen(Status::OK)
-                        .AndThen(Status::OK));
+  ASSERT_OK(
+      Status::OK().AndThen(Status::OK).AndThen(Status::OK).AndThen(Status::OK));
 
-  ASSERT_TRUE(Status::InvalidArgument("").AndThen([] { return Status::IllegalState(""); })
-                                         .IsInvalidArgument());
-  ASSERT_TRUE(Status::InvalidArgument("").AndThen(Status::OK)
-                                         .IsInvalidArgument());
-  ASSERT_TRUE(Status::OK().AndThen([] { return Status::InvalidArgument(""); })
-                          .AndThen(Status::OK)
-                          .IsInvalidArgument());
+  ASSERT_TRUE(Status::InvalidArgument("")
+                  .AndThen([] { return Status::IllegalState(""); })
+                  .IsInvalidArgument());
+  ASSERT_TRUE(
+      Status::InvalidArgument("").AndThen(Status::OK).IsInvalidArgument());
+  ASSERT_TRUE(Status::OK()
+                  .AndThen([] { return Status::InvalidArgument(""); })
+                  .AndThen(Status::OK)
+                  .IsInvalidArgument());
 
-  ASSERT_EQ("foo: bar",
-            Status::OK().CloneAndPrepend("baz")
-                        .AndThen([] {
-                          return Status::InvalidArgument("bar").CloneAndPrepend("foo");
-                        }).message());
+  ASSERT_EQ(
+      "foo: bar",
+      Status::OK()
+          .CloneAndPrepend("baz")
+          .AndThen([] {
+            return Status::InvalidArgument("bar").CloneAndPrepend("foo");
+          })
+          .message());
 }
 
-}  // namespace kudu
+} // namespace kudu

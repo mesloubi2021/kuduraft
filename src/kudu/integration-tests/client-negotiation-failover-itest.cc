@@ -45,8 +45,8 @@
 using kudu::client::KuduClient;
 using kudu::client::KuduClientBuilder;
 using kudu::client::KuduInsert;
-using kudu::client::KuduSession;
 using kudu::client::KuduSchema;
+using kudu::client::KuduSession;
 using kudu::client::KuduTable;
 using kudu::client::KuduTableCreator;
 using kudu::client::sp::shared_ptr;
@@ -111,13 +111,15 @@ class ClientFailoverOnNegotiationTimeoutITest : public KuduTest {
     }
     KuduTest::TearDown();
   }
+
  protected:
   ExternalMiniClusterOptions cluster_opts_;
   shared_ptr<ExternalMiniCluster> cluster_;
 };
 
-// Regression test for KUDU-1580: if a client times out on negotiating a connection
-// to a tablet server, it should retry with other available tablet server.
+// Regression test for KUDU-1580: if a client times out on negotiating a
+// connection to a tablet server, it should retry with other available tablet
+// server.
 TEST_F(ClientFailoverOnNegotiationTimeoutITest, Kudu1580ConnectToTServer) {
   static const int kNumTabletServers = 3;
   static const int kTimeoutMs = 5 * 60 * 1000;
@@ -134,16 +136,17 @@ TEST_F(ClientFailoverOnNegotiationTimeoutITest, Kudu1580ConnectToTServer) {
   shared_ptr<KuduClient> client;
   ASSERT_OK(cluster_->CreateClient(
       &KuduClientBuilder()
-          .default_admin_operation_timeout(MonoDelta::FromMilliseconds(kTimeoutMs))
-          .default_rpc_timeout(MonoDelta::FromMilliseconds(kTimeoutMs)),
+           .default_admin_operation_timeout(
+               MonoDelta::FromMilliseconds(kTimeoutMs))
+           .default_rpc_timeout(MonoDelta::FromMilliseconds(kTimeoutMs)),
       &client));
   unique_ptr<KuduTableCreator> table_creator(client->NewTableCreator());
   KuduSchema schema(client::KuduSchemaFromSchema(CreateKeyValueTestSchema()));
   ASSERT_OK(table_creator->table_name(kTableName)
-      .schema(&schema)
-      .add_hash_partitions({ "key" }, kNumTabletServers)
-      .num_replicas(kNumTabletServers)
-      .Create());
+                .schema(&schema)
+                .add_hash_partitions({"key"}, kNumTabletServers)
+                .num_replicas(kNumTabletServers)
+                .Create());
   shared_ptr<KuduTable> table;
   ASSERT_OK(client->OpenTable(kTableName, &table));
 
@@ -165,17 +168,15 @@ TEST_F(ClientFailoverOnNegotiationTimeoutITest, Kudu1580ConnectToTServer) {
     // Resume 2 out of 3 tablet servers (i.e. the majority), so the client
     // could eventially succeed with its write operations.
     thread resume_thread([&]() {
-        const int idx0 = rand() % kNumTabletServers;
-        unique_ptr<ScopedResumeExternalDaemon> r0(resumers[idx0].release());
-        const int idx1 = (idx0 + 1) % kNumTabletServers;
-        unique_ptr<ScopedResumeExternalDaemon> r1(resumers[idx1].release());
-        SleepFor(MonoDelta::FromSeconds(1));
-      });
+      const int idx0 = rand() % kNumTabletServers;
+      unique_ptr<ScopedResumeExternalDaemon> r0(resumers[idx0].release());
+      const int idx1 = (idx0 + 1) % kNumTabletServers;
+      unique_ptr<ScopedResumeExternalDaemon> r1(resumers[idx1].release());
+      SleepFor(MonoDelta::FromSeconds(1));
+    });
     // An automatic clean-up to handle both success and failure cases
     // in the code below.
-    SCOPED_CLEANUP({
-        resume_thread.join();
-      });
+    SCOPED_CLEANUP({ resume_thread.join(); });
 
     // Since the table is hash-partitioned with kNumTabletServer partitions,
     // hopefully three sequential numbers would go into different partitions.
@@ -202,8 +203,8 @@ TEST_F(ClientFailoverOnNegotiationTimeoutITest, Kudu2021ConnectToMaster) {
   shared_ptr<KuduClient> client;
   ASSERT_OK(cluster_->CreateClient(
       &KuduClientBuilder()
-          .default_admin_operation_timeout(kTimeout)
-          .default_rpc_timeout(kTimeout),
+           .default_admin_operation_timeout(kTimeout)
+           .default_rpc_timeout(kTimeout),
       &client));
 
   // Make a call to the master to populate the client's metadata cache.
@@ -236,8 +237,8 @@ TEST_F(ClientFailoverOnNegotiationTimeoutITest, Kudu2021NegotiateWithMaster) {
   shared_ptr<KuduClient> client;
   ASSERT_OK(cluster_->CreateClient(
       &KuduClientBuilder()
-          .default_admin_operation_timeout(kTimeout)
-          .default_rpc_timeout(kTimeout),
+           .default_admin_operation_timeout(kTimeout)
+           .default_rpc_timeout(kTimeout),
       &client));
 
   // Check client can successfully call ListTables().
@@ -251,25 +252,27 @@ TEST_F(ClientFailoverOnNegotiationTimeoutITest, Kudu2021NegotiateWithMaster) {
   // on timing out while establishing a TCP connection see the
   // Kudu2021ConnectToMaster test above.
   //
-  // So, after the client times out on the negotiation process, it should re-resolve
-  // the leader master and connect to the new leader. Since the former leader
-  // has been paused in the middle of the negotiation, the client is supposed to
-  // connect to the new leader and succeed with its ListTables() call.
+  // So, after the client times out on the negotiation process, it should
+  // re-resolve the leader master and connect to the new leader. Since the
+  // former leader has been paused in the middle of the negotiation, the client
+  // is supposed to connect to the new leader and succeed with its ListTables()
+  // call.
   int leader_idx;
   ASSERT_OK(cluster_->GetLeaderMasterIndex(&leader_idx));
   ExternalMaster* m = cluster_->master(leader_idx);
-  ASSERT_OK(
-      cluster_->SetFlag(m, "rpc_negotiation_inject_delay_ms",
-                        Substitute("$0", FLAGS_rpc_negotiation_timeout_ms * 2)));
+  ASSERT_OK(cluster_->SetFlag(
+      m,
+      "rpc_negotiation_inject_delay_ms",
+      Substitute("$0", FLAGS_rpc_negotiation_timeout_ms * 2)));
   thread pause_thread([&]() {
-      SleepFor(MonoDelta::FromMilliseconds(FLAGS_rpc_negotiation_timeout_ms / 2));
-      CHECK_OK(m->Pause())
-    });
+    SleepFor(MonoDelta::FromMilliseconds(FLAGS_rpc_negotiation_timeout_ms / 2));
+    CHECK_OK(m->Pause())
+  });
   // An automatic clean-up to handle both success and failure cases.
   SCOPED_CLEANUP({
-      pause_thread.join();
-      CHECK_OK(m->Resume());
-    });
+    pause_thread.join();
+    CHECK_OK(m->Resume());
+  });
 
   // After an attempt to negotiate with the former leader master, timing out,
   // and re-resolving the leader master, the client will eventually connect to

@@ -43,14 +43,14 @@ Status DoGetLoggedInUser(string* user_name) {
   DCHECK(user_name != nullptr);
 
   struct passwd pwd;
-  struct passwd *result;
+  struct passwd* result;
 
   // Get the system-defined limit for usernames. If the value was indeterminate,
   // use a constant that should be more than enough, per the man page.
   int64_t retval = sysconf(_SC_GETPW_R_SIZE_MAX);
   size_t bufsize = retval > 0 ? retval : 16384;
 
-  gscoped_ptr<char[], FreeDeleter> buf(static_cast<char *>(malloc(bufsize)));
+  gscoped_ptr<char[], FreeDeleter> buf(static_cast<char*>(malloc(bufsize)));
   if (buf.get() == nullptr) {
     return Status::RuntimeError("malloc failed", ErrnoToString(errno), errno);
   }
@@ -58,10 +58,12 @@ Status DoGetLoggedInUser(string* user_name) {
   int ret = getpwuid_r(getuid(), &pwd, buf.get(), bufsize, &result);
   if (result == nullptr) {
     if (ret == 0) {
-      return Status::NotFound("Current logged-in user not found! This is an unexpected error.");
+      return Status::NotFound(
+          "Current logged-in user not found! This is an unexpected error.");
     } else {
       // Errno in ret
-      return Status::RuntimeError("Error calling getpwuid_r()", ErrnoToString(ret), ret);
+      return Status::RuntimeError(
+          "Error calling getpwuid_r()", ErrnoToString(ret), ret);
     }
   }
   *user_name = pwd.pw_name;
@@ -74,13 +76,13 @@ Status GetLoggedInUser(string* user_name) {
   static std::once_flag once;
   static string* once_user_name;
   static Status* once_status;
-  std::call_once(once, [](){
-      string u;
-      Status s = DoGetLoggedInUser(&u);
-      debug::ScopedLeakCheckDisabler ignore_leaks;
-      once_status = new Status(std::move(s));
-      once_user_name = new string(std::move(u));
-    });
+  std::call_once(once, []() {
+    string u;
+    Status s = DoGetLoggedInUser(&u);
+    debug::ScopedLeakCheckDisabler ignore_leaks;
+    once_status = new Status(std::move(s));
+    once_user_name = new string(std::move(u));
+  });
 
   RETURN_NOT_OK(*once_status);
   *user_name = *once_user_name;

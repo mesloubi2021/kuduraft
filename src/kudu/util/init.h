@@ -21,12 +21,12 @@
 
 namespace kudu {
 
-// Return a NotSupported Status if the current CPU does not support the CPU flags
-// required for Kudu.
+// Return a NotSupported Status if the current CPU does not support the CPU
+// flags required for Kudu.
 Status CheckCPUFlags();
 
-// Initialize Kudu, checking that the platform we are running on is supported, etc.
-// Issues a FATAL log message if we fail to init.
+// Initialize Kudu, checking that the platform we are running on is supported,
+// etc. Issues a FATAL log message if we fail to init.
 void InitKuduOrDie();
 
 } // namespace kudu

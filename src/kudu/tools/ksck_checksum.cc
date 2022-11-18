@@ -55,42 +55,59 @@ using std::unordered_map;
 using std::vector;
 using strings::Substitute;
 
-DEFINE_int32(checksum_idle_timeout_sec, 60 * 10,
-             "Maximum total seconds to wait without making any progress in a "
-             "checksum scan before timing out due to idleness.");
-DEFINE_int32(checksum_timeout_sec, 24 * 60 * 60,
-             "Maximum total seconds to wait for a checksum scan to complete "
-             "before timing out.");
-DEFINE_int32(checksum_scan_concurrency, 4,
-             "Number of concurrent checksum scans to execute per tablet server.");
-DEFINE_int32(max_progress_report_wait_ms, 5000,
-             "Maximum number of milliseconds to wait between progress reports. "
-             "Used to speed up tests.");
+DEFINE_int32(
+    checksum_idle_timeout_sec,
+    60 * 10,
+    "Maximum total seconds to wait without making any progress in a "
+    "checksum scan before timing out due to idleness.");
+DEFINE_int32(
+    checksum_timeout_sec,
+    24 * 60 * 60,
+    "Maximum total seconds to wait for a checksum scan to complete "
+    "before timing out.");
+DEFINE_int32(
+    checksum_scan_concurrency,
+    4,
+    "Number of concurrent checksum scans to execute per tablet server.");
+DEFINE_int32(
+    max_progress_report_wait_ms,
+    5000,
+    "Maximum number of milliseconds to wait between progress reports. "
+    "Used to speed up tests.");
 TAG_FLAG(max_progress_report_wait_ms, hidden);
-DEFINE_int32(timestamp_update_period_ms, 60000,
-             "Number of milliseconds to wait between updating the current "
-             "timestamps used for checksum scans. This would only need to be "
-             "changed if checksumming replicas on servers with a very low "
-             "value of -tablet_history_max_age_sec.");
+DEFINE_int32(
+    timestamp_update_period_ms,
+    60000,
+    "Number of milliseconds to wait between updating the current "
+    "timestamps used for checksum scans. This would only need to be "
+    "changed if checksumming replicas on servers with a very low "
+    "value of -tablet_history_max_age_sec.");
 TAG_FLAG(timestamp_update_period_ms, advanced);
-DEFINE_int32(wait_before_setting_snapshot_timestamp_ms, 0,
-             "Number of milliseconds to wait before assigning a timestamp and "
-             "starting a checksum scan. For tests only.");
+DEFINE_int32(
+    wait_before_setting_snapshot_timestamp_ms,
+    0,
+    "Number of milliseconds to wait before assigning a timestamp and "
+    "starting a checksum scan. For tests only.");
 TAG_FLAG(wait_before_setting_snapshot_timestamp_ms, hidden);
 TAG_FLAG(wait_before_setting_snapshot_timestamp_ms, unsafe);
-DEFINE_bool(checksum_snapshot, true, "Should the checksum scanner use a snapshot scan?");
-DEFINE_uint64(checksum_snapshot_timestamp,
-              kudu::tools::KsckChecksumOptions::kCurrentTimestamp,
-              "Timestamp to use for snapshot checksum scans. Defaults to 0, "
-              "which will cause each tablet to use a recent timestamp chosen "
-              "when all the checksums for its replicas begin.");
+DEFINE_bool(
+    checksum_snapshot,
+    true,
+    "Should the checksum scanner use a snapshot scan?");
+DEFINE_uint64(
+    checksum_snapshot_timestamp,
+    kudu::tools::KsckChecksumOptions::kCurrentTimestamp,
+    "Timestamp to use for snapshot checksum scans. Defaults to 0, "
+    "which will cause each tablet to use a recent timestamp chosen "
+    "when all the checksums for its replicas begin.");
 
 namespace kudu {
 namespace tools {
 
 namespace {
-const string LogPrefix(const string& tablet_id,
-                       const string& replica_uuid = "") {
+const string LogPrefix(
+    const string& tablet_id,
+    const string& replica_uuid = "") {
   if (replica_uuid.empty()) {
     return Substitute("T $0: ", tablet_id);
   }
@@ -126,39 +143,43 @@ Status CountReplicasAndCheckTabletServersAreConsistent(
 }
 } // anonymous namespace
 
-KsckChecksumOptions::KsckChecksumOptions()
-    : KsckChecksumOptions({}, {}) {}
+KsckChecksumOptions::KsckChecksumOptions() : KsckChecksumOptions({}, {}) {}
 
-KsckChecksumOptions::KsckChecksumOptions(vector<string> table_filters,
-                                         vector<string> tablet_id_filters)
-    : KsckChecksumOptions(MonoDelta::FromSeconds(FLAGS_checksum_timeout_sec),
-                          MonoDelta::FromSeconds(FLAGS_checksum_idle_timeout_sec),
-                          FLAGS_checksum_scan_concurrency,
-                          FLAGS_checksum_snapshot,
-                          FLAGS_checksum_snapshot_timestamp,
-                          std::move(table_filters),
-                          std::move(tablet_id_filters)) {}
+KsckChecksumOptions::KsckChecksumOptions(
+    vector<string> table_filters,
+    vector<string> tablet_id_filters)
+    : KsckChecksumOptions(
+          MonoDelta::FromSeconds(FLAGS_checksum_timeout_sec),
+          MonoDelta::FromSeconds(FLAGS_checksum_idle_timeout_sec),
+          FLAGS_checksum_scan_concurrency,
+          FLAGS_checksum_snapshot,
+          FLAGS_checksum_snapshot_timestamp,
+          std::move(table_filters),
+          std::move(tablet_id_filters)) {}
 
-KsckChecksumOptions::KsckChecksumOptions(MonoDelta timeout,
-                                         MonoDelta idle_timeout,
-                                         int scan_concurrency,
-                                         bool use_snapshot,
-                                         uint64_t snapshot_timestamp)
-    : KsckChecksumOptions(timeout,
-                          idle_timeout,
-                          scan_concurrency,
-                          use_snapshot,
-                          snapshot_timestamp,
-                          {},
-                          {}) {}
+KsckChecksumOptions::KsckChecksumOptions(
+    MonoDelta timeout,
+    MonoDelta idle_timeout,
+    int scan_concurrency,
+    bool use_snapshot,
+    uint64_t snapshot_timestamp)
+    : KsckChecksumOptions(
+          timeout,
+          idle_timeout,
+          scan_concurrency,
+          use_snapshot,
+          snapshot_timestamp,
+          {},
+          {}) {}
 
-KsckChecksumOptions::KsckChecksumOptions(MonoDelta timeout,
-                                         MonoDelta idle_timeout,
-                                         int scan_concurrency,
-                                         bool use_snapshot,
-                                         uint64_t snapshot_timestamp,
-                                         vector<string> table_filters,
-                                         vector<string> tablet_id_filters)
+KsckChecksumOptions::KsckChecksumOptions(
+    MonoDelta timeout,
+    MonoDelta idle_timeout,
+    int scan_concurrency,
+    bool use_snapshot,
+    uint64_t snapshot_timestamp,
+    vector<string> table_filters,
+    vector<string> tablet_id_filters)
     : timeout(timeout),
       idle_timeout(idle_timeout),
       scan_concurrency(scan_concurrency),
@@ -169,13 +190,13 @@ KsckChecksumOptions::KsckChecksumOptions(MonoDelta timeout,
 
 void KsckChecksumManager::InitializeTsSlotsMap() {
   for (const auto& tserver : tservers_) {
-    EmplaceIfNotPresent(&ts_slots_open_map_,
-                        tserver->uuid(),
-                        opts_.scan_concurrency);
+    EmplaceIfNotPresent(
+        &ts_slots_open_map_, tserver->uuid(), opts_.scan_concurrency);
   }
 }
 
-void KsckChecksumManager::ReleaseTsSlotsUnlocked(const vector<string>& ts_uuids) {
+void KsckChecksumManager::ReleaseTsSlotsUnlocked(
+    const vector<string>& ts_uuids) {
   for (const auto& uuid : ts_uuids) {
     auto& slots_open = FindOrDie(ts_slots_open_map_, uuid);
     DCHECK_GE(slots_open, 0);
@@ -192,42 +213,40 @@ bool KsckChecksumManager::HasOpenTsSlotsUnlocked() const {
       return true;
     }
   }
-  return false;;
+  return false;
+  ;
 }
 
 string KsckChecksumManager::OpenTsSlotSummaryString() const {
   std::lock_guard<simple_spinlock> lock(lock_);
   string summary = "Summary of Open TS Slots";
   for (const auto& entry : ts_slots_open_map_) {
-    summary.append(Substitute("\n$0 : $1 / $2",
-                              entry.first,
-                              entry.second,
-                              opts_.scan_concurrency));
+    summary.append(Substitute(
+        "\n$0 : $1 / $2", entry.first, entry.second, opts_.scan_concurrency));
   }
   return summary;
 }
 
-Status KsckChecksumManager::New(KsckChecksumOptions opts,
-                                TabletInfoMap tablet_infos,
-                                TabletServerList tservers,
-                                shared_ptr<rpc::Messenger> messenger,
-                                shared_ptr<KsckChecksumManager>* manager) {
+Status KsckChecksumManager::New(
+    KsckChecksumOptions opts,
+    TabletInfoMap tablet_infos,
+    TabletServerList tservers,
+    shared_ptr<rpc::Messenger> messenger,
+    shared_ptr<KsckChecksumManager>* manager) {
   CHECK(manager);
   int num_replicas;
   RETURN_NOT_OK(CountReplicasAndCheckTabletServersAreConsistent(
-      tablet_infos,
-      tservers,
-      &num_replicas));
-  auto manager_tmp = KsckChecksumManager::make_shared(num_replicas,
-                                                      std::move(opts),
-                                                      std::move(tablet_infos),
-                                                      std::move(tservers),
-                                                      std::move(messenger));
+      tablet_infos, tservers, &num_replicas));
+  auto manager_tmp = KsckChecksumManager::make_shared(
+      num_replicas,
+      std::move(opts),
+      std::move(tablet_infos),
+      std::move(tservers),
+      std::move(messenger));
   RETURN_NOT_OK(manager_tmp->Init());
   *manager = std::move(manager_tmp);
   return Status::OK();
 }
-
 
 KsckChecksumManager::KsckChecksumManager(
     int num_replicas,
@@ -257,32 +276,36 @@ void KsckChecksumManager::Shutdown() {
   timestamp_update_timer_->Stop();
 }
 
-void KsckChecksumManager::ReportProgress(int64_t delta_rows, int64_t delta_bytes) {
+void KsckChecksumManager::ReportProgress(
+    int64_t delta_rows,
+    int64_t delta_bytes) {
   DCHECK_GE(delta_rows, 0);
   DCHECK_GE(delta_bytes, 0);
   rows_summed_ += delta_rows;
   disk_bytes_summed_ += delta_bytes;
 }
 
-void KsckChecksumManager::ReportResult(const string& tablet_id,
-                                       const string& replica_uuid,
-                                       const Status& status,
-                                       uint64_t checksum) {
+void KsckChecksumManager::ReportResult(
+    const string& tablet_id,
+    const string& replica_uuid,
+    const Status& status,
+    uint64_t checksum) {
   VLOG(1) << LogPrefix(tablet_id, replica_uuid)
           << "Checksum finished. Status: " << status.ToString();
 
   {
     std::lock_guard<simple_spinlock> guard(lock_);
-    auto& tablet_result = LookupOrEmplace(&checksums_,
-                                          tablet_id,
-                                          TabletChecksumResult());
-    EmplaceOrDie(&tablet_result, replica_uuid, std::make_pair(status, checksum));
-    ReleaseTsSlotsUnlocked({ replica_uuid });
+    auto& tablet_result =
+        LookupOrEmplace(&checksums_, tablet_id, TabletChecksumResult());
+    EmplaceOrDie(
+        &tablet_result, replica_uuid, std::make_pair(status, checksum));
+    ReleaseTsSlotsUnlocked({replica_uuid});
   }
 
   responses_.CountDown();
-  WARN_NOT_OK(find_tablets_to_checksum_pool_->SubmitFunc(
-      std::bind(&KsckChecksumManager::StartTabletChecksums, this)),
+  WARN_NOT_OK(
+      find_tablets_to_checksum_pool_->SubmitFunc(
+          std::bind(&KsckChecksumManager::StartTabletChecksums, this)),
       "failed to submit task to start additional tablet checksums");
 }
 
@@ -323,14 +346,15 @@ KsckChecksumManager::Outcome KsckChecksumManager::WaitFor(std::ostream* out) {
     if (out) {
       string status = done ? "finished in" : "running for";
       int run_time_sec = (MonoTime::Now() - start).ToSeconds();
-      (*out) << Substitute("Checksum $0 $1s: $2/$3 replicas remaining "
-                           "($4 from disk, $5 rows summed)",
-                           status,
-                           run_time_sec,
-                           responses_.count(),
-                           expected_replica_count_,
-                           HumanReadableNumBytes::ToString(disk_bytes_summed),
-                           HumanReadableInt::ToString(rows_summed))
+      (*out) << Substitute(
+                    "Checksum $0 $1s: $2/$3 replicas remaining "
+                    "($4 from disk, $5 rows summed)",
+                    status,
+                    run_time_sec,
+                    responses_.count(),
+                    expected_replica_count_,
+                    HumanReadableNumBytes::ToString(disk_bytes_summed),
+                    HumanReadableInt::ToString(rows_summed))
              << endl;
     }
     VLOG(1) << OpenTsSlotSummaryString() << endl;
@@ -377,7 +401,8 @@ Status KsckChecksumManager::RunChecksumsAsync() {
   return Status::OK();
 }
 
-void KsckChecksumManager::BeginTabletChecksum(const TabletChecksumInfo& tablet_info) {
+void KsckChecksumManager::BeginTabletChecksum(
+    const TabletChecksumInfo& tablet_info) {
   VLOG(1) << LogPrefix(tablet_info.tablet->id()) << "Starting checksum";
   std::unordered_set<string> replica_uuids;
   for (const auto& replica : tablet_info.tablet->replicas()) {
@@ -393,7 +418,8 @@ void KsckChecksumManager::BeginTabletChecksum(const TabletChecksumInfo& tablet_i
 
   MAYBE_INJECT_FIXED_LATENCY(FLAGS_wait_before_setting_snapshot_timestamp_ms);
 
-  // Use the current timestamp of a peer if the user did not specify a timestamp.
+  // Use the current timestamp of a peer if the user did not specify a
+  // timestamp.
   uint64_t timestamp_for_tablet = opts_.snapshot_timestamp;
   if (opts_.use_snapshot &&
       opts_.snapshot_timestamp == KsckChecksumOptions::kCurrentTimestamp) {
@@ -410,7 +436,8 @@ void KsckChecksumManager::BeginTabletChecksum(const TabletChecksumInfo& tablet_i
         ReportResult(
             tablet_info.tablet->id(),
             ts->uuid(),
-            Status::Aborted("no healthy peer was available to provide a timestamp"),
+            Status::Aborted(
+                "no healthy peer was available to provide a timestamp"),
             0);
       }
       return;
@@ -420,14 +447,15 @@ void KsckChecksumManager::BeginTabletChecksum(const TabletChecksumInfo& tablet_i
   VLOG(1) << LogPrefix(tablet_info.tablet->id()) << "Using timestamp "
           << timestamp_for_tablet;
 
-  for (const auto& ts: tablet_servers) {
+  for (const auto& ts : tablet_servers) {
     // Copy options and set timestamp for each replica checksum.
     KsckChecksumOptions options = opts_;
     options.snapshot_timestamp = timestamp_for_tablet;
-    ts->RunTabletChecksumScanAsync(tablet_info.tablet->id(),
-                                   tablet_info.schema,
-                                   options,
-                                   shared_from_this());
+    ts->RunTabletChecksumScanAsync(
+        tablet_info.tablet->id(),
+        tablet_info.schema,
+        options,
+        shared_from_this());
   }
 }
 
@@ -454,8 +482,8 @@ void KsckChecksumManager::StartTabletChecksums() {
     for (const auto& request : requests_to_process) {
       tablet_infos_.erase(request.tablet->id());
     }
-    VLOG(1) << Substitute("Starting checksums on $0 tablet(s)",
-                          requests_to_process.size());
+    VLOG(1) << Substitute(
+        "Starting checksums on $0 tablet(s)", requests_to_process.size());
   }
   for (const auto& request : requests_to_process) {
     BeginTabletChecksum(request);
@@ -478,15 +506,18 @@ Status KsckChecksummer::BuildTabletInfoMap(
   int num_replicas_tmp = 0;
   for (const shared_ptr<KsckTable>& table : cluster_->tables()) {
     VLOG(1) << "Table: " << table->name();
-    if (!MatchesAnyPattern(opts.table_filters, table->name())) continue;
+    if (!MatchesAnyPattern(opts.table_filters, table->name()))
+      continue;
     num_tables += 1;
     num_tablets += table->tablets().size();
     for (const shared_ptr<KsckTablet>& tablet : table->tablets()) {
       VLOG(1) << "Tablet: " << tablet->id();
-      if (!MatchesAnyPattern(opts.tablet_id_filters, tablet->id())) continue;
-      EmplaceOrDie(&tablet_infos_tmp,
-                   tablet->id(),
-                   TabletChecksumInfo(tablet, table->schema()));
+      if (!MatchesAnyPattern(opts.tablet_id_filters, tablet->id()))
+        continue;
+      EmplaceOrDie(
+          &tablet_infos_tmp,
+          tablet->id(),
+          TabletChecksumInfo(tablet, table->schema()));
       num_replicas_tmp += tablet->replicas().size();
     }
   }
@@ -556,19 +587,22 @@ Status KsckChecksummer::CollateChecksumResults(
           } else if (!seen_first_replica) {
             seen_first_replica = true;
             first_checksum = replica_checksum.checksum;
-          } else if (replica_checksum.checksum != first_checksum &&
-                     !tablet_checksum.mismatch) {
+          } else if (
+              replica_checksum.checksum != first_checksum &&
+              !tablet_checksum.mismatch) {
             num_mismatches++;
             tablet_checksum.mismatch = true;
           }
           (*num_results)++;
-          EmplaceOrDie(&tablet_checksum.replica_checksums,
-                       replica_checksum.ts_uuid,
-                       std::move(replica_checksum));
+          EmplaceOrDie(
+              &tablet_checksum.replica_checksums,
+              replica_checksum.ts_uuid,
+              std::move(replica_checksum));
         }
-        EmplaceOrDie(&table_checksum,
-                     tablet_checksum.tablet_id,
-                     std::move(tablet_checksum));
+        EmplaceOrDie(
+            &table_checksum,
+            tablet_checksum.tablet_id,
+            std::move(tablet_checksum));
       }
     }
     if (table_checksum.empty()) {
@@ -578,8 +612,8 @@ Status KsckChecksummer::CollateChecksumResults(
   }
 
   if (num_mismatches != 0) {
-    return Status::Corruption(Substitute("$0 tablet(s) had checksum mismatches",
-                                         num_mismatches));
+    return Status::Corruption(
+        Substitute("$0 tablet(s) had checksum mismatches", num_mismatches));
   }
   if (num_errors != 0) {
     return Status::Aborted(Substitute("$0 errors were detected", num_errors));
@@ -587,13 +621,15 @@ Status KsckChecksummer::CollateChecksumResults(
   return Status::OK();
 }
 
-Status KsckChecksummer::ChecksumData(const KsckChecksumOptions& opts,
-                                     KsckChecksumResults* checksum_results,
-                                     ostream* out_for_progress_updates) {
+Status KsckChecksummer::ChecksumData(
+    const KsckChecksumOptions& opts,
+    KsckChecksumResults* checksum_results,
+    ostream* out_for_progress_updates) {
   CHECK(checksum_results);
 
   // Clear the contents of 'checksum_results' because we always overwrite it
-  // with whatever results are obtained (and with nothing if there's no results).
+  // with whatever results are obtained (and with nothing if there's no
+  // results).
   checksum_results->snapshot_timestamp = boost::none;
   checksum_results->tables.clear();
 
@@ -623,8 +659,7 @@ Status KsckChecksummer::ChecksumData(const KsckChecksumOptions& opts,
         }
       }
       if (!exists_healthy_ts) {
-        return Status::ServiceUnavailable(
-            "no tablet servers are available");
+        return Status::ServiceUnavailable("no tablet servers are available");
       }
     } else {
       // The results only include the snapshot timestamp when it applies to
@@ -634,11 +669,8 @@ Status KsckChecksummer::ChecksumData(const KsckChecksumOptions& opts,
   }
 
   shared_ptr<KsckChecksumManager> manager;
-  RETURN_NOT_OK(KsckChecksumManager::New(opts,
-                                         tablet_infos,
-                                         tablet_servers,
-                                         cluster_->messenger(),
-                                         &manager));
+  RETURN_NOT_OK(KsckChecksumManager::New(
+      opts, tablet_infos, tablet_servers, cluster_->messenger(), &manager));
   RETURN_NOT_OK(manager->RunChecksumsAsync());
 
   auto final_status = manager->WaitFor(out_for_progress_updates);
@@ -646,32 +678,34 @@ Status KsckChecksummer::ChecksumData(const KsckChecksumOptions& opts,
   // Even if we timed out, collate the checksum results that we did get.
   KsckTableChecksumMap checksum_table_map;
   int num_results;
-  const Status s = CollateChecksumResults(manager->checksums(),
-                                          &checksum_table_map,
-                                          &num_results);
+  const Status s = CollateChecksumResults(
+      manager->checksums(), &checksum_table_map, &num_results);
   checksum_results->tables = std::move(checksum_table_map);
 
   switch (final_status) {
     case KsckChecksumManager::Outcome::TIMED_OUT:
-      return Status::TimedOut(Substitute("Checksum scan did not complete "
-                                         "within the timeout of $0: Received "
-                                         "results for $1 out of $2 expected "
-                                         "replicas",
-                                         opts.timeout.ToString(),
-                                         num_results,
-                                         num_replicas));
+      return Status::TimedOut(Substitute(
+          "Checksum scan did not complete "
+          "within the timeout of $0: Received "
+          "results for $1 out of $2 expected "
+          "replicas",
+          opts.timeout.ToString(),
+          num_results,
+          num_replicas));
     case KsckChecksumManager::Outcome::IDLE_TIMED_OUT:
-      return Status::TimedOut(Substitute("Checksum scan did not make progress "
-                                         "within the idle timeout of $0: Received "
-                                         "results for $1 out of $2 expected "
-                                         "replicas",
-                                         opts.idle_timeout.ToString(),
-                                         num_results,
-                                         num_replicas));
+      return Status::TimedOut(Substitute(
+          "Checksum scan did not make progress "
+          "within the idle timeout of $0: Received "
+          "results for $1 out of $2 expected "
+          "replicas",
+          opts.idle_timeout.ToString(),
+          num_results,
+          num_replicas));
     case KsckChecksumManager::Outcome::FINISHED:
-      CHECK_EQ(num_results, num_replicas)
-        << Substitute("Unexpected error: only got $0 out of $1 replica results",
-                      num_results, num_replicas);
+      CHECK_EQ(num_results, num_replicas) << Substitute(
+          "Unexpected error: only got $0 out of $1 replica results",
+          num_results,
+          num_replicas);
       return s;
   }
 }

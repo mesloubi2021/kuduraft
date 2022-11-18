@@ -129,9 +129,9 @@ class SecurityITest : public KuduTest {
   std::shared_ptr<Messenger> NewMessengerOrDie() {
     std::shared_ptr<Messenger> messenger;
     CHECK_OK(rpc::MessengerBuilder("test-messenger")
-             .set_num_reactors(1)
-             .set_max_negotiation_threads(1)
-             .Build(&messenger));
+                 .set_num_reactors(1)
+                 .set_max_negotiation_threads(1)
+                 .Build(&messenger));
     return messenger;
   }
 
@@ -149,10 +149,10 @@ void SecurityITest::SmokeTestCluster() {
   KuduSchema schema = client::KuduSchemaFromSchema(CreateKeyValueTestSchema());
   gscoped_ptr<KuduTableCreator> table_creator(client->NewTableCreator());
   ASSERT_OK(table_creator->table_name(kTableName)
-            .set_range_partition_columns({ "key" })
-            .schema(&schema)
-            .num_replicas(3)
-            .Create());
+                .set_range_partition_columns({"key"})
+                .schema(&schema)
+                .num_replicas(3)
+                .Create());
 
   // Insert a row.
   client::sp::shared_ptr<KuduTable> table;
@@ -182,13 +182,15 @@ TEST_F(SecurityITest, SmokeTestAsAuthorizedUser) {
 
   // Non-superuser clients should not be able to set flags.
   Status s = TrySetFlagOnTS();
-  ASSERT_EQ("Remote error: Not authorized: unauthorized access to method: SetFlag",
-            s.ToString());
+  ASSERT_EQ(
+      "Remote error: Not authorized: unauthorized access to method: SetFlag",
+      s.ToString());
 
   // Nor should they be able to send TS RPCs.
   s = TryRegisterAsTS();
-  ASSERT_EQ("Remote error: Not authorized: unauthorized access to method: TSHeartbeat",
-            s.ToString());
+  ASSERT_EQ(
+      "Remote error: Not authorized: unauthorized access to method: TSHeartbeat",
+      s.ToString());
 }
 
 // Test trying to access the cluster with no Kerberos credentials at all.
@@ -198,11 +200,12 @@ TEST_F(SecurityITest, TestNoKerberosCredentials) {
 
   client::sp::shared_ptr<KuduClient> client;
   Status s = cluster_->CreateClient(nullptr, &client);
-  ASSERT_STR_MATCHES(s.ToString(),
-                     "Not authorized: Could not connect to the cluster: "
-                     "Client connection negotiation failed: client connection "
-                     "to .*: server requires authentication, "
-                     "but client does not have Kerberos credentials available");
+  ASSERT_STR_MATCHES(
+      s.ToString(),
+      "Not authorized: Could not connect to the cluster: "
+      "Client connection negotiation failed: client connection "
+      "to .*: server requires authentication, "
+      "but client does not have Kerberos credentials available");
 }
 
 // Regression test for KUDU-2121. Set up a Kerberized cluster with optional
@@ -211,7 +214,8 @@ TEST_F(SecurityITest, TestNoKerberosCredentials) {
 TEST_F(SecurityITest, SaslPlainFallback) {
   cluster_opts_.num_masters = 1;
   cluster_opts_.num_tablet_servers = 0;
-  cluster_opts_.extra_master_flags.emplace_back("--rpc-authentication=optional");
+  cluster_opts_.extra_master_flags.emplace_back(
+      "--rpc-authentication=optional");
   cluster_opts_.extra_master_flags.emplace_back("--user-acl=*");
   ASSERT_OK(StartCluster());
   ASSERT_OK(cluster_->kdc()->Kdestroy());
@@ -230,9 +234,10 @@ TEST_F(SecurityITest, TestUnauthorizedClientKerberosCredentials) {
   ASSERT_OK(cluster_->kdc()->Kinit("joe-interloper"));
   client::sp::shared_ptr<KuduClient> client;
   Status s = cluster_->CreateClient(nullptr, &client);
-  ASSERT_EQ("Remote error: Could not connect to the cluster: "
-            "Not authorized: unauthorized access to method: ConnectToMaster",
-            s.ToString());
+  ASSERT_EQ(
+      "Remote error: Could not connect to the cluster: "
+      "Not authorized: unauthorized access to method: ConnectToMaster",
+      s.ToString());
 }
 
 // Test superuser actions when authorized as a superuser.
@@ -247,9 +252,9 @@ TEST_F(SecurityITest, TestAuthorizedSuperuser) {
   // Even superusers can't pretend to be tablet servers.
   Status s = TryRegisterAsTS();
 
-  ASSERT_EQ("Remote error: Not authorized: unauthorized access to method: TSHeartbeat",
-            s.ToString());
-
+  ASSERT_EQ(
+      "Remote error: Not authorized: unauthorized access to method: TSHeartbeat",
+      s.ToString());
 }
 
 // Test that the web UIs can be entirely disabled, for users who feel they
@@ -263,8 +268,10 @@ TEST_F(SecurityITest, TestDisableWebUI) {
 
 // Test disabling authentication and encryption.
 TEST_F(SecurityITest, TestDisableAuthenticationEncryption) {
-  cluster_opts_.extra_master_flags.emplace_back("--rpc_authentication=disabled");
-  cluster_opts_.extra_tserver_flags.emplace_back("--rpc_authentication=disabled");
+  cluster_opts_.extra_master_flags.emplace_back(
+      "--rpc_authentication=disabled");
+  cluster_opts_.extra_tserver_flags.emplace_back(
+      "--rpc_authentication=disabled");
   cluster_opts_.extra_master_flags.emplace_back("--rpc_encryption=disabled");
   cluster_opts_.extra_tserver_flags.emplace_back("--rpc_encryption=disabled");
   cluster_opts_.enable_kerberos = false;
@@ -289,12 +296,15 @@ TEST_F(SecurityITest, TestWorldReadableKeytab) {
   NO_FATALS(CreateWorldReadableFile(credentials_name));
   string binary = "kudu-master";
   NO_FATALS(GetFullBinaryPath(&binary));
-  const vector<string> argv = { binary, Substitute("--keytab_file=$0", credentials_name) };
+  const vector<string> argv = {
+      binary, Substitute("--keytab_file=$0", credentials_name)};
   string stderr;
   Status s = Subprocess::Call(argv, "", nullptr, &stderr);
-  ASSERT_STR_CONTAINS(stderr, Substitute(
-      "cannot use keytab file with world-readable permissions: $0",
-      credentials_name));
+  ASSERT_STR_CONTAINS(
+      stderr,
+      Substitute(
+          "cannot use keytab file with world-readable permissions: $0",
+          credentials_name));
 }
 
 TEST_F(SecurityITest, TestWorldReadablePrivateKey) {
@@ -302,16 +312,19 @@ TEST_F(SecurityITest, TestWorldReadablePrivateKey) {
   NO_FATALS(CreateWorldReadableFile(credentials_name));
   string binary = "kudu-master";
   NO_FATALS(GetFullBinaryPath(&binary));
-  const vector<string> argv = { binary,
-                                "--unlock_experimental_flags",
-                                Substitute("--rpc_private_key_file=$0", credentials_name),
-                                "--rpc_certificate_file=fake_file",
-                                "--rpc_ca_certificate_file=fake_file" };
+  const vector<string> argv = {
+      binary,
+      "--unlock_experimental_flags",
+      Substitute("--rpc_private_key_file=$0", credentials_name),
+      "--rpc_certificate_file=fake_file",
+      "--rpc_ca_certificate_file=fake_file"};
   string stderr;
   Status s = Subprocess::Call(argv, "", nullptr, &stderr);
-  ASSERT_STR_CONTAINS(stderr, Substitute(
-      "cannot use private key file with world-readable permissions: $0",
-      credentials_name));
+  ASSERT_STR_CONTAINS(
+      stderr,
+      Substitute(
+          "cannot use private key file with world-readable permissions: $0",
+          credentials_name));
 }
 
 struct AuthTokenIssuingTestParams {
@@ -321,32 +334,107 @@ struct AuthTokenIssuingTestParams {
   const bool rpc_encrypt_loopback_connections;
   const bool authn_token_present;
 };
-class AuthTokenIssuingTest :
-    public SecurityITest,
-    public ::testing::WithParamInterface<AuthTokenIssuingTestParams> {
-};
-INSTANTIATE_TEST_CASE_P(, AuthTokenIssuingTest, ::testing::ValuesIn(
-    vector<AuthTokenIssuingTestParams>{
-      { ExternalMiniCluster::BindMode::LOOPBACK, "required", "required", true,  true,  },
-      { ExternalMiniCluster::BindMode::LOOPBACK, "required", "required", false, true,  },
-      //ExternalMiniCluster::BindMode::LOOPBACK, "required", "disabled": non-acceptable
-      //ExternalMiniCluster::BindMode::LOOPBACK, "required", "disabled": non-acceptable
-      { ExternalMiniCluster::BindMode::LOOPBACK, "disabled", "required", true,  true,  },
-      { ExternalMiniCluster::BindMode::LOOPBACK, "disabled", "required", false, true,  },
-      { ExternalMiniCluster::BindMode::LOOPBACK, "disabled", "disabled", true,  false, },
-      { ExternalMiniCluster::BindMode::LOOPBACK, "disabled", "disabled", false, true,  },
+class AuthTokenIssuingTest
+    : public SecurityITest,
+      public ::testing::WithParamInterface<AuthTokenIssuingTestParams> {};
+INSTANTIATE_TEST_CASE_P(
+    ,
+    AuthTokenIssuingTest,
+    ::testing::ValuesIn(vector<AuthTokenIssuingTestParams> {
+      {
+          ExternalMiniCluster::BindMode::LOOPBACK,
+          "required",
+          "required",
+          true,
+          true,
+      },
+          {
+              ExternalMiniCluster::BindMode::LOOPBACK,
+              "required",
+              "required",
+              false,
+              true,
+          },
+          // ExternalMiniCluster::BindMode::LOOPBACK, "required", "disabled":
+          // non-acceptable ExternalMiniCluster::BindMode::LOOPBACK, "required",
+          // "disabled": non-acceptable
+          {
+              ExternalMiniCluster::BindMode::LOOPBACK,
+              "disabled",
+              "required",
+              true,
+              true,
+          },
+          {
+              ExternalMiniCluster::BindMode::LOOPBACK,
+              "disabled",
+              "required",
+              false,
+              true,
+          },
+          {
+              ExternalMiniCluster::BindMode::LOOPBACK,
+              "disabled",
+              "disabled",
+              true,
+              false,
+          },
+          {
+              ExternalMiniCluster::BindMode::LOOPBACK,
+              "disabled",
+              "disabled",
+              false,
+              true,
+          },
 #if defined(__linux__)
-      { ExternalMiniCluster::BindMode::UNIQUE_LOOPBACK, "required", "required", true,  true,  },
-      { ExternalMiniCluster::BindMode::UNIQUE_LOOPBACK, "required", "required", false, true,  },
-      //ExternalMiniCluster::BindMode::UNIQUE_LOOPBACK, "required", "disabled": non-acceptable
-      //ExternalMiniCluster::BindMode::UNIQUE_LOOPBACK, "required", "disabled": non-acceptable
-      { ExternalMiniCluster::BindMode::UNIQUE_LOOPBACK, "disabled", "required", true,  true,  },
-      { ExternalMiniCluster::BindMode::UNIQUE_LOOPBACK, "disabled", "required", false, true,  },
-      { ExternalMiniCluster::BindMode::UNIQUE_LOOPBACK, "disabled", "disabled", true,  false, },
-      { ExternalMiniCluster::BindMode::UNIQUE_LOOPBACK, "disabled", "disabled", false, false, },
+          {
+              ExternalMiniCluster::BindMode::UNIQUE_LOOPBACK,
+              "required",
+              "required",
+              true,
+              true,
+          },
+          {
+              ExternalMiniCluster::BindMode::UNIQUE_LOOPBACK,
+              "required",
+              "required",
+              false,
+              true,
+          },
+          // ExternalMiniCluster::BindMode::UNIQUE_LOOPBACK, "required",
+          // "disabled": non-acceptable
+          // ExternalMiniCluster::BindMode::UNIQUE_LOOPBACK, "required",
+          // "disabled": non-acceptable
+          {
+              ExternalMiniCluster::BindMode::UNIQUE_LOOPBACK,
+              "disabled",
+              "required",
+              true,
+              true,
+          },
+          {
+              ExternalMiniCluster::BindMode::UNIQUE_LOOPBACK,
+              "disabled",
+              "required",
+              false,
+              true,
+          },
+          {
+              ExternalMiniCluster::BindMode::UNIQUE_LOOPBACK,
+              "disabled",
+              "disabled",
+              true,
+              false,
+          },
+          {
+              ExternalMiniCluster::BindMode::UNIQUE_LOOPBACK,
+              "disabled",
+              "disabled",
+              false,
+              false,
+          },
 #endif
-    }
-));
+    }));
 
 // Verify how master issues authn tokens to clients. Master sends authn tokens
 // to clients upon call of the ConnectToMaster() RPC. The master's behavior
@@ -363,9 +451,9 @@ TEST_P(AuthTokenIssuingTest, ChannelConfidentiality) {
       Substitute("--rpc-authentication=$0", params.rpc_authentication));
   cluster_opts_.extra_master_flags.emplace_back(
       Substitute("--rpc-encryption=$0", params.rpc_encryption));
-  cluster_opts_.extra_master_flags.emplace_back(
-      Substitute("--rpc_encrypt_loopback_connections=$0",
-                 params.rpc_encrypt_loopback_connections));
+  cluster_opts_.extra_master_flags.emplace_back(Substitute(
+      "--rpc_encrypt_loopback_connections=$0",
+      params.rpc_encrypt_loopback_connections));
   ASSERT_OK(StartCluster());
 
   // Make sure the client always connects from the standard loopback address.
@@ -398,16 +486,23 @@ struct ConnectToFollowerMasterTestParams {
   const string rpc_authentication;
   const string rpc_encryption;
 };
-class ConnectToFollowerMasterTest :
-    public SecurityITest,
-    public ::testing::WithParamInterface<ConnectToFollowerMasterTestParams> {
+class ConnectToFollowerMasterTest
+    : public SecurityITest,
+      public ::testing::WithParamInterface<ConnectToFollowerMasterTestParams> {
 };
-INSTANTIATE_TEST_CASE_P(, ConnectToFollowerMasterTest, ::testing::ValuesIn(
-    vector<ConnectToFollowerMasterTestParams>{
-      { "required", "optional", },
-      { "required", "required", },
-    }
-));
+INSTANTIATE_TEST_CASE_P(
+    ,
+    ConnectToFollowerMasterTest,
+    ::testing::ValuesIn(vector<ConnectToFollowerMasterTestParams>{
+        {
+            "required",
+            "optional",
+        },
+        {
+            "required",
+            "required",
+        },
+    }));
 
 // Test that a client can authenticate against a follower master using
 // authn token. For that, the token verifier at follower masters should have
@@ -431,7 +526,9 @@ TEST_P(ConnectToFollowerMasterTest, AuthnTokenVerifierHaveKeys) {
   const auto& master_host = cluster_->master(0)->bound_rpc_addr().host();
   {
     consensus::ConsensusServiceProxy proxy(
-        cluster_->messenger(), cluster_->master(0)->bound_rpc_addr(), master_host);
+        cluster_->messenger(),
+        cluster_->master(0)->bound_rpc_addr(),
+        master_host);
     consensus::RunLeaderElectionRequestPB req;
     consensus::RunLeaderElectionResponsePB resp;
     rpc::RpcController rpc;
@@ -458,7 +555,8 @@ TEST_P(ConnectToFollowerMasterTest, AuthnTokenVerifierHaveKeys) {
     client::sp::shared_ptr<KuduClient> client;
     KuduClientBuilder builder;
     for (auto i = 0; i < cluster_->num_masters(); ++i) {
-      builder.add_master_server_addr(cluster_->master(i)->bound_rpc_addr().ToString());
+      builder.add_master_server_addr(
+          cluster_->master(i)->bound_rpc_addr().ToString());
     }
     const auto s = builder.Build(&client);
     ASSERT_TRUE(s.IsNotAuthorized()) << s.ToString();
@@ -469,18 +567,21 @@ TEST_P(ConnectToFollowerMasterTest, AuthnTokenVerifierHaveKeys) {
   // based on the fact that it's not possible to receive 'configuration error'
   // status without being sucessfully authenticated first. The configuration
   // error is returned because the client uses only a single master in its list
-  // of masters' endpoints while trying to connect to a multi-master Kudu cluster.
+  // of masters' endpoints while trying to connect to a multi-master Kudu
+  // cluster.
   ASSERT_EVENTUALLY([&] {
     for (auto i = 1; i < cluster_->num_masters(); ++i) {
       client::sp::shared_ptr<KuduClient> client;
       const auto s = KuduClientBuilder()
-          .add_master_server_addr(cluster_->master(i)->bound_rpc_addr().ToString())
-          .import_authentication_credentials(authn_creds)
-          .Build(&client);
+                         .add_master_server_addr(
+                             cluster_->master(i)->bound_rpc_addr().ToString())
+                         .import_authentication_credentials(authn_creds)
+                         .Build(&client);
       ASSERT_TRUE(s.IsConfigurationError()) << s.ToString();
-      ASSERT_STR_MATCHES(s.ToString(),
-                         ".* Client configured with 1 master.* "
-                         "but cluster indicates it expects 3 master.*");
+      ASSERT_STR_MATCHES(
+          s.ToString(),
+          ".* Client configured with 1 master.* "
+          "but cluster indicates it expects 3 master.*");
     }
   });
 
@@ -491,7 +592,8 @@ TEST_P(ConnectToFollowerMasterTest, AuthnTokenVerifierHaveKeys) {
     client::sp::shared_ptr<KuduClient> client;
     KuduClientBuilder builder;
     for (auto i = 0; i < cluster_->num_masters(); ++i) {
-      builder.add_master_server_addr(cluster_->master(i)->bound_rpc_addr().ToString());
+      builder.add_master_server_addr(
+          cluster_->master(i)->bound_rpc_addr().ToString());
     }
     builder.import_authentication_credentials(authn_creds);
     ASSERT_OK(builder.Build(&client));

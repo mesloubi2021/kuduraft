@@ -41,10 +41,10 @@ namespace kudu {
 namespace rpc {
 
 SaslHelper::SaslHelper(PeerType peer_type)
-  : peer_type_(peer_type),
-    global_mechs_(SaslListAvailableMechs()),
-    plain_enabled_(false),
-    gssapi_enabled_(false) {
+    : peer_type_(peer_type),
+      global_mechs_(SaslListAvailableMechs()),
+      plain_enabled_(false),
+      gssapi_enabled_(false) {
   tag_ = (peer_type_ == SERVER) ? "Server" : "Client";
 }
 
@@ -56,19 +56,25 @@ const char* SaslHelper::server_fqdn() const {
 }
 
 const char* SaslHelper::EnabledMechsString() const {
-  enabled_mechs_string_ = JoinMapped(enabled_mechs_, SaslMechanism::name_of, " ");
+  enabled_mechs_string_ =
+      JoinMapped(enabled_mechs_, SaslMechanism::name_of, " ");
   return enabled_mechs_string_.c_str();
 }
 
-int SaslHelper::GetOptionCb(const char* plugin_name, const char* option,
-                            const char** result, unsigned* len) {
+int SaslHelper::GetOptionCb(
+    const char* plugin_name,
+    const char* option,
+    const char** result,
+    unsigned* len) {
   DVLOG(4) << tag_ << ": GetOption Callback called. ";
   DVLOG(4) << tag_ << ": GetOption Plugin name: "
-                   << (plugin_name == nullptr ? "NULL" : plugin_name);
+           << (plugin_name == nullptr ? "NULL" : plugin_name);
   DVLOG(4) << tag_ << ": GetOption Option name: " << option;
 
   if (PREDICT_FALSE(result == nullptr)) {
-    LOG(DFATAL) << tag_ << ": SASL Library passed NULL result out-param to GetOption callback!";
+    LOG(DFATAL)
+        << tag_
+        << ": SASL Library passed NULL result out-param to GetOption callback!";
     return SASL_BADPARAM;
   }
 
@@ -76,7 +82,8 @@ int SaslHelper::GetOptionCb(const char* plugin_name, const char* option,
     // SASL library option, not a plugin option
     if (strcmp(option, "mech_list") == 0) {
       *result = EnabledMechsString();
-      if (len != nullptr) *len = strlen(*result);
+      if (len != nullptr)
+        *len = strlen(*result);
       VLOG(4) << tag_ << ": Enabled mech list: " << *result;
       return SASL_OK;
     }
@@ -101,7 +108,8 @@ Status SaslHelper::EnableGSSAPI() {
 
 Status SaslHelper::EnableMechanism(SaslMechanism::Type mech) {
   if (PREDICT_FALSE(!ContainsKey(global_mechs_, mech))) {
-    return Status::InvalidArgument("unable to find SASL plugin", SaslMechanism::name_of(mech));
+    return Status::InvalidArgument(
+        "unable to find SASL plugin", SaslMechanism::name_of(mech));
   }
   enabled_mechs_.insert(mech);
   return Status::OK();
@@ -115,7 +123,8 @@ Status SaslHelper::CheckNegotiateCallId(int32_t call_id) const {
   if (call_id != kNegotiateCallId) {
     Status s = Status::IllegalState(strings::Substitute(
         "Received illegal call-id during negotiation; expected: $0, received: $1",
-        kNegotiateCallId, call_id));
+        kNegotiateCallId,
+        call_id));
     LOG(DFATAL) << tag_ << ": " << s.ToString();
     return s;
   }
@@ -124,7 +133,8 @@ Status SaslHelper::CheckNegotiateCallId(int32_t call_id) const {
 
 Status SaslHelper::ParseNegotiatePB(const Slice& param_buf, NegotiatePB* msg) {
   if (!msg->ParseFromArray(param_buf.data(), param_buf.size())) {
-    return Status::IOError(tag_ + ": Invalid SASL message, missing fields",
+    return Status::IOError(
+        tag_ + ": Invalid SASL message, missing fields",
         msg->InitializationErrorString());
   }
   return Status::OK();

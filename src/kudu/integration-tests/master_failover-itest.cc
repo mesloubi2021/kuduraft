@@ -47,7 +47,8 @@
 #include "kudu/util/test_util.h"
 
 METRIC_DECLARE_entity(server);
-METRIC_DECLARE_histogram(handler_latency_kudu_consensus_ConsensusService_GetNodeInstance);
+METRIC_DECLARE_histogram(
+    handler_latency_kudu_consensus_ConsensusService_GetNodeInstance);
 
 namespace kudu {
 
@@ -74,10 +75,7 @@ using strings::Substitute;
 class MasterFailoverTest : public KuduTest,
                            public ::testing::WithParamInterface<HmsMode> {
  public:
-  enum CreateTableMode {
-    kWaitForCreate = 0,
-    kNoWaitForCreate = 1
-  };
+  enum CreateTableMode { kWaitForCreate = 0, kNoWaitForCreate = 1 };
 
   MasterFailoverTest() {
     opts_.num_masters = 3;
@@ -89,12 +87,15 @@ class MasterFailoverTest : public KuduTest,
     // long pauses) more rapid.
 
     // Set max missed heartbeats periods to 1.0 (down from 3.0).
-    opts_.extra_master_flags.emplace_back("--leader_failure_max_missed_heartbeat_periods=1.0");
+    opts_.extra_master_flags.emplace_back(
+        "--leader_failure_max_missed_heartbeat_periods=1.0");
 
     // Set the TS->master heartbeat timeout to 1 second (down from 15 seconds).
     opts_.extra_tserver_flags.emplace_back("--heartbeat_rpc_timeout_ms=1000");
-    // Allow one TS heartbeat failure before retrying with back-off (down from 3).
-    opts_.extra_tserver_flags.emplace_back("--heartbeat_max_failures_before_backoff=1");
+    // Allow one TS heartbeat failure before retrying with back-off (down from
+    // 3).
+    opts_.extra_tserver_flags.emplace_back(
+        "--heartbeat_max_failures_before_backoff=1");
     // Wait for 500 ms after 'max_consecutive_failed_heartbeats'
     // before trying again (down from 1 second).
     opts_.extra_tserver_flags.emplace_back("--heartbeat_interval_ms=500");
@@ -138,17 +139,17 @@ class MasterFailoverTest : public KuduTest,
     unique_ptr<KuduTableCreator> table_creator(client_->NewTableCreator());
     return table_creator->table_name(table_name)
         .schema(&schema)
-        .set_range_partition_columns({ "key" })
+        .set_range_partition_columns({"key"})
         .wait(mode == kWaitForCreate)
         .Create();
   }
 
-  Status RenameTable(const std::string& table_name_orig, const std::string& table_name_new) {
-    unique_ptr<KuduTableAlterer> table_alterer(client_->NewTableAlterer(table_name_orig));
-    return table_alterer
-      ->RenameTo(table_name_new)
-      ->wait(true)
-      ->Alter();
+  Status RenameTable(
+      const std::string& table_name_orig,
+      const std::string& table_name_new) {
+    unique_ptr<KuduTableAlterer> table_alterer(
+        client_->NewTableAlterer(table_name_orig));
+    return table_alterer->RenameTo(table_name_new)->wait(true)->Alter();
   }
 
  protected:
@@ -158,8 +159,10 @@ class MasterFailoverTest : public KuduTest,
 };
 
 // Run the test with the HMS integration enabled and disabled.
-INSTANTIATE_TEST_CASE_P(HmsConfigurations, MasterFailoverTest,
-                        ::testing::Values(HmsMode::NONE, HmsMode::ENABLE_METASTORE_INTEGRATION));
+INSTANTIATE_TEST_CASE_P(
+    HmsConfigurations,
+    MasterFailoverTest,
+    ::testing::Values(HmsMode::NONE, HmsMode::ENABLE_METASTORE_INTEGRATION));
 
 // Test that synchronous CreateTable (issue CreateTable call and then
 // wait until the table has been created) works even when the original
@@ -213,11 +216,13 @@ TEST_P(MasterFailoverTest, TestPauseAfterCreateTableIssued) {
   ASSERT_OK(cluster_->master(leader_idx)->Pause());
   ScopedResumeExternalDaemon resume_daemon(cluster_->master(leader_idx));
 
-  AssertEventually([&]() {
-    bool in_progress;
-    ASSERT_OK(client_->IsCreateTableInProgress(kTableName, &in_progress));
-    ASSERT_FALSE(in_progress);
-  }, MonoDelta::FromSeconds(90));
+  AssertEventually(
+      [&]() {
+        bool in_progress;
+        ASSERT_OK(client_->IsCreateTableInProgress(kTableName, &in_progress));
+        ASSERT_FALSE(in_progress);
+      },
+      MonoDelta::FromSeconds(90));
   NO_PENDING_FATALS();
 
   shared_ptr<KuduTable> table;
@@ -288,7 +293,6 @@ TEST_P(MasterFailoverTest, TestRenameTableSync) {
   ASSERT_TRUE(s.IsNotFound()) << s.ToString();
 }
 
-
 TEST_P(MasterFailoverTest, TestKUDU1374) {
   const char* kTableName = "default.test_kudu_1374";
 
@@ -305,14 +309,12 @@ TEST_P(MasterFailoverTest, TestKUDU1374) {
   int leader_idx;
   ASSERT_OK(cluster_->GetLeaderMasterIndex(&leader_idx));
   ExternalDaemon* leader_master = cluster_->master(leader_idx);
-  ASSERT_OK(cluster_->SetFlag(leader_master,
-                              "catalog_manager_fail_ts_rpcs", "true"));
+  ASSERT_OK(
+      cluster_->SetFlag(leader_master, "catalog_manager_fail_ts_rpcs", "true"));
 
   unique_ptr<KuduTableAlterer> alter(client_->NewTableAlterer(kTableName));
   alter->AddColumn("new_col")->Type(KuduColumnSchema::INT32);
-  ASSERT_OK(alter
-    ->wait(false)
-    ->Alter());
+  ASSERT_OK(alter->wait(false)->Alter());
 
   leader_master->Shutdown();
 
@@ -325,11 +327,13 @@ TEST_P(MasterFailoverTest, TestKUDU1374) {
   // 5. Leader master sees that all tablets in the table now have the new
   //    schema and ends the AlterTable() operation.
   // 6. The next IsAlterTableInProgress() call returns false.
-  AssertEventually([&]() {
-    bool in_progress;
-    ASSERT_OK(client_->IsAlterTableInProgress(kTableName, &in_progress));
-    ASSERT_FALSE(in_progress);
-  }, MonoDelta::FromSeconds(90));
+  AssertEventually(
+      [&]() {
+        bool in_progress;
+        ASSERT_OK(client_->IsAlterTableInProgress(kTableName, &in_progress));
+        ASSERT_FALSE(in_progress);
+      },
+      MonoDelta::FromSeconds(90));
   NO_PENDING_FATALS();
 }
 
@@ -340,9 +344,11 @@ TEST_P(MasterFailoverTest, TestMasterUUIDResolution) {
     int64_t num_get_node_instances;
     ASSERT_OK(GetInt64Metric(
         cluster_->master(i)->bound_http_hostport(),
-        &METRIC_ENTITY_server, "kudu.master",
+        &METRIC_ENTITY_server,
+        "kudu.master",
         &METRIC_handler_latency_kudu_consensus_ConsensusService_GetNodeInstance,
-        "total_count", &num_get_node_instances));
+        "total_count",
+        &num_get_node_instances));
 
     // Client-side timeouts may increase the number of calls beyond the raw
     // number of masters.
@@ -361,14 +367,15 @@ TEST_P(MasterFailoverTest, TestMasterUUIDResolution) {
     int64_t num_get_node_instances;
     ASSERT_OK(GetInt64Metric(
         master->bound_http_hostport(),
-        &METRIC_ENTITY_server, "kudu.master",
+        &METRIC_ENTITY_server,
+        "kudu.master",
         &METRIC_handler_latency_kudu_consensus_ConsensusService_GetNodeInstance,
-        "total_count", &num_get_node_instances));
-    EXPECT_EQ(0, num_get_node_instances) <<
-        Substitute(
-            "Following restart, master $0 has serviced $1 GetNodeInstance() calls",
-            master->bound_rpc_hostport().ToString(),
-            num_get_node_instances);
+        "total_count",
+        &num_get_node_instances));
+    EXPECT_EQ(0, num_get_node_instances) << Substitute(
+        "Following restart, master $0 has serviced $1 GetNodeInstance() calls",
+        master->bound_rpc_hostport().ToString(),
+        num_get_node_instances);
   }
 }
 
@@ -402,8 +409,7 @@ TEST_P(MasterFailoverTest, TestMasterPermanentFailure) {
           "print_replica_uuids",
           "--fs_wal_dir=" + other_master->wal_dir(),
           "--fs_data_dirs=" + other_master->data_dir(),
-          master::SysCatalogTable::kSysCatalogTabletId
-      };
+          master::SysCatalogTable::kSysCatalogTabletId};
       string output;
       ASSERT_OK(Subprocess::Call(args, "", &output));
       StripWhiteSpace(&output);
@@ -413,7 +419,8 @@ TEST_P(MasterFailoverTest, TestMasterPermanentFailure) {
       // Isolate the failed master's UUID by eliminating the UUIDs of the
       // healthy masters from the set.
       for (int j = 0; j < cluster_->num_masters(); j++) {
-        if (j == i) continue;
+        if (j == i)
+          continue;
         uuids.erase(cluster_->master(j)->uuid());
       }
       ASSERT_EQ(1, uuids.size());
@@ -428,8 +435,7 @@ TEST_P(MasterFailoverTest, TestMasterPermanentFailure) {
           "format",
           "--fs_wal_dir=" + failed_master->wal_dir(),
           "--fs_data_dirs=" + failed_master->data_dir(),
-          "--uuid=" + uuid
-      };
+          "--uuid=" + uuid};
       ASSERT_OK(Subprocess::Call(args));
     }
 
@@ -442,8 +448,7 @@ TEST_P(MasterFailoverTest, TestMasterPermanentFailure) {
           "--fs_wal_dir=" + failed_master->wal_dir(),
           "--fs_data_dirs=" + failed_master->data_dir(),
           master::SysCatalogTable::kSysCatalogTabletId,
-          other_master->bound_rpc_hostport().ToString()
-      };
+          other_master->bound_rpc_hostport().ToString()};
       ASSERT_OK(Subprocess::Call(args));
     }
 

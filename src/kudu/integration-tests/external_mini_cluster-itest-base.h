@@ -44,9 +44,10 @@ class ExternalMiniClusterITestBase : public KuduTest {
   void TearDown() override;
 
  protected:
-  void StartCluster(std::vector<std::string> extra_ts_flags = {},
-                    std::vector<std::string> extra_master_flags = {},
-                    int num_tablet_servers = 3);
+  void StartCluster(
+      std::vector<std::string> extra_ts_flags = {},
+      std::vector<std::string> extra_master_flags = {},
+      int num_tablet_servers = 3);
 
   void StartClusterWithOpts(cluster::ExternalMiniClusterOptions opts);
 

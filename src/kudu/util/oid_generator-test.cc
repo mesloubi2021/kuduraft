@@ -42,14 +42,14 @@ TEST(ObjectIdGeneratorTest, TestCanoicalizeUuid) {
     ASSERT_TRUE(s.IsInvalidArgument());
     ASSERT_STR_CONTAINS(s.ToString(), "invalid uuid");
   }
-  ASSERT_OK(gen.Canonicalize(
-      "01234567-89ab-cdef-0123-456789abcdef", &canonicalized));
+  ASSERT_OK(
+      gen.Canonicalize("01234567-89ab-cdef-0123-456789abcdef", &canonicalized));
   ASSERT_EQ(kExpectedCanonicalized, canonicalized);
-  ASSERT_OK(gen.Canonicalize(
-      "0123456789abcdef0123456789abcdef", &canonicalized));
+  ASSERT_OK(
+      gen.Canonicalize("0123456789abcdef0123456789abcdef", &canonicalized));
   ASSERT_EQ(kExpectedCanonicalized, canonicalized);
-  ASSERT_OK(gen.Canonicalize(
-      "0123456789AbCdEf0123456789aBcDeF", &canonicalized));
+  ASSERT_OK(
+      gen.Canonicalize("0123456789AbCdEf0123456789aBcDeF", &canonicalized));
   ASSERT_EQ(kExpectedCanonicalized, canonicalized);
 }
 
@@ -57,7 +57,8 @@ TEST(ObjectIdGeneratorTest, TestNoCanoicalizeUuid) {
   gflags::FlagSaver saver;
   FLAGS_cononicalize_uuid = false;
   ObjectIdGenerator gen;
-  const string kExpectedUnCanonicalized = "01234567-89ab-cdef-0123-456789abcdef";
+  const string kExpectedUnCanonicalized =
+      "01234567-89ab-cdef-0123-456789abcdef";
   string canonicalized;
   Status s = gen.Canonicalize("not_a_uuid", &canonicalized);
   {
@@ -65,8 +66,8 @@ TEST(ObjectIdGeneratorTest, TestNoCanoicalizeUuid) {
     ASSERT_TRUE(s.IsInvalidArgument());
     ASSERT_STR_CONTAINS(s.ToString(), "invalid uuid");
   }
-  ASSERT_OK(gen.Canonicalize(
-      "01234567-89ab-cdef-0123-456789abcdef", &canonicalized));
+  ASSERT_OK(
+      gen.Canonicalize("01234567-89ab-cdef-0123-456789abcdef", &canonicalized));
   ASSERT_EQ(kExpectedUnCanonicalized, canonicalized);
 }
 

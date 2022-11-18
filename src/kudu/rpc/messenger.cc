@@ -57,15 +57,16 @@
 #include "kudu/util/thread_restrictions.h"
 #include "kudu/util/threadpool.h"
 
-using std::string;
-using std::shared_ptr;
 using std::make_shared;
+using std::shared_ptr;
+using std::string;
 using strings::Substitute;
 
 constexpr int kMinSockBuf = 1024;
 
 namespace boost {
-template <typename Signature> class function;
+template <typename Signature>
+class function;
 }
 
 namespace kudu {
@@ -83,14 +84,15 @@ MessengerBuilder::MessengerBuilder(std::string name)
       rpc_authentication_("optional"),
       rpc_encryption_("optional"),
       rpc_tls_ciphers_(kudu::security::SecurityDefaults::kDefaultTlsCiphers),
-      rpc_tls_min_protocol_(kudu::security::SecurityDefaults::kDefaultTlsMinVersion),
+      rpc_tls_min_protocol_(
+          kudu::security::SecurityDefaults::kDefaultTlsMinVersion),
       enable_inbound_tls_(false),
       reuseport_(false),
       send_buf_(0),
-      receive_buf_(0){
-}
+      receive_buf_(0) {}
 
-MessengerBuilder& MessengerBuilder::set_connection_keepalive_time(const MonoDelta &keepalive) {
+MessengerBuilder& MessengerBuilder::set_connection_keepalive_time(
+    const MonoDelta& keepalive) {
   connection_keepalive_time_ = keepalive;
   return *this;
 }
@@ -100,81 +102,94 @@ MessengerBuilder& MessengerBuilder::set_num_reactors(int num_reactors) {
   return *this;
 }
 
-MessengerBuilder& MessengerBuilder::set_min_negotiation_threads(int min_negotiation_threads) {
+MessengerBuilder& MessengerBuilder::set_min_negotiation_threads(
+    int min_negotiation_threads) {
   min_negotiation_threads_ = min_negotiation_threads;
   return *this;
 }
 
-MessengerBuilder& MessengerBuilder::set_max_negotiation_threads(int max_negotiation_threads) {
+MessengerBuilder& MessengerBuilder::set_max_negotiation_threads(
+    int max_negotiation_threads) {
   max_negotiation_threads_ = max_negotiation_threads;
   return *this;
 }
 
-MessengerBuilder& MessengerBuilder::set_coarse_timer_granularity(const MonoDelta &granularity) {
+MessengerBuilder& MessengerBuilder::set_coarse_timer_granularity(
+    const MonoDelta& granularity) {
   coarse_timer_granularity_ = granularity;
   return *this;
 }
 
-MessengerBuilder &MessengerBuilder::set_metric_entity(
+MessengerBuilder& MessengerBuilder::set_metric_entity(
     const scoped_refptr<MetricEntity>& metric_entity) {
   metric_entity_ = metric_entity;
   return *this;
 }
 
-MessengerBuilder &MessengerBuilder::set_connection_keep_alive_time(int32_t time_in_ms) {
+MessengerBuilder& MessengerBuilder::set_connection_keep_alive_time(
+    int32_t time_in_ms) {
   connection_keepalive_time_ = MonoDelta::FromMilliseconds(time_in_ms);
   return *this;
 }
 
-MessengerBuilder &MessengerBuilder::set_rpc_negotiation_timeout_ms(int64_t time_in_ms) {
+MessengerBuilder& MessengerBuilder::set_rpc_negotiation_timeout_ms(
+    int64_t time_in_ms) {
   rpc_negotiation_timeout_ms_ = time_in_ms;
   return *this;
 }
 
-MessengerBuilder &MessengerBuilder::set_sasl_proto_name(const std::string& sasl_proto_name) {
+MessengerBuilder& MessengerBuilder::set_sasl_proto_name(
+    const std::string& sasl_proto_name) {
   sasl_proto_name_ = sasl_proto_name;
   return *this;
 }
 
-MessengerBuilder &MessengerBuilder::set_rpc_authentication(const std::string& rpc_authentication) {
+MessengerBuilder& MessengerBuilder::set_rpc_authentication(
+    const std::string& rpc_authentication) {
   rpc_authentication_ = rpc_authentication;
   return *this;
 }
 
-MessengerBuilder &MessengerBuilder::set_rpc_encryption(const std::string& rpc_encryption) {
+MessengerBuilder& MessengerBuilder::set_rpc_encryption(
+    const std::string& rpc_encryption) {
   rpc_encryption_ = rpc_encryption;
   return *this;
 }
 
-MessengerBuilder &MessengerBuilder::set_rpc_tls_ciphers(const std::string& rpc_tls_ciphers) {
+MessengerBuilder& MessengerBuilder::set_rpc_tls_ciphers(
+    const std::string& rpc_tls_ciphers) {
   rpc_tls_ciphers_ = rpc_tls_ciphers;
   return *this;
 }
 
-MessengerBuilder &MessengerBuilder::set_rpc_tls_min_protocol(
+MessengerBuilder& MessengerBuilder::set_rpc_tls_min_protocol(
     const std::string& rpc_tls_min_protocol) {
   rpc_tls_min_protocol_ = rpc_tls_min_protocol;
   return *this;
 }
 
 MessengerBuilder& MessengerBuilder::set_epki_cert_key_files(
-    const std::string& cert, const std::string& private_key) {
+    const std::string& cert,
+    const std::string& private_key) {
   rpc_certificate_file_ = cert;
   rpc_private_key_file_ = private_key;
   return *this;
 }
 
-MessengerBuilder& MessengerBuilder::set_epki_certificate_authority_file(const std::string& ca) {
+MessengerBuilder& MessengerBuilder::set_epki_certificate_authority_file(
+    const std::string& ca) {
   rpc_ca_certificate_file_ = ca;
   return *this;
 }
 
-MessengerBuilder& MessengerBuilder::set_epki_private_password_key_cmd(const std::string& cmd) {
+MessengerBuilder& MessengerBuilder::set_epki_private_password_key_cmd(
+    const std::string& cmd) {
   rpc_private_key_password_cmd_ = cmd;
   return *this;
 }
 
-MessengerBuilder& MessengerBuilder::set_keytab_file(const std::string& keytab_file) {
+MessengerBuilder& MessengerBuilder::set_keytab_file(
+    const std::string& keytab_file) {
   keytab_file_ = keytab_file;
   return *this;
 }
@@ -191,8 +206,7 @@ MessengerBuilder& MessengerBuilder::set_reuseport() {
 
 MessengerBuilder& MessengerBuilder::set_send_buf(int send_buf) {
   if (send_buf < kMinSockBuf) {
-    LOG(WARNING) << "Cannot set socket send buffer to "
-                 << send_buf
+    LOG(WARNING) << "Cannot set socket send buffer to " << send_buf
                  << ". SO_SNDBUF will not be set.";
     send_buf = 0;
   }
@@ -202,8 +216,7 @@ MessengerBuilder& MessengerBuilder::set_send_buf(int send_buf) {
 
 MessengerBuilder& MessengerBuilder::set_receive_buf(int receive_buf) {
   if (receive_buf < kMinSockBuf) {
-    LOG(WARNING) << "Cannot set socket receive buffer to "
-                 << receive_buf
+    LOG(WARNING) << "Cannot set socket receive buffer to " << receive_buf
                  << ". SO_RCVBUF will not be set.";
     receive_buf = 0;
   }
@@ -211,23 +224,20 @@ MessengerBuilder& MessengerBuilder::set_receive_buf(int receive_buf) {
   return *this;
 }
 
-Status MessengerBuilder::Build(shared_ptr<Messenger> *msgr) {
+Status MessengerBuilder::Build(shared_ptr<Messenger>* msgr) {
   // Initialize SASL library before we start making requests
   RETURN_NOT_OK(SaslInit(!keytab_file_.empty()));
 
   Messenger* new_msgr(new Messenger(*this));
 
-  auto cleanup = MakeScopedCleanup([&] () {
-      new_msgr->AllExternalReferencesDropped();
-  });
+  auto cleanup =
+      MakeScopedCleanup([&]() { new_msgr->AllExternalReferencesDropped(); });
 
-  RETURN_NOT_OK(ParseTriState("--rpc_authentication",
-                              rpc_authentication_,
-                              &new_msgr->authentication_));
+  RETURN_NOT_OK(ParseTriState(
+      "--rpc_authentication", rpc_authentication_, &new_msgr->authentication_));
 
-  RETURN_NOT_OK(ParseTriState("--rpc_encryption",
-                              rpc_encryption_,
-                              &new_msgr->encryption_));
+  RETURN_NOT_OK(ParseTriState(
+      "--rpc_encryption", rpc_encryption_, &new_msgr->encryption_));
 
   RETURN_NOT_OK(new_msgr->Init());
   if (new_msgr->encryption_ != RpcEncryption::DISABLED && enable_inbound_tls_) {
@@ -239,21 +249,21 @@ Status MessengerBuilder::Build(shared_ptr<Messenger> *msgr) {
 
       // TODO(KUDU-1920): should we try and enforce that the server
       // is in the subject or alt names of the cert?
-      RETURN_NOT_OK(tls_context->LoadCertificateAuthority(rpc_ca_certificate_file_));
+      RETURN_NOT_OK(
+          tls_context->LoadCertificateAuthority(rpc_ca_certificate_file_));
       if (rpc_private_key_password_cmd_.empty()) {
-        RETURN_NOT_OK(tls_context->LoadCertificateAndKey(rpc_certificate_file_,
-                                                         rpc_private_key_file_));
+        RETURN_NOT_OK(tls_context->LoadCertificateAndKey(
+            rpc_certificate_file_, rpc_private_key_file_));
       } else {
         RETURN_NOT_OK(tls_context->LoadCertificateAndPasswordProtectedKey(
-            rpc_certificate_file_, rpc_private_key_file_,
-            [&](){
+            rpc_certificate_file_, rpc_private_key_file_, [&]() {
               string ret;
-              WARN_NOT_OK(security::GetPasswordFromShellCommand(
-                  rpc_private_key_password_cmd_, &ret),
+              WARN_NOT_OK(
+                  security::GetPasswordFromShellCommand(
+                      rpc_private_key_password_cmd_, &ret),
                   "could not get RPC password from configured command");
               return ret;
-            }
-        ));
+            }));
       }
     } else {
       RETURN_NOT_OK(tls_context->GenerateSelfSignedCertAndKey());
@@ -262,7 +272,8 @@ Status MessengerBuilder::Build(shared_ptr<Messenger> *msgr) {
 
   // See docs on Messenger::retain_self_ for info about this odd hack.
   cleanup.cancel();
-  *msgr = shared_ptr<Messenger>(new_msgr, std::mem_fun(&Messenger::AllExternalReferencesDropped));
+  *msgr = shared_ptr<Messenger>(
+      new_msgr, std::mem_fun(&Messenger::AllExternalReferencesDropped));
   return Status::OK();
 }
 
@@ -331,14 +342,16 @@ void Messenger::ShutdownInternal(ShutdownMode mode) {
   }
 }
 
-Status Messenger::AddAcceptorPool(const Sockaddr &accept_addr,
-                                  shared_ptr<AcceptorPool>* pool) {
+Status Messenger::AddAcceptorPool(
+    const Sockaddr& accept_addr,
+    shared_ptr<AcceptorPool>* pool) {
   // Before listening, if we expect to require Kerberos, we want to verify
   // that everything is set up correctly. This way we'll generate errors on
   // startup rather than later on when we first receive a client connection.
   if (!keytab_file_.empty()) {
-    RETURN_NOT_OK_PREPEND(ServerNegotiation::PreflightCheckGSSAPI(sasl_proto_name()),
-                          "GSSAPI/Kerberos not properly configured");
+    RETURN_NOT_OK_PREPEND(
+        ServerNegotiation::PreflightCheckGSSAPI(sasl_proto_name()),
+        "GSSAPI/Kerberos not properly configured");
   }
 
   Socket sock;
@@ -359,8 +372,9 @@ Status Messenger::AddAcceptorPool(const Sockaddr &accept_addr,
 }
 
 // Register a new RpcService to handle inbound requests.
-Status Messenger::RegisterService(const string& service_name,
-                                  const scoped_refptr<RpcService>& service) {
+Status Messenger::RegisterService(
+    const string& service_name,
+    const scoped_refptr<RpcService>& service) {
   DCHECK(service);
   std::lock_guard<percpu_rwlock> guard(lock_);
   if (InsertIfNotPresent(&rpc_services_, service_name, service)) {
@@ -385,26 +399,28 @@ Status Messenger::UnregisterService(const string& service_name) {
     std::lock_guard<percpu_rwlock> guard(lock_);
     to_release = EraseKeyReturnValuePtr(&rpc_services_, service_name);
     if (!to_release) {
-      return Status::ServiceUnavailable(Substitute(
-          "service $0 not registered on $1", service_name, name_));
+      return Status::ServiceUnavailable(
+          Substitute("service $0 not registered on $1", service_name, name_));
     }
   }
   // Release the service outside of the lock.
   return Status::OK();
 }
 
-void Messenger::QueueOutboundCall(const shared_ptr<OutboundCall> &call) {
-  Reactor *reactor = RemoteToReactor(call->conn_id().remote());
+void Messenger::QueueOutboundCall(const shared_ptr<OutboundCall>& call) {
+  Reactor* reactor = RemoteToReactor(call->conn_id().remote());
   reactor->QueueOutboundCall(call);
 }
 
 void Messenger::QueueInboundCall(gscoped_ptr<InboundCall> call) {
   shared_lock<rw_spinlock> guard(lock_.get_lock());
-  scoped_refptr<RpcService>* service = FindOrNull(rpc_services_,
-                                                  call->remote_method().service_name());
+  scoped_refptr<RpcService>* service =
+      FindOrNull(rpc_services_, call->remote_method().service_name());
   if (PREDICT_FALSE(!service)) {
-    Status s =  Status::ServiceUnavailable(Substitute("service $0 not registered on $1",
-                                                      call->remote_method().service_name(), name_));
+    Status s = Status::ServiceUnavailable(Substitute(
+        "service $0 not registered on $1",
+        call->remote_method().service_name(),
+        name_));
     LOG(INFO) << s.ToString();
     call.release()->RespondFailure(ErrorStatusPB::ERROR_NO_SUCH_SERVICE, s);
     return;
@@ -413,46 +429,52 @@ void Messenger::QueueInboundCall(gscoped_ptr<InboundCall> call) {
   call->set_method_info((*service)->LookupMethod(call->remote_method()));
 
   // The RpcService will respond to the client on success or failure.
-  WARN_NOT_OK((*service)->QueueInboundCall(std::move(call)), "Unable to handle RPC call");
+  WARN_NOT_OK(
+      (*service)->QueueInboundCall(std::move(call)),
+      "Unable to handle RPC call");
 }
 
-void Messenger::QueueCancellation(const shared_ptr<OutboundCall> &call) {
-  Reactor *reactor = RemoteToReactor(call->conn_id().remote());
+void Messenger::QueueCancellation(const shared_ptr<OutboundCall>& call) {
+  Reactor* reactor = RemoteToReactor(call->conn_id().remote());
   reactor->QueueCancellation(call);
 }
 
-void Messenger::RegisterInboundSocket(Socket *new_socket, const Sockaddr &remote) {
-  Reactor *reactor = RemoteToReactor(remote);
+void Messenger::RegisterInboundSocket(
+    Socket* new_socket,
+    const Sockaddr& remote) {
+  Reactor* reactor = RemoteToReactor(remote);
   reactor->RegisterInboundSocket(new_socket, remote);
 }
 
-Messenger::Messenger(const MessengerBuilder &bld)
-  : name_(bld.name_),
-    closing_(false),
-    authentication_(RpcAuthentication::REQUIRED),
-    encryption_(RpcEncryption::REQUIRED),
-    tls_context_(new security::TlsContext(bld.rpc_tls_ciphers_, bld.rpc_tls_min_protocol_)),
-    token_verifier_(new security::TokenVerifier()),
-    rpcz_store_(new RpczStore()),
-    metric_entity_(bld.metric_entity_),
-    rpc_negotiation_timeout_ms_(bld.rpc_negotiation_timeout_ms_),
-    sasl_proto_name_(bld.sasl_proto_name_),
-    keytab_file_(bld.keytab_file_),
-    reuseport_(bld.reuseport_),
-    send_buf_(bld.send_buf_),
-    receive_buf_(bld.receive_buf_),
-    retain_self_(this) {
+Messenger::Messenger(const MessengerBuilder& bld)
+    : name_(bld.name_),
+      closing_(false),
+      authentication_(RpcAuthentication::REQUIRED),
+      encryption_(RpcEncryption::REQUIRED),
+      tls_context_(new security::TlsContext(
+          bld.rpc_tls_ciphers_,
+          bld.rpc_tls_min_protocol_)),
+      token_verifier_(new security::TokenVerifier()),
+      rpcz_store_(new RpczStore()),
+      metric_entity_(bld.metric_entity_),
+      rpc_negotiation_timeout_ms_(bld.rpc_negotiation_timeout_ms_),
+      sasl_proto_name_(bld.sasl_proto_name_),
+      keytab_file_(bld.keytab_file_),
+      reuseport_(bld.reuseport_),
+      send_buf_(bld.send_buf_),
+      receive_buf_(bld.receive_buf_),
+      retain_self_(this) {
   for (int i = 0; i < bld.num_reactors_; i++) {
     reactors_.push_back(new Reactor(retain_self_, i, bld));
   }
   CHECK_OK(ThreadPoolBuilder("client-negotiator")
-      .set_min_threads(bld.min_negotiation_threads_)
-      .set_max_threads(bld.max_negotiation_threads_)
-      .Build(&client_negotiation_pool_));
+               .set_min_threads(bld.min_negotiation_threads_)
+               .set_max_threads(bld.max_negotiation_threads_)
+               .Build(&client_negotiation_pool_));
   CHECK_OK(ThreadPoolBuilder("server-negotiator")
-      .set_min_threads(bld.min_negotiation_threads_)
-      .set_max_threads(bld.max_negotiation_threads_)
-      .Build(&server_negotiation_pool_));
+               .set_min_threads(bld.min_negotiation_threads_)
+               .set_max_threads(bld.max_negotiation_threads_)
+               .Build(&server_negotiation_pool_));
 }
 
 Messenger::~Messenger() {
@@ -461,7 +483,7 @@ Messenger::~Messenger() {
   STLDeleteElements(&reactors_);
 }
 
-Reactor* Messenger::RemoteToReactor(const Sockaddr &remote) {
+Reactor* Messenger::RemoteToReactor(const Sockaddr& remote) {
   uint32_t hashCode = remote.HashCode();
   int reactor_idx = hashCode % reactors_.size();
   // This is just a static partitioning; we could get a lot
@@ -478,8 +500,9 @@ Status Messenger::Init() {
   return Status::OK();
 }
 
-Status Messenger::DumpRunningRpcs(const DumpRunningRpcsRequestPB& req,
-                                  DumpRunningRpcsResponsePB* resp) {
+Status Messenger::DumpRunningRpcs(
+    const DumpRunningRpcsRequestPB& req,
+    DumpRunningRpcsResponsePB* resp) {
   shared_lock<rw_spinlock> guard(lock_.get_lock());
   for (Reactor* reactor : reactors_) {
     RETURN_NOT_OK(reactor->DumpRunningRpcs(req, resp));
@@ -493,8 +516,9 @@ void Messenger::QueueResetConnections() {
   }
 }
 
-void Messenger::ScheduleOnReactor(const boost::function<void(const Status&)>& func,
-                                  MonoDelta when) {
+void Messenger::ScheduleOnReactor(
+    const boost::function<void(const Status&)>& func,
+    MonoDelta when) {
   DCHECK(!reactors_.empty());
 
   // If we're already running on a reactor thread, reuse it.
@@ -513,7 +537,8 @@ void Messenger::ScheduleOnReactor(const boost::function<void(const Status&)>& fu
   chosen->ScheduleReactorTask(task);
 }
 
-const scoped_refptr<RpcService> Messenger::rpc_service(const string& service_name) const {
+const scoped_refptr<RpcService> Messenger::rpc_service(
+    const string& service_name) const {
   scoped_refptr<RpcService> service;
   {
     shared_lock<rw_spinlock> guard(lock_.get_lock());
@@ -526,19 +551,17 @@ const scoped_refptr<RpcService> Messenger::rpc_service(const string& service_nam
 
 void Messenger::set_send_buffer(int send_buf) {
   if (send_buf < kMinSockBuf) {
-    LOG(WARNING) << "Cannot set socket send buffer to "
-      << send_buf
-      << ". SO_SNDBUF will not be set.";
+    LOG(WARNING) << "Cannot set socket send buffer to " << send_buf
+                 << ". SO_SNDBUF will not be set.";
     send_buf = 0;
   }
   send_buf_ = send_buf;
 }
 
-void Messenger::set_receive_buffer(int receive_buf){
+void Messenger::set_receive_buffer(int receive_buf) {
   if (receive_buf < kMinSockBuf) {
-    LOG(WARNING) << "Cannot set socket receive buffer to "
-      << receive_buf
-      << ". SO_RCVBUF will not be set.";
+    LOG(WARNING) << "Cannot set socket receive buffer to " << receive_buf
+                 << ". SO_RCVBUF will not be set.";
     receive_buf = 0;
   }
   receive_buf_ = receive_buf;
@@ -546,8 +569,10 @@ void Messenger::set_receive_buffer(int receive_buf){
 
 ThreadPool* Messenger::negotiation_pool(ConnectionDirection dir) {
   switch (dir) {
-    case ConnectionDirection::CLIENT: return client_negotiation_pool_.get();
-    case ConnectionDirection::SERVER: return server_negotiation_pool_.get();
+    case ConnectionDirection::CLIENT:
+      return client_negotiation_pool_.get();
+    case ConnectionDirection::SERVER:
+      return server_negotiation_pool_.get();
   }
   DCHECK(false) << "Unknown ConnectionDirection value: " << dir;
   return nullptr;

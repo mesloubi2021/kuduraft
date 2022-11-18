@@ -68,18 +68,28 @@ DEFINE_bool(skip_scans, false, "Whether to skip the scan part of the test.");
 
 // Test size parameters
 DEFINE_int32(concurrent_inserts, -1, "Number of inserting clients to launch");
-DEFINE_int32(inserts_per_client, -1,
-             "Number of rows inserted by each inserter client");
+DEFINE_int32(
+    inserts_per_client,
+    -1,
+    "Number of rows inserted by each inserter client");
 DEFINE_int32(rows_per_batch, -1, "Number of rows per client batch");
 
 // Perf-related FLAGS_perf_stat
-DEFINE_bool(perf_record_scan, false, "Call \"perf record --call-graph\" "
-            "for the duration of the scan, disabled by default");
-DEFINE_bool(perf_record_scan_callgraph, false,
-            "Only applicable with --perf_record_scan, provides argument "
-            "\"--call-graph fp\"");
-DEFINE_bool(perf_stat_scan, false, "Print \"perf stat\" results during "
-            "scan to stdout, disabled by default");
+DEFINE_bool(
+    perf_record_scan,
+    false,
+    "Call \"perf record --call-graph\" "
+    "for the duration of the scan, disabled by default");
+DEFINE_bool(
+    perf_record_scan_callgraph,
+    false,
+    "Only applicable with --perf_record_scan, provides argument "
+    "\"--call-graph fp\"");
+DEFINE_bool(
+    perf_stat_scan,
+    false,
+    "Print \"perf stat\" results during "
+    "scan to stdout, disabled by default");
 DECLARE_bool(enable_maintenance_manager);
 
 using std::string;
@@ -109,15 +119,14 @@ using strings::Substitute;
 class FullStackInsertScanTest : public KuduTest {
  protected:
   FullStackInsertScanTest()
-    : // Set the default value depending on whether slow tests are allowed
-    kNumInsertClients(DefaultFlag(FLAGS_concurrent_inserts, 3, 10)),
-    kNumInsertsPerClient(DefaultFlag(FLAGS_inserts_per_client, 500, 50000)),
-    kNumRows(kNumInsertClients * kNumInsertsPerClient),
-    flush_every_n_(DefaultFlag(FLAGS_rows_per_batch, 125, 5000)),
-    random_(SeedRandom()),
-    sessions_(kNumInsertClients),
-    tables_(kNumInsertClients) {
-
+      : // Set the default value depending on whether slow tests are allowed
+        kNumInsertClients(DefaultFlag(FLAGS_concurrent_inserts, 3, 10)),
+        kNumInsertsPerClient(DefaultFlag(FLAGS_inserts_per_client, 500, 50000)),
+        kNumRows(kNumInsertClients * kNumInsertsPerClient),
+        flush_every_n_(DefaultFlag(FLAGS_rows_per_batch, 125, 5000)),
+        random_(SeedRandom()),
+        sessions_(kNumInsertClients),
+        tables_(kNumInsertClients) {
     // schema has kNumIntCols contiguous columns of Int32 and Int64, in order.
     KuduSchemaBuilder b;
     b.AddColumn("key")->Type(KuduColumnSchema::INT64)->NotNull()->PrimaryKey();
@@ -147,10 +156,10 @@ class FullStackInsertScanTest : public KuduTest {
     NO_FATALS(InitCluster());
     gscoped_ptr<KuduTableCreator> table_creator(client_->NewTableCreator());
     ASSERT_OK(table_creator->table_name(kTableName)
-             .schema(&schema_)
-             .set_range_partition_columns({ "key" })
-             .num_replicas(1)
-             .Create());
+                  .schema(&schema_)
+                  .set_range_partition_columns({"key"})
+                  .num_replicas(1)
+                  .Create());
     ASSERT_OK(client_->OpenTable(kTableName, &reader_table_));
   }
 
@@ -160,14 +169,16 @@ class FullStackInsertScanTest : public KuduTest {
 
  private:
   int DefaultFlag(int flag, int fast, int slow) {
-    if (flag != -1) return flag;
-    if (AllowSlowTests()) return slow;
+    if (flag != -1)
+      return flag;
+    if (AllowSlowTests())
+      return slow;
     return fast;
   }
 
   // Generate random row according to schema_.
-  static void RandomRow(Random* rng, KuduPartialRow* row,
-                        char* buf, int64_t key, int id);
+  static void
+  RandomRow(Random* rng, KuduPartialRow* row, char* buf, int64_t key, int id);
 
   void InitCluster() {
     // Start mini-cluster with 1 tserver, config client options
@@ -221,14 +232,15 @@ class FullStackInsertScanTest : public KuduTest {
   client::sp::shared_ptr<KuduClient> client_;
   client::sp::shared_ptr<KuduTable> reader_table_;
   // Concurrent client insertion test variables
-  vector<client::sp::shared_ptr<KuduSession> > sessions_;
-  vector<client::sp::shared_ptr<KuduTable> > tables_;
+  vector<client::sp::shared_ptr<KuduSession>> sessions_;
+  vector<client::sp::shared_ptr<KuduTable>> tables_;
 };
 
 namespace {
 
 unique_ptr<Subprocess> MakePerfStat() {
-  if (!FLAGS_perf_stat_scan) return unique_ptr<Subprocess>(nullptr);
+  if (!FLAGS_perf_stat_scan)
+    return unique_ptr<Subprocess>(nullptr);
   // No output flag for perf-stat 2.x, just print to output
   string cmd = Substitute("perf stat --pid=$0", getpid());
   LOG(INFO) << "Calling: \"" << cmd << "\"";
@@ -236,9 +248,11 @@ unique_ptr<Subprocess> MakePerfStat() {
 }
 
 unique_ptr<Subprocess> MakePerfRecord() {
-  if (!FLAGS_perf_record_scan) return unique_ptr<Subprocess>(nullptr);
+  if (!FLAGS_perf_record_scan)
+    return unique_ptr<Subprocess>(nullptr);
   string cmd = Substitute("perf record --pid=$0", getpid());
-  if (FLAGS_perf_record_scan_callgraph) cmd += " --call-graph fp";
+  if (FLAGS_perf_record_scan_callgraph)
+    cmd += " --call-graph fp";
   LOG(INFO) << "Calling: \"" << cmd << "\"";
   return unique_ptr<Subprocess>(new Subprocess(Split(cmd, " "), SIGINT));
 }
@@ -246,26 +260,32 @@ unique_ptr<Subprocess> MakePerfRecord() {
 // If key is approximately at an even multiple of 1/10 of the way between
 // start and end, then a % completion update is printed to LOG(INFO)
 // Assumes that end - start + 1 fits into an int
-void ReportTenthDone(int64_t key, int64_t start, int64_t end,
-                     int id, int numids) {
+void ReportTenthDone(
+    int64_t key,
+    int64_t start,
+    int64_t end,
+    int id,
+    int numids) {
   int done = key - start + 1;
   int total = end - start + 1;
-  if (total < 10) return;
+  if (total < 10)
+    return;
   if (done % (total / 10) == 0) {
     int percent = done * 100 / total;
-    LOG(INFO) << "Insertion thread " << id << " of "
-              << numids << " is "<< percent << "% done.";
+    LOG(INFO) << "Insertion thread " << id << " of " << numids << " is "
+              << percent << "% done.";
   }
 }
 
 void ReportAllDone(int id, int numids) {
-  LOG(INFO) << "Insertion thread " << id << " of  "
-            << numids << " is 100% done.";
+  LOG(INFO) << "Insertion thread " << id << " of  " << numids
+            << " is 100% done.";
 }
 
 } // anonymous namespace
 
-const char* const FullStackInsertScanTest::kTableName = "full-stack-mrs-test-tbl";
+const char* const FullStackInsertScanTest::kTableName =
+    "full-stack-mrs-test-tbl";
 
 TEST_F(FullStackInsertScanTest, MRSOnlyStressTest) {
   FLAGS_enable_maintenance_manager = false;
@@ -282,24 +302,30 @@ TEST_F(FullStackInsertScanTest, WithDiskStressTest) {
 }
 
 void FullStackInsertScanTest::DoConcurrentClientInserts() {
-  vector<scoped_refptr<Thread> > threads(kNumInsertClients);
+  vector<scoped_refptr<Thread>> threads(kNumInsertClients);
   CountDownLatch start_latch(kNumInsertClients + 1);
   for (int i = 0; i < kNumInsertClients; ++i) {
     NO_FATALS(CreateNewClient(i));
-    ASSERT_OK(Thread::Create(CURRENT_TEST_NAME(),
-                             StrCat(CURRENT_TEST_CASE_NAME(), "-id", i),
-                             &FullStackInsertScanTest::InsertRows, this,
-                             &start_latch, i, random_.Next(), &threads[i]));
+    ASSERT_OK(Thread::Create(
+        CURRENT_TEST_NAME(),
+        StrCat(CURRENT_TEST_CASE_NAME(), "-id", i),
+        &FullStackInsertScanTest::InsertRows,
+        this,
+        &start_latch,
+        i,
+        random_.Next(),
+        &threads[i]));
     start_latch.CountDown();
   }
-  LOG_TIMING(INFO,
-             strings::Substitute("concurrent inserts ($0 rows, $1 threads)",
-                                 kNumRows, kNumInsertClients)) {
+  LOG_TIMING(
+      INFO,
+      strings::Substitute(
+          "concurrent inserts ($0 rows, $1 threads)",
+          kNumRows,
+          kNumInsertClients)) {
     start_latch.CountDown();
     for (const scoped_refptr<Thread>& thread : threads) {
-      ASSERT_OK(ThreadJoiner(thread.get())
-                .warn_every_ms(15000)
-                .Join());
+      ASSERT_OK(ThreadJoiner(thread.get()).warn_every_ms(15000).Join());
     }
   }
 }
@@ -321,7 +347,7 @@ void FullStackInsertScanTest::DoTestScans() {
   }
 
   NO_FATALS(ScanProjection({}, "empty projection, 0 col"));
-  NO_FATALS(ScanProjection({ "key" }, "key scan, 1 col"));
+  NO_FATALS(ScanProjection({"key"}, "key scan, 1 col"));
   NO_FATALS(ScanProjection(AllColumnNames(), "full schema scan, 10 col"));
   NO_FATALS(ScanProjection(StringColumnNames(), "String projection, 1 col"));
   NO_FATALS(ScanProjection(Int32ColumnNames(), "Int32 projection, 4 col"));
@@ -333,7 +359,7 @@ void FullStackInsertScanTest::FlushToDisk() {
     tserver::TabletServer* ts = cluster_->mini_tablet_server(i)->server();
     ts->maintenance_manager()->Shutdown();
     tserver::TSTabletManager* tm = ts->tablet_manager();
-    vector<scoped_refptr<TabletReplica> > replicas;
+    vector<scoped_refptr<TabletReplica>> replicas;
     tm->GetTabletReplicas(&replicas);
     for (const scoped_refptr<TabletReplica>& replica : replicas) {
       Tablet* tablet = replica->tablet();
@@ -345,8 +371,10 @@ void FullStackInsertScanTest::FlushToDisk() {
   }
 }
 
-void FullStackInsertScanTest::InsertRows(CountDownLatch* start_latch, int id,
-                                         uint32_t seed) {
+void FullStackInsertScanTest::InsertRows(
+    CountDownLatch* start_latch,
+    int id,
+    uint32_t seed) {
   Random rng(seed + id);
 
   start_latch->Wait();
@@ -391,8 +419,9 @@ void FullStackInsertScanTest::InsertRows(CountDownLatch* start_latch, int id,
   FlushSessionOrDie(session);
 }
 
-void FullStackInsertScanTest::ScanProjection(const vector<string>& cols,
-                                             const string& msg) {
+void FullStackInsertScanTest::ScanProjection(
+    const vector<string>& cols,
+    const string& msg) {
   {
     // Warmup codegen cache
     KuduScanner scanner(reader_table_.get());
@@ -419,11 +448,15 @@ void FullStackInsertScanTest::ScanProjection(const vector<string>& cols,
 // type: (int64_t,  string,     int32_t x4, int64_t x4)
 // The first int32 gets the id and the first int64 gets the thread
 // id. The key is assigned to "key," and the other fields are random.
-void FullStackInsertScanTest::RandomRow(Random* rng, KuduPartialRow* row, char* buf,
-                                        int64_t key, int id) {
+void FullStackInsertScanTest::RandomRow(
+    Random* rng,
+    KuduPartialRow* row,
+    char* buf,
+    int64_t key,
+    int id) {
   CHECK_OK(row->SetInt64(kKeyCol, key));
   int len = kRandomStrMinLength +
-    rng->Uniform(kRandomStrMaxLength - kRandomStrMinLength + 1);
+      rng->Uniform(kRandomStrMaxLength - kRandomStrMinLength + 1);
   RandomString(buf, len, rng);
   buf[len] = '\0';
   CHECK_OK(row->SetStringCopy(kStrCol, buf));
@@ -444,21 +477,15 @@ vector<string> FullStackInsertScanTest::AllColumnNames() const {
 }
 
 vector<string> FullStackInsertScanTest::StringColumnNames() const {
-  return { "string_val" };
+  return {"string_val"};
 }
 
 vector<string> FullStackInsertScanTest::Int32ColumnNames() const {
-  return { "int32_val1",
-           "int32_val2",
-           "int32_val3",
-           "int32_val4" };
+  return {"int32_val1", "int32_val2", "int32_val3", "int32_val4"};
 }
 
 vector<string> FullStackInsertScanTest::Int64ColumnNames() const {
-  return { "int64_val1",
-           "int64_val2",
-           "int64_val3",
-           "int64_val4" };
+  return {"int64_val1", "int64_val2", "int64_val3", "int64_val4"};
 }
 
 } // namespace tablet

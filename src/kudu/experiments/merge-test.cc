@@ -29,32 +29,31 @@ DEFINE_int32(num_lists, 3, "Number of lists to merge");
 DEFINE_int32(num_rows, 100, "Number of entries per list");
 DEFINE_int32(num_iters, 5, "Number of times to run merge");
 
-using std::vector;
 using std::string;
+using std::vector;
 
 typedef string MergeType;
 
 struct CompareIters {
-  explicit CompareIters(vector<vector<MergeType>::const_iterator> *iters) :
-    iters_(iters)
-  {}
+  explicit CompareIters(vector<vector<MergeType>::const_iterator>* iters)
+      : iters_(iters) {}
 
   bool operator()(int left, int right) {
     return *((*iters_)[left]) >= *((*iters_)[right]);
   }
 
-  vector<vector<MergeType>::const_iterator> *iters_;
+  vector<vector<MergeType>::const_iterator>* iters_;
 };
 
 void HeapMerge(
-  const vector<vector<MergeType> > &in_lists,
-  vector<MergeType> *out) {
+    const vector<vector<MergeType>>& in_lists,
+    vector<MergeType>* out) {
   typedef vector<MergeType>::const_iterator MergeTypeIter;
 
   vector<MergeTypeIter> iters;
   vector<size_t> indexes;
   size_t i = 0;
-  for (const vector<MergeType> &list : in_lists) {
+  for (const vector<MergeType>& list : in_lists) {
     iters.push_back(list.begin());
     indexes.push_back(i++);
   }
@@ -64,7 +63,7 @@ void HeapMerge(
 
   while (!indexes.empty()) {
     size_t min_idx = indexes.front();
-    MergeTypeIter &min_iter = iters[min_idx];
+    MergeTypeIter& min_iter = iters[min_idx];
 
     out->push_back(*min_iter);
 
@@ -78,40 +77,42 @@ void HeapMerge(
   }
 }
 
-void SimpleMerge(const vector<vector<MergeType> > &in_lists,
-                 vector<MergeType> *out) {
+void SimpleMerge(
+    const vector<vector<MergeType>>& in_lists,
+    vector<MergeType>* out) {
   typedef vector<MergeType>::const_iterator MergeTypeIter;
   vector<MergeTypeIter> iters;
   iters.reserve(in_lists.size());
-  for (const vector<MergeType> &list : in_lists) {
+  for (const vector<MergeType>& list : in_lists) {
     iters.push_back(list.begin());
   }
 
   while (true) {
-    MergeTypeIter *smallest = nullptr;
+    MergeTypeIter* smallest = nullptr;
     for (int i = 0; i < in_lists.size(); i++) {
-      if (iters[i] == in_lists[i].end()) continue;
-      if (smallest == nullptr ||
-          *iters[i] < **smallest) {
+      if (iters[i] == in_lists[i].end())
+        continue;
+      if (smallest == nullptr || *iters[i] < **smallest) {
         smallest = &iters[i];
       }
     }
 
-    if (smallest == nullptr) break;
+    if (smallest == nullptr)
+      break;
 
     out->push_back(**smallest);
     (*smallest)++;
   }
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);
 
-  vector<vector<MergeType> > in_lists;
+  vector<vector<MergeType>> in_lists;
   in_lists.resize(FLAGS_num_lists);
 
   for (int i = 0; i < FLAGS_num_lists; i++) {
-    vector<MergeType> &list = in_lists[i];
+    vector<MergeType>& list = in_lists[i];
 
     int entry = 0;
     for (int j = 0; j < FLAGS_num_rows; j++) {

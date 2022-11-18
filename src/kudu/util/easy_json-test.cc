@@ -31,7 +31,7 @@ using std::string;
 
 namespace kudu {
 
-class EasyJsonTest: public KuduTest {};
+class EasyJsonTest : public KuduTest {};
 
 TEST_F(EasyJsonTest, TestNull) {
   EasyJson ej;

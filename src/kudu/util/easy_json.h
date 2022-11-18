@@ -35,7 +35,8 @@ namespace kudu {
 //   rapidjson::Value list;
 //   list.SetArray();
 //   v.AddMember("list", list, d.GetAllocator());
-//   v["list"].PushBack(rapidjson::Value().SetString("element"), d.GetAllocator());
+//   v["list"].PushBack(rapidjson::Value().SetString("element"),
+//   d.GetAllocator());
 //
 // To this:
 //
@@ -54,10 +55,7 @@ class EasyJson {
   //  EasyJson nested = array.PushBack(EasyJson::kObject);
   //  nested["attr"] = "val";
   //  // array = [ { "attr": "val" } ]
-  enum ComplexTypeInitializer {
-    kObject,
-    kArray
-  };
+  enum ComplexTypeInitializer { kObject, kArray };
 
   EasyJson();
   // Initializes the EasyJson object with the given type.
@@ -100,7 +98,7 @@ class EasyJson {
   // 'val' can be a bool, int32_t, int64_t, double,
   // char*, string, or ComplexTypeInitializer.
   EasyJson& operator=(const std::string& val);
-  template<typename T>
+  template <typename T>
   EasyJson& operator=(T val);
 
   // Sets the underlying Value to an object.
@@ -125,7 +123,7 @@ class EasyJson {
   // If the given key does not exist, a new child entry
   // is created with the given value.
   EasyJson Set(const std::string& key, const std::string& val);
-  template<typename T>
+  template <typename T>
   EasyJson Set(const std::string& key, T val);
 
   // Stores val at index.
@@ -138,7 +136,7 @@ class EasyJson {
   // array's size is increased to index + 1 (new indices
   // are filled with Null values).
   EasyJson Set(int index, const std::string& val);
-  template<typename T>
+  template <typename T>
   EasyJson Set(int index, T val);
 
   // Appends val to the underlying array.
@@ -148,11 +146,13 @@ class EasyJson {
   // (i.e. !this->value().IsArray()), then its Value is
   // coerced to an array, overwriting the old Value.
   EasyJson PushBack(const std::string& val);
-  template<typename T>
+  template <typename T>
   EasyJson PushBack(T val);
 
   // Returns a reference to the underlying Value.
-  rapidjson::Value& value() const { return *value_; }
+  rapidjson::Value& value() const {
+    return *value_;
+  }
 
   // Returns a string representation of the underlying json.
   std::string ToString() const;
@@ -164,8 +164,13 @@ class EasyJson {
   // allocator (via a rapidjson::Document).
   class EasyJsonAllocator : public RefCounted<EasyJsonAllocator> {
    public:
-    rapidjson::Value& value() { return value_; }
-    rapidjson::Document::AllocatorType& allocator() { return value_.GetAllocator(); }
+    rapidjson::Value& value() {
+      return value_;
+    }
+    rapidjson::Document::AllocatorType& allocator() {
+      return value_.GetAllocator();
+    }
+
    private:
     friend class RefCounted<EasyJsonAllocator>;
     ~EasyJsonAllocator() = default;

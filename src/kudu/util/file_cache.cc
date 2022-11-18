@@ -40,15 +40,17 @@
 #include "kudu/util/env.h"
 #include "kudu/util/flag_tags.h"
 #include "kudu/util/locks.h"
-#include "kudu/util/metrics.h"  // IWYU pragma: keep
+#include "kudu/util/metrics.h" // IWYU pragma: keep
 #include "kudu/util/monotime.h"
 #include "kudu/util/once.h"
 #include "kudu/util/slice.h"
 #include "kudu/util/status.h"
 #include "kudu/util/thread.h"
 
-DEFINE_int32(file_cache_expiry_period_ms, 60 * 1000,
-             "Period of time (in ms) between removing expired file cache descriptors");
+DEFINE_int32(
+    file_cache_expiry_period_ms,
+    60 * 1000,
+    "Period of time (in ms) between removing expired file cache descriptors");
 TAG_FLAG(file_cache_expiry_period_ms, advanced);
 
 using std::shared_ptr;
@@ -63,8 +65,8 @@ namespace {
 
 template <class FileType>
 FileType* CacheValueToFileType(Slice s) {
-  return reinterpret_cast<FileType*>(*reinterpret_cast<void**>(
-      s.mutable_data()));
+  return reinterpret_cast<FileType*>(
+      *reinterpret_cast<void**>(s.mutable_data()));
 }
 
 template <class FileType>
@@ -92,10 +94,8 @@ class ScopedOpenedDescriptor;
 template <class FileType>
 class BaseDescriptor {
  public:
-  BaseDescriptor(FileCache<FileType>* file_cache,
-                 string filename)
-      : file_cache_(file_cache),
-        file_name_(std::move(filename)) {}
+  BaseDescriptor(FileCache<FileType>* file_cache, string filename)
+      : file_cache_(file_cache), file_name_(std::move(filename)) {}
 
   ~BaseDescriptor() {
     VLOG(2) << "Out of scope descriptor with file name: " << filename();
@@ -121,14 +121,14 @@ class BaseDescriptor {
     // The allocated charge is always one byte. This is incorrect with respect
     // to memory tracking, but it's necessary if the cache capacity is to be
     // equivalent to the max number of fds.
-    Cache::PendingHandle* pending = CHECK_NOTNULL(cache()->Allocate(
-        filename(), sizeof(file_ptr), 1));
-    memcpy(cache()->MutableValue(pending),
-           &file_ptr,
-           sizeof(file_ptr));
-    return ScopedOpenedDescriptor<FileType>(this, Cache::UniqueHandle(
-        cache()->Insert(pending, file_cache_->eviction_cb_.get()),
-        Cache::HandleDeleter(cache())));
+    Cache::PendingHandle* pending =
+        CHECK_NOTNULL(cache()->Allocate(filename(), sizeof(file_ptr), 1));
+    memcpy(cache()->MutableValue(pending), &file_ptr, sizeof(file_ptr));
+    return ScopedOpenedDescriptor<FileType>(
+        this,
+        Cache::UniqueHandle(
+            cache()->Insert(pending, file_cache_->eviction_cb_.get()),
+            Cache::HandleDeleter(cache())));
   }
 
   // Retrieves a pointer to an open file object from the file cache with the
@@ -137,9 +137,11 @@ class BaseDescriptor {
   // Returns a handle to the looked up entry. The handle may or may not contain
   // an open file, depending on whether the cache hit or missed.
   ScopedOpenedDescriptor<FileType> LookupFromCache() const {
-    return ScopedOpenedDescriptor<FileType>(this, Cache::UniqueHandle(
-        cache()->Lookup(filename(), Cache::EXPECT_IN_CACHE),
-        Cache::HandleDeleter(cache())));
+    return ScopedOpenedDescriptor<FileType>(
+        this,
+        Cache::UniqueHandle(
+            cache()->Lookup(filename(), Cache::EXPECT_IN_CACHE),
+            Cache::HandleDeleter(cache())));
   }
 
   // Mark this descriptor as to-be-deleted later.
@@ -147,7 +149,8 @@ class BaseDescriptor {
     DCHECK(!deleted());
     while (true) {
       auto v = flags_.load();
-      if (flags_.compare_exchange_weak(v, v | FILE_DELETED)) return;
+      if (flags_.compare_exchange_weak(v, v | FILE_DELETED))
+        return;
     }
   }
 
@@ -157,27 +160,35 @@ class BaseDescriptor {
     DCHECK(!invalidated());
     while (true) {
       auto v = flags_.load();
-      if (flags_.compare_exchange_weak(v, v | INVALIDATED)) return;
+      if (flags_.compare_exchange_weak(v, v | INVALIDATED))
+        return;
     }
   }
 
-  Cache* cache() const { return file_cache_->cache_.get(); }
+  Cache* cache() const {
+    return file_cache_->cache_.get();
+  }
 
-  Env* env() const { return file_cache_->env_; }
+  Env* env() const {
+    return file_cache_->env_;
+  }
 
-  const string& filename() const { return file_name_; }
+  const string& filename() const {
+    return file_name_;
+  }
 
-  bool deleted() const { return flags_.load() & FILE_DELETED; }
-  bool invalidated() const { return flags_.load() & INVALIDATED; }
+  bool deleted() const {
+    return flags_.load() & FILE_DELETED;
+  }
+  bool invalidated() const {
+    return flags_.load() & INVALIDATED;
+  }
 
  private:
   FileCache<FileType>* file_cache_;
   const string file_name_;
-  enum Flags {
-    FILE_DELETED = 1 << 0,
-    INVALIDATED = 1 << 1
-  };
-  std::atomic<uint8_t> flags_ {0};
+  enum Flags { FILE_DELETED = 1 << 0, INVALIDATED = 1 << 1 };
+  std::atomic<uint8_t> flags_{0};
 
   DISALLOW_COPY_AND_ASSIGN(BaseDescriptor);
 };
@@ -191,18 +202,17 @@ class ScopedOpenedDescriptor {
  public:
   // A not-yet-but-soon-to-be opened descriptor.
   explicit ScopedOpenedDescriptor(const BaseDescriptor<FileType>* desc)
-      : desc_(desc),
-        handle_(nullptr, Cache::HandleDeleter(desc_->cache())) {
-  }
+      : desc_(desc), handle_(nullptr, Cache::HandleDeleter(desc_->cache())) {}
 
   // An opened descriptor. Its handle may or may not contain an open file.
-  ScopedOpenedDescriptor(const BaseDescriptor<FileType>* desc,
-                         Cache::UniqueHandle handle)
-      : desc_(desc),
-        handle_(std::move(handle)) {
-  }
+  ScopedOpenedDescriptor(
+      const BaseDescriptor<FileType>* desc,
+      Cache::UniqueHandle handle)
+      : desc_(desc), handle_(std::move(handle)) {}
 
-  bool opened() const { return handle_.get(); }
+  bool opened() const {
+    return handle_.get();
+  }
 
   FileType* file() const {
     DCHECK(opened());
@@ -220,8 +230,7 @@ class ScopedOpenedDescriptor {
 // This empty template is just a specification; actual descriptor classes must
 // be fully specialized.
 template <class FileType>
-class Descriptor : public FileType {
-};
+class Descriptor : public FileType {};
 
 // A descriptor adhering to the RWFile interface (i.e. when opened, provides
 // a read-write interface to the underlying file).
@@ -257,7 +266,8 @@ class Descriptor<RWFile> : public RWFile {
     return opened.file()->WriteV(offset, data);
   }
 
-  Status PreAllocate(uint64_t offset, size_t length, PreAllocateMode mode) override {
+  Status PreAllocate(uint64_t offset, size_t length, PreAllocateMode mode)
+      override {
     ScopedOpenedDescriptor<RWFile> opened(&base_);
     RETURN_NOT_OK(ReopenFileIfNecessary(&opened));
     return opened.file()->PreAllocate(offset, length, mode);
@@ -372,7 +382,7 @@ class Descriptor<RandomAccessFile> : public RandomAccessFile {
     return opened.file()->ReadV(offset, results);
   }
 
-  Status Size(uint64_t *size) const override {
+  Status Size(uint64_t* size) const override {
     ScopedOpenedDescriptor<RandomAccessFile> opened(&base_);
     RETURN_NOT_OK(ReopenFileIfNecessary(&opened));
     return opened.file()->Size(size);
@@ -400,10 +410,8 @@ class Descriptor<RandomAccessFile> : public RandomAccessFile {
     // - sizeof(std::_Sp_counted_base<>) with libstdc++ 5.4: 16 bytes.
     // - sizeof(std::__1::__shared_ptr_emplace<>) with libc++ 3.9: 16 bytes.
     // - sizeof(*this): 72 bytes.
-    return sizeof(*this) +
-        16 + // shared_ptr control block
-        once_.memory_footprint_excluding_this() +
-        base_.filename().capacity();
+    return sizeof(*this) + 16 + // shared_ptr control block
+        once_.memory_footprint_excluding_this() + base_.filename().capacity();
   }
 
  private:
@@ -451,10 +459,11 @@ class Descriptor<RandomAccessFile> : public RandomAccessFile {
 } // namespace internal
 
 template <class FileType>
-FileCache<FileType>::FileCache(const string& cache_name,
-                               Env* env,
-                               int max_open_files,
-                               const scoped_refptr<MetricEntity>& entity)
+FileCache<FileType>::FileCache(
+    const string& cache_name,
+    Env* env,
+    int max_open_files,
+    const scoped_refptr<MetricEntity>& entity)
     : env_(env),
       cache_name_(cache_name),
       eviction_cb_(new EvictionCallback<FileType>()),
@@ -463,8 +472,8 @@ FileCache<FileType>::FileCache(const string& cache_name,
   if (entity) {
     cache_->SetMetrics(entity);
   }
-  LOG(INFO) << Substitute("Constructed file cache $0 with capacity $1",
-                          cache_name, max_open_files);
+  LOG(INFO) << Substitute(
+      "Constructed file cache $0 with capacity $1", cache_name, max_open_files);
 }
 
 template <class FileType>
@@ -477,14 +486,18 @@ FileCache<FileType>::~FileCache() {
 
 template <class FileType>
 Status FileCache<FileType>::Init() {
-  return Thread::Create("cache", Substitute("$0-evict", cache_name_),
-                        &FileCache::RunDescriptorExpiry, this,
-                        &descriptor_expiry_thread_);
+  return Thread::Create(
+      "cache",
+      Substitute("$0-evict", cache_name_),
+      &FileCache::RunDescriptorExpiry,
+      this,
+      &descriptor_expiry_thread_);
 }
 
 template <class FileType>
-Status FileCache<FileType>::OpenExistingFile(const string& file_name,
-                                             shared_ptr<FileType>* file) {
+Status FileCache<FileType>::OpenExistingFile(
+    const string& file_name,
+    shared_ptr<FileType>* file) {
   shared_ptr<internal::Descriptor<FileType>> desc;
   {
     // Find an existing descriptor, or create one if none exists.
@@ -530,7 +543,8 @@ Status FileCache<FileType>::DeleteFile(const string& file_name) {
 
 template <class FileType>
 void FileCache<FileType>::Invalidate(const string& file_name) {
-  // Ensure that there is an invalidated descriptor in the map for this filename.
+  // Ensure that there is an invalidated descriptor in the map for this
+  // filename.
   //
   // This ensures that any concurrent OpenExistingFile() during this method wil
   // see the invalidation and issue a CHECK failure.
@@ -591,8 +605,8 @@ string FileCache<FileType>::ToDebugString() const {
       }
     }
     if (strong) {
-      ret += Substitute("$0 (S$1$2)\n", e.first,
-                        deleted ? "D" : "", opened ? "O" : "");
+      ret += Substitute(
+          "$0 (S$1$2)\n", e.first, deleted ? "D" : "", opened ? "O" : "");
     } else {
       ret += Substitute("$0\n", e.first);
     }
@@ -630,8 +644,8 @@ Status FileCache<FileType>::FindDescriptorUnlocked(
 
 template <class FileType>
 void FileCache<FileType>::RunDescriptorExpiry() {
-  while (!running_.WaitFor(MonoDelta::FromMilliseconds(
-      FLAGS_file_cache_expiry_period_ms))) {
+  while (!running_.WaitFor(
+      MonoDelta::FromMilliseconds(FLAGS_file_cache_expiry_period_ms))) {
     std::lock_guard<simple_spinlock> l(lock_);
     for (auto it = descriptors_.begin(); it != descriptors_.end();) {
       if (it->second.expired()) {

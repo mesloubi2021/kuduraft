@@ -15,7 +15,7 @@
 
 namespace {
 const int kMaxSyntheticDelays = 32;
-}  // namespace
+} // namespace
 
 namespace kudu {
 namespace debug {
@@ -64,7 +64,8 @@ void TraceEventSyntheticDelay::Initialize(
   clock_ = clock;
 }
 
-void TraceEventSyntheticDelay::SetTargetDuration(const MonoDelta& target_duration) {
+void TraceEventSyntheticDelay::SetTargetDuration(
+    const MonoDelta& target_duration) {
   MutexLock lock(lock_);
   target_duration_ = target_duration;
   trigger_count_ = 0;
@@ -205,13 +206,14 @@ void ResetTraceEventSyntheticDelays() {
   TraceEventSyntheticDelayRegistry::GetInstance()->ResetAllDelays();
 }
 
-}  // namespace debug
-}  // namespace kudu
+} // namespace debug
+} // namespace kudu
 
 namespace trace_event_internal {
 
-ScopedSyntheticDelay::ScopedSyntheticDelay(const char* name,
-                                           AtomicWord* impl_ptr)
+ScopedSyntheticDelay::ScopedSyntheticDelay(
+    const char* name,
+    AtomicWord* impl_ptr)
     : delay_impl_(GetOrCreateDelay(name, impl_ptr)) {
   delay_impl_->BeginParallel(&end_time_);
 }
@@ -235,4 +237,4 @@ kudu::debug::TraceEventSyntheticDelay* GetOrCreateDelay(
   return delay_impl;
 }
 
-}  // namespace trace_event_internal
+} // namespace trace_event_internal

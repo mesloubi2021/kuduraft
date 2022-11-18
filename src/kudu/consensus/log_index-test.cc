@@ -71,7 +71,6 @@ class LogIndexTest : public KuduTest {
   scoped_refptr<LogIndex> index_;
 };
 
-
 TEST_F(LogIndexTest, TestBasic) {
   // Insert three entries.
   ASSERT_OK(AddEntry(MakeOpId(1, 1), 1, 12345));
@@ -92,7 +91,8 @@ TEST_F(LogIndexTest, TestMultiSegmentWithGC) {
   ASSERT_OK(AddEntry(MakeOpId(1, 1500000), 1, 54321));
   ASSERT_OK(AddEntry(MakeOpId(1, 2500000), 1, 12345));
 
-  // GCing indexes < 1,000,000 shouldn't have any effect, because we can't remove any whole segment.
+  // GCing indexes < 1,000,000 shouldn't have any effect, because we can't
+  // remove any whole segment.
   for (int gc = 0; gc < 1000000; gc += 100000) {
     SCOPED_TRACE(gc);
     index_->GC(gc);

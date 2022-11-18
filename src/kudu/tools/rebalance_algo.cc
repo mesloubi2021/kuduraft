@@ -62,14 +62,13 @@ namespace {
 // the tablet server with id 'dst' by decrementing the count of 'src' and
 // incrementing the count of 'dst'.
 // Returns Status::NotFound if either 'src' or 'dst' is not present in 'm'.
-Status MoveOneReplica(const string& src,
-                      const string& dst,
-                      ServersByCountMap* m) {
+Status
+MoveOneReplica(const string& src, const string& dst, ServersByCountMap* m) {
   bool found_src = false;
   bool found_dst = false;
   int32_t count_src = 0;
   int32_t count_dst = 0;
-  for (auto it = m->begin(); it != m->end(); ) {
+  for (auto it = m->begin(); it != m->end();) {
     if (it->second != src && it->second != dst) {
       ++it;
       continue;
@@ -107,9 +106,10 @@ Status MoveOneReplica(const string& src,
 }
 } // anonymous namespace
 
-Status RebalancingAlgo::GetNextMoves(const ClusterBalanceInfo& cluster_info,
-                                     int max_moves_num,
-                                     vector<TableReplicaMove>* moves) {
+Status RebalancingAlgo::GetNextMoves(
+    const ClusterBalanceInfo& cluster_info,
+    int max_moves_num,
+    vector<TableReplicaMove>* moves) {
   DCHECK_LE(0, max_moves_num);
   DCHECK(moves);
 
@@ -127,7 +127,9 @@ Status RebalancingAlgo::GetNextMoves(const ClusterBalanceInfo& cluster_info,
       if (elem.first != 0) {
         return Status::InvalidArgument(Substitute(
             "non-zero table count ($0) on tablet server ($1) while no table "
-            "skew information in ClusterBalanceInfo", elem.first, elem.second));
+            "skew information in ClusterBalanceInfo",
+            elem.first,
+            elem.second));
       }
     }
     // Nothing to balance: cluster is empty. Leave 'moves' empty and return.
@@ -149,8 +151,9 @@ Status RebalancingAlgo::GetNextMoves(const ClusterBalanceInfo& cluster_info,
   return Status::OK();
 }
 
-Status RebalancingAlgo::ApplyMove(const TableReplicaMove& move,
-                                  ClusterBalanceInfo* cluster_info) {
+Status RebalancingAlgo::ApplyMove(
+    const TableReplicaMove& move,
+    ClusterBalanceInfo* cluster_info) {
   // Copy cluster_info so we can apply moves to the copy.
   ClusterBalanceInfo info(*DCHECK_NOTNULL(cluster_info));
 
@@ -163,7 +166,7 @@ Status RebalancingAlgo::ApplyMove(const TableReplicaMove& move,
   auto& table_info_by_skew = info.table_info_by_skew;
   TableBalanceInfo table_info;
   bool found_table_info = false;
-  for (auto it = table_info_by_skew.begin(); it != table_info_by_skew.end(); ) {
+  for (auto it = table_info_by_skew.begin(); it != table_info_by_skew.end();) {
     TableBalanceInfo& info = it->second;
     if (info.table_id != move.table_id) {
       ++it;
@@ -175,8 +178,8 @@ Status RebalancingAlgo::ApplyMove(const TableReplicaMove& move,
     break;
   }
   if (!found_table_info) {
-    return Status::NotFound(Substitute(
-        "missing table info for table $0", move.table_id));
+    return Status::NotFound(
+        Substitute("missing table info for table $0", move.table_id));
   }
 
   // Update the table counts.
@@ -196,10 +199,7 @@ Status RebalancingAlgo::ApplyMove(const TableReplicaMove& move,
 }
 
 TwoDimensionalGreedyAlgo::TwoDimensionalGreedyAlgo(EqualSkewOption opt)
-    : equal_skew_opt_(opt),
-      random_device_(),
-      generator_(random_device_()) {
-}
+    : equal_skew_opt_(opt), random_device_(), generator_(random_device_()) {}
 
 Status TwoDimensionalGreedyAlgo::GetNextMove(
     const ClusterBalanceInfo& cluster_info,
@@ -222,8 +222,7 @@ Status TwoDimensionalGreedyAlgo::GetNextMove(
   if (servers_by_total_replica_count.empty()) {
     return Status::InvalidArgument("no per-server replica count information");
   }
-  const auto max_server_skew =
-      servers_by_total_replica_count.rbegin()->first -
+  const auto max_server_skew = servers_by_total_replica_count.rbegin()->first -
       servers_by_total_replica_count.begin()->first;
 
   if (max_table_skew == 0) {
@@ -246,44 +245,59 @@ Status TwoDimensionalGreedyAlgo::GetNextMove(
     const TableBalanceInfo& tbi = it->second;
     const auto& servers_by_table_replica_count = tbi.servers_by_replica_count;
     if (servers_by_table_replica_count.empty()) {
-      return Status::InvalidArgument(Substitute(
-          "no information on replicas of table $0", tbi.table_id));
+      return Status::InvalidArgument(
+          Substitute("no information on replicas of table $0", tbi.table_id));
     }
 
-    const auto min_replica_count = servers_by_table_replica_count.begin()->first;
-    const auto max_replica_count = servers_by_table_replica_count.rbegin()->first;
+    const auto min_replica_count =
+        servers_by_table_replica_count.begin()->first;
+    const auto max_replica_count =
+        servers_by_table_replica_count.rbegin()->first;
     VLOG(1) << Substitute(
         "balancing table $0 with replica count skew $1 "
         "(min_replica_count: $2, max_replica_count: $3)",
-        tbi.table_id, table_info_by_skew.rbegin()->first,
-        min_replica_count, max_replica_count);
+        tbi.table_id,
+        table_info_by_skew.rbegin()->first,
+        min_replica_count,
+        max_replica_count);
 
     // Compute the intersection of the tablet servers most loaded for the table
-    // with the tablet servers most loaded overall, and likewise for least loaded.
-    // These are our ideal candidates for moving from and to, respectively.
+    // with the tablet servers most loaded overall, and likewise for least
+    // loaded. These are our ideal candidates for moving from and to,
+    // respectively.
     int32_t max_count_table;
     int32_t max_count_total;
     vector<string> max_loaded;
     vector<string> max_loaded_intersection;
     RETURN_NOT_OK(GetIntersection(
         ExtremumType::MAX,
-        servers_by_table_replica_count, servers_by_total_replica_count,
-        &max_count_table, &max_count_total,
-        &max_loaded, &max_loaded_intersection));
+        servers_by_table_replica_count,
+        servers_by_total_replica_count,
+        &max_count_table,
+        &max_count_total,
+        &max_loaded,
+        &max_loaded_intersection));
     int32_t min_count_table;
     int32_t min_count_total;
     vector<string> min_loaded;
     vector<string> min_loaded_intersection;
     RETURN_NOT_OK(GetIntersection(
         ExtremumType::MIN,
-        servers_by_table_replica_count, servers_by_total_replica_count,
-        &min_count_table, &min_count_total,
-        &min_loaded, &min_loaded_intersection));
+        servers_by_table_replica_count,
+        servers_by_total_replica_count,
+        &min_count_table,
+        &min_count_total,
+        &min_loaded,
+        &min_loaded_intersection));
 
-    VLOG(1) << Substitute("table-wise  : min_count: $0, max_count: $1",
-                          min_count_table, max_count_table);
-    VLOG(1) << Substitute("cluster-wise: min_count: $0, max_count: $1",
-                          min_count_total, max_count_total);
+    VLOG(1) << Substitute(
+        "table-wise  : min_count: $0, max_count: $1",
+        min_count_table,
+        max_count_table);
+    VLOG(1) << Substitute(
+        "cluster-wise: min_count: $0, max_count: $1",
+        min_count_total,
+        max_count_total);
     if (PREDICT_FALSE(VLOG_IS_ON(1))) {
       ostringstream s;
       s << "[ ";
@@ -311,18 +325,26 @@ Status TwoDimensionalGreedyAlgo::GetNextMove(
     }
     if (equal_skew_opt_ == EqualSkewOption::PICK_RANDOM) {
       shuffle(min_loaded.begin(), min_loaded.end(), generator_);
-      shuffle(min_loaded_intersection.begin(), min_loaded_intersection.end(),
-              generator_);
+      shuffle(
+          min_loaded_intersection.begin(),
+          min_loaded_intersection.end(),
+          generator_);
       shuffle(max_loaded.begin(), max_loaded.end(), generator_);
-      shuffle(max_loaded_intersection.begin(), max_loaded_intersection.end(),
-              generator_);
+      shuffle(
+          max_loaded_intersection.begin(),
+          max_loaded_intersection.end(),
+          generator_);
     }
     const auto& min_loaded_uuid = min_loaded_intersection.empty()
-        ? min_loaded.front() : min_loaded_intersection.front();
+        ? min_loaded.front()
+        : min_loaded_intersection.front();
     const auto& max_loaded_uuid = max_loaded_intersection.empty()
-        ? max_loaded.back() : max_loaded_intersection.back();
-    VLOG(1) << Substitute("min_loaded_uuid: $0, max_loaded_uuid: $1",
-                          min_loaded_uuid, max_loaded_uuid);
+        ? max_loaded.back()
+        : max_loaded_intersection.back();
+    VLOG(1) << Substitute(
+        "min_loaded_uuid: $0, max_loaded_uuid: $1",
+        min_loaded_uuid,
+        max_loaded_uuid);
     if (min_loaded_uuid == max_loaded_uuid) {
       // Nothing to move.
       continue;
@@ -330,7 +352,7 @@ Status TwoDimensionalGreedyAlgo::GetNextMove(
 
     // Move a replica of the selected table from a most loaded server to a
     // least loaded server.
-    *move = { tbi.table_id, max_loaded_uuid, min_loaded_uuid };
+    *move = {tbi.table_id, max_loaded_uuid, min_loaded_uuid};
     break;
   }
 
@@ -359,20 +381,26 @@ Status TwoDimensionalGreedyAlgo::GetIntersection(
 
   vector<string> server_uuids_table;
   RETURN_NOT_OK(GetMinMaxLoadedServers(
-      servers_by_table_replica_count, extremum, replica_count_table,
+      servers_by_table_replica_count,
+      extremum,
+      replica_count_table,
       &server_uuids_table));
   sort(server_uuids_table.begin(), server_uuids_table.end());
 
   vector<string> server_uuids_total;
   RETURN_NOT_OK(GetMinMaxLoadedServers(
-      servers_by_total_replica_count, extremum, replica_count_total,
+      servers_by_total_replica_count,
+      extremum,
+      replica_count_total,
       &server_uuids_total));
   sort(server_uuids_total.begin(), server_uuids_total.end());
 
   intersection->clear();
   set_intersection(
-      server_uuids_table.begin(), server_uuids_table.end(),
-      server_uuids_total.begin(), server_uuids_total.end(),
+      server_uuids_table.begin(),
+      server_uuids_table.end(),
+      server_uuids_total.begin(),
+      server_uuids_total.end(),
       back_inserter(*intersection));
   server_uuids->swap(server_uuids_table);
 
@@ -395,10 +423,11 @@ Status TwoDimensionalGreedyAlgo::GetMinMaxLoadedServers(
       ? servers_by_replica_count.begin()->first
       : servers_by_replica_count.rbegin()->first;
   const auto range = servers_by_replica_count.equal_range(count);
-  std::transform(range.first, range.second, back_inserter(*server_uuids),
-                 [](const ServersByCountMap::value_type& elem) {
-                   return elem.second;
-                 });
+  std::transform(
+      range.first,
+      range.second,
+      back_inserter(*server_uuids),
+      [](const ServersByCountMap::value_type& elem) { return elem.second; });
   *replica_count = count;
 
   return Status::OK();

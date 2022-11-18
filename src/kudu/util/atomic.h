@@ -18,7 +18,7 @@
 #ifndef KUDU_UTIL_ATOMIC_H
 #define KUDU_UTIL_ATOMIC_H
 
-#include <algorithm>  // IWYU pragma: keep
+#include <algorithm> // IWYU pragma: keep
 #include <cstdint>
 #include <cstdlib>
 #include <type_traits>
@@ -59,7 +59,7 @@ enum MemoryOrder {
 // as always).
 //
 // See also: kudu/gutil/atomicops.h
-template<typename T>
+template <typename T>
 class AtomicInt {
  public:
   // Initialize the underlying value to 'initial_value'. The
@@ -81,7 +81,10 @@ class AtomicInt {
   // otherwise.
   //
   // Does not support 'kMemOrderBarrier'.
-  bool CompareAndSet(T expected_val, T new_value, MemoryOrder mem_order = kMemOrderNoBarrier);
+  bool CompareAndSet(
+      T expected_val,
+      T new_value,
+      MemoryOrder mem_order = kMemOrderNoBarrier);
 
   // Iff the underlying value is equal to 'expected_val', sets the
   // underlying value to 'new_value' and returns
@@ -89,7 +92,10 @@ class AtomicInt {
   // value.
   //
   // Does not support 'kMemOrderBarrier'.
-  T CompareAndSwap(T expected_val, T new_value, MemoryOrder mem_order = kMemOrderNoBarrier);
+  T CompareAndSwap(
+      T expected_val,
+      T new_value,
+      MemoryOrder mem_order = kMemOrderNoBarrier);
 
   // Sets the underlying value to 'new_value' iff 'new_value' is
   // greater than the current underlying value.
@@ -126,10 +132,11 @@ class AtomicInt {
   // 'requested', exit by doing perform LOG(FATAL) logging the method
   // called, the requested memory order, and the supported memory
   // orders.
-  static void FatalMemOrderNotSupported(const char* caller,
-                                        const char* requested = "kMemOrderBarrier",
-                                        const char* supported =
-                                        "kMemNorderNoBarrier, kMemOrderAcquire, kMemOrderRelease");
+  static void FatalMemOrderNotSupported(
+      const char* caller,
+      const char* requested = "kMemOrderBarrier",
+      const char* supported =
+          "kMemNorderNoBarrier, kMemOrderAcquire, kMemOrderRelease");
 
   // The gutil/atomicops.h functions only operate on signed types.
   // So, even if the user specializes on an unsigned type, we use a
@@ -157,21 +164,24 @@ class AtomicBool {
     underlying_.Store(static_cast<int32_t>(n), m);
   }
   bool CompareAndSet(bool e, bool n, MemoryOrder m = kMemOrderNoBarrier) {
-    return underlying_.CompareAndSet(static_cast<int32_t>(e), static_cast<int32_t>(n), m);
+    return underlying_.CompareAndSet(
+        static_cast<int32_t>(e), static_cast<int32_t>(n), m);
   }
   bool CompareAndSwap(bool e, bool n, MemoryOrder m = kMemOrderNoBarrier) {
-    return underlying_.CompareAndSwap(static_cast<int32_t>(e), static_cast<int32_t>(n), m);
+    return underlying_.CompareAndSwap(
+        static_cast<int32_t>(e), static_cast<int32_t>(n), m);
   }
   bool Exchange(bool n, MemoryOrder m = kMemOrderNoBarrier) {
     return underlying_.Exchange(static_cast<int32_t>(n), m);
   }
+
  private:
   AtomicInt<int32_t> underlying_;
 
   DISALLOW_COPY_AND_ASSIGN(AtomicBool);
 };
 
-template<typename T>
+template <typename T>
 inline T AtomicInt<T>::Load(MemoryOrder mem_order) const {
   switch (mem_order) {
     case kMemOrderNoBarrier: {
@@ -191,7 +201,7 @@ inline T AtomicInt<T>::Load(MemoryOrder mem_order) const {
   abort(); // Unnecessary, but avoids gcc complaining.
 }
 
-template<typename T>
+template <typename T>
 inline void AtomicInt<T>::Store(T new_value, MemoryOrder mem_order) {
   switch (mem_order) {
     case kMemOrderNoBarrier: {
@@ -213,13 +223,15 @@ inline void AtomicInt<T>::Store(T new_value, MemoryOrder mem_order) {
   }
 }
 
-template<typename T>
-inline bool AtomicInt<T>::CompareAndSet(T expected_val, T new_val, MemoryOrder mem_order) {
+template <typename T>
+inline bool
+AtomicInt<T>::CompareAndSet(T expected_val, T new_val, MemoryOrder mem_order) {
   return CompareAndSwap(expected_val, new_val, mem_order) == expected_val;
 }
 
-template<typename T>
-inline T AtomicInt<T>::CompareAndSwap(T expected_val, T new_val, MemoryOrder mem_order) {
+template <typename T>
+inline T
+AtomicInt<T>::CompareAndSwap(T expected_val, T new_val, MemoryOrder mem_order) {
   switch (mem_order) {
     case kMemOrderNoBarrier: {
       return base::subtle::NoBarrier_CompareAndSwap(
@@ -241,13 +253,12 @@ inline T AtomicInt<T>::CompareAndSwap(T expected_val, T new_val, MemoryOrder mem
   abort();
 }
 
-
-template<typename T>
+template <typename T>
 inline T AtomicInt<T>::Increment(MemoryOrder mem_order) {
   return IncrementBy(1, mem_order);
 }
 
-template<typename T>
+template <typename T>
 inline T AtomicInt<T>::IncrementBy(T delta, MemoryOrder mem_order) {
   switch (mem_order) {
     case kMemOrderNoBarrier: {
@@ -257,22 +268,24 @@ inline T AtomicInt<T>::IncrementBy(T delta, MemoryOrder mem_order) {
       return base::subtle::Barrier_AtomicIncrement(&value_, delta);
     }
     case kMemOrderAcquire: {
-      FatalMemOrderNotSupported("Increment/IncrementBy",
-                                "kMemOrderAcquire",
-                                "kMemOrderNoBarrier and kMemOrderBarrier");
+      FatalMemOrderNotSupported(
+          "Increment/IncrementBy",
+          "kMemOrderAcquire",
+          "kMemOrderNoBarrier and kMemOrderBarrier");
       break;
     }
     case kMemOrderRelease: {
-      FatalMemOrderNotSupported("Increment/Incrementby",
-                                "kMemOrderAcquire",
-                                "kMemOrderNoBarrier and kMemOrderBarrier");
+      FatalMemOrderNotSupported(
+          "Increment/Incrementby",
+          "kMemOrderAcquire",
+          "kMemOrderNoBarrier and kMemOrderBarrier");
       break;
     }
   }
   abort();
 }
 
-template<typename T>
+template <typename T>
 inline T AtomicInt<T>::Exchange(T new_value, MemoryOrder mem_order) {
   switch (mem_order) {
     case kMemOrderNoBarrier: {
@@ -292,7 +305,7 @@ inline T AtomicInt<T>::Exchange(T new_value, MemoryOrder mem_order) {
   abort();
 }
 
-template<typename T>
+template <typename T>
 inline void AtomicInt<T>::StoreMax(T new_value, MemoryOrder mem_order) {
   T old_value = Load(mem_order);
   while (true) {
@@ -305,7 +318,7 @@ inline void AtomicInt<T>::StoreMax(T new_value, MemoryOrder mem_order) {
   }
 }
 
-template<typename T>
+template <typename T>
 inline void AtomicInt<T>::StoreMin(T new_value, MemoryOrder mem_order) {
   T old_value = Load(mem_order);
   while (true) {

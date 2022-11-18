@@ -59,21 +59,26 @@ const uint32_t kSaslHeaderSize = sizeof(uint8_t) + sizeof(uint32_t);
 const uint32_t kFrameHeaderSize = sizeof(uint32_t);
 
 // SASL SASL_CB_GETOPT callback function.
-int GetoptCb(SaslClientTransport* client_transport,
-             const char* plugin_name,
-             const char* option,
-             const char** result,
-             unsigned* len) {
+int GetoptCb(
+    SaslClientTransport* client_transport,
+    const char* plugin_name,
+    const char* option,
+    const char** result,
+    unsigned* len) {
   return client_transport->GetOptionCb(plugin_name, option, result, len);
 }
 
 // SASL SASL_CB_CANON_USER callback function.
-int CanonUserCb(sasl_conn_t* /*conn*/,
-                void* /*context*/,
-                const char* in, unsigned inlen,
-                unsigned /*flags*/,
-                const char* /*user_realm*/,
-                char* out, unsigned out_max, unsigned* out_len) {
+int CanonUserCb(
+    sasl_conn_t* /*conn*/,
+    void* /*context*/,
+    const char* in,
+    unsigned inlen,
+    unsigned /*flags*/,
+    const char* /*user_realm*/,
+    char* out,
+    unsigned out_max,
+    unsigned* out_len) {
   CHECK_LE(inlen, out_max);
   memcpy(out, in, inlen);
   *out_len = inlen;
@@ -87,25 +92,33 @@ int UserCb(void* /*context*/, int id, const char** result, unsigned* len) {
   // Setting the username to the empty string causes the remote end to use the
   // clients Kerberos principal, which is correct.
   *result = "";
-  if (len != nullptr) *len = 0;
+  if (len != nullptr)
+    *len = 0;
   return SASL_OK;
 }
 } // anonymous namespace
 
-SaslClientTransport::SaslClientTransport(string service_principal,
-                                         const string& server_fqdn,
-                                         shared_ptr<TTransport> transport,
-                                         size_t max_recv_buf_size)
+SaslClientTransport::SaslClientTransport(
+    string service_principal,
+    const string& server_fqdn,
+    shared_ptr<TTransport> transport,
+    size_t max_recv_buf_size)
     : transport_(std::move(transport)),
       sasl_helper_(rpc::SaslHelper::CLIENT),
-      sasl_callbacks_({
-          rpc::SaslBuildCallback(SASL_CB_GETOPT, reinterpret_cast<int (*)()>(&GetoptCb), this),
-          rpc::SaslBuildCallback(SASL_CB_CANON_USER,
-                                 reinterpret_cast<int (*)()>(&CanonUserCb),
-                                 this),
-          rpc::SaslBuildCallback(SASL_CB_USER, reinterpret_cast<int (*)()>(&UserCb), nullptr),
-          rpc::SaslBuildCallback(SASL_CB_LIST_END, nullptr, nullptr)
-      }),
+      sasl_callbacks_(
+          {rpc::SaslBuildCallback(
+               SASL_CB_GETOPT,
+               reinterpret_cast<int (*)()>(&GetoptCb),
+               this),
+           rpc::SaslBuildCallback(
+               SASL_CB_CANON_USER,
+               reinterpret_cast<int (*)()>(&CanonUserCb),
+               this),
+           rpc::SaslBuildCallback(
+               SASL_CB_USER,
+               reinterpret_cast<int (*)()>(&UserCb),
+               nullptr),
+           rpc::SaslBuildCallback(SASL_CB_LIST_END, nullptr, nullptr)}),
       needs_wrap_(false),
       max_recv_buf_size_(max_recv_buf_size),
       // Set a reasonable max send buffer size for negotiation. Once negotiation
@@ -150,12 +163,14 @@ void SaslClientTransport::ReadFrame() {
   size_t payload_len = NetworkByteOrder::Load32(payload_len_buf);
 
   if (payload_len > 1024 * 1024) {
-    KLOG_EVERY_N_SECS(WARNING, 60) << "Received large Thrift SASL frame: "
-                                   << HumanReadableNumBytes::ToString(payload_len);
+    KLOG_EVERY_N_SECS(WARNING, 60)
+        << "Received large Thrift SASL frame: "
+        << HumanReadableNumBytes::ToString(payload_len);
     if (payload_len > max_recv_buf_size_) {
-      throw TTransportException(Substitute("Thrift SASL frame is too long: $0/$1",
-                                           HumanReadableNumBytes::ToString(payload_len),
-                                           HumanReadableNumBytes::ToString(max_recv_buf_size_)));
+      throw TTransportException(Substitute(
+          "Thrift SASL frame is too long: $0/$1",
+          HumanReadableNumBytes::ToString(payload_len),
+          HumanReadableNumBytes::ToString(max_recv_buf_size_)));
     }
   }
 
@@ -194,7 +209,8 @@ uint32_t SaslClientTransport::read(uint8_t* buf, uint32_t len) {
 }
 
 void SaslClientTransport::write(const uint8_t* buf, uint32_t len) {
-  // Check that we've already preallocated space in the buffer for the frame-header.
+  // Check that we've already preallocated space in the buffer for the
+  // frame-header.
   DCHECK(write_buf_.size() >= kFrameHeaderSize);
 
   // Check if the amount to write would overflow a frame.
@@ -243,20 +259,21 @@ void SaslClientTransport::Negotiate() {
     NegotiationStatus status = ReceiveSaslMessage(&recv_buf);
 
     if (status == TSASL_COMPLETE) {
-        throw SaslException(
-            Status::IllegalState("Received SASL COMPLETE status, but handshake is not finished"));
+      throw SaslException(Status::IllegalState(
+          "Received SASL COMPLETE status, but handshake is not finished"));
     }
     CHECK_EQ(status, TSASL_OK);
 
     const char* out;
     unsigned out_len;
     Status s = WrapSaslCall(sasl_conn_.get(), [&] {
-        return sasl_client_step(sasl_conn_.get(),
-                                reinterpret_cast<const char*>(recv_buf.data()),
-                                recv_buf.size(),
-                                nullptr,
-                                &out,
-                                &out_len);
+      return sasl_client_step(
+          sasl_conn_.get(),
+          reinterpret_cast<const char*>(recv_buf.data()),
+          recv_buf.size(),
+          nullptr,
+          &out,
+          &out_len);
     });
 
     if (PREDICT_FALSE(!s.IsIncomplete() && !s.ok())) {
@@ -273,8 +290,8 @@ void SaslClientTransport::Negotiate() {
 
   NegotiationStatus status = ReceiveSaslMessage(&recv_buf);
   if (status != TSASL_COMPLETE) {
-    throw SaslException(
-        Status::IllegalState("Received SASL OK status, but expected SASL COMPLETE"));
+    throw SaslException(Status::IllegalState(
+        "Received SASL OK status, but expected SASL COMPLETE"));
   }
   DCHECK_EQ(0, recv_buf.size());
 
@@ -288,7 +305,9 @@ void SaslClientTransport::Negotiate() {
           << HumanReadableNumBytes::ToStringWithoutRounding(max_recv_buf_size_);
 }
 
-void SaslClientTransport::SendSaslMessage(NegotiationStatus status, Slice payload) {
+void SaslClientTransport::SendSaslMessage(
+    NegotiationStatus status,
+    Slice payload) {
   uint8_t header[kSaslHeaderSize];
   header[0] = status;
   DCHECK_LT(payload.size(), std::numeric_limits<int32_t>::max());
@@ -308,23 +327,24 @@ NegotiationStatus SaslClientTransport::ReceiveSaslMessage(faststring* payload) {
   // Handle status errors.
   switch (header[0]) {
     case TSASL_OK:
-    case TSASL_COMPLETE: break;
+    case TSASL_COMPLETE:
+      break;
     case TSASL_BAD:
     case TSASL_ERROR:
       throw SaslException(Status::RuntimeError("SASL peer indicated failure"));
     // The Thrift client should never receive TSASL_START.
     case TSASL_START:
     default:
-      throw SaslException(Status::RuntimeError("Unexpected SASL status",
-                                               std::to_string(header[0])));
+      throw SaslException(Status::RuntimeError(
+          "Unexpected SASL status", std::to_string(header[0])));
   }
 
   // Read the message payload.
   if (len > max_recv_buf_size_) {
     throw SaslException(Status::RuntimeError(Substitute(
-            "SASL negotiation message payload exceeds maximum length: $0/$1",
-            HumanReadableNumBytes::ToString(len),
-            HumanReadableNumBytes::ToString(max_recv_buf_size_))));
+        "SASL negotiation message payload exceeds maximum length: $0/$1",
+        HumanReadableNumBytes::ToString(len),
+        HumanReadableNumBytes::ToString(max_recv_buf_size_))));
   }
   payload->resize(len);
   transport_->readAll(payload->data(), len);
@@ -338,13 +358,14 @@ void SaslClientTransport::SendSaslStart() {
   const char* negotiated_mech = nullptr;
 
   Status s = WrapSaslCall(sasl_conn_.get(), [&] {
-      return sasl_client_start(
-          sasl_conn_.get(),            // The SASL connection context created by sasl_client_new()
-          SaslMechanism::name_of(SaslMechanism::GSSAPI), // The mechanism to use.
-          nullptr,                                       // Disables INTERACT return if NULL.
-          &init_msg,                                     // Filled in on success.
-          &init_msg_len,                                 // Filled in on success.
-          &negotiated_mech);                             // Filled in on success.
+    return sasl_client_start(
+        sasl_conn_
+            .get(), // The SASL connection context created by sasl_client_new()
+        SaslMechanism::name_of(SaslMechanism::GSSAPI), // The mechanism to use.
+        nullptr, // Disables INTERACT return if NULL.
+        &init_msg, // Filled in on success.
+        &init_msg_len, // Filled in on success.
+        &negotiated_mech); // Filled in on success.
   });
 
   if (PREDICT_FALSE(!s.IsIncomplete() && !s.ok())) {
@@ -353,9 +374,10 @@ void SaslClientTransport::SendSaslStart() {
 
   // Check that the SASL library is using the mechanism that we picked.
   DCHECK_EQ(SaslMechanism::value_of(negotiated_mech), SaslMechanism::GSSAPI);
-  s = rpc::EnableProtection(sasl_conn_.get(),
-                            rpc::SaslProtection::kAuthentication,
-                            max_recv_buf_size_);
+  s = rpc::EnableProtection(
+      sasl_conn_.get(),
+      rpc::SaslProtection::kAuthentication,
+      max_recv_buf_size_);
   if (!s.ok()) {
     throw SaslException(s);
   }
@@ -366,23 +388,28 @@ void SaslClientTransport::SendSaslStart() {
   transport_->flush();
 }
 
-int SaslClientTransport::GetOptionCb(const char* plugin_name, const char* option,
-                                     const char** result, unsigned* len) {
+int SaslClientTransport::GetOptionCb(
+    const char* plugin_name,
+    const char* option,
+    const char** result,
+    unsigned* len) {
   return sasl_helper_.GetOptionCb(plugin_name, option, result, len);
 }
 
 void SaslClientTransport::SetupSaslContext() {
   sasl_conn_t* sasl_conn = nullptr;
   Status s = WrapSaslCall(nullptr /* no conn */, [&] {
-      return sasl_client_new(
-          service_principal_.c_str(),   // Registered name of the service using SASL. Required.
-          sasl_helper_.server_fqdn(),   // The fully qualified domain name of the remote server.
-          nullptr,                      // Local and remote IP address strings. (we don't use
-          nullptr,                      // any mechanisms which require this info.)
-          sasl_callbacks_.data(),       // Connection-specific callbacks.
-          0,                            // flags
-          &sasl_conn);
-      });
+    return sasl_client_new(
+        service_principal_
+            .c_str(), // Registered name of the service using SASL. Required.
+        sasl_helper_.server_fqdn(), // The fully qualified domain name of the
+                                    // remote server.
+        nullptr, // Local and remote IP address strings. (we don't use
+        nullptr, // any mechanisms which require this info.)
+        sasl_callbacks_.data(), // Connection-specific callbacks.
+        0, // flags
+        &sasl_conn);
+  });
   if (!s.ok()) {
     throw SaslException(s);
   }

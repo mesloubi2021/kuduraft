@@ -40,7 +40,6 @@ using kudu::consensus::RaftConsensus;
 
 using std::unique_ptr;
 
-
 namespace kudu {
 
 class SecurityMasterAuthTest : public KuduTest {
@@ -79,7 +78,8 @@ TEST_F(SecurityMasterAuthTest, FollowerCertificates) {
     ASSERT_TRUE(tls.has_cert());
   }
 
-  auto consensus = cluster_->mini_master(0)->master()->catalog_manager()->master_consensus();
+  auto consensus =
+      cluster_->mini_master(0)->master()->catalog_manager()->master_consensus();
   ASSERT_OK(consensus->StartElection(
       RaftConsensus::ELECT_EVEN_IF_LEADER_IS_ALIVE,
       RaftConsensus::EXTERNAL_REQUEST));
@@ -99,7 +99,8 @@ TEST_F(SecurityMasterAuthTest, FollowerCertificates) {
 // the rest have always been followers. This is a test to cover regressions of
 // KUDU-2319, if any.
 TEST_F(SecurityMasterAuthTest, FollowerTokenVerificationKeys) {
-  auto consensus = cluster_->mini_master(0)->master()->catalog_manager()->master_consensus();
+  auto consensus =
+      cluster_->mini_master(0)->master()->catalog_manager()->master_consensus();
   ASSERT_OK(consensus->StartElection(
       RaftConsensus::ELECT_EVEN_IF_LEADER_IS_ALIVE,
       RaftConsensus::EXTERNAL_REQUEST));
@@ -107,8 +108,8 @@ TEST_F(SecurityMasterAuthTest, FollowerTokenVerificationKeys) {
   // After some time, all masters should have keys for token verification.
   ASSERT_EVENTUALLY([&] {
     for (auto i = 0; i < cluster_->num_masters(); ++i) {
-      const auto& verifier = cluster_->mini_master(i)->master()->messenger()->
-          token_verifier();
+      const auto& verifier =
+          cluster_->mini_master(i)->master()->messenger()->token_verifier();
       ASSERT_LE(0, verifier.GetMaxKnownKeySequenceNumber());
     }
   });

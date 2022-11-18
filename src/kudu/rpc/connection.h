@@ -37,9 +37,9 @@
 #include "kudu/gutil/ref_counted.h"
 #include "kudu/rpc/connection_direction.h"
 #include "kudu/rpc/connection_id.h"
+#include "kudu/rpc/remote_user.h"
 #include "kudu/rpc/rpc_controller.h"
 #include "kudu/rpc/rpc_header.pb.h"
-#include "kudu/rpc/remote_user.h"
 #include "kudu/rpc/transfer.h"
 #include "kudu/util/monotime.h"
 #include "kudu/util/net/sockaddr.h"
@@ -70,11 +70,11 @@ enum class CredentialsPolicy;
 //
 // Once a Connection is created, it can be used both for sending messages and
 // receiving them, but any given connection is explicitly a client or server.
-// If a pair of servers are making bidirectional RPCs, they will use two separate
-// TCP connections (and Connection objects).
+// If a pair of servers are making bidirectional RPCs, they will use two
+// separate TCP connections (and Connection objects).
 //
-// This class is not fully thread-safe.  It is accessed only from the context of a
-// single ReactorThread except where otherwise specified.
+// This class is not fully thread-safe.  It is accessed only from the context of
+// a single ReactorThread except where otherwise specified.
 //
 class Connection : public RefCountedThreadSafe<Connection> {
  public:
@@ -83,11 +83,12 @@ class Connection : public RefCountedThreadSafe<Connection> {
   // remote: the address of the remote end
   // socket: the socket to take ownership of.
   // direction: whether we are the client or server side
-  Connection(ReactorThread *reactor_thread,
-             Sockaddr remote,
-             std::unique_ptr<Socket> socket,
-             ConnectionDirection direction,
-             CredentialsPolicy policy = CredentialsPolicy::ANY_CREDENTIALS);
+  Connection(
+      ReactorThread* reactor_thread,
+      Sockaddr remote,
+      std::unique_ptr<Socket> socket,
+      ConnectionDirection direction,
+      CredentialsPolicy policy = CredentialsPolicy::ANY_CREDENTIALS);
 
   // Set underlying socket to non-blocking (or blocking) mode.
   Status SetNonBlocking(bool enabled);
@@ -109,13 +110,15 @@ class Connection : public RefCountedThreadSafe<Connection> {
   // Fail any calls which are currently queued or awaiting response.
   // Prohibits any future calls (they will be failed immediately with this
   // same Status).
-  void Shutdown(const Status& status,
-                std::unique_ptr<ErrorStatusPB> rpc_error = {});
+  void Shutdown(
+      const Status& status,
+      std::unique_ptr<ErrorStatusPB> rpc_error = {});
 
   // Queue a new call to be made. If the queueing fails, the call will be
   // marked failed. The caller is expected to check if 'call' has been cancelled
   // before making the call.
-  // Takes ownership of the 'call' object regardless of whether it succeeds or fails.
+  // Takes ownership of the 'call' object regardless of whether it succeeds or
+  // fails.
   void QueueOutboundCall(std::shared_ptr<OutboundCall> call);
 
   // Queue a call response back to the client on the server side.
@@ -123,12 +126,14 @@ class Connection : public RefCountedThreadSafe<Connection> {
   // This may be called from a non-reactor thread.
   void QueueResponseForCall(gscoped_ptr<InboundCall> call);
 
-  // Cancel an outbound call by removing any reference to it by CallAwaitingResponse
-  // in 'awaiting_responses_'.
-  void CancelOutboundCall(const std::shared_ptr<OutboundCall> &call);
+  // Cancel an outbound call by removing any reference to it by
+  // CallAwaitingResponse in 'awaiting_responses_'.
+  void CancelOutboundCall(const std::shared_ptr<OutboundCall>& call);
 
   // The address of the remote end of the connection.
-  const Sockaddr &remote() const { return remote_; }
+  const Sockaddr& remote() const {
+    return remote_;
+  }
 
   // Set the user credentials for an outbound connection.
   void set_outbound_connection_id(ConnectionId conn_id) {
@@ -152,7 +157,9 @@ class Connection : public RefCountedThreadSafe<Connection> {
   void set_confidential(bool is_confidential);
 
   // Credentials policy to start connection negotiation.
-  CredentialsPolicy credentials_policy() const { return credentials_policy_; }
+  CredentialsPolicy credentials_policy() const {
+    return credentials_policy_;
+  }
 
   // Whether the connection satisfies the specified credentials policy.
   //
@@ -168,10 +175,10 @@ class Connection : public RefCountedThreadSafe<Connection> {
   RpczStore* rpcz_store();
 
   // libev callback when data is available to read.
-  void ReadHandler(ev::io &watcher, int revents);
+  void ReadHandler(ev::io& watcher, int revents);
 
   // libev callback when we may write to the socket.
-  void WriteHandler(ev::io &watcher, int revents);
+  void WriteHandler(ev::io& watcher, int revents);
 
   enum ProcessOutboundTransfersResult {
     // All of the transfers in the queue have been sent successfully.
@@ -196,21 +203,29 @@ class Connection : public RefCountedThreadSafe<Connection> {
   // Safe to be called from other threads.
   std::string ToString() const;
 
-  ConnectionDirection direction() const { return direction_; }
+  ConnectionDirection direction() const {
+    return direction_;
+  }
 
-  Socket* socket() { return socket_.get(); }
+  Socket* socket() {
+    return socket_.get();
+  }
 
-  // Go through the process of transferring control of the underlying socket back to the Reactor.
-  void CompleteNegotiation(Status negotiation_status,
-                           std::unique_ptr<ErrorStatusPB> rpc_error);
+  // Go through the process of transferring control of the underlying socket
+  // back to the Reactor.
+  void CompleteNegotiation(
+      Status negotiation_status,
+      std::unique_ptr<ErrorStatusPB> rpc_error);
 
-  // Indicate that negotiation is complete and that the Reactor is now in control of the socket.
+  // Indicate that negotiation is complete and that the Reactor is now in
+  // control of the socket.
   void MarkNegotiationComplete();
 
-  Status DumpPB(const DumpRunningRpcsRequestPB& req,
-                RpcConnectionPB* resp);
+  Status DumpPB(const DumpRunningRpcsRequestPB& req, RpcConnectionPB* resp);
 
-  ReactorThread* reactor_thread() const { return reactor_thread_; }
+  ReactorThread* reactor_thread() const {
+    return reactor_thread_;
+  }
 
   std::unique_ptr<Socket> release_socket() {
     return std::move(socket_);
@@ -263,23 +278,24 @@ class Connection : public RefCountedThreadSafe<Connection> {
     ~CallAwaitingResponse();
 
     // Notification from libev that the call has timed out.
-    void HandleTimeout(ev::timer &watcher, int revents);
+    void HandleTimeout(ev::timer& watcher, int revents);
 
-    Connection *conn;
+    Connection* conn;
     std::shared_ptr<OutboundCall> call;
     ev::timer timeout_timer;
 
     // We time out RPC calls in two stages. This is set to the amount of timeout
-    // remaining after the next timeout fires. See Connection::QueueOutboundCall().
+    // remaining after the next timeout fires. See
+    // Connection::QueueOutboundCall().
     double remaining_timeout;
   };
 
   typedef std::unordered_map<uint64_t, CallAwaitingResponse*> car_map_t;
   typedef std::unordered_map<uint64_t, InboundCall*> inbound_call_map_t;
 
-  // Returns the next valid (positive) sequential call ID by incrementing a counter
-  // and ensuring we roll over from INT32_MAX to 0.
-  // Negative numbers are reserved for special purposes.
+  // Returns the next valid (positive) sequential call ID by incrementing a
+  // counter and ensuring we roll over from INT32_MAX to 0. Negative numbers are
+  // reserved for special purposes.
   int32_t GetNextCallId() {
     int32_t call_id = next_call_id_;
     if (PREDICT_FALSE(next_call_id_ == std::numeric_limits<int32_t>::max())) {
@@ -301,7 +317,7 @@ class Connection : public RefCountedThreadSafe<Connection> {
 
   // The given CallAwaitingResponse has elapsed its user-defined timeout.
   // Set it to Failed.
-  void HandleOutboundCallTimeout(CallAwaitingResponse *car);
+  void HandleOutboundCallTimeout(CallAwaitingResponse* car);
 
   // Queue a transfer for sending on this connection.
   // We will take ownership of the transfer.
@@ -310,7 +326,7 @@ class Connection : public RefCountedThreadSafe<Connection> {
 
   // Internal test function for injecting cancellation request when 'call'
   // reaches state specified in 'FLAGS_rpc_inject_cancellation_state'.
-  void MaybeInjectCancellation(const std::shared_ptr<OutboundCall> &call);
+  void MaybeInjectCancellation(const std::shared_ptr<OutboundCall>& call);
 
   // The reactor thread that created this connection.
   ReactorThread* const reactor_thread_;
@@ -325,7 +341,8 @@ class Connection : public RefCountedThreadSafe<Connection> {
   // within this reactor. Only set in the case of outbound connections.
   boost::optional<ConnectionId> outbound_connection_id_;
 
-  // The authenticated remote user (if this is an inbound connection on the server).
+  // The authenticated remote user (if this is an inbound connection on the
+  // server).
   RemoteUser remote_user_;
 
   // whether we are client or server

@@ -28,10 +28,9 @@
 
 namespace kudu {
 
-template<size_t N>
-static void TestRoundTrip(InlineSlice<N> *slice,
-                          Arena *arena,
-                          size_t test_size) {
+template <size_t N>
+static void
+TestRoundTrip(InlineSlice<N>* slice, Arena* arena, size_t test_size) {
   gscoped_ptr<uint8_t[]> buf(new uint8_t[test_size]);
   for (int i = 0; i < test_size; i++) {
     buf[i] = i & 0xff;
@@ -42,22 +41,21 @@ static void TestRoundTrip(InlineSlice<N> *slice,
   slice->set(test_input, arena);
   Slice ret = slice->as_slice();
   ASSERT_TRUE(ret == test_input)
-    << "test_size  =" << test_size << "\n"
-    << "ret        = " << ret.ToDebugString() << "\n"
-    << "test_input = " << test_input.ToDebugString();
+      << "test_size  =" << test_size << "\n"
+      << "ret        = " << ret.ToDebugString() << "\n"
+      << "test_input = " << test_input.ToDebugString();
 
   // If the data is small enough to fit inline, then
   // the returned slice should point directly into the
   // InlineSlice object.
   if (test_size < N) {
-    ASSERT_EQ(reinterpret_cast<const uint8_t *>(slice) + 1,
-              ret.data());
+    ASSERT_EQ(reinterpret_cast<const uint8_t*>(slice) + 1, ret.data());
   }
 }
 
 // Sweep a variety of inputs for a given size of inline
 // data
-template<size_t N>
+template <size_t N>
 static void DoTest() {
   Arena arena(1024);
 

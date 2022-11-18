@@ -37,7 +37,7 @@ class Status;
 namespace consensus {
 
 class ConsensusMetadataManager; // IWYU pragma: keep
-class ConsensusMetadataTest;    // IWYU pragma: keep
+class ConsensusMetadataTest; // IWYU pragma: keep
 
 enum class ConsensusMetadataCreateMode {
   FLUSH_ON_CREATE,
@@ -51,30 +51,26 @@ enum class ConsensusMetadataCreateMode {
 // transient state. This includes the peer that this node considers to be the
 // leader of the configuration, as well as the "pending" configuration, if any.
 //
-// Conceptually, a pending configuration is one that has been proposed via a config
-// change operation (AddServer or RemoveServer from Chapter 4 of Diego Ongaro's
-// Raft thesis) but has not yet been committed. According to the above spec,
-// as soon as a server hears of a new cluster membership configuration, it must
-// be adopted (even prior to be committed).
+// Conceptually, a pending configuration is one that has been proposed via a
+// config change operation (AddServer or RemoveServer from Chapter 4 of Diego
+// Ongaro's Raft thesis) but has not yet been committed. According to the above
+// spec, as soon as a server hears of a new cluster membership configuration, it
+// must be adopted (even prior to be committed).
 //
-// The data structure difference between a committed configuration and a pending one
-// is that opid_index (the index in the log of the committed config change
-// operation) is always set in a committed configuration, while it is always unset in
-// a pending configuration.
+// The data structure difference between a committed configuration and a pending
+// one is that opid_index (the index in the log of the committed config change
+// operation) is always set in a committed configuration, while it is always
+// unset in a pending configuration.
 //
-// Finally, this class exposes the concept of an "active" configuration, which means
-// the pending configuration if a pending configuration is set, otherwise the committed
-// configuration.
+// Finally, this class exposes the concept of an "active" configuration, which
+// means the pending configuration if a pending configuration is set, otherwise
+// the committed configuration.
 //
 // This class is not thread-safe and requires external synchronization.
 class ConsensusMetadata : public RefCountedThreadSafe<ConsensusMetadata> {
  public:
-
   // Specify whether we are allowed to overwrite an existing file when flushing.
-  enum FlushMode {
-    OVERWRITE,
-    NO_OVERWRITE
-  };
+  enum FlushMode { OVERWRITE, NO_OVERWRITE };
 
   // Accessors for current term.
   int64_t current_term() const;
@@ -96,10 +92,12 @@ class ConsensusMetadata : public RefCountedThreadSafe<ConsensusMetadata> {
 
   // Check that the member is in config and if it is part of the config,
   // retrieve some key information about the member
-  bool IsMemberInConfigWithDetail(const std::string& uuid,
+  bool IsMemberInConfigWithDetail(
+      const std::string& uuid,
       RaftConfigState type,
-      std::string *hostname_port,
-      bool *is_voter, std::string *region);
+      std::string* hostname_port,
+      bool* is_voter,
+      std::string* region);
 
   // Returns a count of the number of voters in the specified local Raft
   // config.
@@ -113,10 +111,10 @@ class ConsensusMetadata : public RefCountedThreadSafe<ConsensusMetadata> {
   void set_committed_config(const RaftConfigPB& config);
 
   // Same as above but dont update active role
-  void set_committed_config_raw(const RaftConfigPB &config);
+  void set_committed_config_raw(const RaftConfigPB& config);
 
   // Getter for Voter Distribution map
-  Status voter_distribution(std::map<std::string, int32> *vd) const;
+  Status voter_distribution(std::map<std::string, int32>* vd) const;
 
   // Returns whether a pending configuration is set.
   bool has_pending_config() const;
@@ -155,13 +153,13 @@ class ConsensusMetadata : public RefCountedThreadSafe<ConsensusMetadata> {
   // Returns the currently active role of the current node.
   RaftPeerPB::Role active_role() const;
 
-  Status GetConfigMemberCopy(const std::string& uuid, RaftPeerPB *member);
+  Status GetConfigMemberCopy(const std::string& uuid, RaftPeerPB* member);
 
   // Copy the stored state into a ConsensusStatePB object.
   // To get the active configuration, specify 'type' = ACTIVE.
   // Otherwise, 'type' = COMMITTED will return a version of the
-  // ConsensusStatePB using only the committed configuration. In this case, if the
-  // current leader is not a member of the committed configuration, then the
+  // ConsensusStatePB using only the committed configuration. In this case, if
+  // the current leader is not a member of the committed configuration, then the
   // leader_uuid field of the returned ConsensusStatePB will be cleared.
   ConsensusStatePB ToConsensusStatePB() const;
 
@@ -197,7 +195,8 @@ class ConsensusMetadata : public RefCountedThreadSafe<ConsensusMetadata> {
   // (removed_peers_) tracking peers that have been removed from the active
   // config. 'removed_peers_' can only track 'max_removed_peers' peers. So, the
   // earliest peers are evicted from the list (if needed)
-  void InsertIntoRemovedPeersList(const std::vector<std::string>& removed_peers);
+  void InsertIntoRemovedPeersList(
+      const std::vector<std::string>& removed_peers);
 
   // Returns true if 'peer_uuid' is present in 'removed_peers_' list
   bool IsPeerRemoved(const std::string& peer_uuid);
@@ -229,34 +228,40 @@ class ConsensusMetadata : public RefCountedThreadSafe<ConsensusMetadata> {
 
   static const int32_t VOTE_HISTORY_MAX_SIZE = 100;
 
-  ConsensusMetadata(FsManager* fs_manager, std::string tablet_id,
-                    std::string peer_uuid);
+  ConsensusMetadata(
+      FsManager* fs_manager,
+      std::string tablet_id,
+      std::string peer_uuid);
 
   // Create a ConsensusMetadata object with provided initial state.
   // If 'create_mode' is set to FLUSH_ON_CREATE, the encoded PB is flushed to
   // disk before returning. Otherwise, if 'create_mode' is set to
   // NO_FLUSH_ON_CREATE, the caller must explicitly call Flush() on the
   // returned object to get the bytes onto disk.
-  static Status Create(FsManager* fs_manager,
-                       const std::string& tablet_id,
-                       const std::string& peer_uuid,
-                       const RaftConfigPB& config,
-                       int64_t current_term,
-                       ConsensusMetadataCreateMode create_mode =
-                           ConsensusMetadataCreateMode::FLUSH_ON_CREATE,
-                       scoped_refptr<ConsensusMetadata>* cmeta_out = nullptr);
+  static Status Create(
+      FsManager* fs_manager,
+      const std::string& tablet_id,
+      const std::string& peer_uuid,
+      const RaftConfigPB& config,
+      int64_t current_term,
+      ConsensusMetadataCreateMode create_mode =
+          ConsensusMetadataCreateMode::FLUSH_ON_CREATE,
+      scoped_refptr<ConsensusMetadata>* cmeta_out = nullptr);
 
   // Load a ConsensusMetadata object from disk.
   // Returns Status::NotFound if the file could not be found. May return other
   // Status codes if unable to read the file.
-  static Status Load(FsManager* fs_manager,
-                     const std::string& tablet_id,
-                     const std::string& peer_uuid,
-                     scoped_refptr<ConsensusMetadata>* cmeta_out = nullptr);
+  static Status Load(
+      FsManager* fs_manager,
+      const std::string& tablet_id,
+      const std::string& peer_uuid,
+      scoped_refptr<ConsensusMetadata>* cmeta_out = nullptr);
 
   // Delete the ConsensusMetadata file associated with the given tablet from
   // disk. Returns Status::NotFound if the on-disk data is not found.
-  static Status DeleteOnDiskData(FsManager* fs_manager, const std::string& tablet_id);
+  static Status DeleteOnDiskData(
+      FsManager* fs_manager,
+      const std::string& tablet_id);
 
   // Return the specified config.
   const RaftConfigPB& GetConfig(RaftConfigState type) const;
@@ -280,11 +285,13 @@ class ConsensusMetadata : public RefCountedThreadSafe<ConsensusMetadata> {
   // externally synchronized.
   DFAKE_MUTEX(fake_lock_);
 
-  std::string leader_uuid_; // Leader of the current term (term == pb_.current_term).
+  std::string
+      leader_uuid_; // Leader of the current term (term == pb_.current_term).
 
   bool has_pending_config_; // Indicates whether there is an as-yet uncommitted
                             // configuration change pending.
-  // RaftConfig used by the peers when there is a pending config change operation.
+  // RaftConfig used by the peers when there is a pending config change
+  // operation.
   RaftConfigPB pending_config_;
 
   // Cached role of the peer_uuid_ within the active configuration.

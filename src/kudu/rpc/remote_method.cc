@@ -29,13 +29,13 @@ namespace rpc {
 
 using strings::Substitute;
 
-RemoteMethod::RemoteMethod(std::string service_name,
-                           std::string method_name)
+RemoteMethod::RemoteMethod(std::string service_name, std::string method_name)
     : service_name_(std::move(service_name)),
       method_name_(std::move(method_name)) {}
 
 void RemoteMethod::FromPB(const RemoteMethodPB& pb) {
-  DCHECK(pb.IsInitialized()) << "PB is uninitialized: " << pb.InitializationErrorString();
+  DCHECK(pb.IsInitialized())
+      << "PB is uninitialized: " << pb.InitializationErrorString();
   service_name_ = pb.service_name();
   method_name_ = pb.method_name();
 }

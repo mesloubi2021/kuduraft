@@ -15,7 +15,6 @@
 // specific language governing permissions and limitations
 // under the License.
 
-
 #include <sched.h>
 
 #include <cinttypes>
@@ -67,18 +66,17 @@ struct PerCpuLock {
   }
 
   ~PerCpuLock() {
-    delete [] locks_;
+    delete[] locks_;
   }
 
-  my_spinlock *get_lock() {
+  my_spinlock* get_lock() {
     int cpu = sched_getcpu();
     CHECK_LT(cpu, n_cpus_);
     return &locks_[cpu].lock;
   }
 
   int n_cpus_;
-  PaddedLock *locks_;
-
+  PaddedLock* locks_;
 };
 
 struct SharedData {
@@ -87,7 +85,6 @@ struct SharedData {
   std::mutex lock;
   kudu::percpu_rwlock per_cpu;
 };
-
 
 class NoopLock {
  public:
@@ -114,7 +111,7 @@ static void depend_on(float val) {
   }
 }
 
-void shared_rwlock_entry(SharedData *shared) {
+void shared_rwlock_entry(SharedData* shared) {
   float result = 1;
   for (int i = 0; i < 1000000; i++) {
     shared->rwlock.lock_shared();
@@ -124,7 +121,7 @@ void shared_rwlock_entry(SharedData *shared) {
   depend_on(result);
 }
 
-void shared_rw_spinlock_entry(SharedData *shared) {
+void shared_rw_spinlock_entry(SharedData* shared) {
   float result = 1;
   for (int i = 0; i < 1000000; i++) {
     shared->rw_spinlock.lock_shared();
@@ -134,7 +131,7 @@ void shared_rw_spinlock_entry(SharedData *shared) {
   depend_on(result);
 }
 
-void shared_mutex_entry(SharedData *shared) {
+void shared_mutex_entry(SharedData* shared) {
   float result = 1;
   for (int i = 0; i < 1000000; i++) {
     shared->lock.lock();
@@ -144,7 +141,7 @@ void shared_mutex_entry(SharedData *shared) {
   depend_on(result);
 }
 
-template<class LockType>
+template <class LockType>
 void own_mutex_entry() {
   LockType mylock;
   float result = 1;
@@ -157,10 +154,10 @@ void own_mutex_entry() {
   depend_on(result);
 }
 
-void percpu_rwlock_entry(SharedData *shared) {
+void percpu_rwlock_entry(SharedData* shared) {
   float result = 1;
   for (int i = 0; i < 1000000; i++) {
-    kudu::rw_spinlock &l = shared->per_cpu.get_lock();
+    kudu::rw_spinlock& l = shared->per_cpu.get_lock();
     l.lock_shared();
     result += workload(result);
     l.unlock_shared();
@@ -168,7 +165,6 @@ void percpu_rwlock_entry(SharedData *shared) {
 
   depend_on(result);
 }
-
 
 enum TestMethod {
   SHARED_RWLOCK,
@@ -180,7 +176,7 @@ enum TestMethod {
   RW_SPINLOCK
 };
 
-void test_shared_lock(int num_threads, TestMethod method, const char *name) {
+void test_shared_lock(int num_threads, TestMethod method, const char* name) {
   vector<thread> threads;
   SharedData shared;
 
@@ -218,10 +214,11 @@ void test_shared_lock(int num_threads, TestMethod method, const char *name) {
   }
   int64_t end = CycleClock::Now();
 
-  printf("%13s  % 7d  %" PRId64 "M\n", name, num_threads, (end-start)/1000000);
+  printf(
+      "%13s  % 7d  %" PRId64 "M\n", name, num_threads, (end - start) / 1000000);
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   kudu::ParseCommandLineFlags(&argc, &argv, true);
   if (argc != 1) {
     std::cerr << "usage: " << argv[0] << std::endl;
@@ -241,5 +238,4 @@ int main(int argc, char **argv) {
     test_shared_lock(num_threads, PERCPU_RWLOCK, "percpu_rwlock");
     test_shared_lock(num_threads, RW_SPINLOCK, "rw_spinlock");
   }
-
 }

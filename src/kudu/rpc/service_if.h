@@ -55,14 +55,18 @@ struct RpcMethodInfo : public RefCountedThreadSafe<RpcMethodInfo> {
   // The authorization function for this RPC. If this function
   // returns false, the RPC has already been handled (i.e. rejected)
   // by the authorization function.
-  std::function<bool(const google::protobuf::Message* req,
-                     google::protobuf::Message* resp,
-                     RpcContext* ctx)> authz_method;
+  std::function<bool(
+      const google::protobuf::Message* req,
+      google::protobuf::Message* resp,
+      RpcContext* ctx)>
+      authz_method;
 
   // The actual function to be called.
-  std::function<void(const google::protobuf::Message* req,
-                     google::protobuf::Message* resp,
-                     RpcContext* ctx)> func;
+  std::function<void(
+      const google::protobuf::Message* req,
+      google::protobuf::Message* resp,
+      RpcContext* ctx)>
+      func;
 };
 
 // Handles incoming messages that initiate an RPC.
@@ -89,9 +93,10 @@ class ServiceIf {
   //
   // See docs/design-docs/rpc.md for details on how to add custom
   // authorization checks to a service.
-  bool AuthorizeAllowAll(const google::protobuf::Message* /*req*/,
-                         google::protobuf::Message* /*resp*/,
-                         RpcContext* /*ctx*/) {
+  bool AuthorizeAllowAll(
+      const google::protobuf::Message* /*req*/,
+      google::protobuf::Message* /*resp*/,
+      RpcContext* /*ctx*/) {
     return true;
   }
 
@@ -99,7 +104,6 @@ class ServiceIf {
   bool ParseParam(InboundCall* call, google::protobuf::Message* message);
   void RespondBadMethod(InboundCall* call);
 };
-
 
 // Base class for code-generated service classes.
 class GeneratedServiceIf : public ServiceIf {
@@ -115,8 +119,11 @@ class GeneratedServiceIf : public ServiceIf {
   RpcMethodInfo* LookupMethod(const RemoteMethod& method) override;
 
   // Returns the mapping from method names to method infos.
-  typedef std::unordered_map<std::string, scoped_refptr<RpcMethodInfo>> MethodInfoMap;
-  const MethodInfoMap& methods_by_name() const { return methods_by_name_; }
+  typedef std::unordered_map<std::string, scoped_refptr<RpcMethodInfo>>
+      MethodInfoMap;
+  const MethodInfoMap& methods_by_name() const {
+    return methods_by_name_;
+  }
 
  protected:
   // For each method, stores the relevant information about how to handle the

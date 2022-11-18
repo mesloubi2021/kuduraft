@@ -81,8 +81,10 @@ int EscapeStrForCSV(const char* src, char* dest, int dest_len);
 //    *** DEPRECATED: Use CUnescape() in new code ***
 //    ----------------------------------------------------------------------
 int UnescapeCEscapeSequences(const char* source, char* dest);
-int UnescapeCEscapeSequences(const char* source, char* dest,
-                             std::vector<std::string>* errors);
+int UnescapeCEscapeSequences(
+    const char* source,
+    char* dest,
+    std::vector<std::string>* errors);
 
 // ----------------------------------------------------------------------
 // UnescapeCEscapeString()
@@ -101,8 +103,10 @@ int UnescapeCEscapeSequences(const char* source, char* dest,
 //    *** DEPRECATED: Use CUnescape() in new code ***
 // ----------------------------------------------------------------------
 int UnescapeCEscapeString(const std::string& src, std::string* dest);
-int UnescapeCEscapeString(const std::string& src, std::string* dest,
-                          std::vector<std::string>* errors);
+int UnescapeCEscapeString(
+    const std::string& src,
+    std::string* dest,
+    std::vector<std::string>* errors);
 std::string UnescapeCEscapeString(const std::string& src);
 
 // ----------------------------------------------------------------------
@@ -135,10 +139,16 @@ std::string UnescapeCEscapeString(const std::string& src);
 //    Errors: Sets the description of the first encountered error in
 //    'error'. To disable error reporting, set 'error' to NULL.
 // ----------------------------------------------------------------------
-bool CUnescape(const StringPiece& source, char* dest, int* dest_len,
-               std::string* error);
+bool CUnescape(
+    const StringPiece& source,
+    char* dest,
+    int* dest_len,
+    std::string* error);
 
-bool CUnescape(const StringPiece& source, std::string* dest, std::string* error);
+bool CUnescape(
+    const StringPiece& source,
+    std::string* dest,
+    std::string* error);
 
 // A version with no error reporting.
 inline bool CUnescape(const StringPiece& source, std::string* dest) {
@@ -165,18 +175,21 @@ inline std::string CUnescapeOrDie(const StringPiece& source) {
 //
 // ----------------------------------------------------------------------
 
-bool CUnescapeForNullTerminatedString(const StringPiece& source,
-                                      char* dest,
-                                      int* dest_len,
-                                      std::string* error);
+bool CUnescapeForNullTerminatedString(
+    const StringPiece& source,
+    char* dest,
+    int* dest_len,
+    std::string* error);
 
-bool CUnescapeForNullTerminatedString(const StringPiece& source,
-                                      std::string* dest,
-                                      std::string* error);
+bool CUnescapeForNullTerminatedString(
+    const StringPiece& source,
+    std::string* dest,
+    std::string* error);
 
 // A version with no error reporting.
-inline bool CUnescapeForNullTerminatedString(const StringPiece& source,
-                                             std::string* dest) {
+inline bool CUnescapeForNullTerminatedString(
+    const StringPiece& source,
+    std::string* dest) {
   return CUnescapeForNullTerminatedString(source, dest, NULL);
 }
 
@@ -197,10 +210,16 @@ inline bool CUnescapeForNullTerminatedString(const StringPiece& source,
 // ----------------------------------------------------------------------
 int CEscapeString(const char* src, int src_len, char* dest, int dest_len);
 int CHexEscapeString(const char* src, int src_len, char* dest, int dest_len);
-int Utf8SafeCEscapeString(const char* src, int src_len, char* dest,
-                          int dest_len);
-int Utf8SafeCHexEscapeString(const char* src, int src_len, char* dest,
-                             int dest_len);
+int Utf8SafeCEscapeString(
+    const char* src,
+    int src_len,
+    char* dest,
+    int dest_len);
+int Utf8SafeCHexEscapeString(
+    const char* src,
+    int src_len,
+    char* dest,
+    int dest_len);
 
 // ----------------------------------------------------------------------
 // CEscape()
@@ -236,22 +255,26 @@ std::string Utf8SafeCHexEscape(const StringPiece& src);
 //    On the other hand, for all strings "src", the following is true:
 //      BackslashUnescape(BackslashEscape(src, ":\\"), ":\\") == src
 // ----------------------------------------------------------------------
-void BackslashEscape(const StringPiece& src,
-                     const strings::CharSet& to_escape,
-                     std::string* dest);
-void BackslashUnescape(const StringPiece& src,
-                       const strings::CharSet& to_unescape,
-                       std::string* dest);
+void BackslashEscape(
+    const StringPiece& src,
+    const strings::CharSet& to_escape,
+    std::string* dest);
+void BackslashUnescape(
+    const StringPiece& src,
+    const strings::CharSet& to_unescape,
+    std::string* dest);
 
-inline std::string BackslashEscape(const StringPiece& src,
-                              const strings::CharSet& to_escape) {
+inline std::string BackslashEscape(
+    const StringPiece& src,
+    const strings::CharSet& to_escape) {
   std::string s;
   BackslashEscape(src, to_escape, &s);
   return s;
 }
 
-inline std::string BackslashUnescape(const StringPiece& src,
-                                const strings::CharSet& to_unescape) {
+inline std::string BackslashUnescape(
+    const StringPiece& src,
+    const strings::CharSet& to_unescape) {
   std::string s;
   BackslashUnescape(src, to_unescape, &s);
   return s;
@@ -318,13 +341,22 @@ int QEncodingUnescape(const char* src, int slen, char* dest, int szdest);
 int Base64Unescape(const unsigned char* src, int slen, char* dest, int szdest);
 bool Base64Unescape(const unsigned char* src, int slen, std::string* dest);
 inline bool Base64Unescape(const std::string& src, std::string* dest) {
-  return Base64Unescape(reinterpret_cast<const unsigned char*>(src.data()), src.size(), dest);
+  return Base64Unescape(
+      reinterpret_cast<const unsigned char*>(src.data()), src.size(), dest);
 }
 
-int WebSafeBase64Unescape(const unsigned char* src, int slen, char* dest, int szdest);
-bool WebSafeBase64Unescape(const unsigned char* src, int slen, std::string* dest);
+int WebSafeBase64Unescape(
+    const unsigned char* src,
+    int slen,
+    char* dest,
+    int szdest);
+bool WebSafeBase64Unescape(
+    const unsigned char* src,
+    int slen,
+    std::string* dest);
 inline bool WebSafeBase64Unescape(const std::string& src, std::string* dest) {
-  return WebSafeBase64Unescape(reinterpret_cast<const unsigned char*>(src.data()), src.size(), dest);
+  return WebSafeBase64Unescape(
+      reinterpret_cast<const unsigned char*>(src.data()), src.size(), dest);
 }
 
 // Return the length to use for the output buffer given to the base64 escape
@@ -348,8 +380,12 @@ int CalculateBase64EscapedLen(int input_len);
 //    which when set to false will prevent padding with "=".
 // ----------------------------------------------------------------------
 int Base64Escape(const unsigned char* src, int slen, char* dest, int szdest);
-int WebSafeBase64Escape(const unsigned char* src, int slen, char* dest,
-                        int szdest, bool do_padding);
+int WebSafeBase64Escape(
+    const unsigned char* src,
+    int slen,
+    char* dest,
+    int szdest,
+    bool do_padding);
 // Encode src into dest with padding.
 void Base64Escape(const std::string& src, std::string* dest);
 // Encode src into dest web-safely without padding.
@@ -357,10 +393,16 @@ void WebSafeBase64Escape(const std::string& src, std::string* dest);
 // Encode src into dest web-safely with padding.
 void WebSafeBase64EscapeWithPadding(const std::string& src, std::string* dest);
 
-void Base64Escape(const unsigned char* src, int szsrc,
-                  std::string* dest, bool do_padding);
-void WebSafeBase64Escape(const unsigned char* src, int szsrc,
-                         std::string* dest, bool do_padding);
+void Base64Escape(
+    const unsigned char* src,
+    int szsrc,
+    std::string* dest,
+    bool do_padding);
+void WebSafeBase64Escape(
+    const unsigned char* src,
+    int szsrc,
+    std::string* dest,
+    bool do_padding);
 
 // ----------------------------------------------------------------------
 // Base32Unescape()
@@ -384,8 +426,11 @@ inline bool Base32Unescape(const std::string& src, std::string* dest) {
 //
 //    Note that this is "Base 32 Encoding" from RFC 4648 section 6.
 // ----------------------------------------------------------------------
-int Base32Escape(const unsigned char* src, size_t szsrc,
-                 char* dest, size_t szdest);
+int Base32Escape(
+    const unsigned char* src,
+    size_t szsrc,
+    char* dest,
+    size_t szdest);
 bool Base32Escape(const std::string& src, std::string* dest);
 
 // ----------------------------------------------------------------------
@@ -399,8 +444,11 @@ bool Base32Escape(const std::string& src, std::string* dest);
 //    Note that this is "Base 32 Encoding with Extended Hex Alphabet"
 //    from RFC 4648 section 7.
 // ----------------------------------------------------------------------
-int Base32HexEscape(const unsigned char* src, size_t szsrc,
-                    char* dest, size_t szdest);
+int Base32HexEscape(
+    const unsigned char* src,
+    size_t szsrc,
+    char* dest,
+    size_t szdest);
 bool Base32HexEscape(const std::string& src, std::string* dest);
 
 // Return the length to use for the output buffer given to the base32 escape
@@ -448,7 +496,9 @@ void TenHexDigitsToEightBase32Digits(const char* in, char* out);
 //   Note that the Base64 functions above are different.  They deal with
 //   arbitrary lengths and we deal with single, whole base32 quanta.
 // ----------------------------------------------------------------------
-void EightBase32DigitsToFiveBytes(const unsigned char* in, unsigned char* bytes_out);
+void EightBase32DigitsToFiveBytes(
+    const unsigned char* in,
+    unsigned char* bytes_out);
 void FiveBytesToEightBase32Digits(const unsigned char* in_bytes, char* out);
 
 // ----------------------------------------------------------------------
@@ -573,10 +623,13 @@ std::string ShellEscape(StringPiece src);
 // Runs ShellEscape() on the arguments, concatenates them with a space, and
 // returns the resulting string.
 template <class InputIterator>
-std::string ShellEscapeCommandLine(InputIterator begin, const InputIterator& end) {
+std::string ShellEscapeCommandLine(
+    InputIterator begin,
+    const InputIterator& end) {
   std::string result;
   for (; begin != end; ++begin) {
-    if (!result.empty()) result.append(" ");
+    if (!result.empty())
+      result.append(" ");
     result.append(ShellEscape(*begin));
   }
   return result;
@@ -584,11 +637,14 @@ std::string ShellEscapeCommandLine(InputIterator begin, const InputIterator& end
 
 // Reads at most bytes_to_read from binary_string and writes it to
 // ascii_string in lower case hex.
-void ByteStringToAscii(const std::string& binary_string, int bytes_to_read,
-                       std::string* ascii_string);
+void ByteStringToAscii(
+    const std::string& binary_string,
+    int bytes_to_read,
+    std::string* ascii_string);
 
-inline std::string ByteStringToAscii(const std::string& binary_string,
-                                int bytes_to_read) {
+inline std::string ByteStringToAscii(
+    const std::string& binary_string,
+    int bytes_to_read) {
   std::string result;
   ByteStringToAscii(binary_string, bytes_to_read, &result);
   return result;
@@ -599,7 +655,9 @@ inline std::string ByteStringToAscii(const std::string& binary_string,
 // Empty input successfully converts to empty output.
 // Returns false and may modify output if it is
 // unable to parse the hex string.
-bool ByteStringFromAscii(const std::string& ascii_string, std::string* binary_string);
+bool ByteStringFromAscii(
+    const std::string& ascii_string,
+    std::string* binary_string);
 
 // Clean up a multi-line string to conform to Unix line endings.
 // Reads from src and appends to dst, so usually dst should be empty.
@@ -626,12 +684,14 @@ bool ByteStringFromAscii(const std::string& ascii_string, std::string* binary_st
 //     This does not do the right thing for CRCRLF files created by
 //     broken programs that do another Unix->DOS conversion on files
 //     that are already in CRLF format.
-void CleanStringLineEndings(const std::string& src, std::string* dst,
-                            bool auto_end_last_line);
+void CleanStringLineEndings(
+    const std::string& src,
+    std::string* dst,
+    bool auto_end_last_line);
 
 // Same as above, but transforms the argument in place.
 void CleanStringLineEndings(std::string* str, bool auto_end_last_line);
 
-}  // namespace strings
+} // namespace strings
 
-#endif  // STRINGS_ESCAPING_H_
+#endif // STRINGS_ESCAPING_H_

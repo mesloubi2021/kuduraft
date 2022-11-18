@@ -18,8 +18,8 @@
 #define KUDU_UTIL_SERVICE_QUEUE_H
 
 #include <memory>
-#include <string>
 #include <set>
+#include <string>
 #include <vector>
 
 #include <glog/logging.h>
@@ -41,21 +41,17 @@ namespace kudu {
 namespace rpc {
 
 // Return values for ServiceQueue::Put()
-enum QueueStatus {
-  QUEUE_SUCCESS = 0,
-  QUEUE_SHUTDOWN = 1,
-  QUEUE_FULL = 2
-};
+enum QueueStatus { QUEUE_SUCCESS = 0, QUEUE_SHUTDOWN = 1, QUEUE_FULL = 2 };
 
-// Blocking queue used for passing inbound RPC calls to the service handler pool.
-// Calls are dequeued in 'earliest-deadline first' order. The queue also maintains a
-// bounded number of calls. If the queue overflows, then calls with deadlines farthest
-// in the future are evicted.
+// Blocking queue used for passing inbound RPC calls to the service handler
+// pool. Calls are dequeued in 'earliest-deadline first' order. The queue also
+// maintains a bounded number of calls. If the queue overflows, then calls with
+// deadlines farthest in the future are evicted.
 //
-// When calls do not provide deadlines, the RPC layer considers their deadline to
-// be infinitely in the future. This means that any call that does have a deadline
-// can evict any call that does not have a deadline. This incentivizes clients to
-// provide accurate deadlines for their calls.
+// When calls do not provide deadlines, the RPC layer considers their deadline
+// to be infinitely in the future. This means that any call that does have a
+// deadline can evict any call that does not have a deadline. This incentivizes
+// clients to provide accurate deadlines for their calls.
 //
 // In order to improve concurrent throughput, this class uses a LIFO design:
 // Each consumer thread has its own lock and condition variable. If a
@@ -68,7 +64,8 @@ enum QueueStatus {
 // - the worker who was most recently busy is the one which will be selected for
 //   new work. This gives an opportunity for the worker to be scheduled again
 //   without going to sleep, and also keeps CPU cache and allocator caches hot.
-// - in the common case that there are enough workers to fully service the incoming
+// - in the common case that there are enough workers to fully service the
+// incoming
 //   work rate, the queue implementation itself is never used. Thus, we can
 //   have a priority queue without paying extra for it in the common case.
 //
@@ -133,13 +130,12 @@ class LifoServiceQueue {
 
  private:
   // Comparison function which orders calls by their deadlines.
-  static bool DeadlineLess(const InboundCall* a,
-                           const InboundCall* b) {
+  static bool DeadlineLess(const InboundCall* a, const InboundCall* b) {
     auto time_a = a->GetClientDeadline();
     auto time_b = b->GetClientDeadline();
     if (time_a == time_b) {
-      // If two calls have the same deadline (most likely because neither one specified
-      // one) then we should order them by arrival order.
+      // If two calls have the same deadline (most likely because neither one
+      // specified one) then we should order them by arrival order.
       time_a = a->GetTimeReceived();
       time_b = b->GetTimeReceived();
     }
@@ -159,12 +155,11 @@ class LifoServiceQueue {
   // post work using Post().
   class ConsumerState {
    public:
-    explicit ConsumerState(LifoServiceQueue* queue) :
-        cond_(&lock_),
-        call_(nullptr),
-        should_wake_(false),
-        bound_queue_(queue) {
-    }
+    explicit ConsumerState(LifoServiceQueue* queue)
+        : cond_(&lock_),
+          call_(nullptr),
+          should_wake_(false),
+          bound_queue_(queue) {}
 
     void Post(InboundCall* call) {
       DCHECK(call_ == nullptr);

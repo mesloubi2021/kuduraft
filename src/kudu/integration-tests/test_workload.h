@@ -81,7 +81,8 @@ class TestWorkload {
   }
 
   void set_client_default_admin_operation_timeout_millis(int t) {
-    client_builder_.default_admin_operation_timeout(MonoDelta::FromMilliseconds(t));
+    client_builder_.default_admin_operation_timeout(
+        MonoDelta::FromMilliseconds(t));
   }
 
   void set_read_timeout_millis(int t) {
@@ -174,7 +175,8 @@ class TestWorkload {
       case INSERT_SEQUENTIAL_ROWS:
         set_already_present_allowed(false);
         break;
-      default: LOG(FATAL) << "Unsupported WritePattern.";
+      default:
+        LOG(FATAL) << "Unsupported WritePattern.";
     }
   }
 
@@ -208,7 +210,9 @@ class TestWorkload {
     return batches_completed_.Load();
   }
 
-  client::sp::shared_ptr<client::KuduClient> client() const { return client_; }
+  client::sp::shared_ptr<client::KuduClient> client() const {
+    return client_;
+  }
 
  private:
   void OpenTable(client::sp::shared_ptr<client::KuduTable>* table);

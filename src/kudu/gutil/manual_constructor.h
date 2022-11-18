@@ -64,21 +64,26 @@ namespace internal {
 // construct to be a literal constant integer, we use a template instantiated
 // at all the possible powers of two.
 #ifndef SWIG
-template<int alignment, int size> struct AlignType { };
-template<int size> struct AlignType<0, size> { typedef char result[size]; };
+template <int alignment, int size>
+struct AlignType {};
+template <int size>
+struct AlignType<0, size> {
+  typedef char result[size];
+};
 #if defined(_MSC_VER)
 #define UTIL_GTL_ALIGN_ATTRIBUTE(X) __declspec(align(X))
 #define UTIL_GTL_ALIGN_OF(T) __alignof(T)
-#elif defined(__GNUC__) || defined(__APPLE__) || defined(__INTEL_COMPILER) \
-  || defined(__nacl__)
+#elif defined(__GNUC__) || defined(__APPLE__) || defined(__INTEL_COMPILER) || \
+    defined(__nacl__)
 #define UTIL_GTL_ALIGN_ATTRIBUTE(X) __attribute__((aligned(X)))
 #define UTIL_GTL_ALIGN_OF(T) __alignof__(T)
 #endif
 
 #if defined(UTIL_GTL_ALIGN_ATTRIBUTE)
 
-#define UTIL_GTL_ALIGNTYPE_TEMPLATE(X) \
-  template<int size> struct AlignType<X, size> { \
+#define UTIL_GTL_ALIGNTYPE_TEMPLATE(X)                     \
+  template <int size>                                      \
+  struct AlignType<X, size> {                              \
     typedef UTIL_GTL_ALIGN_ATTRIBUTE(X) char result[size]; \
   }
 
@@ -99,33 +104,35 @@ UTIL_GTL_ALIGNTYPE_TEMPLATE(8192);
 // Any larger and MSVC++ will complain.
 
 #define UTIL_GTL_ALIGNED_CHAR_ARRAY(T, Size) \
-  typename util::gtl::internal::AlignType<UTIL_GTL_ALIGN_OF(T), \
-                                          sizeof(T) * (Size)>::result
+  typename util::gtl::internal::             \
+      AlignType<UTIL_GTL_ALIGN_OF(T), sizeof(T) * (Size)>::result
 
 #undef UTIL_GTL_ALIGNTYPE_TEMPLATE
 #undef UTIL_GTL_ALIGN_ATTRIBUTE
 
-#else  // defined(UTIL_GTL_ALIGN_ATTRIBUTE)
+#else // defined(UTIL_GTL_ALIGN_ATTRIBUTE)
 #error "You must define UTIL_GTL_ALIGNED_CHAR_ARRAY for your compiler."
-#endif  // defined(UTIL_GTL_ALIGN_ATTRIBUTE)
+#endif // defined(UTIL_GTL_ALIGN_ATTRIBUTE)
 
-#else  // !SWIG
+#else // !SWIG
 
 // SWIG can't represent alignment and doesn't care about alignment on data
 // members (it works fine without it).
-template<typename Size>
-struct AlignType { typedef char result[Size]; };
+template <typename Size>
+struct AlignType {
+  typedef char result[Size];
+};
 #define UTIL_GTL_ALIGNED_CHAR_ARRAY(T, Size) \
-    util::gtl::internal::AlignType<Size * sizeof(T)>::result
+  util::gtl::internal::AlignType<Size * sizeof(T)>::result
 
 // Enough to parse with SWIG, will never be used by running code.
 #define UTIL_GTL_ALIGN_OF(Type) 16
 
-#endif  // !SWIG
+#endif // !SWIG
 
-}  // namespace internal
-}  // namespace gtl
-}  // namespace util
+} // namespace internal
+} // namespace gtl
+} // namespace util
 
 template <typename Type>
 class ManualConstructor {
@@ -147,91 +154,185 @@ class ManualConstructor {
   inline Type* get() {
     return reinterpret_cast<Type*>(space_);
   }
-  inline const Type* get() const  {
+  inline const Type* get() const {
     return reinterpret_cast<const Type*>(space_);
   }
 
-  inline Type* operator->() { return get(); }
-  inline const Type* operator->() const { return get(); }
+  inline Type* operator->() {
+    return get();
+  }
+  inline const Type* operator->() const {
+    return get();
+  }
 
-  inline Type& operator*() { return *get(); }
-  inline const Type& operator*() const { return *get(); }
+  inline Type& operator*() {
+    return *get();
+  }
+  inline const Type& operator*() const {
+    return *get();
+  }
 
   // You can pass up to four constructor arguments as arguments of Init().
   inline void Init() {
-    new(space_) Type;
+    new (space_) Type;
   }
 
   template <typename T1>
   inline void Init(const T1& p1) {
-    new(space_) Type(p1);
+    new (space_) Type(p1);
   }
 
   template <typename T1, typename T2>
   inline void Init(const T1& p1, const T2& p2) {
-    new(space_) Type(p1, p2);
+    new (space_) Type(p1, p2);
   }
 
   template <typename T1, typename T2, typename T3>
   inline void Init(const T1& p1, const T2& p2, const T3& p3) {
-    new(space_) Type(p1, p2, p3);
+    new (space_) Type(p1, p2, p3);
   }
 
   template <typename T1, typename T2, typename T3, typename T4>
   inline void Init(const T1& p1, const T2& p2, const T3& p3, const T4& p4) {
-    new(space_) Type(p1, p2, p3, p4);
+    new (space_) Type(p1, p2, p3, p4);
   }
 
   template <typename T1, typename T2, typename T3, typename T4, typename T5>
-  inline void Init(const T1& p1, const T2& p2, const T3& p3, const T4& p4,
-                   const T5& p5) {
-    new(space_) Type(p1, p2, p3, p4, p5);
+  inline void
+  Init(const T1& p1, const T2& p2, const T3& p3, const T4& p4, const T5& p5) {
+    new (space_) Type(p1, p2, p3, p4, p5);
   }
 
-  template <typename T1, typename T2, typename T3, typename T4, typename T5,
-            typename T6>
-  inline void Init(const T1& p1, const T2& p2, const T3& p3, const T4& p4,
-                   const T5& p5, const T6& p6) {
-    new(space_) Type(p1, p2, p3, p4, p5, p6);
+  template <
+      typename T1,
+      typename T2,
+      typename T3,
+      typename T4,
+      typename T5,
+      typename T6>
+  inline void Init(
+      const T1& p1,
+      const T2& p2,
+      const T3& p3,
+      const T4& p4,
+      const T5& p5,
+      const T6& p6) {
+    new (space_) Type(p1, p2, p3, p4, p5, p6);
   }
 
-  template <typename T1, typename T2, typename T3, typename T4, typename T5,
-            typename T6, typename T7>
-  inline void Init(const T1& p1, const T2& p2, const T3& p3, const T4& p4,
-                   const T5& p5, const T6& p6, const T7& p7) {
-    new(space_) Type(p1, p2, p3, p4, p5, p6, p7);
+  template <
+      typename T1,
+      typename T2,
+      typename T3,
+      typename T4,
+      typename T5,
+      typename T6,
+      typename T7>
+  inline void Init(
+      const T1& p1,
+      const T2& p2,
+      const T3& p3,
+      const T4& p4,
+      const T5& p5,
+      const T6& p6,
+      const T7& p7) {
+    new (space_) Type(p1, p2, p3, p4, p5, p6, p7);
   }
 
-  template <typename T1, typename T2, typename T3, typename T4, typename T5,
-            typename T6, typename T7, typename T8>
-  inline void Init(const T1& p1, const T2& p2, const T3& p3, const T4& p4,
-                   const T5& p5, const T6& p6, const T7& p7, const T8& p8) {
-    new(space_) Type(p1, p2, p3, p4, p5, p6, p7, p8);
+  template <
+      typename T1,
+      typename T2,
+      typename T3,
+      typename T4,
+      typename T5,
+      typename T6,
+      typename T7,
+      typename T8>
+  inline void Init(
+      const T1& p1,
+      const T2& p2,
+      const T3& p3,
+      const T4& p4,
+      const T5& p5,
+      const T6& p6,
+      const T7& p7,
+      const T8& p8) {
+    new (space_) Type(p1, p2, p3, p4, p5, p6, p7, p8);
   }
 
-  template <typename T1, typename T2, typename T3, typename T4, typename T5,
-            typename T6, typename T7, typename T8, typename T9>
-  inline void Init(const T1& p1, const T2& p2, const T3& p3, const T4& p4,
-                   const T5& p5, const T6& p6, const T7& p7, const T8& p8,
-                   const T9& p9) {
-    new(space_) Type(p1, p2, p3, p4, p5, p6, p7, p8, p9);
+  template <
+      typename T1,
+      typename T2,
+      typename T3,
+      typename T4,
+      typename T5,
+      typename T6,
+      typename T7,
+      typename T8,
+      typename T9>
+  inline void Init(
+      const T1& p1,
+      const T2& p2,
+      const T3& p3,
+      const T4& p4,
+      const T5& p5,
+      const T6& p6,
+      const T7& p7,
+      const T8& p8,
+      const T9& p9) {
+    new (space_) Type(p1, p2, p3, p4, p5, p6, p7, p8, p9);
   }
 
-  template <typename T1, typename T2, typename T3, typename T4, typename T5,
-            typename T6, typename T7, typename T8, typename T9, typename T10>
-  inline void Init(const T1& p1, const T2& p2, const T3& p3, const T4& p4,
-                   const T5& p5, const T6& p6, const T7& p7, const T8& p8,
-                   const T9& p9, const T10& p10) {
-    new(space_) Type(p1, p2, p3, p4, p5, p6, p7, p8, p9, p10);
+  template <
+      typename T1,
+      typename T2,
+      typename T3,
+      typename T4,
+      typename T5,
+      typename T6,
+      typename T7,
+      typename T8,
+      typename T9,
+      typename T10>
+  inline void Init(
+      const T1& p1,
+      const T2& p2,
+      const T3& p3,
+      const T4& p4,
+      const T5& p5,
+      const T6& p6,
+      const T7& p7,
+      const T8& p8,
+      const T9& p9,
+      const T10& p10) {
+    new (space_) Type(p1, p2, p3, p4, p5, p6, p7, p8, p9, p10);
   }
 
-  template <typename T1, typename T2, typename T3, typename T4, typename T5,
-            typename T6, typename T7, typename T8, typename T9, typename T10,
-            typename T11>
-  inline void Init(const T1& p1, const T2& p2, const T3& p3, const T4& p4,
-                   const T5& p5, const T6& p6, const T7& p7, const T8& p8,
-                   const T9& p9, const T10& p10, const T11& p11) {
-    new(space_) Type(p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11);
+  template <
+      typename T1,
+      typename T2,
+      typename T3,
+      typename T4,
+      typename T5,
+      typename T6,
+      typename T7,
+      typename T8,
+      typename T9,
+      typename T10,
+      typename T11>
+  inline void Init(
+      const T1& p1,
+      const T2& p2,
+      const T3& p3,
+      const T4& p4,
+      const T5& p5,
+      const T6& p6,
+      const T7& p7,
+      const T8& p8,
+      const T9& p9,
+      const T10& p10,
+      const T11& p11) {
+    new (space_) Type(p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11);
   }
 
   inline void Destroy() {
@@ -245,6 +346,6 @@ class ManualConstructor {
 #undef UTIL_GTL_ALIGNED_CHAR_ARRAY
 #undef UTIL_GTL_ALIGN_OF
 
-}
+} // namespace base
 
-#endif  // UTIL_GTL_MANUAL_CONSTRUCTOR_H_
+#endif // UTIL_GTL_MANUAL_CONSTRUCTOR_H_

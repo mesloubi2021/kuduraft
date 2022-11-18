@@ -62,21 +62,27 @@ using itest::MiniClusterFsInspector;
 using log::LogReader;
 
 LogVerifier::LogVerifier(cluster::MiniCluster* cluster)
-    : cluster_(cluster),
-      env_(cluster->env()) {
+    : cluster_(cluster), env_(cluster->env()) {
   inspector_.reset(new MiniClusterFsInspector(cluster));
   CHECK(inspector_);
 }
 
 LogVerifier::~LogVerifier() {}
 
-Status LogVerifier::ScanForCommittedOpIds(int ts_idx, const string& tablet_id,
-                                          map<int64_t, int64_t>* index_to_term) {
-
+Status LogVerifier::ScanForCommittedOpIds(
+    int ts_idx,
+    const string& tablet_id,
+    map<int64_t, int64_t>* index_to_term) {
   shared_ptr<LogReader> reader;
-  const string wal_dir = JoinPathSegments(inspector_->WalDirForTS(ts_idx), tablet_id);
-  RETURN_NOT_OK(LogReader::Open(env_, wal_dir, scoped_refptr<log::LogIndex>(), tablet_id,
-                                scoped_refptr<MetricEntity>(), &reader));
+  const string wal_dir =
+      JoinPathSegments(inspector_->WalDirForTS(ts_idx), tablet_id);
+  RETURN_NOT_OK(LogReader::Open(
+      env_,
+      wal_dir,
+      scoped_refptr<log::LogIndex>(),
+      tablet_id,
+      scoped_refptr<MetricEntity>(),
+      &reader));
   log::SegmentSequence segs;
   RETURN_NOT_OK(reader->GetSegmentsSnapshot(&segs));
   unique_ptr<log::LogEntryPB> entry;
@@ -84,15 +90,19 @@ Status LogVerifier::ScanForCommittedOpIds(int ts_idx, const string& tablet_id,
     log::LogEntryReader reader(seg.get());
     while (true) {
       Status s = reader.ReadNextEntry(&entry);
-      if (s.IsEndOfFile() || s.IsCorruption()) break;
+      if (s.IsEndOfFile() || s.IsCorruption())
+        break;
       RETURN_NOT_OK(s);
-      if (entry->type() != log::COMMIT) continue;
+      if (entry->type() != log::COMMIT)
+        continue;
       const auto& op_id = entry->commit().commited_op_id();
 
       if (!InsertIfNotPresent(index_to_term, op_id.index(), op_id.term())) {
         return Status::Corruption(Substitute(
             "Index $0 had two COMMIT messages: $1.$0 and $2.$0",
-            op_id.index(), op_id.term(), (*index_to_term)[op_id.index()]));
+            op_id.index(),
+            op_id.term(),
+            (*index_to_term)[op_id.index()]));
       }
     }
   }
@@ -100,14 +110,16 @@ Status LogVerifier::ScanForCommittedOpIds(int ts_idx, const string& tablet_id,
   return Status::OK();
 }
 
-Status LogVerifier::ScanForHighestCommittedOpIdInLog(int ts_idx,
-                                                     const string& tablet_id,
-                                                     OpId* commit_id) {
+Status LogVerifier::ScanForHighestCommittedOpIdInLog(
+    int ts_idx,
+    const string& tablet_id,
+    OpId* commit_id) {
   const string& wal_dir = inspector_->WalDirForTS(ts_idx);
   map<int64_t, int64_t> index_to_term;
 
-  RETURN_NOT_OK_PREPEND(ScanForCommittedOpIds(ts_idx, tablet_id, &index_to_term),
-                        Substitute("Couldn't scan log in dir $0", wal_dir));
+  RETURN_NOT_OK_PREPEND(
+      ScanForCommittedOpIds(ts_idx, tablet_id, &index_to_term),
+      Substitute("Couldn't scan log in dir $0", wal_dir));
   if (index_to_term.empty()) {
     return Status::NotFound("no COMMITs in log");
   }
@@ -128,11 +140,14 @@ Status LogVerifier::VerifyCommittedOpIdsMatch() {
     // Gather the [index->term] map for each of the tablet servers
     // hosting this tablet.
     for (int i = 0; i < cluster_->num_tablet_servers(); i++) {
-      const string& wal_dir = JoinPathSegments(inspector_->WalDirForTS(i), tablet_id);
-      if (!env_->FileExists(wal_dir)) continue;
+      const string& wal_dir =
+          JoinPathSegments(inspector_->WalDirForTS(i), tablet_id);
+      if (!env_->FileExists(wal_dir))
+        continue;
       map<int64_t, int64_t> index_to_term;
-      RETURN_NOT_OK_PREPEND(ScanForCommittedOpIds(i, tablet_id, &index_to_term),
-                            Substitute("Couldn't scan log for TS $0", i));
+      RETURN_NOT_OK_PREPEND(
+          ScanForCommittedOpIds(i, tablet_id, &index_to_term),
+          Substitute("Couldn't scan log for TS $0", i));
       for (const auto& index_term : index_to_term) {
         all_op_indexes.insert(index_term.first);
       }
@@ -146,22 +161,25 @@ Status LogVerifier::VerifyCommittedOpIdsMatch() {
     for (int64_t index : all_op_indexes) {
       committed_terms.clear();
       for (int ts = 0; ts < cluster_->num_tablet_servers(); ts++) {
-        committed_terms.push_back(FindWithDefault(maps_by_ts[ts], index, kNotOnThisServer));
+        committed_terms.push_back(
+            FindWithDefault(maps_by_ts[ts], index, kNotOnThisServer));
       }
-      // 'committed_terms' entries should all be kNotOnThisServer or the same as each other.
+      // 'committed_terms' entries should all be kNotOnThisServer or the same as
+      // each other.
       boost::optional<int64_t> expected_term;
       for (int ts = 0; ts < cluster_->num_tablet_servers(); ts++) {
         int64_t this_ts_term = committed_terms[ts];
-        if (this_ts_term == kNotOnThisServer) continue; // this TS doesn't have the op
+        if (this_ts_term == kNotOnThisServer)
+          continue; // this TS doesn't have the op
         if (expected_term == boost::none) {
           expected_term = this_ts_term;
         } else if (this_ts_term != expected_term) {
           string err = Substitute("Mismatch found for index $0, [", index);
           for (int i = 0; i < cluster_->num_tablet_servers(); i++) {
-            if (i != 0) err += ", ";
-            strings::SubstituteAndAppend(&err, "T $0=$1",
-                                         cluster_->UuidForTS(i),
-                                         committed_terms[i]);
+            if (i != 0)
+              err += ", ";
+            strings::SubstituteAndAppend(
+                &err, "T $0=$1", cluster_->UuidForTS(i), committed_terms[i]);
           }
           err += "]";
           return Status::Corruption(err);
@@ -169,8 +187,8 @@ Status LogVerifier::VerifyCommittedOpIdsMatch() {
       }
     }
 
-    LOG(INFO) << "Verified matching terms for " << all_op_indexes.size() << " ops in tablet "
-              << tablet_id;
+    LOG(INFO) << "Verified matching terms for " << all_op_indexes.size()
+              << " ops in tablet " << tablet_id;
   }
   return Status::OK();
 }

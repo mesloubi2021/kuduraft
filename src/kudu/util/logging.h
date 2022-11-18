@@ -46,26 +46,30 @@
 //
 // Redaction should be disabled in the following cases:
 //
-// 1) Outputting strings to a "secure" endpoint (for example an authenticated and authorized
+// 1) Outputting strings to a "secure" endpoint (for example an authenticated
+// and authorized
 //    web UI)
 //
-// 2) Using methods like schema.DebugRow(...) when the parameter is not in fact a user-provided
+// 2) Using methods like schema.DebugRow(...) when the parameter is not in fact
+// a user-provided
 //    row, but instead some piece of metadata such as a partition boundary.
-#define KUDU_DISABLE_REDACTION(expr) ([&]() {        \
-      kudu::ScopedDisableRedaction s;                \
-      return (expr);                                 \
-    })()
+#define KUDU_DISABLE_REDACTION(expr) \
+  ([&]() {                           \
+    kudu::ScopedDisableRedaction s;  \
+    return (expr);                   \
+  })()
 
-// Evaluates to 'true' if the caller should redact any user data in the current scope.
-// Most callers should instead use KUDU_REDACT(...) defined below, but this can be useful
-// to short-circuit expensive logic.
-#define KUDU_SHOULD_REDACT() ((kudu::g_should_redact == kudu::RedactContext::ALL ||    \
-  kudu::g_should_redact == kudu::RedactContext::LOG) && kudu::tls_redact_user_data)
+// Evaluates to 'true' if the caller should redact any user data in the current
+// scope. Most callers should instead use KUDU_REDACT(...) defined below, but
+// this can be useful to short-circuit expensive logic.
+#define KUDU_SHOULD_REDACT()                              \
+  ((kudu::g_should_redact == kudu::RedactContext::ALL ||  \
+    kudu::g_should_redact == kudu::RedactContext::LOG) && \
+   kudu::tls_redact_user_data)
 
-// Either evaluate and return 'expr', or return the string "<redacted>", depending on whether
-// redaction is enabled in the current scope.
-#define KUDU_REDACT(expr) \
-  (KUDU_SHOULD_REDACT() ? kRedactionMessage : (expr))
+// Either evaluate and return 'expr', or return the string "<redacted>",
+// depending on whether redaction is enabled in the current scope.
+#define KUDU_REDACT(expr) (KUDU_SHOULD_REDACT() ? kRedactionMessage : (expr))
 
 // Like the above, but with the additional condition that redaction will only
 // be performed if 'cond' must be true.
@@ -87,19 +91,14 @@ extern __thread bool tls_redact_user_data;
 // Redacted log messages are replaced with this constant.
 extern const char* const kRedactionMessage;
 
-enum class RedactContext {
-  ALL,
-  LOG,
-  NONE
-};
+enum class RedactContext { ALL, LOG, NONE };
 
 // Flag to indicate which redaction context is enabled.
 extern kudu::RedactContext g_should_redact;
 
 class ScopedDisableRedaction {
  public:
-  ScopedDisableRedaction()
-      : old_val_(tls_redact_user_data) {
+  ScopedDisableRedaction() : old_val_(tls_redact_user_data) {
     tls_redact_user_data = false;
   }
 
@@ -150,23 +149,26 @@ class ScopedDisableRedaction {
 //
 // In this example, the "coffee"-related message will be collapsed into other
 // such messages within the prior one second; however, if the state alternates
-// between the "coffee" message and the "wine" message, then each such alternation
-// will yield a message.
+// between the "coffee" message and the "wine" message, then each such
+// alternation will yield a message.
 
-#define KLOG_EVERY_N_SECS_THROTTLER(severity, n_secs, throttler, tag) \
-  int VARNAME_LINENUM(num_suppressed) = 0;                            \
-  if ((throttler).ShouldLog(n_secs, tag, &VARNAME_LINENUM(num_suppressed)))  \
-    google::LogMessage( \
-      __FILE__, __LINE__, google::GLOG_ ## severity, VARNAME_LINENUM(num_suppressed), \
-      &google::LogMessage::SendToLog).stream()
+#define KLOG_EVERY_N_SECS_THROTTLER(severity, n_secs, throttler, tag)       \
+  int VARNAME_LINENUM(num_suppressed) = 0;                                  \
+  if ((throttler).ShouldLog(n_secs, tag, &VARNAME_LINENUM(num_suppressed))) \
+  google::LogMessage(                                                       \
+      __FILE__,                                                             \
+      __LINE__,                                                             \
+      google::GLOG_##severity,                                              \
+      VARNAME_LINENUM(num_suppressed),                                      \
+      &google::LogMessage::SendToLog)                                       \
+      .stream()
 
-#define KLOG_EVERY_N_SECS(severity, n_secs) \
-  static logging::LogThrottler LOG_THROTTLER;  \
+#define KLOG_EVERY_N_SECS(severity, n_secs)   \
+  static logging::LogThrottler LOG_THROTTLER; \
   KLOG_EVERY_N_SECS_THROTTLER(severity, n_secs, LOG_THROTTLER, "no-tag")
 
-
 namespace kudu {
-enum PRIVATE_ThrottleMsg {THROTTLE_MSG};
+enum PRIVATE_ThrottleMsg { THROTTLE_MSG };
 } // namespace kudu
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -175,56 +177,80 @@ enum PRIVATE_ThrottleMsg {THROTTLE_MSG};
 ////////////////////////////////////////////////////////////////////////////////
 
 // The "base" macros.
-#define KUDU_SOME_KIND_OF_LOG_EVERY_N(severity, n, what_to_do) \
-  static int LOG_OCCURRENCES = 0, LOG_OCCURRENCES_MOD_N = 0; \
+#define KUDU_SOME_KIND_OF_LOG_EVERY_N(severity, n, what_to_do)              \
+  static int LOG_OCCURRENCES = 0, LOG_OCCURRENCES_MOD_N = 0;                \
   ANNOTATE_BENIGN_RACE(&LOG_OCCURRENCES, "Logging every N is approximate"); \
-  ANNOTATE_BENIGN_RACE(&LOG_OCCURRENCES_MOD_N, "Logging every N is approximate"); \
-  ++LOG_OCCURRENCES; \
-  if (++LOG_OCCURRENCES_MOD_N > (n)) LOG_OCCURRENCES_MOD_N -= (n); \
-  if (LOG_OCCURRENCES_MOD_N == 1) \
-    google::LogMessage( \
-        __FILE__, __LINE__, google::GLOG_ ## severity, LOG_OCCURRENCES, \
-        &what_to_do).stream() /*NOLINT(bugprone-macro-parentheses)*/
+  ANNOTATE_BENIGN_RACE(                                                     \
+      &LOG_OCCURRENCES_MOD_N, "Logging every N is approximate");            \
+  ++LOG_OCCURRENCES;                                                        \
+  if (++LOG_OCCURRENCES_MOD_N > (n))                                        \
+    LOG_OCCURRENCES_MOD_N -= (n);                                           \
+  if (LOG_OCCURRENCES_MOD_N == 1)                                           \
+  google::LogMessage(                                                       \
+      __FILE__,                                                             \
+      __LINE__,                                                             \
+      google::GLOG_##severity,                                              \
+      LOG_OCCURRENCES,                                                      \
+      &what_to_do)                                                          \
+      .stream() /*NOLINT(bugprone-macro-parentheses)*/
 
 #define KUDU_SOME_KIND_OF_LOG_IF_EVERY_N(severity, condition, n, what_to_do) \
-  static int LOG_OCCURRENCES = 0, LOG_OCCURRENCES_MOD_N = 0; \
-  ANNOTATE_BENIGN_RACE(&LOG_OCCURRENCES, "Logging every N is approximate"); \
-  ANNOTATE_BENIGN_RACE(&LOG_OCCURRENCES_MOD_N, "Logging every N is approximate"); \
-  ++LOG_OCCURRENCES; \
-  if ((condition) && \
-      ((LOG_OCCURRENCES_MOD_N=(LOG_OCCURRENCES_MOD_N + 1) % (n)) == (1 % (n)))) \
-    google::LogMessage( \
-        __FILE__, __LINE__, google::GLOG_ ## severity, LOG_OCCURRENCES, \
-                 &what_to_do).stream() /*NOLINT(bugprone-macro-parentheses)*/
+  static int LOG_OCCURRENCES = 0, LOG_OCCURRENCES_MOD_N = 0;                 \
+  ANNOTATE_BENIGN_RACE(&LOG_OCCURRENCES, "Logging every N is approximate");  \
+  ANNOTATE_BENIGN_RACE(                                                      \
+      &LOG_OCCURRENCES_MOD_N, "Logging every N is approximate");             \
+  ++LOG_OCCURRENCES;                                                         \
+  if ((condition) &&                                                         \
+      ((LOG_OCCURRENCES_MOD_N = (LOG_OCCURRENCES_MOD_N + 1) % (n)) ==        \
+       (1 % (n))))                                                           \
+  google::LogMessage(                                                        \
+      __FILE__,                                                              \
+      __LINE__,                                                              \
+      google::GLOG_##severity,                                               \
+      LOG_OCCURRENCES,                                                       \
+      &what_to_do)                                                           \
+      .stream() /*NOLINT(bugprone-macro-parentheses)*/
 
-#define KUDU_SOME_KIND_OF_PLOG_EVERY_N(severity, n, what_to_do) \
-  static int LOG_OCCURRENCES = 0, LOG_OCCURRENCES_MOD_N = 0; \
+#define KUDU_SOME_KIND_OF_PLOG_EVERY_N(severity, n, what_to_do)             \
+  static int LOG_OCCURRENCES = 0, LOG_OCCURRENCES_MOD_N = 0;                \
   ANNOTATE_BENIGN_RACE(&LOG_OCCURRENCES, "Logging every N is approximate"); \
-  ANNOTATE_BENIGN_RACE(&LOG_OCCURRENCES_MOD_N, "Logging every N is approximate"); \
-  ++LOG_OCCURRENCES; \
-  if (++LOG_OCCURRENCES_MOD_N > (n)) LOG_OCCURRENCES_MOD_N -= (n); \
-  if (LOG_OCCURRENCES_MOD_N == 1) \
-    google::ErrnoLogMessage( \
-        __FILE__, __LINE__, google::GLOG_ ## severity, LOG_OCCURRENCES, \
-        &what_to_do).stream() /*NOLINT(bugprone-macro-parentheses)*/
+  ANNOTATE_BENIGN_RACE(                                                     \
+      &LOG_OCCURRENCES_MOD_N, "Logging every N is approximate");            \
+  ++LOG_OCCURRENCES;                                                        \
+  if (++LOG_OCCURRENCES_MOD_N > (n))                                        \
+    LOG_OCCURRENCES_MOD_N -= (n);                                           \
+  if (LOG_OCCURRENCES_MOD_N == 1)                                           \
+  google::ErrnoLogMessage(                                                  \
+      __FILE__,                                                             \
+      __LINE__,                                                             \
+      google::GLOG_##severity,                                              \
+      LOG_OCCURRENCES,                                                      \
+      &what_to_do)                                                          \
+      .stream() /*NOLINT(bugprone-macro-parentheses)*/
 
 #define KUDU_SOME_KIND_OF_LOG_FIRST_N(severity, n, what_to_do) \
-  static uint64_t LOG_OCCURRENCES = 0; \
-  ANNOTATE_BENIGN_RACE(&LOG_OCCURRENCES, "Logging the first N is approximate"); \
-  if (LOG_OCCURRENCES++ < (n)) \
-    google::LogMessage( \
-      __FILE__, __LINE__, google::GLOG_ ## severity, LOG_OCCURRENCES, \
-      &what_to_do).stream() /*NOLINT(bugprone-macro-parentheses)*/
+  static uint64_t LOG_OCCURRENCES = 0;                         \
+  ANNOTATE_BENIGN_RACE(                                        \
+      &LOG_OCCURRENCES, "Logging the first N is approximate"); \
+  if (LOG_OCCURRENCES++ < (n))                                 \
+  google::LogMessage(                                          \
+      __FILE__,                                                \
+      __LINE__,                                                \
+      google::GLOG_##severity,                                 \
+      LOG_OCCURRENCES,                                         \
+      &what_to_do)                                             \
+      .stream() /*NOLINT(bugprone-macro-parentheses)*/
 
 // The direct user-facing macros.
-#define KLOG_EVERY_N(severity, n) \
-  GOOGLE_GLOG_COMPILE_ASSERT(google::GLOG_ ## severity < \
-                             google::NUM_SEVERITIES, \
-                             INVALID_REQUESTED_LOG_SEVERITY); \
+#define KLOG_EVERY_N(severity, n)                       \
+  GOOGLE_GLOG_COMPILE_ASSERT(                           \
+      google::GLOG_##severity < google::NUM_SEVERITIES, \
+      INVALID_REQUESTED_LOG_SEVERITY);                  \
   KUDU_SOME_KIND_OF_LOG_EVERY_N(severity, (n), google::LogMessage::SendToLog)
 
 #define KSYSLOG_EVERY_N(severity, n) \
-  KUDU_SOME_KIND_OF_LOG_EVERY_N(severity, (n), google::LogMessage::SendToSyslogAndLog)
+  KUDU_SOME_KIND_OF_LOG_EVERY_N(     \
+      severity, (n), google::LogMessage::SendToSyslogAndLog)
 
 #define KPLOG_EVERY_N(severity, n) \
   KUDU_SOME_KIND_OF_PLOG_EVERY_N(severity, (n), google::LogMessage::SendToLog)
@@ -233,35 +259,42 @@ enum PRIVATE_ThrottleMsg {THROTTLE_MSG};
   KUDU_SOME_KIND_OF_LOG_FIRST_N(severity, (n), google::LogMessage::SendToLog)
 
 #define KLOG_IF_EVERY_N(severity, condition, n) \
-  KUDU_SOME_KIND_OF_LOG_IF_EVERY_N(severity, (condition), (n), google::LogMessage::SendToLog)
+  KUDU_SOME_KIND_OF_LOG_IF_EVERY_N(             \
+      severity, (condition), (n), google::LogMessage::SendToLog)
 
-// We also disable the un-annotated glog macros for anyone who includes this header.
+// We also disable the un-annotated glog macros for anyone who includes this
+// header.
 #undef LOG_EVERY_N
 #define LOG_EVERY_N(severity, n) \
-  GOOGLE_GLOG_COMPILE_ASSERT(false, "LOG_EVERY_N is deprecated. Please use KLOG_EVERY_N.")
+  GOOGLE_GLOG_COMPILE_ASSERT(    \
+      false, "LOG_EVERY_N is deprecated. Please use KLOG_EVERY_N.")
 
 #undef SYSLOG_EVERY_N
 #define SYSLOG_EVERY_N(severity, n) \
-  GOOGLE_GLOG_COMPILE_ASSERT(false, "SYSLOG_EVERY_N is deprecated. Please use KSYSLOG_EVERY_N.")
+  GOOGLE_GLOG_COMPILE_ASSERT(       \
+      false, "SYSLOG_EVERY_N is deprecated. Please use KSYSLOG_EVERY_N.")
 
 #undef PLOG_EVERY_N
 #define PLOG_EVERY_N(severity, n) \
-  GOOGLE_GLOG_COMPILE_ASSERT(false, "PLOG_EVERY_N is deprecated. Please use KPLOG_EVERY_N.")
+  GOOGLE_GLOG_COMPILE_ASSERT(     \
+      false, "PLOG_EVERY_N is deprecated. Please use KPLOG_EVERY_N.")
 
 #undef LOG_FIRST_N
 #define LOG_FIRST_N(severity, n) \
-  GOOGLE_GLOG_COMPILE_ASSERT(false, "LOG_FIRST_N is deprecated. Please use KLOG_FIRST_N.")
+  GOOGLE_GLOG_COMPILE_ASSERT(    \
+      false, "LOG_FIRST_N is deprecated. Please use KLOG_FIRST_N.")
 
 #undef LOG_IF_EVERY_N
 #define LOG_IF_EVERY_N(severity, condition, n) \
-  GOOGLE_GLOG_COMPILE_ASSERT(false, "LOG_IF_EVERY_N is deprecated. Please use KLOG_IF_EVERY_N.")
+  GOOGLE_GLOG_COMPILE_ASSERT(                  \
+      false, "LOG_IF_EVERY_N is deprecated. Please use KLOG_IF_EVERY_N.")
 
 namespace kudu {
 
 class Env;
 
-// glog doesn't allow multiple invocations of InitGoogleLogging. This method conditionally
-// calls InitGoogleLogging only if it hasn't been called before.
+// glog doesn't allow multiple invocations of InitGoogleLogging. This method
+// conditionally calls InitGoogleLogging only if it hasn't been called before.
 //
 // It also takes care of installing the google failure signal handler and
 // setting the signal handler for SIGPIPE to SIG_IGN.
@@ -295,8 +328,8 @@ void GetFullLogFilename(google::LogSeverity severity, std::string* filename);
 // Format a timestamp in the same format as used by GLog.
 std::string FormatTimestampForLog(MicrosecondsInt64 micros_since_epoch);
 
-// Shuts down the google logging library. Call before exit to ensure that log files are
-// flushed.
+// Shuts down the google logging library. Call before exit to ensure that log
+// files are flushed.
 void ShutdownLoggingSafe();
 
 // Deletes excess rotated log files.
@@ -316,15 +349,16 @@ namespace logging {
 class LogThrottler {
  public:
   LogThrottler() : num_suppressed_(0), last_ts_(0), last_tag_(nullptr) {
-    ANNOTATE_BENIGN_RACE_SIZED(this, sizeof(*this), "OK to be sloppy with log throttling");
+    ANNOTATE_BENIGN_RACE_SIZED(
+        this, sizeof(*this), "OK to be sloppy with log throttling");
   }
 
   bool ShouldLog(int n_secs, const char* tag, int* num_suppressed) {
     MicrosecondsInt64 ts = GetMonoTimeMicros();
 
-    // When we switch tags, we should not show the "suppressed" messages, because
-    // in fact it's a different message that we skipped. So, reset it to zero,
-    // and always log the new message.
+    // When we switch tags, we should not show the "suppressed" messages,
+    // because in fact it's a different message that we skipped. So, reset it to
+    // zero, and always log the new message.
     if (tag != last_tag_) {
       *num_suppressed = num_suppressed_ = 0;
       last_tag_ = tag;
@@ -333,13 +367,16 @@ class LogThrottler {
     }
 
     if (ts - last_ts_ < n_secs * 1000000) {
-      *num_suppressed = base::subtle::NoBarrier_AtomicIncrement(&num_suppressed_, 1);
+      *num_suppressed =
+          base::subtle::NoBarrier_AtomicIncrement(&num_suppressed_, 1);
       return false;
     }
     last_ts_ = ts;
-    *num_suppressed = base::subtle::NoBarrier_AtomicExchange(&num_suppressed_, 0);
+    *num_suppressed =
+        base::subtle::NoBarrier_AtomicExchange(&num_suppressed_, 0);
     return true;
   }
+
  private:
   Atomic32 num_suppressed_;
   MicrosecondsInt64 last_ts_;
@@ -347,20 +384,20 @@ class LogThrottler {
 };
 } // namespace logging
 
-std::ostream& operator<<(std::ostream &os, const PRIVATE_ThrottleMsg&);
+std::ostream& operator<<(std::ostream& os, const PRIVATE_ThrottleMsg&);
 
-// Convenience macros to prefix log messages with some prefix, these are the unlocked
-// versions and should not obtain a lock (if one is required to obtain the prefix).
-// There must be a LogPrefixUnlocked()/LogPrefixLocked() method available in the current
-// scope in order to use these macros.
+// Convenience macros to prefix log messages with some prefix, these are the
+// unlocked versions and should not obtain a lock (if one is required to obtain
+// the prefix). There must be a LogPrefixUnlocked()/LogPrefixLocked() method
+// available in the current scope in order to use these macros.
 #define LOG_WITH_PREFIX_UNLOCKED(severity) LOG(severity) << LogPrefixUnlocked()
-#define VLOG_WITH_PREFIX_UNLOCKED(verboselevel) LOG_IF(INFO, VLOG_IS_ON(verboselevel)) \
-  << LogPrefixUnlocked()
+#define VLOG_WITH_PREFIX_UNLOCKED(verboselevel) \
+  LOG_IF(INFO, VLOG_IS_ON(verboselevel)) << LogPrefixUnlocked()
 
 // Same as the above, but obtain the lock.
 #define LOG_WITH_PREFIX(severity) LOG(severity) << LogPrefix()
-#define VLOG_WITH_PREFIX(verboselevel) LOG_IF(INFO, VLOG_IS_ON(verboselevel)) \
-  << LogPrefix()
+#define VLOG_WITH_PREFIX(verboselevel) \
+  LOG_IF(INFO, VLOG_IS_ON(verboselevel)) << LogPrefix()
 
 } // namespace kudu
 

@@ -26,8 +26,15 @@ class Charmap {
  public:
   // Initializes with given uint32 values.  For instance, the first
   // variable contains bits for values 0x1F (US) down to 0x00 (NUL).
-  Charmap(uint32 b0, uint32 b1, uint32 b2, uint32 b3,
-          uint32 b4, uint32 b5, uint32 b6, uint32 b7) {
+  Charmap(
+      uint32 b0,
+      uint32 b1,
+      uint32 b2,
+      uint32 b3,
+      uint32 b4,
+      uint32 b5,
+      uint32 b6,
+      uint32 b7) {
     m_[0] = b0;
     m_[1] = b1;
     m_[2] = b2;
@@ -55,7 +62,7 @@ class Charmap {
   }
 
   // Returns true if and only if a character exists in both maps.
-  bool IntersectsWith(const Charmap & c) const {
+  bool IntersectsWith(const Charmap& c) const {
     for (int i = 0; i < 8; ++i) {
       if ((m_[i] & c.m_[i]) != 0)
         return true;
@@ -84,4 +91,4 @@ class Charmap {
 };
 DECLARE_POD(Charmap);
 
-#endif  // UTIL_GTL_CHARMAP_H_
+#endif // UTIL_GTL_CHARMAP_H_

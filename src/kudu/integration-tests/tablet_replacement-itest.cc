@@ -56,8 +56,8 @@
 
 DECLARE_bool(raft_prepare_replacement_before_eviction);
 
-using kudu::consensus::RaftPeerPB;
 using kudu::consensus::EXCLUDE_HEALTH_REPORT;
+using kudu::consensus::RaftPeerPB;
 using kudu::itest::AddServer;
 using kudu::itest::RemoveServer;
 using kudu::itest::StartElection;
@@ -78,10 +78,7 @@ using strings::Substitute;
 
 namespace kudu {
 
-enum InstabilityType {
-  NODE_DOWN,
-  NODE_STOPPED
-};
+enum InstabilityType { NODE_DOWN, NODE_STOPPED };
 
 class TabletReplacementITest : public ExternalMiniClusterITestBase {
  protected:
@@ -89,17 +86,20 @@ class TabletReplacementITest : public ExternalMiniClusterITestBase {
   // replicas of the tablet.
   typedef map<string, vector<string>> TabletToReplicaUUIDs;
 
-  Status GetTabletToReplicaUUIDsMapping(const MonoDelta& timeout,
-                                        TabletToReplicaUUIDs* mappings) const;
+  Status GetTabletToReplicaUUIDsMapping(
+      const MonoDelta& timeout,
+      TabletToReplicaUUIDs* mappings) const;
 
   // Depending on replica management mode the test is running, not all elements
   // of ts_map_ are relevant. So, construct ts_map containing information on
   // tablet servers which host tablet replicas.
-  void GetTsMapForReplicas(const vector<string>& replica_uuids,
-                           unordered_map<string, TServerDetails*>* ts_map) const;
+  void GetTsMapForReplicas(
+      const vector<string>& replica_uuids,
+      unordered_map<string, TServerDetails*>* ts_map) const;
 
-  void TestDontEvictIfRemainingConfigIsUnstable(InstabilityType type,
-                                                bool is_3_4_3_mode);
+  void TestDontEvictIfRemainingConfigIsUnstable(
+      InstabilityType type,
+      bool is_3_4_3_mode);
 };
 
 Status TabletReplacementITest::GetTabletToReplicaUUIDsMapping(
@@ -135,7 +135,8 @@ void TabletReplacementITest::GetTsMapForReplicas(
 }
 
 void TabletReplacementITest::TestDontEvictIfRemainingConfigIsUnstable(
-    InstabilityType type, bool is_3_4_3_mode) {
+    InstabilityType type,
+    bool is_3_4_3_mode) {
   if (!AllowSlowTests()) {
     LOG(WARNING) << "test is skipped; set KUDU_ALLOW_SLOW_TESTS=1 to run";
     return;
@@ -152,18 +153,22 @@ void TabletReplacementITest::TestDontEvictIfRemainingConfigIsUnstable(
   constexpr auto kConsensusRpcTimeoutSec = 2;
   constexpr auto kNumReplicas = 3;
   const vector<string> ts_flags = {
-    Substitute("--raft_prepare_replacement_before_eviction=$0", is_3_4_3_mode),
+      Substitute(
+          "--raft_prepare_replacement_before_eviction=$0", is_3_4_3_mode),
 
-    Substitute("--follower_unavailable_considered_failed_sec=$0", kUnavailableSec),
-    Substitute("--consensus_rpc_timeout_ms=$0", kConsensusRpcTimeoutSec * 1000),
-    Substitute("--heartbeat_interval_ms=$0", kTsToMasterHbIntervalSec * 1000),
-    "--raft_heartbeat_interval_ms=50",
-    "--enable_leader_failure_detection=false",
+      Substitute(
+          "--follower_unavailable_considered_failed_sec=$0", kUnavailableSec),
+      Substitute(
+          "--consensus_rpc_timeout_ms=$0", kConsensusRpcTimeoutSec * 1000),
+      Substitute("--heartbeat_interval_ms=$0", kTsToMasterHbIntervalSec * 1000),
+      "--raft_heartbeat_interval_ms=50",
+      "--enable_leader_failure_detection=false",
   };
   const vector<string> master_flags = {
-    Substitute("--raft_prepare_replacement_before_eviction=$0", is_3_4_3_mode),
+      Substitute(
+          "--raft_prepare_replacement_before_eviction=$0", is_3_4_3_mode),
 
-    "--catalog_manager_wait_for_new_tablets_to_elect_leader=false",
+      "--catalog_manager_wait_for_new_tablets_to_elect_leader=false",
   };
   // Additional tablet server is needed when running in 3-4-3 replica management
   // scheme to allow for eviction of failed tablet replicas.
@@ -202,14 +207,15 @@ void TabletReplacementITest::TestDontEvictIfRemainingConfigIsUnstable(
   }
 
   consensus::ConsensusStatePB cstate_initial;
-  ASSERT_OK(GetConsensusState(leader_ts, tablet_id, kTimeout, EXCLUDE_HEALTH_REPORT,
-                              &cstate_initial));
+  ASSERT_OK(GetConsensusState(
+      leader_ts, tablet_id, kTimeout, EXCLUDE_HEALTH_REPORT, &cstate_initial));
 
   const auto& kFollower1Id = replica_uuids[1];
   const auto& kFollower2Id = replica_uuids[2];
 
-  // Shut down both followers and wait for enough time that the leader thinks they are
-  // unresponsive. It should not trigger a config change to evict either one.
+  // Shut down both followers and wait for enough time that the leader thinks
+  // they are unresponsive. It should not trigger a config change to evict
+  // either one.
   switch (type) {
     case NODE_DOWN:
       cluster_->tablet_server_by_uuid(kFollower1Id)->Shutdown();
@@ -230,18 +236,22 @@ void TabletReplacementITest::TestDontEvictIfRemainingConfigIsUnstable(
   // we resume a follower, the leader does not consider itself unreachable,
   // which was a bug that we had (KUDU-2230) and that this test also serves as
   // a regression test for.
-  auto min_sleep_required_sec = std::max(kUnavailableSec, kConsensusRpcTimeoutSec);
-  min_sleep_required_sec = std::max(min_sleep_required_sec, kTsToMasterHbIntervalSec);
+  auto min_sleep_required_sec =
+      std::max(kUnavailableSec, kConsensusRpcTimeoutSec);
+  min_sleep_required_sec =
+      std::max(min_sleep_required_sec, kTsToMasterHbIntervalSec);
   SleepFor(MonoDelta::FromSeconds(2 * min_sleep_required_sec));
 
   {
     consensus::ConsensusStatePB cstate;
-    ASSERT_OK(GetConsensusState(leader_ts, tablet_id, kTimeout, EXCLUDE_HEALTH_REPORT, &cstate));
+    ASSERT_OK(GetConsensusState(
+        leader_ts, tablet_id, kTimeout, EXCLUDE_HEALTH_REPORT, &cstate));
     SCOPED_TRACE(cstate.DebugString());
     ASSERT_FALSE(cstate.has_pending_config())
         << "Leader should not have issued any config change";
-    ASSERT_EQ(cstate_initial.committed_config().opid_index(),
-              cstate.committed_config().opid_index())
+    ASSERT_EQ(
+        cstate_initial.committed_config().opid_index(),
+        cstate.committed_config().opid_index())
         << "Leader should not have issued any config change";
   }
 
@@ -258,10 +268,12 @@ void TabletReplacementITest::TestDontEvictIfRemainingConfigIsUnstable(
   // evict the failed replica, resulting in Raft configuration update.
   ASSERT_EVENTUALLY([&] {
     consensus::ConsensusStatePB cstate;
-    ASSERT_OK(GetConsensusState(leader_ts, tablet_id, kTimeout, EXCLUDE_HEALTH_REPORT, &cstate));
-    ASSERT_GT(cstate.committed_config().opid_index(),
-              cstate_initial.committed_config().opid_index() +
-              (is_3_4_3_mode ? 1 : 0))
+    ASSERT_OK(GetConsensusState(
+        leader_ts, tablet_id, kTimeout, EXCLUDE_HEALTH_REPORT, &cstate));
+    ASSERT_GT(
+        cstate.committed_config().opid_index(),
+        cstate_initial.committed_config().opid_index() +
+            (is_3_4_3_mode ? 1 : 0))
         << "Leader should have issued config change to evict failed follower;"
         << " the consensus state is: " << cstate.DebugString();
   });
@@ -272,10 +284,12 @@ void TabletReplacementITest::TestDontEvictIfRemainingConfigIsUnstable(
 // not part of the committed config yet (only the pending config).
 TEST_F(TabletReplacementITest, TestMasterTombstoneEvictedReplica) {
   MonoDelta timeout = MonoDelta::FromSeconds(30);
-  vector<string> ts_flags = { "--enable_leader_failure_detection=false" };
+  vector<string> ts_flags = {"--enable_leader_failure_detection=false"};
   int num_tservers = 5;
-  vector<string> master_flags = { "--master_add_server_when_underreplicated=false" };
-  master_flags.emplace_back("--catalog_manager_wait_for_new_tablets_to_elect_leader=false");
+  vector<string> master_flags = {
+      "--master_add_server_when_underreplicated=false"};
+  master_flags.emplace_back(
+      "--catalog_manager_wait_for_new_tablets_to_elect_leader=false");
   NO_FATALS(StartCluster(ts_flags, master_flags, num_tservers));
 
   TestWorkload workload(cluster_.get());
@@ -283,9 +297,11 @@ TEST_F(TabletReplacementITest, TestMasterTombstoneEvictedReplica) {
   workload.Setup(); // Easy way to create a new tablet.
 
   const int kLeaderIndex = 0;
-  TServerDetails* leader_ts = ts_map_[cluster_->tablet_server(kLeaderIndex)->uuid()];
+  TServerDetails* leader_ts =
+      ts_map_[cluster_->tablet_server(kLeaderIndex)->uuid()];
   const int kFollowerIndex = 4;
-  TServerDetails* follower_ts = ts_map_[cluster_->tablet_server(kFollowerIndex)->uuid()];
+  TServerDetails* follower_ts =
+      ts_map_[cluster_->tablet_server(kFollowerIndex)->uuid()];
 
   // Figure out the tablet id of the created tablet.
   vector<ListTabletsResponsePB::StatusAndSchemaPB> tablets;
@@ -294,29 +310,32 @@ TEST_F(TabletReplacementITest, TestMasterTombstoneEvictedReplica) {
 
   // Wait until all replicas are up and running.
   for (int i = 0; i < cluster_->num_tablet_servers(); i++) {
-    ASSERT_OK(WaitUntilTabletRunning(ts_map_[cluster_->tablet_server(i)->uuid()],
-                                     tablet_id, timeout));
+    ASSERT_OK(WaitUntilTabletRunning(
+        ts_map_[cluster_->tablet_server(i)->uuid()], tablet_id, timeout));
   }
 
   // Elect a leader (TS 0)
   ASSERT_OK(StartElection(leader_ts, tablet_id, timeout));
-  ASSERT_OK(WaitForServersToAgree(timeout, ts_map_, tablet_id, 1)); // Wait for NO_OP.
+  ASSERT_OK(
+      WaitForServersToAgree(timeout, ts_map_, tablet_id, 1)); // Wait for NO_OP.
 
-  // Wait until it has committed its NO_OP, so that we can perform a config change.
+  // Wait until it has committed its NO_OP, so that we can perform a config
+  // change.
   ASSERT_OK(WaitUntilCommittedOpIdIndexIs(1, leader_ts, tablet_id, timeout));
 
   // Remove a follower from the config.
   ASSERT_OK(RemoveServer(leader_ts, tablet_id, follower_ts, timeout));
 
   // Wait for the Master to tombstone the replica.
-  ASSERT_OK(inspect_->WaitForTabletDataStateOnTS(kFollowerIndex, tablet_id,
-                                                 { TABLET_DATA_TOMBSTONED },
-                                                 timeout));
+  ASSERT_OK(inspect_->WaitForTabletDataStateOnTS(
+      kFollowerIndex, tablet_id, {TABLET_DATA_TOMBSTONED}, timeout));
 
   if (!AllowSlowTests()) {
-    // The rest of this test has multi-second waits, so we do it in slow test mode.
-    LOG(WARNING) << "not verifying that a newly-added replica won't be tombstoned; "
-                    "run with KUDU_ALLOW_SLOW_TESTS=1 to verify";
+    // The rest of this test has multi-second waits, so we do it in slow test
+    // mode.
+    LOG(WARNING)
+        << "not verifying that a newly-added replica won't be tombstoned; "
+           "run with KUDU_ALLOW_SLOW_TESTS=1 to verify";
     return;
   }
 
@@ -329,26 +348,35 @@ TEST_F(TabletReplacementITest, TestMasterTombstoneEvictedReplica) {
     ASSERT_EQ(1, active_ts_map.erase(cluster_->tablet_server(i)->uuid()));
   }
   // This will time out, but should take effect.
-  Status s = AddServer(leader_ts, tablet_id, follower_ts, RaftPeerPB::VOTER,
-                       MonoDelta::FromSeconds(5));
+  Status s = AddServer(
+      leader_ts,
+      tablet_id,
+      follower_ts,
+      RaftPeerPB::VOTER,
+      MonoDelta::FromSeconds(5));
   ASSERT_TRUE(s.IsTimedOut());
-  ASSERT_OK(inspect_->WaitForTabletDataStateOnTS(kFollowerIndex, tablet_id, { TABLET_DATA_READY },
-                                                 timeout));
+  ASSERT_OK(inspect_->WaitForTabletDataStateOnTS(
+      kFollowerIndex, tablet_id, {TABLET_DATA_READY}, timeout));
   ASSERT_OK(WaitForServersToAgree(timeout, active_ts_map, tablet_id, 3));
 
   // Sleep for a few more seconds and check again to ensure that the Master
   // didn't end up tombstoning the replica.
   SleepFor(MonoDelta::FromSeconds(3));
-  ASSERT_OK(inspect_->CheckTabletDataStateOnTS(kFollowerIndex, tablet_id, { TABLET_DATA_READY }));
+  ASSERT_OK(inspect_->CheckTabletDataStateOnTS(
+      kFollowerIndex, tablet_id, {TABLET_DATA_READY}));
 }
 
 // Test for KUDU-2138: ensure that the master will tombstone failed tablets
 // that have previously been evicted.
-TEST_F(TabletReplacementITest, TestMasterTombstoneFailedEvictedReplicaOnReport) {
+TEST_F(
+    TabletReplacementITest,
+    TestMasterTombstoneFailedEvictedReplicaOnReport) {
   const MonoDelta kTimeout = MonoDelta::FromSeconds(30);
   const int kNumServers = 4;
-  NO_FATALS(StartCluster({"--follower_unavailable_considered_failed_sec=5"},
-      {"--master_tombstone_evicted_tablet_replicas=false"}, kNumServers));
+  NO_FATALS(StartCluster(
+      {"--follower_unavailable_considered_failed_sec=5"},
+      {"--master_tombstone_evicted_tablet_replicas=false"},
+      kNumServers));
 
   TestWorkload workload(cluster_.get());
   workload.Setup(); // Easy way to create a new tablet.
@@ -356,9 +384,9 @@ TEST_F(TabletReplacementITest, TestMasterTombstoneFailedEvictedReplicaOnReport) 
   // Determine the tablet id.
   string tablet_id;
   ASSERT_EVENTUALLY([&] {
-      vector<string> tablets = inspect_->ListTablets();
-      ASSERT_FALSE(tablets.empty());
-      tablet_id = tablets[0];
+    vector<string> tablets = inspect_->ListTablets();
+    ASSERT_FALSE(tablets.empty());
+    tablet_id = tablets[0];
   });
 
   // Determine which tablet servers have data. One should be empty.
@@ -368,7 +396,8 @@ TEST_F(TabletReplacementITest, TestMasterTombstoneFailedEvictedReplicaOnReport) 
   consensus::ConsensusMetadataPB cmeta_pb;
   for (int i = 0; i < kNumServers; i++) {
     consensus::ConsensusMetadataPB cmeta_pb;
-    if (inspect_->ReadConsensusMetadataOnTS(i, tablet_id, &cmeta_pb).IsNotFound()) {
+    if (inspect_->ReadConsensusMetadataOnTS(i, tablet_id, &cmeta_pb)
+            .IsNotFound()) {
       empty_ts_uuid = cluster_->tablet_server(i)->uuid();
       ASSERT_EQ(1, active_ts_map.erase(empty_ts_uuid));
       empty_server_idx = i;
@@ -387,22 +416,20 @@ TEST_F(TabletReplacementITest, TestMasterTombstoneFailedEvictedReplicaOnReport) 
   int idx_to_fail = (empty_server_idx + 1) % kNumServers;
   auto* ts = cluster_->tablet_server(idx_to_fail);
   ts->Shutdown();
-  ASSERT_OK(inspect_->ReadConsensusMetadataOnTS(idx_to_fail, tablet_id, &cmeta_pb));
+  ASSERT_OK(
+      inspect_->ReadConsensusMetadataOnTS(idx_to_fail, tablet_id, &cmeta_pb));
   cmeta_pb.set_current_term(-1);
-  ASSERT_OK(inspect_->WriteConsensusMetadataOnTS(idx_to_fail, tablet_id, cmeta_pb));
+  ASSERT_OK(
+      inspect_->WriteConsensusMetadataOnTS(idx_to_fail, tablet_id, cmeta_pb));
 
   // Wait until the replica is evicted and replicated to the empty server.
-  ASSERT_OK(WaitUntilTabletInState(ts_map_[empty_ts_uuid],
-                                   tablet_id,
-                                   tablet::RUNNING,
-                                   kTimeout));
+  ASSERT_OK(WaitUntilTabletInState(
+      ts_map_[empty_ts_uuid], tablet_id, tablet::RUNNING, kTimeout));
 
   // Restart the tserver and ensure the tablet is failed.
   ASSERT_OK(ts->Restart());
-  ASSERT_OK(WaitUntilTabletInState(ts_map_[ts->uuid()],
-                                   tablet_id,
-                                   tablet::FAILED,
-                                   kTimeout));
+  ASSERT_OK(WaitUntilTabletInState(
+      ts_map_[ts->uuid()], tablet_id, tablet::FAILED, kTimeout));
 
   // Upon restarting, the master will request a report and notice the failed
   // replica. Wait for the master to tombstone the failed follower.
@@ -410,9 +437,8 @@ TEST_F(TabletReplacementITest, TestMasterTombstoneFailedEvictedReplicaOnReport) 
   cluster_->master()->mutable_flags()->emplace_back(
       "--master_tombstone_evicted_tablet_replicas=true");
   ASSERT_OK(cluster_->master()->Restart());
-  ASSERT_OK(inspect_->WaitForTabletDataStateOnTS(idx_to_fail, tablet_id,
-                                                 { TABLET_DATA_TOMBSTONED },
-                                                 kTimeout));
+  ASSERT_OK(inspect_->WaitForTabletDataStateOnTS(
+      idx_to_fail, tablet_id, {TABLET_DATA_TOMBSTONED}, kTimeout));
 }
 
 // Ensure that the Master will tombstone a replica if it reports in with an old
@@ -420,18 +446,22 @@ TEST_F(TabletReplacementITest, TestMasterTombstoneFailedEvictedReplicaOnReport) 
 // than TestMasterTombstoneEvictedReplica does.
 TEST_F(TabletReplacementITest, TestMasterTombstoneOldReplicaOnReport) {
   MonoDelta timeout = MonoDelta::FromSeconds(30);
-  vector<string> ts_flags = { "--enable_leader_failure_detection=false" };
-  vector<string> master_flags = { "--master_add_server_when_underreplicated=false" };
-  master_flags.emplace_back("--catalog_manager_wait_for_new_tablets_to_elect_leader=false");
+  vector<string> ts_flags = {"--enable_leader_failure_detection=false"};
+  vector<string> master_flags = {
+      "--master_add_server_when_underreplicated=false"};
+  master_flags.emplace_back(
+      "--catalog_manager_wait_for_new_tablets_to_elect_leader=false");
   NO_FATALS(StartCluster(ts_flags, master_flags));
 
   TestWorkload workload(cluster_.get());
   workload.Setup(); // Easy way to create a new tablet.
 
   const int kLeaderIndex = 0;
-  TServerDetails* leader_ts = ts_map_[cluster_->tablet_server(kLeaderIndex)->uuid()];
+  TServerDetails* leader_ts =
+      ts_map_[cluster_->tablet_server(kLeaderIndex)->uuid()];
   const int kFollowerIndex = 2;
-  TServerDetails* follower_ts = ts_map_[cluster_->tablet_server(kFollowerIndex)->uuid()];
+  TServerDetails* follower_ts =
+      ts_map_[cluster_->tablet_server(kFollowerIndex)->uuid()];
 
   // Figure out the tablet id of the created tablet.
   vector<ListTabletsResponsePB::StatusAndSchemaPB> tablets;
@@ -440,15 +470,17 @@ TEST_F(TabletReplacementITest, TestMasterTombstoneOldReplicaOnReport) {
 
   // Wait until all replicas are up and running.
   for (int i = 0; i < cluster_->num_tablet_servers(); i++) {
-    ASSERT_OK(WaitUntilTabletRunning(ts_map_[cluster_->tablet_server(i)->uuid()],
-                                     tablet_id, timeout));
+    ASSERT_OK(WaitUntilTabletRunning(
+        ts_map_[cluster_->tablet_server(i)->uuid()], tablet_id, timeout));
   }
 
   // Elect a leader (TS 0)
   ASSERT_OK(StartElection(leader_ts, tablet_id, timeout));
-  ASSERT_OK(WaitForServersToAgree(timeout, ts_map_, tablet_id, 1)); // Wait for NO_OP.
+  ASSERT_OK(
+      WaitForServersToAgree(timeout, ts_map_, tablet_id, 1)); // Wait for NO_OP.
 
-  // Wait until it has committed its NO_OP, so that we can perform a config change.
+  // Wait until it has committed its NO_OP, so that we can perform a config
+  // change.
   ASSERT_OK(WaitUntilCommittedOpIdIndexIs(1, leader_ts, tablet_id, timeout));
 
   // Shut down the follower to be removed, then remove it from the config.
@@ -460,8 +492,8 @@ TEST_F(TabletReplacementITest, TestMasterTombstoneOldReplicaOnReport) {
   // Remove the follower from the config and wait for the Master to notice the
   // config change.
   ASSERT_OK(RemoveServer(leader_ts, tablet_id, follower_ts, timeout));
-  ASSERT_OK(itest::WaitForNumVotersInConfigOnMaster(cluster_->master_proxy(), tablet_id, 2,
-                                                    timeout));
+  ASSERT_OK(itest::WaitForNumVotersInConfigOnMaster(
+      cluster_->master_proxy(), tablet_id, 2, timeout));
 
   // Shut down the remaining tablet servers and restart the dead one.
   cluster_->tablet_server(0)->Shutdown();
@@ -469,17 +501,15 @@ TEST_F(TabletReplacementITest, TestMasterTombstoneOldReplicaOnReport) {
   ASSERT_OK(cluster_->tablet_server(kFollowerIndex)->Restart());
 
   // Wait for the Master to tombstone the revived follower.
-  ASSERT_OK(inspect_->WaitForTabletDataStateOnTS(kFollowerIndex, tablet_id,
-                                                 { TABLET_DATA_TOMBSTONED },
-                                                 timeout));
+  ASSERT_OK(inspect_->WaitForTabletDataStateOnTS(
+      kFollowerIndex, tablet_id, {TABLET_DATA_TOMBSTONED}, timeout));
 }
 
 /////////////////////////////////////////////////////////////////////////////
 
-class EvictAndReplaceDeadFollowerITest :
-    public TabletReplacementITest,
-    public ::testing::WithParamInterface<bool> {
-};
+class EvictAndReplaceDeadFollowerITest
+    : public TabletReplacementITest,
+      public ::testing::WithParamInterface<bool> {};
 
 // Test that unreachable followers are evicted and replaced.
 TEST_P(EvictAndReplaceDeadFollowerITest, UnreachableFollower) {
@@ -491,13 +521,15 @@ TEST_P(EvictAndReplaceDeadFollowerITest, UnreachableFollower) {
   const bool is_3_4_3_mode = GetParam();
   MonoDelta kTimeout = MonoDelta::FromSeconds(30);
   const vector<string> ts_flags = {
-    "--enable_leader_failure_detection=false",
-    "--follower_unavailable_considered_failed_sec=5",
-    Substitute("--raft_prepare_replacement_before_eviction=$0", is_3_4_3_mode),
+      "--enable_leader_failure_detection=false",
+      "--follower_unavailable_considered_failed_sec=5",
+      Substitute(
+          "--raft_prepare_replacement_before_eviction=$0", is_3_4_3_mode),
   };
   const vector<string> master_flags = {
-    "--catalog_manager_wait_for_new_tablets_to_elect_leader=false",
-    Substitute("--raft_prepare_replacement_before_eviction=$0", is_3_4_3_mode),
+      "--catalog_manager_wait_for_new_tablets_to_elect_leader=false",
+      Substitute(
+          "--raft_prepare_replacement_before_eviction=$0", is_3_4_3_mode),
   };
   constexpr auto kNumReplicas = 3;
 
@@ -551,16 +583,13 @@ TEST_P(EvictAndReplaceDeadFollowerITest, UnreachableFollower) {
   ASSERT_OK(cluster_->tablet_server_by_uuid(kFollowerId)->Restart());
 }
 
-INSTANTIATE_TEST_CASE_P(,
-                        EvictAndReplaceDeadFollowerITest,
-                        ::testing::Bool());
+INSTANTIATE_TEST_CASE_P(, EvictAndReplaceDeadFollowerITest, ::testing::Bool());
 
 /////////////////////////////////////////////////////////////////////////////
 
-class DontEvictIfRemainingConfigIsUnstableITest :
-    public TabletReplacementITest,
-    public ::testing::WithParamInterface<bool> {
-};
+class DontEvictIfRemainingConfigIsUnstableITest
+    : public TabletReplacementITest,
+      public ::testing::WithParamInterface<bool> {};
 
 // Regression test for KUDU-2048 and KUDU-2230. If a majority of followers are
 // unresponsive, the leader should not evict any of them.
@@ -572,9 +601,10 @@ TEST_P(DontEvictIfRemainingConfigIsUnstableITest, NodesStopped) {
   TestDontEvictIfRemainingConfigIsUnstable(NODE_STOPPED, GetParam());
 }
 
-INSTANTIATE_TEST_CASE_P(,
-                        DontEvictIfRemainingConfigIsUnstableITest,
-                        ::testing::Bool());
+INSTANTIATE_TEST_CASE_P(
+    ,
+    DontEvictIfRemainingConfigIsUnstableITest,
+    ::testing::Bool());
 
 /////////////////////////////////////////////////////////////////////////////
 
@@ -587,7 +617,9 @@ INSTANTIATE_TEST_CASE_P(,
 // applied config change operations. At startup time, the newly
 // copied tablet should detect that these config change
 // operations have already been applied and skip them.
-TEST_F(TabletReplacementITest, TestRemoteBoostrapWithPendingConfigChangeCommits) {
+TEST_F(
+    TabletReplacementITest,
+    TestRemoteBoostrapWithPendingConfigChangeCommits) {
   if (!AllowSlowTests()) {
     LOG(WARNING) << "test is skipped; set KUDU_ALLOW_SLOW_TESTS=1 to run";
     return;
@@ -601,16 +633,19 @@ TEST_F(TabletReplacementITest, TestRemoteBoostrapWithPendingConfigChangeCommits)
   // more deterministic.
   master_flags.emplace_back("--master_add_server_when_underreplicated=false");
   master_flags.emplace_back("--master_tombstone_evicted_tablet_replicas=false");
-  master_flags.emplace_back("--catalog_manager_wait_for_new_tablets_to_elect_leader=false");
+  master_flags.emplace_back(
+      "--catalog_manager_wait_for_new_tablets_to_elect_leader=false");
   NO_FATALS(StartCluster(ts_flags, master_flags));
 
   TestWorkload workload(cluster_.get());
   workload.Setup(); // Convenient way to create a table.
 
   const int kLeaderIndex = 0;
-  TServerDetails* leader_ts = ts_map_[cluster_->tablet_server(kLeaderIndex)->uuid()];
+  TServerDetails* leader_ts =
+      ts_map_[cluster_->tablet_server(kLeaderIndex)->uuid()];
   const int kFollowerIndex = 2;
-  TServerDetails* ts_to_remove = ts_map_[cluster_->tablet_server(kFollowerIndex)->uuid()];
+  TServerDetails* ts_to_remove =
+      ts_map_[cluster_->tablet_server(kFollowerIndex)->uuid()];
 
   // Wait for tablet creation and then identify the tablet id.
   vector<ListTabletsResponsePB::StatusAndSchemaPB> tablets;
@@ -619,21 +654,25 @@ TEST_F(TabletReplacementITest, TestRemoteBoostrapWithPendingConfigChangeCommits)
 
   // Wait until all replicas are up and running.
   for (int i = 0; i < cluster_->num_tablet_servers(); i++) {
-    ASSERT_OK(WaitUntilTabletRunning(ts_map_[cluster_->tablet_server(i)->uuid()],
-                                     tablet_id, timeout));
+    ASSERT_OK(WaitUntilTabletRunning(
+        ts_map_[cluster_->tablet_server(i)->uuid()], tablet_id, timeout));
   }
 
   // Elect a leader (TS 0)
   ASSERT_OK(StartElection(leader_ts, tablet_id, timeout));
-  ASSERT_OK(WaitForServersToAgree(timeout, ts_map_, tablet_id, 1)); // Wait for NO_OP.
+  ASSERT_OK(
+      WaitForServersToAgree(timeout, ts_map_, tablet_id, 1)); // Wait for NO_OP.
 
   // Write a single row.
-  ASSERT_OK(WriteSimpleTestRow(leader_ts, tablet_id, RowOperationsPB::INSERT, 0, 0, "", timeout));
+  ASSERT_OK(WriteSimpleTestRow(
+      leader_ts, tablet_id, RowOperationsPB::INSERT, 0, 0, "", timeout));
 
-  // Delay tablet applies in order to delay COMMIT messages to trigger KUDU-1233.
-  // Then insert another row.
-  ASSERT_OK(cluster_->SetFlag(cluster_->tablet_server_by_uuid(leader_ts->uuid()),
-                              "tablet_inject_latency_on_apply_write_txn_ms", "5000"));
+  // Delay tablet applies in order to delay COMMIT messages to trigger
+  // KUDU-1233. Then insert another row.
+  ASSERT_OK(cluster_->SetFlag(
+      cluster_->tablet_server_by_uuid(leader_ts->uuid()),
+      "tablet_inject_latency_on_apply_write_txn_ms",
+      "5000"));
 
   // Kick off an async insert, which will be delayed for 5 seconds. This is
   // normally enough time to evict a replica, tombstone it, add it back, and
@@ -646,9 +685,10 @@ TEST_F(TabletReplacementITest, TestRemoteBoostrapWithPendingConfigChangeCommits)
   req.set_tablet_id(tablet_id);
   Schema schema = GetSimpleTestSchema();
   ASSERT_OK(SchemaToPB(schema, req.mutable_schema()));
-  AddTestRowToPB(RowOperationsPB::INSERT, schema, 1, 1, "", req.mutable_row_operations());
-  leader_ts->tserver_proxy->WriteAsync(req, &resp, &rpc,
-                                       boost::bind(&CountDownLatch::CountDown, &latch));
+  AddTestRowToPB(
+      RowOperationsPB::INSERT, schema, 1, 1, "", req.mutable_row_operations());
+  leader_ts->tserver_proxy->WriteAsync(
+      req, &resp, &rpc, boost::bind(&CountDownLatch::CountDown, &latch));
 
   // Wait for the replicate to show up (this doesn't wait for COMMIT messages).
   ASSERT_OK(WaitForServersToAgree(timeout, ts_map_, tablet_id, 3));
@@ -657,17 +697,19 @@ TEST_F(TabletReplacementITest, TestRemoteBoostrapWithPendingConfigChangeCommits)
   // add the replica back to the cluster. Without the fix for KUDU-1233, this
   // will cause the replica to fail to start up.
   ASSERT_OK(RemoveServer(leader_ts, tablet_id, ts_to_remove, timeout));
-  ASSERT_OK(itest::DeleteTablet(ts_to_remove, tablet_id, TABLET_DATA_TOMBSTONED,
-                                timeout));
-  ASSERT_OK(AddServer(leader_ts, tablet_id, ts_to_remove, RaftPeerPB::VOTER, timeout));
+  ASSERT_OK(itest::DeleteTablet(
+      ts_to_remove, tablet_id, TABLET_DATA_TOMBSTONED, timeout));
+  ASSERT_OK(AddServer(
+      leader_ts, tablet_id, ts_to_remove, RaftPeerPB::VOTER, timeout));
   ASSERT_OK(WaitUntilTabletRunning(ts_to_remove, tablet_id, timeout));
 
   ClusterVerifier v(cluster_.get());
   NO_FATALS(v.CheckCluster());
-  NO_FATALS(v.CheckRowCount(workload.table_name(),
-                            ClusterVerifier::EXACTLY, 2));
+  NO_FATALS(
+      v.CheckRowCount(workload.table_name(), ClusterVerifier::EXACTLY, 2));
 
-  latch.Wait(); // Avoid use-after-free on the response from the delayed RPC callback.
+  latch.Wait(); // Avoid use-after-free on the response from the delayed RPC
+                // callback.
 }
 
 } // namespace kudu

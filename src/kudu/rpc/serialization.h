@@ -36,9 +36,9 @@ class Slice;
 namespace rpc {
 namespace serialization {
 
-// Serialize the request param into a buffer which is allocated by this function.
-// Uses the message's cached size by calling MessageLite::GetCachedSize().
-// In : 'message' Protobuf Message to serialize
+// Serialize the request param into a buffer which is allocated by this
+// function. Uses the message's cached size by calling
+// MessageLite::GetCachedSize(). In : 'message' Protobuf Message to serialize
 //      'additional_size' Optional argument which increases the recorded size
 //        within param_buf. This argument is necessary if there will be
 //        additional sidecars appended onto the message (that aren't part of
@@ -51,9 +51,11 @@ namespace serialization {
 //        needs to be serialized for the protobuf (i.e., no additional space
 //        is reserved for 'additional_size', which only affects the
 //        size indicator prefix in 'param_buf').
-void SerializeMessage(const google::protobuf::MessageLite& message,
-                      faststring* param_buf, int additional_size = 0,
-                      bool use_cached_size = false);
+void SerializeMessage(
+    const google::protobuf::MessageLite& message,
+    faststring* param_buf,
+    int additional_size = 0,
+    bool use_cached_size = false);
 
 // Serialize the request or response header into a buffer which is allocated
 // by this function.
@@ -61,18 +63,20 @@ void SerializeMessage(const google::protobuf::MessageLite& message,
 // In: Protobuf Header to serialize,
 //     Length of the message param following this header in the frame.
 // Out: faststring to be populated with the serialized bytes.
-void SerializeHeader(const google::protobuf::MessageLite& header,
-                     size_t param_len,
-                     faststring* header_buf);
+void SerializeHeader(
+    const google::protobuf::MessageLite& header,
+    size_t param_len,
+    faststring* header_buf);
 
 // Deserialize the request.
 // In: data buffer Slice.
 // Out: parsed_header PB initialized,
 //      parsed_main_message pointing to offset in original buffer containing
 //      the main payload.
-Status ParseMessage(const Slice& buf,
-                    google::protobuf::MessageLite* parsed_header,
-                    Slice* parsed_main_message);
+Status ParseMessage(
+    const Slice& buf,
+    google::protobuf::MessageLite* parsed_header,
+    Slice* parsed_main_message);
 
 // Serialize the RPC connection header (magic number + flags).
 // buf must have 7 bytes available (kMagicNumberLength + kHeaderFlagsLength).
@@ -80,7 +84,6 @@ void SerializeConnHeader(uint8_t* buf);
 
 // Validate the entire rpc header (magic number + flags).
 Status ValidateConnHeader(const Slice& slice);
-
 
 } // namespace serialization
 } // namespace rpc

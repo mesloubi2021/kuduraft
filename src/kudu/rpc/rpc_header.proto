@@ -58,7 +58,7 @@ message ConnectionContextPB {
   // negotiation step, the client is required to encode it with SASL integrity
   // protection and return it in this field. The nonce protects the server
   // against a Kerberos replay attack.
-  optional bytes encoded_nonce = 3 [(REDACT) = true];
+  optional bytes encoded_nonce = 3 [ (REDACT) = true ];
 }
 
 // Features supported by the RPC system itself.
@@ -122,13 +122,13 @@ message AuthenticationTypePB {
 // Message type passed back & forth for the SASL negotiation.
 message NegotiatePB {
   enum NegotiateStep {
-    UNKNOWN        = 999;
-    NEGOTIATE      = 1;
-    SASL_SUCCESS   = 0;
-    SASL_INITIATE  = 2;
+    UNKNOWN = 999;
+    NEGOTIATE = 1;
+    SASL_SUCCESS = 0;
+    SASL_INITIATE = 2;
     SASL_CHALLENGE = 3;
-    SASL_RESPONSE  = 4;
-    TLS_HANDSHAKE  = 5;
+    SASL_RESPONSE = 4;
+    TLS_HANDSHAKE = 5;
     TOKEN_EXCHANGE = 6;
   }
 
@@ -152,14 +152,14 @@ message NegotiatePB {
   repeated RpcFeatureFlag supported_features = 1;
 
   // The current negotiation step.
-  required NegotiateStep step  = 2;
+  required NegotiateStep step = 2;
 
   // The SASL token, containing either the challenge during the SASL_CHALLENGE
   // step, or the response during the SASL_RESPONSE step.
-  optional bytes token         = 3 [(REDACT) = true];
+  optional bytes token = 3 [ (REDACT) = true ];
 
   // During the TLS_HANDSHAKE step, contains the TLS handshake message.
-  optional bytes tls_handshake = 5 [(REDACT) = true];
+  optional bytes tls_handshake = 5 [ (REDACT) = true ];
 
   // The tls-server-end-point channel bindings as specified in RFC 5929.  Sent
   // from the server to the client during the SASL_SUCCESS step when the
@@ -167,23 +167,25 @@ message NegotiatePB {
   // Kerberos authenticated channel to the TLS channel. The value is integrity
   // protected through SASL. The client is responsible for validating that the
   // value matches the expected value.
-  optional bytes channel_bindings = 6 [(REDACT) = true];
+  optional bytes channel_bindings = 6 [ (REDACT) = true ];
 
   // A random nonce sent from the server to the client during the SASL_SUCCESS
   // step when the Kerberos (GSSAPI) SASL mechanism is used with TLS. The nonce
   // must be sent back to the server, wrapped in SASL integrity protection, as
   // part of the connection context.
-  optional bytes nonce = 9 [(REDACT) = true];
+  optional bytes nonce = 9 [ (REDACT) = true ];
 
   // During the NEGOTIATE step, contains the supported SASL mechanisms.
   // During the SASL_INITIATE step, contains the single chosen SASL mechanism.
   repeated SaslMechanism sasl_mechanisms = 4;
 
-  // During the client to server NEGOTIATE step, contains the supported authentication types.
-  // During the server to client NEGOTIATE step, contains the chosen authentication type.
+  // During the client to server NEGOTIATE step, contains the supported
+  // authentication types. During the server to client NEGOTIATE step, contains
+  // the chosen authentication type.
   repeated AuthenticationTypePB authn_types = 7;
 
-  // During the TOKEN_EXCHANGE step, contains the client's signed authentication token.
+  // During the TOKEN_EXCHANGE step, contains the client's signed authentication
+  // token.
   optional security.SignedTokenPB authn_token = 8;
 }
 
@@ -197,8 +199,9 @@ message RemoteMethodPB {
   required string method_name = 2;
 };
 
-// The Id of a retriable RPC, whose results should be tracked on the server (see result_tracker.h).
-// This also includes some information that is useful for execution/garbage collection.
+// The Id of a retriable RPC, whose results should be tracked on the server (see
+// result_tracker.h). This also includes some information that is useful for
+// execution/garbage collection.
 message RequestIdPB {
   // The (globally unique) id of the client performing this RPC.
   required string client_id = 1;
@@ -206,8 +209,8 @@ message RequestIdPB {
   // The (per-client unique) sequence number of this RPC.
   required int64 seq_no = 2;
 
-  // The sequence number of the first RPC that has not been marked as completed by the client.
-  // Unset if there isn't an incomplete RPC.
+  // The sequence number of the first RPC that has not been marked as completed
+  // by the client. Unset if there isn't an incomplete RPC.
   required int64 first_incomplete_seq_no = 3;
 
   // The number of times this RPC has been tried.
@@ -217,10 +220,11 @@ message RequestIdPB {
 
 // The header for the RPC request frame.
 message RequestHeader {
-  // A sequence number that uniquely identifies a call to a single remote server. This number is
-  // sent back in the Response and allows to match it to the original Request.
-  // Hadoop specifies a uint32 and casts it to a signed int. That is counterintuitive, so we use an
-  // int32 instead. Allowed values (inherited from Hadoop):
+  // A sequence number that uniquely identifies a call to a single remote
+  // server. This number is sent back in the Response and allows to match it to
+  // the original Request. Hadoop specifies a uint32 and casts it to a signed
+  // int. That is counterintuitive, so we use an int32 instead. Allowed values
+  // (inherited from Hadoop):
   //   0 through INT32_MAX: Regular RPC call IDs.
   //   -2: Invalid call ID.
   //   -3: Connection context call ID.
@@ -233,14 +237,15 @@ message RequestHeader {
   // Not used for "connection setup" calls.
   optional RemoteMethodPB remote_method = 6;
 
-  // Propagate the timeout as specified by the user. Note that, since there is some
-  // transit time between the client and server, if you wait exactly this amount of
-  // time and then respond, you are likely to cause a timeout on the client.
+  // Propagate the timeout as specified by the user. Note that, since there is
+  // some transit time between the client and server, if you wait exactly this
+  // amount of time and then respond, you are likely to cause a timeout on the
+  // client.
   optional uint32 timeout_millis = 10;
 
-  // Feature flags that the service must support in order to properly interpret this
-  // request. The client can pass any set of flags, and if the server doesn't
-  // support any of them, then it will fail the request.
+  // Feature flags that the service must support in order to properly interpret
+  // this request. The client can pass any set of flags, and if the server
+  // doesn't support any of them, then it will fail the request.
   //
   // NOTE: these are for evolving features at the level of the application, not
   // the RPC framework. Hence, we have to use a generic int type rather than a
@@ -249,14 +254,14 @@ message RequestHeader {
   // APPLICATION_FEATURE_FLAGS flag.
   repeated uint32 required_feature_flags = 11;
 
-  // The unique id of this request, if it's retriable and if the results are to be tracked.
-  // The request id is unique per logical request, i.e. retries of the same RPC must have the
-  // same request id.
-  // Note that this is different from 'call_id' in that a call_id is unique to a server while a
-  // request_id is unique to a logical request (i.e. the request_id remains the same when a request
-  // is retried on a different server).
-  // Optional for requests that are naturally idempotent or to maintain compatibility with
-  // older clients for requests that are not.
+  // The unique id of this request, if it's retriable and if the results are to
+  // be tracked. The request id is unique per logical request, i.e. retries of
+  // the same RPC must have the same request id. Note that this is different
+  // from 'call_id' in that a call_id is unique to a server while a request_id
+  // is unique to a logical request (i.e. the request_id remains the same when a
+  // request is retried on a different server). Optional for requests that are
+  // naturally idempotent or to maintain compatibility with older clients for
+  // requests that are not.
   optional RequestIdPB request_id = 15;
 
   // Byte offsets for side cars in the main body of the request message.
@@ -281,12 +286,12 @@ message ResponseHeader {
 
 // Sent as response when is_error == true.
 message ErrorStatusPB {
-
   // These codes have all been inherited from Hadoop's RPC mechanism.
   enum RpcErrorCodePB {
     FATAL_UNKNOWN = 10;
 
-    // Non-fatal RPC errors. Connection should be left open for future RPC calls.
+    // Non-fatal RPC errors. Connection should be left open for future RPC
+    // calls.
     //------------------------------------------------------------
     // The application generated an error status. See the message field for
     // more details.
@@ -305,8 +310,9 @@ message ErrorStatusPB {
     // or the server does not support the required feature flags.
     ERROR_INVALID_REQUEST = 5;
 
-    // The server might have previously received this request but its response is no
-    // longer cached. It's unknown whether the request was executed or not.
+    // The server might have previously received this request but its response
+    // is no longer cached. It's unknown whether the request was executed or
+    // not.
     ERROR_REQUEST_STALE = 6;
 
     // The server is not able to complete the connection or request at this
@@ -334,7 +340,7 @@ message ErrorStatusPB {
   required string message = 1;
 
   // TODO: Make code required?
-  optional RpcErrorCodePB code = 2;  // Specific error identifier.
+  optional RpcErrorCodePB code = 2; // Specific error identifier.
 
   // If the request is failed due to an unsupported feature flag, the particular
   // flag(s) that were not supported will be sent back to the client.
@@ -349,7 +355,7 @@ message ErrorStatusPB {
 extend google.protobuf.MethodOptions {
   // An option for RPC methods that allows to set whether that method's
   // RPC results should be tracked with a ResultTracker.
-  optional bool track_rpc_result = 50006 [default=false];
+  optional bool track_rpc_result = 50006 [ default = false ];
 
   // An option to set the authorization method for this particular
   // RPC method. If this is not specified, the service's 'default_authz_method'

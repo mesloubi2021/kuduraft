@@ -44,7 +44,8 @@ Status Dump(const RunnerContext& context) {
   const string& segment_path = FindOrDie(context.required_args, kPathArg);
 
   scoped_refptr<ReadableLogSegment> segment;
-  RETURN_NOT_OK(ReadableLogSegment::Open(Env::Default(), segment_path, &segment));
+  RETURN_NOT_OK(
+      ReadableLogSegment::Open(Env::Default(), segment_path, &segment));
   RETURN_NOT_OK(PrintSegment(segment));
   return Status::OK();
 }
@@ -54,12 +55,12 @@ Status Dump(const RunnerContext& context) {
 unique_ptr<Mode> BuildWalMode() {
   unique_ptr<Action> dump =
       ActionBuilder("dump", &Dump)
-      .Description("Dump a WAL (write-ahead log) file")
-      .AddRequiredParameter({ kPathArg, "path to WAL file" })
-      .AddOptionalParameter("print_entries")
-      .AddOptionalParameter("print_meta")
-      .AddOptionalParameter("truncate_data")
-      .Build();
+          .Description("Dump a WAL (write-ahead log) file")
+          .AddRequiredParameter({kPathArg, "path to WAL file"})
+          .AddOptionalParameter("print_entries")
+          .AddOptionalParameter("print_meta")
+          .AddOptionalParameter("truncate_data")
+          .Build();
 
   return ModeBuilder("wal")
       .Description("Operate on WAL (write-ahead log) files")

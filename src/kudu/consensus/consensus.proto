@@ -34,10 +34,10 @@ import "kudu/consensus/replica_management.proto";
 import "kudu/rpc/rpc_header.proto";
 import "kudu/util/compression/compression.proto";
 // NOTE: anirbanr-fb
-//import "kudu/tablet/metadata.proto";
-//import "kudu/tablet/tablet.proto";
-//import "kudu/tserver/tserver_admin.proto";
-//import "kudu/tserver/tserver.proto";
+// import "kudu/tablet/metadata.proto";
+// import "kudu/tablet/tablet.proto";
+// import "kudu/tserver/tserver_admin.proto";
+// import "kudu/tserver/tserver.proto";
 
 // Consensus-specific errors use this protobuf
 message ConsensusErrorPB {
@@ -71,7 +71,8 @@ message ConsensusErrorPB {
     PRECEDING_ENTRY_DIDNT_MATCH = 6;
 
     // The local replica is either a leader, or has heard from a valid leader
-    // more recently than the election timeout, so believes the leader to be alive.
+    // more recently than the election timeout, so believes the leader to be
+    // alive.
     LEADER_IS_ALIVE = 7;
 
     // The local replica is in the middle of servicing either another vote
@@ -229,7 +230,8 @@ message ChangeConfigRequestPB {
 
 // A config change request that specifies many things to change.
 message BulkChangeConfigRequestPB {
-  // Each sub-request that is being made as part of this bulk change config request.
+  // Each sub-request that is being made as part of this bulk change config
+  // request.
   message ConfigChangeItemPB {
     // The type of config change.
     optional ChangeConfigType type = 1;
@@ -254,7 +256,6 @@ message BulkChangeConfigRequestPB {
 // The configuration change response. If any immediate error occurred
 // the 'error' field is set with it, otherwise 'new_configuration' is set.
 message ChangeConfigResponsePB {
-
   optional ServerErrorPB error = 1;
 
   // Updated configuration after changing the config.
@@ -282,20 +283,21 @@ message WritePayloadPB {
   optional uint32 crc32 = 4 [ default = 0 ];
 }
 
-// A Replicate message, sent to replicas by leader to indicate this operation must
-// be stored in the WAL/SM log, as part of the first phase of the two phase
+// A Replicate message, sent to replicas by leader to indicate this operation
+// must be stored in the WAL/SM log, as part of the first phase of the two phase
 // commit.
 message ReplicateMsg {
   // The Raft operation ID (term and index) being replicated.
   required OpId id = 1;
   // The (hybrid or logical) timestamp assigned to this message.
   required fixed64 timestamp = 2;
-  // optional ExternalConsistencyMode external_consistency_mode = 3 [default = NO_CONSISTENCY];
+  // optional ExternalConsistencyMode external_consistency_mode = 3 [default =
+  // NO_CONSISTENCY];
   required OperationType op_type = 4;
 
   // anirbanr-fb
-  //optional tserver.WriteRequestPB write_request = 5;
-  //optional tserver.AlterSchemaRequestPB alter_schema_request = 6;
+  // optional tserver.WriteRequestPB write_request = 5;
+  // optional tserver.AlterSchemaRequestPB alter_schema_request = 6;
   optional ChangeConfigRecordPB change_config_record = 7;
   optional ProxyRecordPB proxy_record = 10;
 
@@ -318,7 +320,7 @@ message CommitMsg {
 
   // anirbanr-fb
   // The operations that were applied and/or failed in this transaction.
-  //optional tablet.TxResultPB result = 3;
+  // optional tablet.TxResultPB result = 3;
 }
 
 // ===========================================================================
@@ -327,19 +329,18 @@ message CommitMsg {
 
 // NO_OP requests are replicated by a peer after being elected leader.
 message NoOpRequestPB {
- // Allows to set a dummy payload, for tests.
- optional bytes payload_for_tests = 1;
+  // Allows to set a dummy payload, for tests.
+  optional bytes payload_for_tests = 1;
 
- // Set to true if the op id for this request is expected to be monotonically
- // increasing with the assigned timestamp. For no-ops that are sent by a
- // leader marking a successful Raft election, this is true. If not set, it is
- // assumed to be true.
- optional bool timestamp_in_opid_order = 2;
+  // Set to true if the op id for this request is expected to be monotonically
+  // increasing with the assigned timestamp. For no-ops that are sent by a
+  // leader marking a successful Raft election, this is true. If not set, it is
+  // assumed to be true.
+  optional bool timestamp_in_opid_order = 2;
 }
 
 // Status message received in the peer responses.
 message ConsensusStatusPB {
-
   // The last message received (and replicated) by the peer.
   required OpId last_received = 1;
 
@@ -353,11 +354,11 @@ message ConsensusStatusPB {
   // set, since the leader queue uses this field in conjuction with
   // last_received to decide on the next id to send to the follower.
   //
-  // NOTE: it might seem that the leader itself could track this based on knowing
-  // which batches were successfully sent. However, the follower is free to
-  // truncate the batch if an operation in the middle of the batch fails
-  // to prepare (eg due to memory limiting). In that case, the leader
-  // will get a success response but still need to re-send some operations.
+  // NOTE: it might seem that the leader itself could track this based on
+  // knowing which batches were successfully sent. However, the follower is free
+  // to truncate the batch if an operation in the middle of the batch fails to
+  // prepare (eg due to memory limiting). In that case, the leader will get a
+  // success response but still need to re-send some operations.
   optional OpId last_received_current_leader = 4;
 
   // The last committed index that is known to the peer.
@@ -500,8 +501,8 @@ message VoteResponsePB {
   // of a ring
   optional string raft_rpc_token = 8;
 
-  // TODO: Migrate ConsensusService to the AppStatusPB RPC style and merge these errors.
-  // Error message from the consensus implementation.
+  // TODO: Migrate ConsensusService to the AppStatusPB RPC style and merge these
+  // errors. Error message from the consensus implementation.
   optional ConsensusErrorPB consensus_error = 998;
 
   // A generic error message (such as tablet not found).
@@ -566,20 +567,22 @@ message ConsensusRequestPB {
   // The highest index that is known to be replicated by all members of
   // the configuration.
   //
-  // NOTE: this is not necessarily monotonically increasing. For example, if a node is in
-  // the process of being added to the configuration but has not yet copied a snapshot,
-  // this value may drop to 0.
+  // NOTE: this is not necessarily monotonically increasing. For example, if a
+  // node is in the process of being added to the configuration but has not yet
+  // copied a snapshot, this value may drop to 0.
   optional int64 all_replicated_index = 9;
 
   // The safe timestamp on the leader.
-  // This is only set if the leader has no messages to send to the peer or if the last sent
-  // message is already (raft) committed. By setting this the leader allows followers to advance
-  // the "safe time" past the timestamp of the last committed message and answer snapshot scans
-  // in the present in the absense of writes.
+  // This is only set if the leader has no messages to send to the peer or if
+  // the last sent message is already (raft) committed. By setting this the
+  // leader allows followers to advance the "safe time" past the timestamp of
+  // the last committed message and answer snapshot scans in the present in the
+  // absense of writes.
   optional fixed64 safe_timestamp = 10;
 
   // The index of the most recent operation appended to the leader.
-  // Followers can use this to determine roughly how far behind they are from the leader.
+  // Followers can use this to determine roughly how far behind they are from
+  // the leader.
   optional int64 last_idx_appended_to_leader = 11;
 
   // The index that is deemed to have been 'region-durable'. Region durability
@@ -632,8 +635,7 @@ message TransactionStatusPB {
 
 */
 
-message GetNodeInstanceRequestPB {
-}
+message GetNodeInstanceRequestPB {}
 
 message GetNodeInstanceResponsePB {
   required NodeInstancePB node_instance = 1;
@@ -651,7 +653,7 @@ message LeaderElectionContextPB {
 
   // True if the original promotion was due to the original leader specified in
   // original_uuid being dead/unreachable
-  required bool is_origin_dead_promotion = 3 [default = false];
+  required bool is_origin_dead_promotion = 3 [ default = false ];
 }
 
 // Message that makes the local peer run leader election to be elected leader.
@@ -674,7 +676,7 @@ message RunLeaderElectionRequestPB {
 
   // Whether to return response after a decision has been made. When set true,
   // RunLeaderElectionResponsePB.vote_granted will be populated.
-  optional bool wait_for_decision = 7 [default = false];
+  optional bool wait_for_decision = 7 [ default = false ];
 
   // Snapshot op id taken on the leader. Used in the mock election to compare
   // how ahead or behind a voter is to a candidate. If this is set, we assume
@@ -740,7 +742,7 @@ message GetLastOpIdRequestPB {
 
 message GetLastOpIdResponsePB {
   optional OpId opid = 1;
-    // A generic error message (such as tablet not found).
+  // A generic error message (such as tablet not found).
   optional ServerErrorPB error = 2;
 }
 
@@ -820,7 +822,8 @@ message UnsafeChangeConfigRequestPB {
   required RaftConfigPB new_config = 4;
 }
 
-// The unsafe change configuration response. 'error' field is set if operation failed.
+// The unsafe change configuration response. 'error' field is set if operation
+// failed.
 message UnsafeChangeConfigResponsePB {
   optional ServerErrorPB error = 1;
 }
@@ -861,21 +864,27 @@ service ConsensusService {
   // peers to be modified at once, including setting attributes and adding or
   // removing various peers, as long not more than one voter is added, removed,
   // or demoted in a single operation.
-  rpc BulkChangeConfig(BulkChangeConfigRequestPB) returns (ChangeConfigResponsePB);
+  rpc BulkChangeConfig(BulkChangeConfigRequestPB)
+      returns (ChangeConfigResponsePB);
 
   // Implements unsafe config change operation for manual recovery use cases.
-  rpc UnsafeChangeConfig(UnsafeChangeConfigRequestPB) returns (UnsafeChangeConfigResponsePB);
+  rpc UnsafeChangeConfig(UnsafeChangeConfigRequestPB)
+      returns (UnsafeChangeConfigResponsePB);
 
   // Change the routing graph that defines how requests are proxied.
-  rpc ChangeProxyTopology(ChangeProxyTopologyRequestPB) returns (ChangeProxyTopologyResponsePB);
+  rpc ChangeProxyTopology(ChangeProxyTopologyRequestPB)
+      returns (ChangeProxyTopologyResponsePB);
 
-  rpc GetNodeInstance(GetNodeInstanceRequestPB) returns (GetNodeInstanceResponsePB);
+  rpc GetNodeInstance(GetNodeInstanceRequestPB)
+      returns (GetNodeInstanceResponsePB);
 
   // Force this node to run a leader election.
-  rpc RunLeaderElection(RunLeaderElectionRequestPB) returns (RunLeaderElectionResponsePB);
+  rpc RunLeaderElection(RunLeaderElectionRequestPB)
+      returns (RunLeaderElectionResponsePB);
 
   // Force this node to step down as leader.
-  rpc LeaderStepDown(LeaderStepDownRequestPB) returns (LeaderStepDownResponsePB);
+  rpc LeaderStepDown(LeaderStepDownRequestPB)
+      returns (LeaderStepDownResponsePB);
 
   rpc GetLastOpId(GetLastOpIdRequestPB) returns (GetLastOpIdResponsePB);
 
@@ -887,7 +896,7 @@ service ConsensusService {
   /*
 #ifndef FB_DO_NOT_REMOVE
   // Instruct this server to copy a tablet from another host.
-  rpc StartTabletCopy(StartTabletCopyRequestPB) returns (StartTabletCopyResponsePB);
-#endif
+  rpc StartTabletCopy(StartTabletCopyRequestPB) returns
+(StartTabletCopyResponsePB); #endif
 */
 }

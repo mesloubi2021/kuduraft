@@ -39,6 +39,7 @@ class VersionInfo {
 
   // Set the version info in 'pb'.
   static void GetVersionInfoPB(VersionInfoPB* pb);
+
  private:
   // Get the git hash for this build. If the working directory was dirty when
   // Kudu was built, also appends "-dirty".

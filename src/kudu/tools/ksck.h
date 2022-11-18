@@ -41,7 +41,7 @@
 #include "kudu/rpc/messenger.h"
 #include "kudu/server/server_base.pb.h"
 #include "kudu/tablet/metadata.pb.h"
-#include "kudu/tablet/tablet.pb.h"  // IWYU pragma: keep
+#include "kudu/tablet/tablet.pb.h" // IWYU pragma: keep
 #include "kudu/tools/ksck_results.h"
 #include "kudu/util/status.h"
 
@@ -61,8 +61,7 @@ class KsckTabletReplica {
   KsckTabletReplica(std::string ts_uuid, bool is_leader, bool is_voter)
       : ts_uuid_(std::move(ts_uuid)),
         is_leader_(is_leader),
-        is_voter_(is_voter) {
-  }
+        is_voter_(is_voter) {}
 
   const std::string& ts_uuid() const {
     return ts_uuid_;
@@ -84,13 +83,12 @@ class KsckTabletReplica {
   DISALLOW_COPY_AND_ASSIGN(KsckTabletReplica);
 };
 
-// Representation of a tablet belonging to a table. The tablet is composed of replicas.
+// Representation of a tablet belonging to a table. The tablet is composed of
+// replicas.
 class KsckTablet {
  public:
   KsckTablet(KsckTable* table, std::string id)
-      : id_(std::move(id)),
-        table_(table) {
-  }
+      : id_(std::move(id)), table_(table) {}
 
   const std::string& id() const {
     return id_;
@@ -118,7 +116,11 @@ class KsckTablet {
 // Representation of a table. Composed of tablets.
 class KsckTable {
  public:
-  KsckTable(std::string id, std::string name, const Schema& schema, int num_replicas)
+  KsckTable(
+      std::string id,
+      std::string name,
+      const Schema& schema,
+      int num_replicas)
       : id_(std::move(id)),
         name_(std::move(name)),
         schema_(schema),
@@ -170,17 +172,17 @@ enum class KsckFetchState {
 // Required for logging in case of CHECK failures.
 std::ostream& operator<<(std::ostream& lhs, KsckFetchState state);
 
-// The following three classes must be extended in order to communicate with their respective
-// components. The two main use cases envisioned for this are:
+// The following three classes must be extended in order to communicate with
+// their respective components. The two main use cases envisioned for this are:
 // - To be able to mock a cluster to more easily test the ksck checks.
 // - To be able to communicate with a real Kudu cluster.
 
 // Class that must be extended to represent a master.
 class KsckMaster {
  public:
-  explicit KsckMaster(std::string address) :
-    address_(std::move(address)),
-    uuid_(strings::Substitute("$0 ($1)", kDummyUuid, address_)) {}
+  explicit KsckMaster(std::string address)
+      : address_(std::move(address)),
+        uuid_(strings::Substitute("$0 ($1)", kDummyUuid, address_)) {}
 
   virtual ~KsckMaster() = default;
 
@@ -211,7 +213,6 @@ class KsckMaster {
     CHECK_NE(KsckFetchState::UNINITIALIZED, state_);
     return version_;
   }
-
 
   virtual const boost::optional<consensus::ConsensusStatePB> cstate() const {
     CHECK_NE(KsckFetchState::UNINITIALIZED, state_);
@@ -267,25 +268,27 @@ class KsckMaster {
 class KsckTabletServer {
  public:
   // Map from tablet id to tablet replicas.
-  typedef std::unordered_map<std::string, tablet::TabletStatusPB> TabletStatusMap;
+  typedef std::unordered_map<std::string, tablet::TabletStatusPB>
+      TabletStatusMap;
 
   // Map from (tserver id, tablet id) to tablet consensus information.
-  typedef std::map
-      <std::pair<std::string, std::string>, consensus::ConsensusStatePB> TabletConsensusStateMap;
+  typedef std::
+      map<std::pair<std::string, std::string>, consensus::ConsensusStatePB>
+          TabletConsensusStateMap;
 
   explicit KsckTabletServer(std::string uuid) : uuid_(std::move(uuid)) {}
-  virtual ~KsckTabletServer() { }
+  virtual ~KsckTabletServer() {}
 
-  // Connects to the configured tablet server and populates the fields of this class. 'health' must
-  // not be nullptr.
+  // Connects to the configured tablet server and populates the fields of this
+  // class. 'health' must not be nullptr.
   //
   // If Status is OK, 'health' will be HEALTHY
   // If the UUID is not what ksck expects, 'health' will be WRONG_SERVER_UUID
   // Otherwise 'health' will be UNAVAILABLE
   virtual Status FetchInfo(KsckServerHealth* health) = 0;
 
-  // Connects to the configured tablet server and populates the consensus map. 'health' must not be
-  // nullptr.
+  // Connects to the configured tablet server and populates the consensus map.
+  // 'health' must not be nullptr.
   //
   // If Status is OK, 'health' will be HEALTHY
   // Otherwise 'health' will be UNAVAILABLE
@@ -301,10 +304,10 @@ class KsckTabletServer {
 
   // Executes a checksum scan on a tablet and reports the result to 'manager'.
   virtual void RunTabletChecksumScanAsync(
-                  const std::string& tablet_id,
-                  const Schema& schema,
-                  const KsckChecksumOptions& options,
-                  std::shared_ptr<KsckChecksumManager> manager) = 0;
+      const std::string& tablet_id,
+      const Schema& schema,
+      const KsckChecksumOptions& options,
+      std::shared_ptr<KsckChecksumManager> manager) = 0;
 
   virtual const std::string& uuid() const {
     return uuid_;
@@ -327,7 +330,8 @@ class KsckTabletServer {
     return tablet_status_map_;
   }
 
-  // Gets the mapping of tablet id to tablet consensus info for this tablet server.
+  // Gets the mapping of tablet id to tablet consensus info for this tablet
+  // server.
   const TabletConsensusStateMap& tablet_consensus_state_map() const {
     CHECK_EQ(KsckFetchState::FETCHED, state_);
     return tablet_consensus_state_map_;
@@ -355,7 +359,9 @@ class KsckTabletServer {
   FRIEND_TEST(KsckTest, TestConsensusConflictExtraPeer);
   FRIEND_TEST(KsckTest, TestConsensusConflictDifferentLeader);
   FRIEND_TEST(KsckTest, TestConsensusConflictMissingPeer);
-  FRIEND_TEST(KsckTest, TestMasterNotReportingTabletServerWithConsensusConflict);
+  FRIEND_TEST(
+      KsckTest,
+      TestMasterNotReportingTabletServerWithConsensusConflict);
   FRIEND_TEST(KsckTest, TestMismatchedAssignments);
   FRIEND_TEST(KsckTest, TestTabletCopying);
 
@@ -415,7 +421,8 @@ class KsckCluster {
 
   // Fetches the list of tablets for the given table.
   // The table's tablet list is modified only if this method returns OK.
-  virtual Status RetrieveTabletsList(const std::shared_ptr<KsckTable>& table) = 0;
+  virtual Status RetrieveTabletsList(
+      const std::shared_ptr<KsckTable>& table) = 0;
 
   const MasterList& masters() const {
     return masters_;
@@ -448,14 +455,15 @@ class KsckCluster {
 // Externally facing class to run checks against the provided cluster.
 class Ksck {
  public:
-  explicit Ksck(std::shared_ptr<KsckCluster> cluster,
-                std::ostream* out = nullptr);
+  explicit Ksck(
+      std::shared_ptr<KsckCluster> cluster,
+      std::ostream* out = nullptr);
 
   ~Ksck() = default;
 
-  // Set whether ksck should verify that each of the tablet's raft configurations
-  // has the same number of replicas that is specified by the tablet metadata.
-  // (default: true)
+  // Set whether ksck should verify that each of the tablet's raft
+  // configurations has the same number of replicas that is specified by the
+  // tablet metadata. (default: true)
   void set_check_replica_count(bool check) {
     check_replica_count_ = check;
   }
@@ -521,8 +529,8 @@ class Ksck {
   // tablet servers (the default), must first call FetchInfoFromTabletServers().
   Status CheckTablesConsistency();
 
-  // Verifies data checksums on all tablets by doing a scan of the database on each replica.
-  // Must first call FetchTableAndTabletInfo().
+  // Verifies data checksums on all tablets by doing a scan of the database on
+  // each replica. Must first call FetchTableAndTabletInfo().
   Status ChecksumData(const KsckChecksumOptions& opts);
 
   // Runs all the checks of ksck in the proper order, including checksum scans,
@@ -540,22 +548,25 @@ class Ksck {
  private:
   friend class KsckTest;
 
-  // Accumulate information about flags from a server into a FlagToServersMap and
-  // a FlagTagsMap.
-  // 'flags_to_server_map' and 'flag_tags_map' must not be null.
-  void AddFlagsToFlagMaps(const server::GetFlagsResponsePB& flags,
-                          const std::string& server_address,
-                          KsckFlagToServersMap* flags_to_servers_map,
-                          KsckFlagTagsMap* flag_tags_map);
+  // Accumulate information about flags from a server into a FlagToServersMap
+  // and a FlagTagsMap. 'flags_to_server_map' and 'flag_tags_map' must not be
+  // null.
+  void AddFlagsToFlagMaps(
+      const server::GetFlagsResponsePB& flags,
+      const std::string& server_address,
+      KsckFlagToServersMap* flags_to_servers_map,
+      KsckFlagTagsMap* flag_tags_map);
 
   bool VerifyTable(const std::shared_ptr<KsckTable>& table);
 
-  bool VerifyTableWithTimeout(const std::shared_ptr<KsckTable>& table,
-                              const MonoDelta& timeout,
-                              const MonoDelta& retry_interval);
+  bool VerifyTableWithTimeout(
+      const std::shared_ptr<KsckTable>& table,
+      const MonoDelta& timeout,
+      const MonoDelta& retry_interval);
 
-  KsckCheckResult VerifyTablet(const std::shared_ptr<KsckTablet>& tablet,
-                           int table_num_replicas);
+  KsckCheckResult VerifyTablet(
+      const std::shared_ptr<KsckTablet>& tablet,
+      int table_num_replicas);
 
   const std::shared_ptr<KsckCluster> cluster_;
 
