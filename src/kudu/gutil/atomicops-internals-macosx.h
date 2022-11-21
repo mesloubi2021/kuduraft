@@ -27,7 +27,7 @@ typedef int64_t Atomic64;
 #define BASE_HAS_ATOMIC64 1 // Use only in tests and base/atomic*
 #endif
 
-#include <libkern/OSAtomic.h>
+#include <libkern/OSAtomic.h> // @manual
 
 // Almost all OSAtomicXxx functions used in this header are marked
 // as deprecated since macOS 10.12.

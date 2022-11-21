@@ -48,7 +48,7 @@
 
 // ----------------------------------------------------------------
 #if defined(__APPLE__)
-#include <mach/mach_time.h>
+#include <mach/mach_time.h> // @manual
 inline int64 CycleClock::Now() {
   // this goes at the top because we need ALL Macs, regardless of
   // architecture, to return the number of "mach time units" that

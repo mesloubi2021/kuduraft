@@ -124,9 +124,9 @@ extern "C" {
 /* Android doesn't have sgidefs.h, but does have asm/sgidefs.h,
  * which has the definitions we need.
  */
-#include <asm/sgidefs.h>
+#include <asm/sgidefs.h> // @manual
 #else
-#include <sgidefs.h>
+#include <sgidefs.h> // @manual
 #endif
 #endif
 #endif
