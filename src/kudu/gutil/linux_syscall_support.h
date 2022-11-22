@@ -2296,7 +2296,7 @@ static inline void (**LSS_NAME(get_syscall_entrypoint)(void))(void) {
   do {                                          \
     if ((uint64_t)(res) >= (uint64_t)(-4095)) { \
       LSS_ERRNO = -(res);                       \
-      res = -1;                                 \
+      (res) = -1;                               \
     }                                           \
     return (type)(cast)(res);                   \
   } while (0)

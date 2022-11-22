@@ -89,7 +89,7 @@ class LogicalClock : public Clock {
  private:
   // Should use LogicalClock::CreatingStartingAt()
   explicit LogicalClock(Timestamp::val_type initial_time)
-      : now_(initial_time) {}
+      : now_(static_cast<int64_t>(initial_time)) {}
 
   base::subtle::Atomic64 now_;
 

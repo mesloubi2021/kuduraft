@@ -266,7 +266,7 @@ typedef struct {
         : "=d"(_zzq_result)                                                 \
         : "a"(&_zzq_args[0]), "0"(_zzq_default)                             \
         : "cc", "memory");                                                  \
-    _zzq_rlval = _zzq_result;                                               \
+    (_zzq_rlval) = (_zzq_result);                                           \
   }
 
 #define VALGRIND_GET_NR_CONTEXT(_zzq_rlval)                                   \

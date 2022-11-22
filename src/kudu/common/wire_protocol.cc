@@ -133,7 +133,8 @@ void StatusToPB(const Status& status, AppStatusPB* pb) {
 }
 
 Status StatusFromPB(const AppStatusPB& pb) {
-  int posix_code = pb.has_posix_code() ? pb.posix_code() : -1;
+  int16_t posix_code =
+      static_cast<int16_t>(pb.has_posix_code() ? pb.posix_code() : -1);
 
   switch (pb.code()) {
     case AppStatusPB::OK:

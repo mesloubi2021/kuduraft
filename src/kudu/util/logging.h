@@ -191,8 +191,8 @@ enum PRIVATE_ThrottleMsg { THROTTLE_MSG };
       __LINE__,                                                             \
       google::GLOG_##severity,                                              \
       LOG_OCCURRENCES,                                                      \
-      &what_to_do)                                                          \
-      .stream() /*NOLINT(bugprone-macro-parentheses)*/
+      &what_to_do) /*NOLINT(bugprone-macro-parentheses)*/                   \
+      .stream()
 
 #define KUDU_SOME_KIND_OF_LOG_IF_EVERY_N(severity, condition, n, what_to_do) \
   static int LOG_OCCURRENCES = 0, LOG_OCCURRENCES_MOD_N = 0;                 \
@@ -208,8 +208,8 @@ enum PRIVATE_ThrottleMsg { THROTTLE_MSG };
       __LINE__,                                                              \
       google::GLOG_##severity,                                               \
       LOG_OCCURRENCES,                                                       \
-      &what_to_do)                                                           \
-      .stream() /*NOLINT(bugprone-macro-parentheses)*/
+      &what_to_do) /*NOLINT(bugprone-macro-parentheses)*/                    \
+      .stream()
 
 #define KUDU_SOME_KIND_OF_PLOG_EVERY_N(severity, n, what_to_do)             \
   static int LOG_OCCURRENCES = 0, LOG_OCCURRENCES_MOD_N = 0;                \
@@ -225,8 +225,8 @@ enum PRIVATE_ThrottleMsg { THROTTLE_MSG };
       __LINE__,                                                             \
       google::GLOG_##severity,                                              \
       LOG_OCCURRENCES,                                                      \
-      &what_to_do)                                                          \
-      .stream() /*NOLINT(bugprone-macro-parentheses)*/
+      &what_to_do) /*NOLINT(bugprone-macro-parentheses)*/                   \
+      .stream()
 
 #define KUDU_SOME_KIND_OF_LOG_FIRST_N(severity, n, what_to_do) \
   static uint64_t LOG_OCCURRENCES = 0;                         \
@@ -238,8 +238,8 @@ enum PRIVATE_ThrottleMsg { THROTTLE_MSG };
       __LINE__,                                                \
       google::GLOG_##severity,                                 \
       LOG_OCCURRENCES,                                         \
-      &what_to_do)                                             \
-      .stream() /*NOLINT(bugprone-macro-parentheses)*/
+      &what_to_do) /*NOLINT(bugprone-macro-parentheses)*/      \
+      .stream()
 
 // The direct user-facing macros.
 #define KLOG_EVERY_N(severity, n)                       \

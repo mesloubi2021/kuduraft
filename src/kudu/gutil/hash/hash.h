@@ -183,7 +183,7 @@ namespace std {
 template <>
 struct hash<uint128> {
   size_t operator()(const uint128& x) const {
-    if (sizeof(&x) == 8) { // 64-bit systems have 8-byte pointers.
+    if (sizeof(const uint128*) == 8) { // 64-bit systems have 8-byte pointers.
       return Hash128to64(x);
     } else {
       uint32 a = static_cast<uint32>(Uint128Low64(x)) +
@@ -302,15 +302,15 @@ struct GoodFastHash<const char*> {
 };
 
 // This intended to be a "good" hash function.  It may change from time to time.
-template <class _CharT, class _Traits, class _Alloc>
-struct GoodFastHash<std::basic_string<_CharT, _Traits, _Alloc>> {
-  size_t operator()(const std::basic_string<_CharT, _Traits, _Alloc>& k) const {
+template <class CharT, class Traits, class Alloc>
+struct GoodFastHash<std::basic_string<CharT, Traits, Alloc>> {
+  size_t operator()(const std::basic_string<CharT, Traits, Alloc>& k) const {
     return HashStringThoroughly(k.data(), k.length() * sizeof(k[0]));
   }
   // Less than operator for MSVC.
   bool operator()(
-      const std::basic_string<_CharT, _Traits, _Alloc>& a,
-      const std::basic_string<_CharT, _Traits, _Alloc>& b) const {
+      const std::basic_string<CharT, Traits, Alloc>& a,
+      const std::basic_string<CharT, Traits, Alloc>& b) const {
     return a < b;
   }
   static const size_t bucket_size = 4; // These are required by MSVC
@@ -318,15 +318,15 @@ struct GoodFastHash<std::basic_string<_CharT, _Traits, _Alloc>> {
 };
 
 // This intended to be a "good" hash function.  It may change from time to time.
-template <class _CharT, class _Traits, class _Alloc>
-struct GoodFastHash<const std::basic_string<_CharT, _Traits, _Alloc>> {
-  size_t operator()(const std::basic_string<_CharT, _Traits, _Alloc>& k) const {
+template <class CharT, class Traits, class Alloc>
+struct GoodFastHash<const std::basic_string<CharT, Traits, Alloc>> {
+  size_t operator()(const std::basic_string<CharT, Traits, Alloc>& k) const {
     return HashStringThoroughly(k.data(), k.length() * sizeof(k[0]));
   }
   // Less than operator for MSVC.
   bool operator()(
-      const std::basic_string<_CharT, _Traits, _Alloc>& a,
-      const std::basic_string<_CharT, _Traits, _Alloc>& b) const {
+      const std::basic_string<CharT, Traits, Alloc>& a,
+      const std::basic_string<CharT, Traits, Alloc>& b) const {
     return a < b;
   }
   static const size_t bucket_size = 4; // These are required by MSVC

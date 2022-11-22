@@ -206,9 +206,10 @@ Status ConsensusMetadataManager::LoadOrCreateDRT(
     RaftConfigPB raft_config,
     ProxyTopologyPB proxy_topology,
     std::shared_ptr<DurableRoutingTable>* drt_out) {
-  Status s = LoadDRT(tablet_id, std::move(raft_config), drt_out);
+  Status s = LoadDRT(tablet_id, raft_config, drt_out);
   if (s.IsNotFound()) {
-    return CreateDRT(tablet_id, raft_config, proxy_topology, drt_out);
+    return CreateDRT(
+        tablet_id, std::move(raft_config), std::move(proxy_topology), drt_out);
   }
   return s;
 }

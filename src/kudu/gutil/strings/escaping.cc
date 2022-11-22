@@ -1413,7 +1413,7 @@ int Base64EscapeInternal(
       cur_dest[1] = base64[(cur_src[0] & 0x03) << 4];
       cur_dest += 2;
       if (do_padding) {
-        if ((szdest -= 2) < 0)
+        if ((szdest - 2) < 0)
           return 0;
         cur_dest[0] = kPad64;
         cur_dest[1] = kPad64;
@@ -1430,7 +1430,7 @@ int Base64EscapeInternal(
       cur_dest[2] = base64[(cur_src[1] & 0x0f) << 2];
       cur_dest += 3;
       if (do_padding) {
-        if ((szdest -= 1) < 0)
+        if ((szdest - 1) < 0)
           return 0;
         cur_dest[0] = kPad64;
         cur_dest += 1;

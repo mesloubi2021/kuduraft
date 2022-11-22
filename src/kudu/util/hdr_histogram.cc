@@ -321,11 +321,12 @@ uint64_t HdrHistogram::ValueAtPercentile(double percentile) const {
   if (PREDICT_FALSE(count == 0))
     return 0;
 
-  double requested_percentile =
-      std::min(percentile, 100.0); // Truncate down to 100%
-  uint64_t count_at_percentile = static_cast<uint64_t>(
-      ((requested_percentile / 100.0) * count) +
-      0.5); // NOLINT(misc-incorrect-roundings)
+  static constexpr long double k100Percent = 100.0L;
+  long double requested_percentile = std::min(
+      static_cast<long double>(percentile),
+      k100Percent); // Truncate down to 100%
+  uint64_t count_at_percentile = std::llroundl(
+      ((requested_percentile / k100Percent) * static_cast<long double>(count)));
   // Make sure we at least reach the first recorded entry
   count_at_percentile = std::max(count_at_percentile, static_cast<uint64_t>(1));
 
