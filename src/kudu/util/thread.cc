@@ -681,7 +681,7 @@ static bool set_capability_flag(cap_value_t capability, cap_flag_value_t flag) {
     cap_free(caps);
   }
 
-  return true;
+  return ret;
 }
 
 static bool acquire_capability(cap_value_t capability) {
