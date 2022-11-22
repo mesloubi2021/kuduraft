@@ -190,6 +190,7 @@ PeerMessageQueue::TrackedPeer::TrackedPeer(
       last_received(MinimumOpId()),
       last_known_committed_index(MinimumOpId().index()),
       last_exchange_status(PeerStatus::NEW),
+      last_successful_exchange(MonoTime::Now()),
       last_communication_time(MonoTime::Now()),
       wal_catchup_possible(true),
       last_overall_health_status(HealthReportPB::UNKNOWN),
@@ -329,8 +330,13 @@ bool PeerMessageQueue::HasProxyPeerFailedUnlocked(
   auto max_proxy_failure_threshold =
       MonoDelta::FromMilliseconds(proxy_failure_threshold_ms_);
 
-  if (MonoTime::Now() - proxy_peer->last_communication_time >
+  if (MonoTime::Now() - proxy_peer->last_successful_exchange >
       max_proxy_failure_threshold) {
+    KLOG_EVERY_N_SECS(INFO, 180)
+        << "Peer " << proxy_peer->uuid()
+        << " did not complete a successful exchange after "
+        << proxy_failure_threshold_ms_ << "ms. Will not use as a proxy.";
+
     // The leader has not communicated with proxy_peer within the
     // proxy_failure_threshold_ms. Hence this peer cannot act as a 'proxy peer'
     // and is considered failed
@@ -380,6 +386,7 @@ void PeerMessageQueue::SetLeaderMode(
   const auto now = MonoTime::Now();
   for (const PeersMap::value_type& entry : peers_map_) {
     entry.second->last_communication_time = now;
+    entry.second->last_successful_exchange = now;
   }
   time_manager_->SetLeaderMode();
 }
@@ -1791,11 +1798,13 @@ void PeerMessageQueue::UpdateExchangeStatus(
   DCHECK(queue_lock_.is_locked());
   const ConsensusStatusPB& status = response.status();
 
-  peer->last_communication_time = MonoTime::Now();
+  MonoTime now = MonoTime::Now();
+  peer->last_communication_time = now;
   peer->last_known_committed_index = status.last_committed_idx();
 
   if (PREDICT_TRUE(!status.has_error())) {
     peer->last_exchange_status = PeerStatus::OK;
+    peer->last_successful_exchange = now;
     *lmp_mismatch = false;
     return;
   }

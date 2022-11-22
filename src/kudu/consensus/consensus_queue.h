@@ -170,12 +170,18 @@ class PeerMessageQueue {
     // See the comments within the PeerStatus enum above for details.
     PeerStatus last_exchange_status;
 
+    // The time of the last successful Raft consensus exchange with the peer
+    // Defaults to the time of construction, so does not necessarily mean that
+    // successful communication ever took place.
+    MonoTime last_successful_exchange;
+
     // The time of the last communication with the peer.
     //
     // NOTE: this does not indicate that the peer successfully made progress at
     // the given time -- this only indicates that we got some indication that
     // the tablet server process was alive. It could be that the tablet was not
-    // found, etc. Consult last_exchange_status for details.
+    // found, etc. Consult last_exchange_status and last_successful_exchange for
+    // details.
     //
     // Defaults to the time of construction, so does not necessarily mean that
     // successful communication ever took place.
