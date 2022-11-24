@@ -35,7 +35,7 @@ class CharSet {
   CharSet();
   // Deliberately an implicit constructor, so anything that takes a CharSet
   // can also take an explicit list of characters.
-  CharSet(const char* characters); // NOLINT(runtime/explicit)
+  CharSet(const char* characters); // NOLINT(google-explicit-constructor)
   explicit CharSet(const CharSet& other);
 
   // Add or remove a character from the set.

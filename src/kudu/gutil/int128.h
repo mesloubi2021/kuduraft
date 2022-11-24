@@ -15,6 +15,7 @@ class uint128 {
  public:
   uint128(); // Sets to 0, but don't trust on this behavior.
   uint128(uint64 top, uint64 bottom);
+  // NOLINTBEGIN(google-explicit-constructor)
 #ifndef SWIG
   uint128(int bottom);
   uint128(uint32 bottom); // Top 96 bits = 0
@@ -22,6 +23,7 @@ class uint128 {
   uint128(uint64 bottom); // hi_ = 0
   uint128(const uint128& val);
   uint128(const uint128_pod& val);
+  // NOLINTEND(google-explicit-constructor)
 
   void Initialize(uint64 top, uint64 bottom);
 

@@ -85,8 +85,8 @@ class ArrayView final {
 
   // Construct an ArrayView for an array.
   template <typename U, size_t N>
-  ArrayView(U (&array)[N])
-      : ArrayView(&array[0], N) {} // NOLINT(runtime/explicit)
+  ArrayView(U (&array)[N]) // NOLINT(google-explicit-constructor)
+      : ArrayView(&array[0], N) {}
 
   // Construct an ArrayView for any type U that has a size() method whose
   // return value converts implicitly to size_t, and a data() method whose
@@ -97,7 +97,8 @@ class ArrayView final {
   // kudu::faststring to ArrayView<uint8_t> (with the same const behavior as
   // std::vector).
   template <typename U>
-  ArrayView(U& u) : ArrayView(u.data(), u.size()) {} // NOLINT(runtime/explicit)
+  ArrayView(U& u) // NOLINT(google-explicit-constructor)
+      : ArrayView(u.data(), u.size()) {}
 
   // Indexing, size, and iteration. These allow mutation even if the ArrayView
   // is const, because the ArrayView doesn't own the array. (To prevent

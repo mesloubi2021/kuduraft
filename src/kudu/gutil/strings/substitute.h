@@ -70,11 +70,13 @@ class SubstituteArg {
   // cast it to bool to construct a DynamicSubstituteArg.  Might as well
   // overload const string& as well, since this allows us to avoid a temporary
   // object.
-  inline SubstituteArg(const char* value) // NOLINT(runtime/explicit)
+  inline SubstituteArg(const char* value) // NOLINT(google-explicit-constructor)
       : text_(value), size_(value == NULL ? 0 : strlen(text_)) {}
-  inline SubstituteArg(const std::string& value) // NOLINT(runtime/explicit)
+  inline SubstituteArg( // NOLINT(google-explicit-constructor)
+      const std::string& value)
       : text_(value.data()), size_(value.size()) {}
-  inline SubstituteArg(const StringPiece& value) // NOLINT(runtime/explicit)
+  inline SubstituteArg( // NOLINT(google-explicit-constructor)
+      const StringPiece& value)
       : text_(value.data()), size_(value.size()) {}
 
   // Primitives
@@ -83,56 +85,61 @@ class SubstituteArg {
   // probably actually using them as 8-bit integers and would probably
   // prefer an integer representation.  But, we don't really know.  So, we
   // make the caller decide what to do.
-  inline SubstituteArg(char value) // NOLINT(runtime/explicit)
+  inline SubstituteArg(char value) // NOLINT(google-explicit-constructor)
       : text_(scratch_), size_(1) {
     scratch_[0] = value;
   }
-  inline SubstituteArg(short value) // NOLINT(runtime/explicit)
+  inline SubstituteArg(short value) // NOLINT(google-explicit-constructor)
       : text_(scratch_),
         size_(FastInt32ToBufferLeft(value, scratch_) - scratch_) {}
-  inline SubstituteArg(unsigned short value) // NOLINT(runtime/explicit)
+  inline SubstituteArg( // NOLINT(google-explicit-constructor)
+      unsigned short value)
       : text_(scratch_),
         size_(FastUInt32ToBufferLeft(value, scratch_) - scratch_) {}
-  inline SubstituteArg(int value) // NOLINT(runtime/explicit)
+  inline SubstituteArg(int value) // NOLINT(google-explicit-constructor)
       : text_(scratch_),
         size_(FastInt32ToBufferLeft(value, scratch_) - scratch_) {}
-  inline SubstituteArg(unsigned int value) // NOLINT(runtime/explicit)
+  inline SubstituteArg( // NOLINT(google-explicit-constructor)
+      unsigned int value)
       : text_(scratch_),
         size_(FastUInt32ToBufferLeft(value, scratch_) - scratch_) {}
-  inline SubstituteArg(long value) // NOLINT(runtime/explicit)
+  inline SubstituteArg(long value) // NOLINT(google-explicit-constructor)
       : text_(scratch_),
         size_(
             (sizeof(value) == 4 ? FastInt32ToBufferLeft(value, scratch_)
                                 : FastInt64ToBufferLeft(value, scratch_)) -
             scratch_) {}
-  inline SubstituteArg(unsigned long value) // NOLINT(runtime/explicit)
+  inline SubstituteArg( // NOLINT(google-explicit-constructor)
+      unsigned long value)
       : text_(scratch_),
         size_(
             (sizeof(value) == 4 ? FastUInt32ToBufferLeft(value, scratch_)
                                 : FastUInt64ToBufferLeft(value, scratch_)) -
             scratch_) {}
-  inline SubstituteArg(long long value) // NOLINT(runtime/explicit)
+  inline SubstituteArg(long long value) // NOLINT(google-explicit-constructor)
       : text_(scratch_),
         size_(FastInt64ToBufferLeft(value, scratch_) - scratch_) {}
-  inline SubstituteArg(unsigned long long value) // NOLINT(runtime/explicit)
+  inline SubstituteArg( // NOLINT(google-explicit-constructor)
+      unsigned long long value)
       : text_(scratch_),
         size_(FastUInt64ToBufferLeft(value, scratch_) - scratch_) {}
-  inline SubstituteArg(__int128 value) // NOLINT(runtime/explicit)
+  inline SubstituteArg(__int128 value) // NOLINT(google-explicit-constructor)
       : text_(scratch_),
         size_(FastInt64ToBufferLeft(value, scratch_) - scratch_) {}
-  inline SubstituteArg(unsigned __int128 value) // NOLINT(runtime/explicit)
+  inline SubstituteArg( // NOLINT(google-explicit-constructor)
+      unsigned __int128 value)
       : text_(scratch_),
         size_(FastUInt64ToBufferLeft(value, scratch_) - scratch_) {}
-  inline SubstituteArg(float value) // NOLINT(runtime/explicit)
+  inline SubstituteArg(float value) // NOLINT(google-explicit-constructor)
       : text_(FloatToBuffer(value, scratch_)), size_(strlen(text_)) {}
-  inline SubstituteArg(double value) // NOLINT(runtime/explicit)
+  inline SubstituteArg(double value) // NOLINT(google-explicit-constructor)
       : text_(DoubleToBuffer(value, scratch_)), size_(strlen(text_)) {}
-  inline SubstituteArg(bool value) // NOLINT(runtime/explicit)
+  inline SubstituteArg(bool value) // NOLINT(google-explicit-constructor)
       : text_(value ? "true" : "false"), size_(strlen(text_)) {}
   // void* values, with the exception of char*, are printed as
   // StringPrintf with format "%p" would ("0x<hex value>"), with the
   // exception of NULL, which is printed as "NULL".
-  SubstituteArg(const void* value); // NOLINT(runtime/explicit)
+  SubstituteArg(const void* value); // NOLINT(google-explicit-constructor)
 
   inline const char* data() const {
     return text_;

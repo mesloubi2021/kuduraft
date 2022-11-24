@@ -73,19 +73,15 @@ class KUDU_EXPORT Slice {
   ///
   /// @param [in] s
   ///   The input string.
-  Slice(const std::string& s)
-      : // NOLINT(runtime/explicit)
-        data_(reinterpret_cast<const uint8_t*>(s.data())),
-        size_(s.size()) {}
+  Slice(const std::string& s) // NOLINT(google-explicit-constructor)
+      : data_(reinterpret_cast<const uint8_t*>(s.data())), size_(s.size()) {}
 
   /// Create a slice that refers to a C-string s[0,strlen(s)-1].
   ///
   /// @param [in] s
   ///   The input C-string.
-  Slice(const char* s)
-      : // NOLINT(runtime/explicit)
-        data_(reinterpret_cast<const uint8_t*>(s)),
-        size_(strlen(s)) {}
+  Slice(const char* s) // NOLINT(google-explicit-constructor)
+      : data_(reinterpret_cast<const uint8_t*>(s)), size_(strlen(s)) {}
 
 #ifdef KUDU_HEADERS_USE_RICH_SLICE
   /// Create a slice that refers to the contents of a faststring.
@@ -94,14 +90,14 @@ class KUDU_EXPORT Slice {
   ///
   /// @param [in] s
   ///   The input faststring.
-  Slice(const faststring& s) // NOLINT(runtime/explicit)
+  Slice(const faststring& s) // NOLINT(google-explicit-constructor)
       : data_(s.data()), size_(s.size()) {}
 
   /// Create a slice that refers to the contents of a string piece.
   ///
   /// @param [in] s
   ///   The input StringPiece.
-  Slice(const StringPiece& s) // NOLINT(runtime/explicit)
+  Slice(const StringPiece& s) // NOLINT(google-explicit-constructor)
       : data_(reinterpret_cast<const uint8_t*>(s.data())), size_(s.size()) {}
 #endif
 

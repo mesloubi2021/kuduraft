@@ -125,7 +125,8 @@ template <class T>
 struct DefaultDeleter {
   DefaultDeleter() {}
   template <typename U>
-  DefaultDeleter(const DefaultDeleter<U>& other) {
+  DefaultDeleter( // NOLINT(google-explicit-constructor)
+      const DefaultDeleter<U>& other) {
     // IMPLEMENTATION NOTE: C++11 20.7.1.1.2p2 only provides this constructor
     // if U* is implicitly convertible to T* and U is not an array type.
     //
@@ -365,7 +366,8 @@ class gscoped_ptr {
   }
 
   // Constructor.  Move constructor for C++03 move emulation of this type.
-  gscoped_ptr(RValue rvalue) : impl_(&rvalue.object->impl_) {}
+  gscoped_ptr(RValue rvalue) // NOLINT(google-explicit-constructor)
+      : impl_(&rvalue.object->impl_) {}
 
   // operator=.  Allows assignment from a gscoped_ptr rvalue for a convertible
   // type and deleter.
@@ -419,7 +421,7 @@ class gscoped_ptr {
       gscoped_ptr::*Testable;
 
  public:
-  operator Testable() const {
+  operator Testable() const { // NOLINT(google-explicit-constructor)
     return impl_.get() ? &gscoped_ptr::impl_ : NULL;
   }
 
@@ -505,7 +507,8 @@ class gscoped_ptr<T[], D> {
   explicit gscoped_ptr(element_type* array) : impl_(array) {}
 
   // Constructor.  Move constructor for C++03 move emulation of this type.
-  gscoped_ptr(RValue rvalue) : impl_(&rvalue.object->impl_) {}
+  gscoped_ptr(RValue rvalue) // NOLINT(google-explicit-constructor)
+      : impl_(&rvalue.object->impl_) {}
 
   // operator=.  Move operator= for C++03 move emulation of this type.
   gscoped_ptr& operator=(RValue rhs) {
@@ -543,7 +546,7 @@ class gscoped_ptr<T[], D> {
       gscoped_ptr::*Testable;
 
  public:
-  operator Testable() const {
+  operator Testable() const { // NOLINT(google-explicit-constructor)
     return impl_.get() ? &gscoped_ptr::impl_ : NULL;
   }
 
@@ -644,7 +647,8 @@ class gscoped_array {
   explicit gscoped_array(C* p = NULL) : array_(p) {}
 
   // Constructor.  Move constructor for C++03 move emulation of this type.
-  gscoped_array(RValue rvalue) : array_(rvalue.object->release()) {}
+  gscoped_array(RValue rvalue) // NOLINT(google-explicit-constructor)
+      : array_(rvalue.object->release()) {}
 
   // Destructor.  If there is a C object, delete it.
   // We don't need to test ptr_ == NULL because C++ does that for us.
@@ -687,7 +691,7 @@ class gscoped_array {
   // Allow gscoped_array<C> to be used in boolean expressions, but not
   // implicitly convertible to a real bool (which is dangerous).
   typedef C* gscoped_array::*Testable;
-  operator Testable() const {
+  operator Testable() const { // NOLINT(google-explicit-constructor)
     return array_ ? &gscoped_array::array_ : NULL;
   }
 
@@ -766,7 +770,8 @@ class gscoped_ptr_malloc {
   explicit gscoped_ptr_malloc(C* p = NULL) : ptr_(p) {}
 
   // Constructor.  Move constructor for C++03 move emulation of this type.
-  gscoped_ptr_malloc(RValue rvalue) : ptr_(rvalue.object->release()) {}
+  gscoped_ptr_malloc(RValue rvalue) // NOLINT(google-explicit-constructor)
+      : ptr_(rvalue.object->release()) {}
 
   // Destructor.  If there is a C object, call the Free functor.
   ~gscoped_ptr_malloc() {
@@ -812,7 +817,7 @@ class gscoped_ptr_malloc {
   // Allow gscoped_ptr_malloc<C> to be used in boolean expressions, but not
   // implicitly convertible to a real bool (which is dangerous).
   typedef C* gscoped_ptr_malloc::*Testable;
-  operator Testable() const {
+  operator Testable() const { // NOLINT(google-explicit-constructor)
     return ptr_ ? &gscoped_ptr_malloc::ptr_ : NULL;
   }
 

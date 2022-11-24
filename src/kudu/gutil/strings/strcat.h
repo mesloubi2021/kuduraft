@@ -43,28 +43,31 @@ struct AlphaNum {
   // No bool ctor -- bools convert to an integral type.
   // A bool ctor would also convert incoming pointers (bletch).
 
-  AlphaNum(int32 i32) // NOLINT(runtime/explicit)
+  AlphaNum(int32 i32) // NOLINT(google-explicit-constructor)
       : piece(digits, FastInt32ToBufferLeft(i32, digits) - &digits[0]) {}
-  AlphaNum(uint32 u32) // NOLINT(runtime/explicit)
+  AlphaNum(uint32 u32) // NOLINT(google-explicit-constructor)
       : piece(digits, FastUInt32ToBufferLeft(u32, digits) - &digits[0]) {}
-  AlphaNum(int64 i64) // NOLINT(runtime/explicit)
+  AlphaNum(int64 i64) // NOLINT(google-explicit-constructor)
       : piece(digits, FastInt64ToBufferLeft(i64, digits) - &digits[0]) {}
-  AlphaNum(uint64 u64) // NOLINT(runtime/explicit)
+  AlphaNum(uint64 u64) // NOLINT(google-explicit-constructor)
       : piece(digits, FastUInt64ToBufferLeft(u64, digits) - &digits[0]) {}
 
 #if defined(__APPLE__)
-  AlphaNum(size_t size) // NOLINT(runtime/explicit)
+  AlphaNum(size_t size) // NOLINT(google-explicit-constructor)
       : piece(digits, FastUInt64ToBufferLeft(size, digits) - &digits[0]) {}
 #endif
 
-  AlphaNum(float f) // NOLINT(runtime/explicit)
+  AlphaNum(float f) // NOLINT(google-explicit-constructor)
       : piece(digits, strlen(FloatToBuffer(f, digits))) {}
-  AlphaNum(double f) // NOLINT(runtime/explicit)
+  AlphaNum(double f) // NOLINT(google-explicit-constructor)
       : piece(digits, strlen(DoubleToBuffer(f, digits))) {}
 
-  AlphaNum(const char* c_str) : piece(c_str) {} // NOLINT(runtime/explicit)
-  AlphaNum(StringPiece pc) : piece(std::move(pc)) {} // NOLINT(runtime/explicit)
-  AlphaNum(const std::string& s) : piece(s) {} // NOLINT(runtime/explicit)
+  AlphaNum(const char* c_str) // NOLINT(google-explicit-constructor)
+      : piece(c_str) {}
+  AlphaNum(StringPiece pc) // NOLINT(google-explicit-constructor)
+      : piece(std::move(pc)) {}
+  AlphaNum(const std::string& s) // NOLINT(google-explicit-constructor)
+      : piece(s) {}
 
   StringPiece::size_type size() const {
     return piece.size();
@@ -75,7 +78,7 @@ struct AlphaNum {
 
  private:
   // Use ":" not ':'
-  AlphaNum(char c); // NOLINT(runtime/explicit)
+  AlphaNum(char c); // NOLINT(google-explicit-constructor)
 };
 
 extern AlphaNum gEmptyAlphaNum;

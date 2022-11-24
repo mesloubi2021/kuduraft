@@ -417,7 +417,7 @@ FlexibleVoteCounter::IsMajoritySatisfiedInRegions(
 
   for (const std::string& region : regions) {
     if (region.empty()) {
-      results.push_back(std::make_pair<>(false, false));
+      results.push_back(std::make_pair(false, false));
       continue;
     }
 
@@ -535,7 +535,7 @@ std::pair<bool, bool> FlexibleVoteCounter::IsStaticQuorumSatisfied() const {
       quorum_satisfaction_possible = false;
     }
   }
-  return std::make_pair<>(quorum_satisfied, quorum_satisfaction_possible);
+  return std::make_pair(quorum_satisfied, quorum_satisfaction_possible);
 }
 
 // Flexible Paxos/Raft says that for a quorum of N if Datapath quorum is
@@ -589,7 +589,7 @@ FlexibleVoteCounter::IsMajoritySatisfiedInMajorityOfRegions() const {
                       << " Satisfied count: " << satisfied_count
                       << " Satisfaction possible count: "
                       << satisfaction_possible_count;
-  return std::make_pair<>(
+  return std::make_pair(
       satisfied_count >= num_majority_regions,
       satisfaction_possible_count >= num_majority_regions);
 }
@@ -610,7 +610,7 @@ std::pair<bool, bool> FlexibleVoteCounter::IsMajoritySatisfiedInAllRegions(
     quorum_satisfaction_possible =
         quorum_satisfaction_possible && result.second;
   }
-  return std::make_pair<>(quorum_satisfied, quorum_satisfaction_possible);
+  return std::make_pair(quorum_satisfied, quorum_satisfaction_possible);
 }
 
 std::pair<bool, bool>
@@ -639,7 +639,7 @@ FlexibleVoteCounter::DoHistoricalVotesSatisfyMajorityInRegion(
     quorum_satisfaction_possible = false;
   }
 
-  return std::make_pair<>(quorum_satisfied, quorum_satisfaction_possible);
+  return std::make_pair(quorum_satisfied, quorum_satisfaction_possible);
 }
 
 std::pair<bool, bool>
@@ -666,7 +666,7 @@ FlexibleVoteCounter::DoHistoricalVotesSatisfyMajorityInMajorityOfRegions(
       num_majority_satisfaction_possible++;
     }
   }
-  return std::make_pair<>(
+  return std::make_pair(
       num_majority_satisfied >= MajoritySize(num_regions),
       num_majority_satisfaction_possible >= MajoritySize(num_regions));
 }
@@ -751,7 +751,7 @@ void FlexibleVoteCounter::ConstructRegionWiseVoteCollation(
       continue;
     }
     const UUIDTermPair utp =
-        std::make_pair<>(vhi->candidate_uuid(), vhi->election_term());
+        std::make_pair(vhi->candidate_uuid(), vhi->election_term());
 
     // Update minimum term seen so far.
     *min_term = std::min(*min_term, utp.second);
@@ -990,13 +990,13 @@ FlexibleVoteCounter::ComputeElectionResultFromVotingHistory(
             << "Encountered an error during computing election result "
             << "from vote history. Falling back on pessimistic quorum. "
             << "Election term: " << election_term_;
-        return std::make_pair<>(false, true);
+        return std::make_pair(false, true);
       case PotentialNextLeadersResponse::WAITING_FOR_MORE_VOTES:
       default:
         VLOG_WITH_PREFIX(3)
             << "Waiting for more votes. Election result hasn't been "
             << "determined. Election term: " << election_term_;
-        return std::make_pair<>(false, true);
+        return std::make_pair(false, true);
     }
   }
 
@@ -1005,7 +1005,7 @@ FlexibleVoteCounter::ComputeElectionResultFromVotingHistory(
   VLOG_WITH_PREFIX(3)
       << "Converged to the most pessimistic quorum. Could not reach "
       << "a result using vote histories. Election term: " << election_term_;
-  return std::make_pair<>(false, true);
+  return std::make_pair(false, true);
 }
 
 void FlexibleVoteCounter::GetLastKnownLeader(
@@ -1036,7 +1036,7 @@ std::pair<bool, bool> FlexibleVoteCounter::AreMajoritiesSatisfied(
   if (FLAGS_srd_strict_leader_election_quorum) {
     std::pair<bool, bool> majority_result =
         IsMajoritySatisfiedInMajorityOfRegions();
-    result = std::make_pair<>(
+    result = std::make_pair(
         result.first && majority_result.first,
         result.second && majority_result.second);
   }
@@ -1047,7 +1047,7 @@ std::pair<bool, bool> FlexibleVoteCounter::AreMajoritiesSatisfied(
           last_known_leader_regions.end()) {
     std::pair<bool, bool> candidate_result =
         IsMajoritySatisfiedInRegion(candidate_region);
-    result = std::make_pair<>(
+    result = std::make_pair(
         result.first && candidate_result.first,
         result.second && candidate_result.second);
   }
@@ -1065,7 +1065,7 @@ std::pair<bool, bool> FlexibleVoteCounter::IsDynamicQuorumSatisfied() const {
   if (election_term_ <= last_known_leader.election_term()) {
     LOG_WITH_PREFIX(INFO) << "Declaring election loss because a new leader "
                           << "has been found in the crowd sourcing phase.";
-    return std::make_pair<>(false, false);
+    return std::make_pair(false, false);
   }
   bool all_votes_are_in = AreAllVotesIn();
   if (all_votes_are_in) {
@@ -1129,7 +1129,7 @@ std::pair<bool, bool> FlexibleVoteCounter::IsDynamicQuorumSatisfied() const {
 
   bool is_continuous = election_term_ == last_known_leader.election_term() + 1;
 
-  std::pair<bool, bool> result = std::make_pair<>(true, true);
+  std::pair<bool, bool> result = std::make_pair(true, true);
 
   if (is_continuous || continuity_not_required) {
     CHECK(!last_known_leader.uuid().empty());

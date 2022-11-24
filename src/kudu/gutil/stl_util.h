@@ -520,7 +520,8 @@ class ValueDeleter {
 template <class STLContainer>
 class STLElementDeleter {
  public:
-  STLElementDeleter<STLContainer>(STLContainer* ptr) : container_ptr_(ptr) {}
+  explicit STLElementDeleter<STLContainer>(STLContainer* ptr)
+      : container_ptr_(ptr) {}
   ~STLElementDeleter<STLContainer>() {
     STLDeleteElements(container_ptr_);
   }
@@ -532,7 +533,8 @@ class STLElementDeleter {
 template <class STLContainer>
 class STLValueDeleter {
  public:
-  STLValueDeleter<STLContainer>(STLContainer* ptr) : container_ptr_(ptr) {}
+  explicit STLValueDeleter<STLContainer>(STLContainer* ptr)
+      : container_ptr_(ptr) {}
   ~STLValueDeleter<STLContainer>() {
     STLDeleteValues(container_ptr_);
   }
@@ -698,8 +700,7 @@ class UnaryOperateOnFirst
  public:
   UnaryOperateOnFirst() {}
 
-  UnaryOperateOnFirst(const UnaryOp& f) : f_(f) { // TODO(user): explicit?
-  }
+  explicit UnaryOperateOnFirst(const UnaryOp& f) : f_(f) {}
 
   typename UnaryOp::result_type operator()(const Pair& p) const {
     return f_(p.first);
@@ -720,8 +721,7 @@ class UnaryOperateOnSecond
  public:
   UnaryOperateOnSecond() {}
 
-  UnaryOperateOnSecond(const UnaryOp& f) : f_(f) { // TODO(user): explicit?
-  }
+  explicit UnaryOperateOnSecond(const UnaryOp& f) : f_(f) {}
 
   typename UnaryOp::result_type operator()(const Pair& p) const {
     return f_(p.second);
@@ -742,8 +742,7 @@ class BinaryOperateOnFirst
  public:
   BinaryOperateOnFirst() {}
 
-  BinaryOperateOnFirst(const BinaryOp& f) : f_(f) { // TODO(user): explicit?
-  }
+  explicit BinaryOperateOnFirst(const BinaryOp& f) : f_(f) {}
 
   typename BinaryOp::result_type operator()(const Pair& p1, const Pair& p2)
       const {
@@ -766,7 +765,7 @@ class BinaryOperateOnSecond
  public:
   BinaryOperateOnSecond() {}
 
-  BinaryOperateOnSecond(const BinaryOp& f) : f_(f) {}
+  explicit BinaryOperateOnSecond(const BinaryOp& f) : f_(f) {}
 
   typename BinaryOp::result_type operator()(const Pair& p1, const Pair& p2)
       const {
@@ -837,7 +836,7 @@ class STLCountingAllocator : public Alloc {
   typedef typename Alloc::size_type size_type;
 
   STLCountingAllocator() : bytes_used_(NULL) {}
-  STLCountingAllocator(int64* b) : bytes_used_(b) {} // TODO(user): explicit?
+  explicit STLCountingAllocator(int64* b) : bytes_used_(b) {}
 
   // Constructor used for rebinding
   template <class U>

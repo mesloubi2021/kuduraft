@@ -286,7 +286,7 @@ class scoped_refptr {
   }
 #else
   typedef T* scoped_refptr::*Testable;
-  operator Testable() const {
+  operator Testable() const { // NOLINT(google-explicit-constructor)
     return ptr_ ? &scoped_refptr::ptr_ : NULL;
   }
 #endif

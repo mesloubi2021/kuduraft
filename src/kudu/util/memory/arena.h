@@ -286,7 +286,8 @@ class ArenaAllocator {
   };
 
   template <class U, bool TS>
-  ArenaAllocator(const ArenaAllocator<U, TS>& other) : arena_(other.arena()) {}
+  explicit ArenaAllocator(const ArenaAllocator<U, TS>& other)
+      : arena_(other.arena()) {}
 
   template <class U, bool TS>
   bool operator==(const ArenaAllocator<U, TS>& other) const {

@@ -139,7 +139,7 @@ class StringPiece {
   // Style guide exception granted:
   // http://goto/style-guide-exception-20978288
   StringPiece() : ptr_(NULL), length_(0) {}
-  StringPiece(const char* str) // NOLINT(runtime/explicit)
+  StringPiece(const char* str) // NOLINT(google-explicit-constructor)
       : ptr_(str), length_(0) {
     if (str != NULL) {
       size_t length = strlen(str);
@@ -147,7 +147,7 @@ class StringPiece {
       length_ = static_cast<int>(length);
     }
   }
-  StringPiece(const std::string& str) // NOLINT(runtime/explicit)
+  StringPiece(const std::string& str) // NOLINT(google-explicit-constructor)
       : ptr_(str.data()), length_(0) {
     size_t length = str.size();
     assert(length <= static_cast<size_t>(std::numeric_limits<int>::max()));

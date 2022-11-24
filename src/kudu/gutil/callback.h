@@ -371,7 +371,7 @@ class Callback<R(void)> : public internal::CallbackBase {
   // Note that this constructor CANNOT be explicit, and that Bind() CANNOT
   // return the exact Callback<> type.  See base/bind.h for details.
   template <typename Runnable, typename BindRunType, typename BoundArgsType>
-  Callback(
+  explicit Callback(
       internal::BindState<Runnable, BindRunType, BoundArgsType>* bind_state)
       : CallbackBase(bind_state) {
     // Force the assignment to a local variable of PolymorphicInvoke
@@ -408,7 +408,7 @@ class Callback<R(A1)> : public internal::CallbackBase {
   // Note that this constructor CANNOT be explicit, and that Bind() CANNOT
   // return the exact Callback<> type.  See base/bind.h for details.
   template <typename Runnable, typename BindRunType, typename BoundArgsType>
-  Callback(
+  explicit Callback(
       internal::BindState<Runnable, BindRunType, BoundArgsType>* bind_state)
       : CallbackBase(bind_state) {
     // Force the assignment to a local variable of PolymorphicInvoke
@@ -447,7 +447,7 @@ class Callback<R(A1, A2)> : public internal::CallbackBase {
   // Note that this constructor CANNOT be explicit, and that Bind() CANNOT
   // return the exact Callback<> type.  See base/bind.h for details.
   template <typename Runnable, typename BindRunType, typename BoundArgsType>
-  Callback(
+  explicit Callback(
       internal::BindState<Runnable, BindRunType, BoundArgsType>* bind_state)
       : CallbackBase(bind_state) {
     // Force the assignment to a local variable of PolymorphicInvoke
@@ -492,7 +492,7 @@ class Callback<R(A1, A2, A3)> : public internal::CallbackBase {
   // Note that this constructor CANNOT be explicit, and that Bind() CANNOT
   // return the exact Callback<> type.  See base/bind.h for details.
   template <typename Runnable, typename BindRunType, typename BoundArgsType>
-  Callback(
+  explicit Callback(
       internal::BindState<Runnable, BindRunType, BoundArgsType>* bind_state)
       : CallbackBase(bind_state) {
     // Force the assignment to a local variable of PolymorphicInvoke
@@ -540,7 +540,7 @@ class Callback<R(A1, A2, A3, A4)> : public internal::CallbackBase {
   // Note that this constructor CANNOT be explicit, and that Bind() CANNOT
   // return the exact Callback<> type.  See base/bind.h for details.
   template <typename Runnable, typename BindRunType, typename BoundArgsType>
-  Callback(
+  explicit Callback(
       internal::BindState<Runnable, BindRunType, BoundArgsType>* bind_state)
       : CallbackBase(bind_state) {
     // Force the assignment to a local variable of PolymorphicInvoke
@@ -597,7 +597,7 @@ class Callback<R(A1, A2, A3, A4, A5)> : public internal::CallbackBase {
   // Note that this constructor CANNOT be explicit, and that Bind() CANNOT
   // return the exact Callback<> type.  See base/bind.h for details.
   template <typename Runnable, typename BindRunType, typename BoundArgsType>
-  Callback(
+  explicit Callback(
       internal::BindState<Runnable, BindRunType, BoundArgsType>* bind_state)
       : CallbackBase(bind_state) {
     // Force the assignment to a local variable of PolymorphicInvoke
@@ -658,7 +658,7 @@ class Callback<R(A1, A2, A3, A4, A5, A6)> : public internal::CallbackBase {
   // Note that this constructor CANNOT be explicit, and that Bind() CANNOT
   // return the exact Callback<> type.  See base/bind.h for details.
   template <typename Runnable, typename BindRunType, typename BoundArgsType>
-  Callback(
+  explicit Callback(
       internal::BindState<Runnable, BindRunType, BoundArgsType>* bind_state)
       : CallbackBase(bind_state) {
     // Force the assignment to a local variable of PolymorphicInvoke
@@ -723,7 +723,7 @@ class Callback<R(A1, A2, A3, A4, A5, A6, A7)> : public internal::CallbackBase {
   // Note that this constructor CANNOT be explicit, and that Bind() CANNOT
   // return the exact Callback<> type.  See base/bind.h for details.
   template <typename Runnable, typename BindRunType, typename BoundArgsType>
-  Callback(
+  explicit Callback(
       internal::BindState<Runnable, BindRunType, BoundArgsType>* bind_state)
       : CallbackBase(bind_state) {
     // Force the assignment to a local variable of PolymorphicInvoke
