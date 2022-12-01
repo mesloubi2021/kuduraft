@@ -31,10 +31,6 @@ namespace kudu {
 
 class ThreadPoolToken;
 
-namespace log {
-class Log;
-} // namespace log
-
 namespace consensus {
 
 class PeerMessageQueue;
@@ -51,8 +47,7 @@ class PeerManager {
       std::string local_uuid,
       PeerProxyFactory* peer_proxy_factory,
       PeerMessageQueue* queue,
-      ThreadPoolToken* raft_pool_token,
-      scoped_refptr<log::Log> log);
+      ThreadPoolToken* raft_pool_token);
 
   ~PeerManager();
 
@@ -80,7 +75,6 @@ class PeerManager {
   PeerProxyFactory* peer_proxy_factory_;
   PeerMessageQueue* queue_;
   ThreadPoolToken* raft_pool_token_;
-  scoped_refptr<log::Log> log_;
   PeerProxyPool peer_proxy_pool_;
   std::unordered_map<std::string, std::shared_ptr<Peer>> peers_;
   mutable simple_spinlock lock_;

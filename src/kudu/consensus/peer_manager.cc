@@ -46,14 +46,12 @@ PeerManager::PeerManager(
     std::string local_uuid,
     PeerProxyFactory* peer_proxy_factory,
     PeerMessageQueue* queue,
-    ThreadPoolToken* raft_pool_token,
-    scoped_refptr<log::Log> log)
+    ThreadPoolToken* raft_pool_token)
     : tablet_id_(std::move(tablet_id)),
       local_uuid_(std::move(local_uuid)),
       peer_proxy_factory_(peer_proxy_factory),
       queue_(queue),
-      raft_pool_token_(raft_pool_token),
-      log_(std::move(log)) {}
+      raft_pool_token_(raft_pool_token) {}
 
 PeerManager::~PeerManager() {
   Close();

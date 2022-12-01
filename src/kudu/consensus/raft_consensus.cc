@@ -548,8 +548,7 @@ Status RaftConsensus::Start(
       peer_uuid(),
       peer_proxy_factory_.get(),
       queue.get(),
-      raft_pool_token_.get(),
-      log_));
+      raft_pool_token_.get()));
 
   unique_ptr<PendingRounds> pending(
       new PendingRounds(LogPrefixThreadSafe(), time_manager_));
