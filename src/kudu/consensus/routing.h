@@ -131,7 +131,7 @@ class RoutingTable {
   // A node representing a raft peer in a hierarchy with associated routing
   // rules for proxied messages.
   struct Node {
-    explicit Node(RaftPeerPB peer_pb) : peer_pb(peer_pb) {}
+    explicit Node(RaftPeerPB peer_pb) : peer_pb(std::move(peer_pb)) {}
 
     const std::string& id() const {
       return peer_pb.permanent_uuid();

@@ -143,9 +143,9 @@ class VoteCounter {
 class FlexibleVoteCounter : public VoteCounter {
  public:
   FlexibleVoteCounter(
-      const std::string& candidate_uuid,
+      std::string candidate_uuid,
       int64_t election_term,
-      const LastKnownLeaderPB& last_known_leader,
+      LastKnownLeaderPB last_known_leader,
       RaftConfigPB config,
       bool adjust_voter_distribution);
 

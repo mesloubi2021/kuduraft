@@ -263,16 +263,16 @@ void FlexibleVoteCounter::FetchTopologyInfo() {
 }
 
 FlexibleVoteCounter::FlexibleVoteCounter(
-    const std::string& candidate_uuid,
+    std::string candidate_uuid,
     int64_t election_term,
-    const LastKnownLeaderPB& last_known_leader,
+    LastKnownLeaderPB last_known_leader,
     RaftConfigPB config,
     bool adjust_voter_distribution)
     : VoteCounter(1, 1),
-      candidate_uuid_(candidate_uuid),
+      candidate_uuid_(std::move(candidate_uuid)),
       election_term_(election_term),
       adjust_voter_distribution_(adjust_voter_distribution),
-      last_known_leader_(last_known_leader),
+      last_known_leader_(std::move(last_known_leader)),
       config_(std::move(config)),
       creation_time_(std::chrono::system_clock::now()) {
   num_voters_ = 0;
