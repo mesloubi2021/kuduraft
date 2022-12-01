@@ -159,13 +159,13 @@ class BufferAllocator {
   BestEffortReallocate(size_t requested, size_t minimal, Buffer* buffer) {
     DCHECK_LE(minimal, requested);
     Buffer* result;
-    if (buffer == NULL) {
+    if (buffer == nullptr) {
       result = AllocateInternal(requested, minimal, this);
       LogAllocation(requested, minimal, result);
       return result;
     } else {
-      result =
-          ReallocateInternal(requested, minimal, buffer, this) ? buffer : NULL;
+      result = ReallocateInternal(requested, minimal, buffer, this) ? buffer
+                                                                    : nullptr;
       LogAllocation(requested, minimal, buffer);
       return result;
     }
@@ -392,7 +392,7 @@ class Quota : public Mediator {
   virtual size_t GetQuotaInternal() const = 0;
 
   Mutex* mutex() const {
-    return thread_safe ? &mutex_ : NULL;
+    return thread_safe ? &mutex_ : nullptr;
   }
 
  private:
@@ -579,7 +579,7 @@ class SoftQuotaBypassingBufferAllocator : public BufferAllocator {
     // within the bypassed amount of soft quota.
     Buffer* result = DelegateAllocate(
         &allocator_, requested, AdjustMinimal(requested, minimal), originator);
-    if (result != NULL) {
+    if (result != nullptr) {
       return result;
     } else {
       return DelegateAllocate(&allocator_, requested, minimal, originator);
@@ -906,7 +906,7 @@ class GuaranteeMemory : public BufferAllocator {
       size_t /* minimal */,
       BufferAllocator* originator) override {
     if (requested > Available()) {
-      return NULL;
+      return nullptr;
     } else {
       return DelegateAllocate(&limit_, requested, requested, originator);
     }
@@ -918,7 +918,7 @@ class GuaranteeMemory : public BufferAllocator {
       Buffer* buffer,
       BufferAllocator* originator) override {
     int64_t additional_memory =
-        requested - (buffer != NULL ? buffer->size() : 0);
+        requested - (buffer != nullptr ? buffer->size() : 0);
     return additional_memory <= static_cast<int64_t>(Available()) &&
         DelegateReallocate(&limit_, requested, requested, buffer, originator);
   }

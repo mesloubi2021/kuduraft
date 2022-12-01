@@ -72,7 +72,7 @@ Status VerifySufficientDiskSpace(
 // If 'created' is not NULL, sets it to true if the directory was
 // created, false otherwise.
 Status
-CreateDirIfMissing(Env* env, const std::string& path, bool* created = NULL);
+CreateDirIfMissing(Env* env, const std::string& path, bool* created = nullptr);
 
 // Recursively create directories, if they do not exist, along the given path.
 // Returns OK if successful or if the given path already existed.

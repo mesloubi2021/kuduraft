@@ -342,7 +342,7 @@ class gscoped_ptr {
   typedef D deleter_type;
 
   // Constructor.  Defaults to initializing with NULL.
-  gscoped_ptr() : impl_(NULL) {}
+  gscoped_ptr() : impl_(nullptr) {}
 
   // Constructor.  Takes ownership of p.
   explicit gscoped_ptr(element_type* p) : impl_(p) {}
@@ -388,7 +388,7 @@ class gscoped_ptr {
 
   // Reset.  Deletes the currently owned object, if any.
   // Then takes ownership of a new object, if given.
-  void reset(element_type* p = NULL) {
+  void reset(element_type* p = nullptr) {
     impl_.reset(p);
   }
 
@@ -422,7 +422,7 @@ class gscoped_ptr {
 
  public:
   operator Testable() const { // NOLINT(google-explicit-constructor)
-    return impl_.get() ? &gscoped_ptr::impl_ : NULL;
+    return impl_.get() ? &gscoped_ptr::impl_ : nullptr;
   }
 
   // Comparison operators.

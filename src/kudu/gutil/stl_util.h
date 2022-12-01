@@ -315,7 +315,7 @@ inline T* vector_as_array(std::vector<T, Allocator>* v) {
 #ifdef NDEBUG
   return &*v->begin();
 #else
-  return v->empty() ? NULL : &*v->begin();
+  return v->empty() ? nullptr : &*v->begin();
 #endif
 }
 
@@ -324,7 +324,7 @@ inline const T* vector_as_array(const std::vector<T, Allocator>* v) {
 #ifdef NDEBUG
   return &*v->begin();
 #else
-  return v->empty() ? NULL : &*v->begin();
+  return v->empty() ? nullptr : &*v->begin();
 #endif
 }
 
@@ -342,7 +342,7 @@ inline const T* vector_as_array(const std::vector<T, Allocator>* v) {
 // implementations.
 inline char* string_as_array(std::string* str) {
   // DO NOT USE const_cast<char*>(str->data())! See the unittest for why.
-  return str->empty() ? NULL : &*str->begin();
+  return str->empty() ? nullptr : &*str->begin();
 }
 
 // These are methods that test two hash maps/sets for equality.  These exist
@@ -835,7 +835,7 @@ class STLCountingAllocator : public Alloc {
   typedef typename Alloc::pointer pointer;
   typedef typename Alloc::size_type size_type;
 
-  STLCountingAllocator() : bytes_used_(NULL) {}
+  STLCountingAllocator() : bytes_used_(nullptr) {}
   explicit STLCountingAllocator(int64* b) : bytes_used_(b) {}
 
   // Constructor used for rebinding
@@ -846,14 +846,14 @@ class STLCountingAllocator : public Alloc {
   pointer allocate(
       size_type n,
       std::allocator_traits<std::allocator<void>>::const_pointer hint = 0) {
-    assert(bytes_used_ != NULL);
+    assert(bytes_used_ != nullptr);
     *bytes_used_ += n * sizeof(T);
     return Alloc::allocate(n, hint);
   }
 
   void deallocate(pointer p, size_type n) {
     Alloc::deallocate(p, n);
-    assert(bytes_used_ != NULL);
+    assert(bytes_used_ != nullptr);
     *bytes_used_ -= n * sizeof(T);
   }
 
@@ -968,7 +968,7 @@ template <typename T>
 T* release_ptr(T** ptr) {
   assert(ptr);
   T* tmp = *ptr;
-  *ptr = NULL;
+  *ptr = nullptr;
   return tmp;
 }
 

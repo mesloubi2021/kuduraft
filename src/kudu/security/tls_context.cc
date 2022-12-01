@@ -387,11 +387,11 @@ Status TlsContext::DumpCertsInfo(std::vector<std::string>* certs_info) const {
 void TlsContext::DumpCertFieldsUnlocked(X509* x509, std::string* cert_details) {
   const ASN1_TIME* notAfter = X509_get0_notAfter(x509);
   int remaining_days_a = 0, remaining_seconds_a = 0;
-  ASN1_TIME_diff(&remaining_days_a, &remaining_seconds_a, NULL, notAfter);
+  ASN1_TIME_diff(&remaining_days_a, &remaining_seconds_a, nullptr, notAfter);
 
   const ASN1_TIME* notBefore = X509_get0_notBefore(x509);
   int remaining_days_b = 0, remaining_seconds_b = 0;
-  ASN1_TIME_diff(&remaining_days_b, &remaining_seconds_b, NULL, notBefore);
+  ASN1_TIME_diff(&remaining_days_b, &remaining_seconds_b, nullptr, notBefore);
 
   *cert_details = Substitute(
       "CERT subject=$0, issuer=$1, notAfterDays=$2, notAfterSeconds=$3,"

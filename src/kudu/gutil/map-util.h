@@ -565,7 +565,7 @@ typename Collection::mapped_type& LookupOrInsertNew(
     const typename Collection::key_type& key) {
   std::pair<typename Collection::iterator, bool> ret =
       collection->insert(typename Collection::value_type(
-          key, static_cast<typename Collection::mapped_type>(NULL)));
+          key, static_cast<typename Collection::mapped_type>(nullptr)));
   if (ret.second) {
     // This helper is needed to 'extract' the Value type from the type of the
     // container value, which is (Value*).
@@ -583,7 +583,7 @@ typename Collection::mapped_type& LookupOrInsertNew(
     const Arg& arg) {
   std::pair<typename Collection::iterator, bool> ret =
       collection->insert(typename Collection::value_type(
-          key, static_cast<typename Collection::mapped_type>(NULL)));
+          key, static_cast<typename Collection::mapped_type>(nullptr)));
   if (ret.second) {
     // This helper is needed to 'extract' the Value type from the type of the
     // container value, which is (Value*).
@@ -700,7 +700,7 @@ typename Collection::mapped_type* const InsertOrReturnExisting(
     const typename Collection::value_type& vt) {
   std::pair<typename Collection::iterator, bool> ret = collection->insert(vt);
   if (ret.second) {
-    return NULL; // Inserted, no existing previous value.
+    return nullptr; // Inserted, no existing previous value.
   } else {
     return &ret.first->second; // Return address of already existing value.
   }
@@ -722,7 +722,7 @@ template <class Collection, class ReverseCollection>
 void ReverseMap(
     const Collection& collection,
     ReverseCollection* const reverse) {
-  CHECK(reverse != NULL);
+  CHECK(reverse != nullptr);
   for (typename Collection::const_iterator it = collection.begin();
        it != collection.end();
        ++it) {
@@ -769,7 +769,7 @@ template <class MapContainer, class KeyContainer>
 void InsertKeysFromMap(
     const MapContainer& map_container,
     KeyContainer* key_container) {
-  CHECK(key_container != NULL);
+  CHECK(key_container != nullptr);
   for (typename MapContainer::const_iterator it = map_container.begin();
        it != map_container.end();
        ++it) {
@@ -785,7 +785,7 @@ template <class MapContainer, class KeyContainer>
 void AppendKeysFromMap(
     const MapContainer& map_container,
     KeyContainer* key_container) {
-  CHECK(key_container != NULL);
+  CHECK(key_container != nullptr);
   for (typename MapContainer::const_iterator it = map_container.begin();
        it != map_container.end();
        ++it) {
@@ -804,7 +804,7 @@ template <class MapContainer, class KeyType>
 void AppendKeysFromMap(
     const MapContainer& map_container,
     std::vector<KeyType>* key_container) {
-  CHECK(key_container != NULL);
+  CHECK(key_container != nullptr);
   // We now have the opportunity to call reserve(). Calling reserve() every
   // time is a bad idea for some use cases: libstdc++'s implementation of
   // vector<>::reserve() resizes the vector's backing store to exactly the
@@ -833,7 +833,7 @@ template <class MapContainer, class ValueContainer>
 void AppendValuesFromMap(
     const MapContainer& map_container,
     ValueContainer* value_container) {
-  CHECK(value_container != NULL);
+  CHECK(value_container != nullptr);
   for (typename MapContainer::const_iterator it = map_container.begin();
        it != map_container.end();
        ++it) {
@@ -852,7 +852,7 @@ template <class MapContainer, class ValueType>
 void AppendValuesFromMap(
     const MapContainer& map_container,
     std::vector<ValueType>* value_container) {
-  CHECK(value_container != NULL);
+  CHECK(value_container != nullptr);
   // See AppendKeysFromMap for why this is done.
   if (value_container->empty()) {
     value_container->reserve(map_container.size());

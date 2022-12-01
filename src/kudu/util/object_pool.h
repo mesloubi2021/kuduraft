@@ -49,12 +49,12 @@ class ObjectPool {
   typedef gscoped_ptr<T, deleter_type> scoped_ptr;
 
   ObjectPool()
-      : free_list_head_(NULL), alloc_list_head_(NULL), deleter_(this) {}
+      : free_list_head_(nullptr), alloc_list_head_(nullptr), deleter_(this) {}
 
   ~ObjectPool() {
     // Delete all objects ever allocated from this pool
     ListNode* node = alloc_list_head_;
-    while (node != NULL) {
+    while (node != nullptr) {
       ListNode* tmp = node;
       node = node->next_on_alloc_list;
       if (!tmp->is_on_freelist) {
@@ -113,17 +113,17 @@ class ObjectPool {
   };
 
   base::ManualConstructor<T>* GetObject() {
-    if (free_list_head_ != NULL) {
+    if (free_list_head_ != nullptr) {
       ListNode* tmp = free_list_head_;
       free_list_head_ = tmp->next_on_free_list;
-      tmp->next_on_free_list = NULL;
+      tmp->next_on_free_list = nullptr;
       DCHECK(tmp->is_on_freelist);
       tmp->is_on_freelist = false;
 
       return static_cast<base::ManualConstructor<T>*>(tmp);
     }
     auto new_node = new ListNode();
-    new_node->next_on_free_list = NULL;
+    new_node->next_on_free_list = nullptr;
     new_node->next_on_alloc_list = alloc_list_head_;
     new_node->is_on_freelist = false;
     alloc_list_head_ = new_node;

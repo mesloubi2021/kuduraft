@@ -158,7 +158,7 @@ namespace kudu {
 class KUDU_EXPORT Status {
  public:
   /// Create an object representing success status.
-  Status() : state_(NULL) {}
+  Status() : state_(nullptr) {}
 
   ~Status() {
     delete[] state_;
@@ -350,7 +350,7 @@ class KUDU_EXPORT Status {
 
   /// @return @c true iff the status indicates success.
   bool ok() const {
-    return (state_ == NULL);
+    return (state_ == nullptr);
   }
 
   /// @return @c true iff the status indicates a NotFound error.
@@ -543,7 +543,7 @@ class KUDU_EXPORT Status {
   KUDU_COMPILE_ASSERT(sizeof(Code) == 4, code_enum_size_is_part_of_abi);
 
   Code code() const {
-    return (state_ == NULL) ? kOk : static_cast<Code>(state_[4]);
+    return (state_ == nullptr) ? kOk : static_cast<Code>(state_[4]);
   }
 
   Status(Code code, const Slice& msg, const Slice& msg2, int16_t posix_code);
@@ -551,7 +551,7 @@ class KUDU_EXPORT Status {
 };
 
 inline Status::Status(const Status& s) {
-  state_ = (s.state_ == NULL) ? NULL : CopyState(s.state_);
+  state_ = (s.state_ == nullptr) ? nullptr : CopyState(s.state_);
 }
 
 inline Status& Status::operator=(const Status& s) {
@@ -559,7 +559,7 @@ inline Status& Status::operator=(const Status& s) {
   // and the common case where both s and *this are OK.
   if (state_ != s.state_) {
     delete[] state_;
-    state_ = (s.state_ == NULL) ? NULL : CopyState(s.state_);
+    state_ = (s.state_ == nullptr) ? nullptr : CopyState(s.state_);
   }
   return *this;
 }

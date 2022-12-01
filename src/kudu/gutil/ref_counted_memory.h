@@ -53,9 +53,9 @@ class BASE_EXPORT RefCountedMemory
 // matter.
 class BASE_EXPORT RefCountedStaticMemory : public RefCountedMemory {
  public:
-  RefCountedStaticMemory() : data_(NULL), length_(0) {}
+  RefCountedStaticMemory() : data_(nullptr), length_(0) {}
   RefCountedStaticMemory(const void* data, size_t length)
-      : data_(static_cast<const unsigned char*>(length ? data : NULL)),
+      : data_(static_cast<const unsigned char*>(length ? data : nullptr)),
         length_(length) {}
 
   // Overridden from RefCountedMemory:

@@ -1542,7 +1542,7 @@ AddTraceEventWithThreadIdAndTimestamp(
       num_args,
       &arg1_name,
       arg_types,
-      NULL,
+      nullptr,
       &arg1_val,
       flags);
 }
@@ -1658,7 +1658,7 @@ AddTraceEventWithThreadIdAndTimestamp(
       num_args,
       arg_names,
       arg_types,
-      NULL,
+      nullptr,
       convertable_values,
       flags);
 }
@@ -1680,10 +1680,10 @@ AddTraceEventWithThreadIdAndTimestamp(
       thread_id,
       timestamp,
       kZeroNumArgs,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
+      nullptr,
+      nullptr,
+      nullptr,
+      nullptr,
       flags);
 }
 
@@ -1726,7 +1726,7 @@ AddTraceEventWithThreadIdAndTimestamp(
       &arg1_name,
       arg_types,
       arg_values,
-      NULL,
+      nullptr,
       flags);
 }
 
@@ -1784,7 +1784,7 @@ AddTraceEventWithThreadIdAndTimestamp(
       arg_names,
       arg_types,
       arg_values,
-      NULL,
+      nullptr,
       flags);
 }
 
@@ -1819,7 +1819,7 @@ static inline kudu::debug::TraceEventHandle AddTraceEvent(
 class TRACE_EVENT_API_CLASS_EXPORT ScopedTracer {
  public:
   // Note: members of data_ intentionally left uninitialized. See Initialize.
-  ScopedTracer() : p_data_(NULL) {}
+  ScopedTracer() : p_data_(nullptr) {}
 
   ~ScopedTracer() {
     if (p_data_ && *data_.category_group_enabled)

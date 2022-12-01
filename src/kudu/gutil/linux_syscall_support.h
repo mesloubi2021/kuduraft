@@ -2870,7 +2870,7 @@ LSS_INLINE int LSS_NAME(clone)(
     void* newtls,
     int* child_tidptr) {
   long __res;
-  if (fn == NULL || child_stack == NULL) {
+  if (fn == nullptr || child_stack == nullptr) {
     __res = -EINVAL;
     LSS_RETURN(int, __res);
   }
@@ -4387,7 +4387,7 @@ LSS_INLINE int LSS_NAME(sigaction)(
    * This function must have a "magic" signature that the "gdb"
    * (and maybe the kernel?) can recognize.
    */
-  if (act != NULL && !(act->sa_flags & SA_RESTORER)) {
+  if (act != nullptr && !(act->sa_flags & SA_RESTORER)) {
     struct kernel_sigaction a = *act;
     a.sa_flags |= SA_RESTORER;
     a.sa_restorer = LSS_NAME(restore_rt)();
@@ -4456,7 +4456,7 @@ _syscall4(pid_t, wait4, pid_t, p, int*, s, int, o, struct kernel_rusage*, r)
   int rc;
   if ((rc = LSS_NAME(_getresgid32)(rgid, egid, sgid)) < 0 &&
       LSS_ERRNO == ENOSYS) {
-    if ((rgid == NULL) || (egid == NULL) || (sgid == NULL)) {
+    if ((rgid == nullptr) || (egid == nullptr) || (sgid == nullptr)) {
       return EFAULT;
     }
     // Clear the high bits first, since getresgid only sets 16 bits
@@ -4470,7 +4470,7 @@ LSS_INLINE int LSS_NAME(getresuid32)(uid_t* ruid, uid_t* euid, uid_t* suid) {
   int rc;
   if ((rc = LSS_NAME(_getresuid32)(ruid, euid, suid)) < 0 &&
       LSS_ERRNO == ENOSYS) {
-    if ((ruid == NULL) || (euid == NULL) || (suid == NULL)) {
+    if ((ruid == nullptr) || (euid == nullptr) || (suid == nullptr)) {
       return EFAULT;
     }
     // Clear the high bits first, since getresuid only sets 16 bits
@@ -4652,7 +4652,7 @@ LSS_INLINE _syscall3(
   int old_errno = LSS_ERRNO;
   int rc;
   struct kernel_sigaction a;
-  if (act != NULL) {
+  if (act != nullptr) {
     a = *act;
 #ifdef __i386__
     /* On i386, the kernel requires us to always set our own
@@ -4677,7 +4677,7 @@ LSS_INLINE _syscall3(
   if (rc < 0 && LSS_ERRNO == ENOSYS) {
     struct kernel_old_sigaction oa, ooa, *ptr_a = &oa, *ptr_oa = &ooa;
     if (!act) {
-      ptr_a = NULL;
+      ptr_a = nullptr;
     } else {
       oa.sa_handler_ = act->sa_handler_;
       memcpy(&oa.sa_mask, &act->sa_mask, sizeof(oa.sa_mask));
@@ -4687,7 +4687,7 @@ LSS_INLINE _syscall3(
       oa.sa_flags = act->sa_flags;
     }
     if (!oldact) {
-      ptr_oa = NULL;
+      ptr_oa = nullptr;
     }
     LSS_ERRNO = old_errno;
     rc = LSS_NAME(_sigaction)(signum, ptr_a, ptr_oa);
@@ -5079,7 +5079,7 @@ LSS_INLINE int LSS_NAME(ptrace_detach)(pid_t pid) {
    */
   int rc, err;
   LSS_NAME(sched_yield)();
-  rc = LSS_NAME(ptrace)(PTRACE_DETACH, pid, (void*)0, (void*)0);
+  rc = LSS_NAME(ptrace)(PTRACE_DETACH, pid, nullptr, nullptr);
   err = LSS_ERRNO;
   LSS_NAME(tkill)(pid, SIGCONT);
   /* Old systems don't have tkill */
@@ -5284,14 +5284,14 @@ LSS_INLINE int LSS_NAME(pipe)(int* pipefd) {
 LSS_INLINE int LSS_NAME(
     poll)(struct kernel_pollfd* fds, unsigned int nfds, int timeout) {
   struct kernel_timespec timeout_ts;
-  struct kernel_timespec* timeout_ts_p = NULL;
+  struct kernel_timespec* timeout_ts_p = nullptr;
 
   if (timeout >= 0) {
     timeout_ts.tv_sec = timeout / 1000;
     timeout_ts.tv_nsec = (timeout % 1000) * 1000000;
     timeout_ts_p = &timeout_ts;
   }
-  return LSS_NAME(ppoll)(fds, nfds, timeout_ts_p, NULL, 0);
+  return LSS_NAME(ppoll)(fds, nfds, timeout_ts_p, nullptr, 0);
 }
 #endif
 
@@ -5317,10 +5317,10 @@ LSS_INLINE pid_t LSS_NAME(fork)(void) {
   // Note that this does not reset glibc's cached view of the PID/TID, so
   // some glibc interfaces might go wrong in the forked subprocess.
   int flags = SIGCHLD;
-  void* child_stack = NULL;
-  void* parent_tidptr = NULL;
-  void* newtls = NULL;
-  void* child_tidptr = NULL;
+  void* child_stack = nullptr;
+  void* parent_tidptr = nullptr;
+  void* newtls = nullptr;
+  void* child_tidptr = nullptr;
 
   LSS_REG(0, flags);
   LSS_REG(1, child_stack);
@@ -5334,10 +5334,10 @@ LSS_INLINE pid_t LSS_NAME(fork)(void) {
   // Android disallows the fork syscall on x86_64 - implement by means of the
   // clone syscall as above for aarch64.
   int flags = SIGCHLD;
-  void* child_stack = NULL;
-  void* parent_tidptr = NULL;
-  void* newtls = NULL;
-  void* child_tidptr = NULL;
+  void* child_stack = nullptr;
+  void* parent_tidptr = nullptr;
+  void* newtls = nullptr;
+  void* child_tidptr = nullptr;
 
   LSS_BODY(
       5,

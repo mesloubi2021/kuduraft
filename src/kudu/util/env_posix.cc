@@ -1297,7 +1297,7 @@ class PosixEnv : public Env {
   Status GetCurrentWorkingDir(string* cwd) const override {
     TRACE_EVENT0("io", "PosixEnv::GetCurrentWorkingDir");
     ThreadRestrictions::AssertIOAllowed();
-    unique_ptr<char, FreeDeleter> wd(getcwd(NULL, 0));
+    unique_ptr<char, FreeDeleter> wd(getcwd(nullptr, 0));
     if (!wd) {
       return IOError("getcwd()", errno);
     }
@@ -1675,7 +1675,8 @@ class PosixEnv : public Env {
     auto cleanup = MakeScopedCleanup([&] { globfree(&result); });
 
     errno = 0;
-    int ret = glob(path_pattern.c_str(), GLOB_TILDE | GLOB_ERR, NULL, &result);
+    int ret =
+        glob(path_pattern.c_str(), GLOB_TILDE | GLOB_ERR, nullptr, &result);
     switch (ret) {
       case 0:
         break;

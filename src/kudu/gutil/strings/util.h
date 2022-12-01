@@ -66,7 +66,7 @@ StringPiece FindEol(StringPiece sp);
 inline char* strdup_nonempty(const char* src) {
   if (src && src[0])
     return strdup(src);
-  return NULL;
+  return nullptr;
 }
 
 // Finds the first occurrence of a character in at most a given number of bytes
@@ -82,7 +82,7 @@ inline char* strnchr(const char* buf, char c, int sz) {
       return const_cast<char*>(buf);
     ++buf;
   }
-  return NULL;
+  return nullptr;
 }
 
 // Finds the first occurrence of the null-terminated needle in at most the first
@@ -101,7 +101,7 @@ char* strnstr(const char* haystack, const char* needle, size_t haystack_len);
 #define strprefix(str, prefix)                         \
   (strncmp(str, prefix, sizeof("" prefix "") - 1) == 0 \
        ? (str) + sizeof(prefix) - 1                    \
-       : NULL)
+       : nullptr)
 #endif
 
 // Same as strprefix() (immediately above), but matches a case-insensitive
@@ -110,7 +110,7 @@ char* strnstr(const char* haystack, const char* needle, size_t haystack_len);
 #define strcaseprefix(str, prefix)                         \
   (strncasecmp(str, prefix, sizeof("" prefix "") - 1) == 0 \
        ? (str) + sizeof(prefix) - 1                        \
-       : NULL)
+       : nullptr)
 #endif
 
 // Matches a prefix (up to the first needle_size bytes of needle) in the first
@@ -150,7 +150,7 @@ const char* strncaseprefix(
 template <class CharStar>
 inline CharStar var_strprefix(CharStar str, const char* prefix) {
   const int len = strlen(prefix);
-  return strncmp(str, prefix, len) == 0 ? str + len : NULL;
+  return strncmp(str, prefix, len) == 0 ? str + len : nullptr;
 }
 
 // Same as var_strprefix() (immediately above), but matches a case-insensitive
@@ -158,12 +158,12 @@ inline CharStar var_strprefix(CharStar str, const char* prefix) {
 template <class CharStar>
 inline CharStar var_strcaseprefix(CharStar str, const char* prefix) {
   const int len = strlen(prefix);
-  return strncasecmp(str, prefix, len) == 0 ? str + len : NULL;
+  return strncasecmp(str, prefix, len) == 0 ? str + len : nullptr;
 }
 
 // Returns input, or "(null)" if NULL. (Useful for logging.)
 inline const char* GetPrintableString(const char* const in) {
-  return NULL == in ? "(null)" : in;
+  return nullptr == in ? "(null)" : in;
 }
 
 // Returns whether str begins with prefix.
@@ -191,9 +191,8 @@ inline char* strsuffix(char* str, const char* suffix) {
 
   if (lenstr >= lensuffix && 0 == strcmp(strbeginningoftheend, suffix)) {
     return (strbeginningoftheend);
-  } else {
-    return (NULL);
   }
+  return nullptr;
 }
 inline const char* strsuffix(const char* str, const char* suffix) {
   return const_cast<const char*>(strsuffix(const_cast<char*>(str), suffix));
@@ -220,7 +219,7 @@ const char* strncasesuffix(
 // Returns the number of times a character occurs in a string for a null
 // terminated string.
 inline ptrdiff_t strcount(const char* buf, char c) {
-  if (buf == NULL)
+  if (buf == nullptr)
     return 0;
   ptrdiff_t num = 0;
   for (const char* bp = buf; *bp != '\0'; bp++) {
@@ -233,7 +232,7 @@ inline ptrdiff_t strcount(const char* buf, char c) {
 // defined by a pointer to the first character and a pointer just past the last
 // character.
 inline ptrdiff_t strcount(const char* buf_begin, const char* buf_end, char c) {
-  if (buf_begin == NULL)
+  if (buf_begin == nullptr)
     return 0;
   if (buf_end <= buf_begin)
     return 0;
@@ -272,7 +271,7 @@ char* AdjustedLastPos(const char* str, char separator, int n);
 struct streq : public std::binary_function<const char*, const char*, bool> {
   bool operator()(const char* s1, const char* s2) const {
     return (
-        (s1 == 0 && s2 == 0) ||
+        (s1 == nullptr && s2 == nullptr) ||
         (s1 && s2 && *s1 == *s2 && strcmp(s1, s2) == 0));
   }
 };
@@ -282,7 +281,8 @@ struct streq : public std::binary_function<const char*, const char*, bool> {
 //    map<const char*, Value, strlt> m;
 struct strlt : public std::binary_function<const char*, const char*, bool> {
   bool operator()(const char* s1, const char* s2) const {
-    return (s1 != s2) && (s2 == 0 || (s1 != 0 && strcmp(s1, s2) < 0));
+    return (s1 != s2) &&
+        (s2 == nullptr || (s1 != nullptr && strcmp(s1, s2) < 0));
   }
 };
 

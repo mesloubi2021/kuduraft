@@ -366,7 +366,7 @@ class Callback<R(void)> : public internal::CallbackBase {
  public:
   typedef R(RunType)();
 
-  Callback() : CallbackBase(NULL) {}
+  Callback() : CallbackBase(nullptr) {}
 
   // Note that this constructor CANNOT be explicit, and that Bind() CANNOT
   // return the exact Callback<> type.  See base/bind.h for details.
@@ -403,7 +403,7 @@ class Callback<R(A1)> : public internal::CallbackBase {
  public:
   typedef R(RunType)(A1);
 
-  Callback() : CallbackBase(NULL) {}
+  Callback() : CallbackBase(nullptr) {}
 
   // Note that this constructor CANNOT be explicit, and that Bind() CANNOT
   // return the exact Callback<> type.  See base/bind.h for details.

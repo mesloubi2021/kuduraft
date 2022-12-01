@@ -266,7 +266,8 @@ class ArenaAllocator {
 
   pointer allocate(
       size_type n,
-      std::allocator_traits<std::allocator<void>>::const_pointer /*hint*/ = 0) {
+      std::allocator_traits<std::allocator<void>>::const_pointer /*hint*/ =
+          nullptr) {
     return reinterpret_cast<T*>(arena_->AllocateBytes(n * sizeof(T)));
   }
 
@@ -430,7 +431,7 @@ retry:
       goto retry;
     }
   } else {
-    return NULL;
+    return nullptr;
   }
 }
 
@@ -452,7 +453,7 @@ inline uint8_t* ArenaBase<false>::Component::AllocateBytesAligned(
     return destination;
   } else {
     offset_ = save_offset;
-    return NULL;
+    return nullptr;
   }
 }
 
@@ -473,7 +474,7 @@ inline void* ArenaBase<THREADSAFE>::AllocateBytesAligned(
     const size_t size,
     const size_t align) {
   void* result = AcquireLoadCurrent()->AllocateBytesAligned(size, align);
-  if (PREDICT_TRUE(result != NULL))
+  if (PREDICT_TRUE(result != nullptr))
     return result;
   return AllocateBytesFallback(size, align);
 }
@@ -486,8 +487,8 @@ inline uint8_t* ArenaBase<THREADSAFE>::AddSlice(const Slice& value) {
 template <bool THREADSAFE>
 inline void* ArenaBase<THREADSAFE>::AddBytes(const void* data, size_t len) {
   void* destination = AllocateBytes(len);
-  if (destination == NULL)
-    return NULL;
+  if (destination == nullptr)
+    return nullptr;
   memcpy(destination, data, len);
   return destination;
 }
@@ -495,7 +496,7 @@ inline void* ArenaBase<THREADSAFE>::AddBytes(const void* data, size_t len) {
 template <bool THREADSAFE>
 inline bool ArenaBase<THREADSAFE>::RelocateSlice(const Slice& src, Slice* dst) {
   void* destination = AllocateBytes(src.size());
-  if (destination == NULL)
+  if (destination == nullptr)
     return false;
   memcpy(destination, src.data(), src.size());
   *dst = Slice(reinterpret_cast<uint8_t*>(destination), src.size());
@@ -517,7 +518,7 @@ template <bool THREADSAFE>
 template <class T, class... Args>
 inline T* ArenaBase<THREADSAFE>::NewObject(Args&&... args) {
   void* mem = AllocateBytesAligned(sizeof(T), alignof(T));
-  if (mem == NULL)
+  if (mem == nullptr)
     throw std::bad_alloc();
   return new (mem) T(std::forward<Args>(args)...);
 }

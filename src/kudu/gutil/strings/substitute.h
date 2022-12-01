@@ -71,7 +71,8 @@ class SubstituteArg {
   // overload const string& as well, since this allows us to avoid a temporary
   // object.
   inline SubstituteArg(const char* value) // NOLINT(google-explicit-constructor)
-      : text_(value), size_(value == NULL ? 0 : strlen(text_)) {}
+      : text_(value),
+        size_(value == nullptr ? 0 : static_cast<int>(strlen(text_))) {}
   inline SubstituteArg( // NOLINT(google-explicit-constructor)
       const std::string& value)
       : text_(value.data()), size_(value.size()) {}
@@ -152,7 +153,7 @@ class SubstituteArg {
   static const SubstituteArg kNoArg;
 
  private:
-  inline SubstituteArg() : text_(NULL), size_(-1) {}
+  inline SubstituteArg() : text_(nullptr), size_(-1) {}
 
   const char* text_;
   int size_;
