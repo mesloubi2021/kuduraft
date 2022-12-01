@@ -230,7 +230,7 @@ void RpczStore::AddCall(InboundCall* call) {
 }
 
 void RpczStore::DumpPB(
-    const DumpRpczStoreRequestPB& req,
+    const DumpRpczStoreRequestPB& /* req */,
     DumpRpczStoreResponsePB* resp) {
   vector<pair<RpcMethodInfo*, MethodSampler*>> samplers;
   {

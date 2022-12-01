@@ -307,7 +307,7 @@ void ResultTracker::LogAndTraceFailure(
 
 void ResultTracker::LogAndTraceFailure(
     RpcContext* context,
-    ErrorStatusPB_RpcErrorCodePB err,
+    ErrorStatusPB_RpcErrorCodePB /* err */,
     const Status& status) {
   InboundCall* call = context->call_;
   VLOG(1) << this << " " << call->remote_method().service_name()

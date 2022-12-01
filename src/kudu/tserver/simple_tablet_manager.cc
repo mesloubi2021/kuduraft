@@ -93,18 +93,15 @@ using consensus::ConsensusOptions;
 using consensus::ConsensusRound;
 using consensus::ConsensusStatePB;
 using consensus::EXCLUDE_HEALTH_REPORT;
-using consensus::INCLUDE_HEALTH_REPORT;
 using consensus::ITimeManager;
 using consensus::kMinimumTerm;
 using consensus::OpId;
-using consensus::OpIdToString;
 using consensus::PeerProxyFactory;
 using consensus::PersistentVars;
 using consensus::PersistentVarsManager;
 using consensus::RaftConfigPB;
 using consensus::RaftConsensus;
 using consensus::RaftPeerPB;
-using consensus::RECEIVED_OPID;
 using consensus::RpcPeerProxyFactory;
 using consensus::TimeManager;
 using consensus::TimeManagerDummy;
@@ -139,7 +136,7 @@ TSTabletManager::~TSTabletManager() {
   }
 }
 
-Status TSTabletManager::Load(FsManager* fs_manager) {
+Status TSTabletManager::Load(FsManager* /* fs_manager */) {
   if (server_->opts().IsDistributed()) {
     LOG(INFO) << "Verifying existing consensus state";
     scoped_refptr<ConsensusMetadata> cmeta;
@@ -644,7 +641,7 @@ string TSTabletManager::LogPrefix() const {
 }
 
 Status TSTabletManager::StartConsensusOnlyRound(
-    const scoped_refptr<consensus::ConsensusRound>& round) {
+    const scoped_refptr<consensus::ConsensusRound>& /* round */) {
   // this is currently a no-op but other implementations
   // can provide their own version
   return Status::OK();

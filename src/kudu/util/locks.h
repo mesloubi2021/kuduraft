@@ -265,7 +265,7 @@ class shared_lock {
     m_->lock_shared();
   }
 
-  shared_lock(Mutex& m, std::try_to_lock_t t) : m_(nullptr) {
+  shared_lock(Mutex& m, std::try_to_lock_t /* t */) : m_(nullptr) {
     if (m.try_lock_shared()) {
       m_ = &m;
     }

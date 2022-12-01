@@ -1160,7 +1160,7 @@ class PosixEnv : public Env {
   }
 
   virtual Status NewRandomAccessFile(
-      const RandomAccessFileOptions& opts,
+      const RandomAccessFileOptions& /* opts */,
       const string& fname,
       unique_ptr<RandomAccessFile>* result) override {
     TRACE_EVENT1("io", "PosixEnv::NewRandomAccessFile", "path", fname);

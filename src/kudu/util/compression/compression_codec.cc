@@ -139,7 +139,7 @@ class SnappyCodec : public CompressionCodec {
   Status Uncompress(
       const Slice& compressed,
       uint8_t* uncompressed,
-      size_t uncompressed_length) const override {
+      size_t /* uncompressed_length */) const override {
     bool success = snappy::RawUncompress(
         reinterpret_cast<const char*>(compressed.data()),
         compressed.size(),

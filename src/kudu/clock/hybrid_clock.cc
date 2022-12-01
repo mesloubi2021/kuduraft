@@ -259,7 +259,7 @@ Status HybridClock::Update(const Timestamp& to_update) {
 }
 
 bool HybridClock::SupportsExternalConsistencyMode(
-    ExternalConsistencyMode mode) {
+    ExternalConsistencyMode /* mode */) {
   return true;
 }
 

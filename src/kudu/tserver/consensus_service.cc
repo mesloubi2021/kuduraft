@@ -294,7 +294,7 @@ void HandleUnknownError(const Status& s, RespType* resp, RpcContext* context) {
 
 template <class ReqType, class RespType>
 void HandleResponse(
-    const ReqType* req,
+    const ReqType* /* req */,
     RespType* resp,
     RpcContext* context,
     const Status& s) {
@@ -320,7 +320,7 @@ BindHandleResponse(const ReqType* req, RespType* resp, RpcContext* context) {
 
 template <class ReqType, class RespType>
 void HandleErrorResponse(
-    const ReqType* req,
+    const ReqType* /* req */,
     RespType* resp,
     RpcContext* context,
     const boost::optional<ServerErrorPB::Code>& error_code,
@@ -704,8 +704,8 @@ void ConsensusServiceImpl::GetLastOpId(
 }
 
 void ConsensusServiceImpl::GetConsensusState(
-    const consensus::GetConsensusStateRequestPB* req,
-    consensus::GetConsensusStateResponsePB* resp,
+    const consensus::GetConsensusStateRequestPB* /* req */,
+    consensus::GetConsensusStateResponsePB* /* resp */,
     rpc::RpcContext* context) {
 #if 0
   DVLOG(3) << "Received GetConsensusState RPC: " << SecureDebugString(*req);

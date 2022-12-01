@@ -240,7 +240,7 @@ string GetTestDataDirectory() {
       "/$0.$1$2.$3.$4-$5",
       StringReplace(gflags::ProgramInvocationShortName(), "/", "_", true),
       shard_index_infix,
-      StringReplace(test_info->test_case_name(), "/", "_", true),
+      StringReplace(test_info->test_suite_name(), "/", "_", true),
       StringReplace(test_info->name(), "/", "_", true),
       kTestBeganAtMicros,
       getpid());

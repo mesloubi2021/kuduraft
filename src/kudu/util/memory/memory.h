@@ -903,7 +903,7 @@ class GuaranteeMemory : public BufferAllocator {
  private:
   virtual Buffer* AllocateInternal(
       size_t requested,
-      size_t minimal,
+      size_t /* minimal */,
       BufferAllocator* originator) override {
     if (requested > Available()) {
       return NULL;

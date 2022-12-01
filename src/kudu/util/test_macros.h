@@ -124,6 +124,6 @@
   ::testing::UnitTest::GetInstance()->current_test_info()->name()
 
 #define CURRENT_TEST_CASE_NAME() \
-  ::testing::UnitTest::GetInstance()->current_test_info()->test_case_name()
+  ::testing::UnitTest::GetInstance()->current_test_info()->test_suite_name()
 
 #endif

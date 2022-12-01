@@ -470,7 +470,7 @@ string OutboundCall::ToString() const {
 }
 
 void OutboundCall::DumpPB(
-    const DumpRunningRpcsRequestPB& req,
+    const DumpRunningRpcsRequestPB& /* req */,
     RpcCallInProgressPB* resp) {
   std::lock_guard<simple_spinlock> l(lock_);
   resp->mutable_header()->CopyFrom(header_);

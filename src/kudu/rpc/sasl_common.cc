@@ -116,7 +116,7 @@ static int SaslLogCallback(void* context, int level, const char* message) {
 // Return SASL_FAIL if the option is not handled, this does not fail the
 // handshake.
 static int SaslGetOption(
-    void* context,
+    void* /* context */,
     const char* plugin_name,
     const char* option,
     const char** result,

@@ -4464,7 +4464,7 @@ Status RaftConsensus::HandleTermAdvanceUnlocked(
 }
 
 Status RaftConsensus::CheckSafeToReplicateUnlocked(
-    const ReplicateMsg& msg) const {
+    const ReplicateMsg& /* msg */) const {
   DCHECK(lock_.is_locked());
 #ifdef FB_DO_NOT_REMOVE
   DCHECK(!msg.has_id()) << "Should not have an ID yet: "

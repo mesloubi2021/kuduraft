@@ -238,8 +238,9 @@ class TraceBufferRingBuffer : public TraceBuffer {
       NOTIMPLEMENTED();
       return gscoped_ptr<TraceBufferChunk>();
     }
-    virtual void ReturnChunk(size_t index, gscoped_ptr<TraceBufferChunk>)
-        override {
+    virtual void ReturnChunk(
+        size_t /* index */,
+        gscoped_ptr<TraceBufferChunk> /* trace_buffer_chunk */) override {
       NOTIMPLEMENTED();
     }
     virtual bool IsFull() const override {
@@ -913,7 +914,7 @@ TraceResultBuffer::~TraceResultBuffer() {}
 
 void TraceResultBuffer::Collect(
     const scoped_refptr<RefCountedString>& s,
-    bool has_more_events) {
+    bool /* has_more_events */) {
   if (first_) {
     json_.append("{\"traceEvents\": [\n");
     first_ = false;

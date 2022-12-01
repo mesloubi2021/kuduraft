@@ -344,10 +344,10 @@ Buffer* MemoryTrackingBufferAllocator::AllocateInternal(
 }
 
 bool MemoryTrackingBufferAllocator::ReallocateInternal(
-    size_t requested,
-    size_t minimal,
-    Buffer* buffer,
-    BufferAllocator* originator) {
+    size_t /* requested */,
+    size_t /* minimal */,
+    Buffer* /* buffer */,
+    BufferAllocator* /* originator */) {
   LOG(FATAL) << "Not implemented";
   return false;
 }

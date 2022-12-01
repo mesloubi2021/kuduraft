@@ -221,7 +221,7 @@ Connection::CallAwaitingResponse::~CallAwaitingResponse() {
 
 void Connection::CallAwaitingResponse::HandleTimeout(
     ev::timer& watcher,
-    int revents) {
+    int /* revents */) {
   if (remaining_timeout > 0) {
     if (watcher.remaining() < -1.0) {
       LOG(WARNING)
@@ -433,7 +433,7 @@ struct ResponseTransferCallbacks : public TransferCallbacks {
     delete this;
   }
 
-  virtual void NotifyTransferAborted(const Status& status) override {
+  virtual void NotifyTransferAborted(const Status& /* status */) override {
     LOG(WARNING) << "Connection torn down before " << call_->ToString()
                  << " could send its response";
     delete this;
@@ -450,7 +450,7 @@ class QueueTransferTask : public ReactorTask {
   QueueTransferTask(gscoped_ptr<OutboundTransfer> transfer, Connection* conn)
       : transfer_(std::move(transfer)), conn_(conn) {}
 
-  virtual void Run(ReactorThread* thr) override {
+  virtual void Run(ReactorThread* /* thr */) override {
     conn_->QueueOutbound(std::move(transfer_));
     delete this;
   }
@@ -504,7 +504,7 @@ RpczStore* Connection::rpcz_store() {
   return reactor_thread_->reactor()->messenger()->rpcz_store();
 }
 
-void Connection::ReadHandler(ev::io& watcher, int revents) {
+void Connection::ReadHandler(ev::io& /* watcher */, int revents) {
   DCHECK(reactor_thread_->IsCurrentThread());
 
   DVLOG(3) << ToString() << " ReadHandler(revents=" << revents << ")";
@@ -616,7 +616,7 @@ void Connection::HandleCallResponse(gscoped_ptr<InboundTransfer> transfer) {
   MaybeInjectCancellation(car->call);
 }
 
-void Connection::WriteHandler(ev::io& watcher, int revents) {
+void Connection::WriteHandler(ev::io& /* watcher */, int revents) {
   DCHECK(reactor_thread_->IsCurrentThread());
 
   if (revents & EV_ERROR) {

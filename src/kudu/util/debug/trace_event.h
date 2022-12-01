@@ -1386,7 +1386,7 @@ class TraceID {
   TraceID(ForceMangle id, unsigned char* flags) : data_(id.data()) {
     *flags |= TRACE_EVENT_FLAG_MANGLE_ID;
   }
-  TraceID(DontMangle id, unsigned char* flags) : data_(id.data()) {}
+  TraceID(DontMangle id, unsigned char* /* flags */) : data_(id.data()) {}
   TraceID(uint64_t id, unsigned char* flags) : data_(id) {
     (void)flags;
   }

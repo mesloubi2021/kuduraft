@@ -126,7 +126,7 @@ struct DefaultDeleter {
   DefaultDeleter() {}
   template <typename U>
   DefaultDeleter( // NOLINT(google-explicit-constructor)
-      const DefaultDeleter<U>& other) {
+      const DefaultDeleter<U>& /* other */) {
     // IMPLEMENTATION NOTE: C++11 20.7.1.1.2p2 only provides this constructor
     // if U* is implicitly convertible to T* and U is not an array type.
     //

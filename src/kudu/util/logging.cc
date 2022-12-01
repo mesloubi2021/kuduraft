@@ -102,7 +102,7 @@ class SimpleSink : public google::LogSink {
   virtual void send(
       google::LogSeverity severity,
       const char* full_filename,
-      const char* base_filename,
+      const char* /* base_filename */,
       int line,
       const struct ::tm* tm_time,
       const char* message,

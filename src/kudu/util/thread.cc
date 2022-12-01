@@ -545,7 +545,7 @@ Status Thread::StartThread(
     const std::string& category,
     const std::string& name,
     const ThreadFunctor& functor,
-    uint64_t flags,
+    uint64_t /* flags */,
     scoped_refptr<Thread>* holder) {
   TRACE_COUNTER_INCREMENT("threads_started", 1);
   TRACE_COUNTER_SCOPE_LATENCY_US("thread_start_us");

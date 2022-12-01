@@ -84,7 +84,7 @@ int UnescapeCEscapeSequences(const char* source, char* dest) {
 int UnescapeCEscapeSequences(
     const char* source,
     char* dest,
-    vector<string>* errors) {
+    vector<string>* /* errors */) {
   char* d = dest;
   const char* p = source;
 

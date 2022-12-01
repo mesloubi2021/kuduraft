@@ -118,7 +118,7 @@ class TraceGLog {
     explicit TraceLogSink(const char* category) : category_(category) {}
     void send(
         google::LogSeverity severity,
-        const char* full_filename,
+        const char* /* full_filename */,
         const char* base_filename,
         int line,
         const struct ::tm* tm_time,

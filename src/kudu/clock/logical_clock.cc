@@ -74,7 +74,7 @@ Status LogicalClock::Update(const Timestamp& to_update) {
 }
 
 Status LogicalClock::WaitUntilAfter(
-    const Timestamp& then,
+    const Timestamp& /* then */,
     const MonoTime& /* deadline */) {
   return Status::ServiceUnavailable(
       "Logical clock does not support WaitUntilAfter()");

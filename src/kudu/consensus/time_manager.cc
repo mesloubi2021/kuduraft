@@ -74,7 +74,7 @@ namespace consensus {
 typedef std::lock_guard<simple_spinlock> Lock;
 
 ExternalConsistencyMode TimeManager::GetMessageConsistencyMode(
-    const ReplicateMsg& message) {
+    const ReplicateMsg& /* message */) {
   // TODO(dralves): We should have no-ops (?) and config changes be COMMIT_WAIT
   // transactions. See KUDU-798.
   // TODO(dralves) Move external consistency mode to ReplicateMsg. This will be

@@ -659,7 +659,7 @@ Status SimpleRegionRoutingTable::RebuildProxyTopology(
 }
 
 Status SimpleRegionRoutingTable::NextHop(
-    const std::string& src_uuid,
+    const std::string& /* src_uuid */,
     const std::string& dest_uuid,
     std::string* next_hop) const {
   shared_lock<RWMutex> l(lock_);
