@@ -99,14 +99,14 @@ bool BitmapFindFirst(
   }
 
   // check 64bit at the time for a 'value' bit
-  const uint64_t* u64 = (const uint64_t*)p;
+  const uint64_t* u64 = reinterpret_cast<const uint64_t*>(p);
   while (num_bits >= 64 && *u64 == pattern64[value]) {
     num_bits -= 64;
     u64++;
   }
 
   // check 8bit at the time for a 'value' bit
-  p = (const uint8_t*)u64;
+  p = reinterpret_cast<const uint8_t*>(u64);
   while (num_bits >= 8 && *p == pattern8[value]) {
     num_bits -= 8;
     p++;

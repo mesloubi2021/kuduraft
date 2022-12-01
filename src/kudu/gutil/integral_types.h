@@ -11,6 +11,7 @@
 #define BASE_INTEGRAL_TYPES_H_
 
 #include <inttypes.h>
+#include <limits>
 
 // These typedefs are also defined in base/google.swig. In the
 // SWIG environment, we use those definitions and avoid duplicate
@@ -82,18 +83,18 @@ typedef unsigned long uword_t;
 
 #endif // _MSC_VER
 
-static const uint8 kuint8max = ((uint8)0xFF);
-static const uint16 kuint16max = ((uint16)0xFFFF);
-static const uint32 kuint32max = ((uint32)0xFFFFFFFF);
-static const uint64 kuint64max = ((uint64)GG_LONGLONG(0xFFFFFFFFFFFFFFFF));
-static const int8 kint8min = ((int8)~0x7F);
-static const int8 kint8max = ((int8)0x7F);
-static const int16 kint16min = ((int16)~0x7FFF);
-static const int16 kint16max = ((int16)0x7FFF);
-static const int32 kint32min = ((int32)~0x7FFFFFFF);
-static const int32 kint32max = ((int32)0x7FFFFFFF);
-static const int64 kint64min = ((int64)GG_LONGLONG(~0x7FFFFFFFFFFFFFFF));
-static const int64 kint64max = ((int64)GG_LONGLONG(0x7FFFFFFFFFFFFFFF));
+static const uint8 kuint8max = std::numeric_limits<uint8_t>::max();
+static const uint16 kuint16max = std::numeric_limits<uint16_t>::max();
+static const uint32 kuint32max = std::numeric_limits<uint32_t>::max();
+static const uint64 kuint64max = std::numeric_limits<uint64_t>::max();
+static const int8 kint8min = std::numeric_limits<int8_t>::min();
+static const int8 kint8max = std::numeric_limits<int8_t>::max();
+static const int16 kint16min = std::numeric_limits<int16_t>::min();
+static const int16 kint16max = std::numeric_limits<int16_t>::max();
+static const int32 kint32min = std::numeric_limits<int32_t>::min();
+static const int32 kint32max = std::numeric_limits<int32_t>::max();
+static const int64 kint64min = std::numeric_limits<int64_t>::min();
+static const int64 kint64max = std::numeric_limits<int64_t>::max();
 
 // TODO(user): remove this eventually.
 // No object has kIllegalFprint as its Fingerprint.

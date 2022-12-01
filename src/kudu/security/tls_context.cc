@@ -704,7 +704,7 @@ int TlsContext::AlpnSelectCallback(
     *outlen = 0;
   } else if (
       SSL_select_next_proto(
-          (unsigned char**)out,
+          const_cast<unsigned char**>(out),
           outlen,
           context->server_alpns_.data(),
           context->server_alpns_.size(),

@@ -36,9 +36,9 @@ typedef signed __int128 int128_t;
 
 // Note: We don't use numeric_limits because it can give incorrect
 // values for __int128 and unsigned __int128.
-static const uint128_t UINT128_MIN = (uint128_t)0;
-static const uint128_t UINT128_MAX = ((uint128_t)-1);
-static const int128_t INT128_MAX = ((int128_t)(UINT128_MAX >> 1));
+static const uint128_t UINT128_MIN = static_cast<uint128_t>(0);
+static const uint128_t UINT128_MAX = static_cast<uint128_t>(-1);
+static const int128_t INT128_MAX = static_cast<int128_t>(UINT128_MAX >> 1);
 static const int128_t INT128_MIN = (-INT128_MAX - 1);
 
 } // namespace kudu

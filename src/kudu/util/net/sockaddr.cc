@@ -133,7 +133,8 @@ Status Sockaddr::LookupHostname(string* hostname) const {
   LOG_SLOW_EXECUTION(
       WARNING, 200, Substitute("DNS reverse-lookup for $0", ToString())) {
     rc = getnameinfo(
-        (struct sockaddr*)&addr_,
+        const_cast<struct sockaddr*>(
+            reinterpret_cast<const struct sockaddr*>(&addr_)),
         sizeof(sockaddr_in6),
         host,
         NI_MAXHOST,

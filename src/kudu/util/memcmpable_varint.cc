@@ -112,10 +112,10 @@ namespace kudu {
 
 // This function is borrowed from sqlite4/varint.c
 static void varintWrite32(uint8_t* z, uint32_t y) {
-  z[0] = (uint8_t)(y >> 24);
-  z[1] = (uint8_t)(y >> 16);
-  z[2] = (uint8_t)(y >> 8);
-  z[3] = (uint8_t)(y);
+  z[0] = static_cast<uint8_t>(y >> 24);
+  z[1] = static_cast<uint8_t>(y >> 16);
+  z[2] = static_cast<uint8_t>(y >> 8);
+  z[3] = static_cast<uint8_t>(y);
 }
 
 // Write a varint into z[].  The buffer z[] must be at least 9 characters
@@ -126,20 +126,20 @@ static void varintWrite32(uint8_t* z, uint32_t y) {
 static size_t sqlite4PutVarint64(uint8_t* z, uint64_t x) {
   uint64_t w, y;
   if (x <= 240) {
-    z[0] = (uint8_t)x;
+    z[0] = static_cast<uint8_t>(x);
     return 1;
   }
   if (x <= 2287) {
-    y = (uint64_t)(x - 240);
-    z[0] = (uint8_t)(y / 256 + 241);
-    z[1] = (uint8_t)(y % 256);
+    y = static_cast<uint64_t>(x - 240);
+    z[0] = static_cast<uint8_t>(y / 256 + 241);
+    z[1] = static_cast<uint8_t>(y % 256);
     return 2;
   }
   if (x <= 67823) {
-    y = (uint64_t)(x - 2288);
+    y = static_cast<uint64_t>(x - 2288);
     z[0] = 249;
-    z[1] = (uint8_t)(y / 256);
-    z[2] = (uint8_t)(y % 256);
+    z[1] = static_cast<uint8_t>(y / 256);
+    z[2] = static_cast<uint8_t>(y % 256);
     return 3;
   }
   y = (uint64_t)x;
@@ -147,9 +147,9 @@ static size_t sqlite4PutVarint64(uint8_t* z, uint64_t x) {
   if (w == 0) {
     if (y <= 16777215) {
       z[0] = 250;
-      z[1] = (uint8_t)(y >> 16);
-      z[2] = (uint8_t)(y >> 8);
-      z[3] = (uint8_t)(y);
+      z[1] = static_cast<uint8_t>(y >> 16);
+      z[2] = static_cast<uint8_t>(y >> 8);
+      z[3] = static_cast<uint8_t>(y);
       return 4;
     }
     z[0] = 251;
@@ -158,22 +158,22 @@ static size_t sqlite4PutVarint64(uint8_t* z, uint64_t x) {
   }
   if (w <= 255) {
     z[0] = 252;
-    z[1] = (uint8_t)w;
+    z[1] = static_cast<uint8_t>(w);
     varintWrite32(z + 2, y);
     return 6;
   }
   if (w <= 65535) {
     z[0] = 253;
-    z[1] = (uint8_t)(w >> 8);
-    z[2] = (uint8_t)w;
+    z[1] = static_cast<uint8_t>(w >> 8);
+    z[2] = static_cast<uint8_t>(w);
     varintWrite32(z + 3, y);
     return 7;
   }
   if (w <= 16777215) {
     z[0] = 254;
-    z[1] = (uint8_t)(w >> 16);
-    z[2] = (uint8_t)(w >> 8);
-    z[3] = (uint8_t)w;
+    z[1] = static_cast<uint8_t>(w >> 16);
+    z[2] = static_cast<uint8_t>(w >> 8);
+    z[3] = static_cast<uint8_t>(w);
     varintWrite32(z + 4, y);
     return 8;
   }
@@ -220,18 +220,19 @@ static int sqlite4GetVarint64(const uint8_t* z, int n, uint64_t* p_result) {
     return 5;
   }
   if (z[0] == 252) {
-    *p_result = (((uint64_t)x) << 8) + z[5];
+    *p_result = (static_cast<uint64_t>(x) << 8) + z[5];
     return 6;
   }
   if (z[0] == 253) {
-    *p_result = (((uint64_t)x) << 16) + (z[5] << 8) + z[6];
+    *p_result = (static_cast<uint64_t>(x) << 16) + (z[5] << 8) + z[6];
     return 7;
   }
   if (z[0] == 254) {
-    *p_result = (((uint64_t)x) << 24) + (z[5] << 16) + (z[6] << 8) + z[7];
+    *p_result =
+        (static_cast<uint64_t>(x) << 24) + (z[5] << 16) + (z[6] << 8) + z[7];
     return 8;
   }
-  *p_result = (((uint64_t)x) << 32) +
+  *p_result = (static_cast<uint64_t>(x) << 32) +
       (0xffffffff & ((z[5] << 24) + (z[6] << 16) + (z[7] << 8) + z[8]));
   return 9;
 }

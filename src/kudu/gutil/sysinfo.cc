@@ -102,7 +102,8 @@ static int64 EstimateCyclesPerSecond(const int estimate_time_ms) {
   CHECK(estimate_time_ms > 0);
   if (estimate_time_ms <= 0)
     return 1;
-  double multiplier = 1000.0 / (double)estimate_time_ms; // scale by this much
+  double multiplier =
+      1000.0 / static_cast<double>(estimate_time_ms); // scale by this much
 
   const int64 start_ticks = CycleClock::Now();
   SleepForMilliseconds(estimate_time_ms);

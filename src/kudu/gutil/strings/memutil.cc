@@ -86,11 +86,15 @@ const char* int_memmatch(
   if (0 == neelen) {
     return phaystack; // even if haylen is 0
   }
-  const unsigned char* haystack = (const unsigned char*)phaystack;
-  const unsigned char* hayend = (const unsigned char*)phaystack + haylen;
-  const unsigned char* needlestart = (const unsigned char*)pneedle;
-  const unsigned char* needle = (const unsigned char*)pneedle;
-  const unsigned char* needleend = (const unsigned char*)pneedle + neelen;
+  const unsigned char* haystack =
+      reinterpret_cast<const unsigned char*>(phaystack);
+  const unsigned char* hayend =
+      reinterpret_cast<const unsigned char*>(phaystack) + haylen;
+  const unsigned char* needlestart =
+      reinterpret_cast<const unsigned char*>(pneedle);
+  const unsigned char* needle = reinterpret_cast<const unsigned char*>(pneedle);
+  const unsigned char* needleend =
+      reinterpret_cast<const unsigned char*>(pneedle) + neelen;
 
   for (; haystack < hayend; ++haystack) {
     unsigned char hay = case_sensitive
@@ -101,7 +105,7 @@ const char* int_memmatch(
         : static_cast<unsigned char>(ascii_tolower(*needle));
     if (hay == nee) {
       if (++needle == needleend) {
-        return (const char*)(haystack + 1 - neelen);
+        return reinterpret_cast<const char*>(haystack + 1 - neelen);
       }
     } else if (needle != needlestart) {
       // must back up haystack in case a prefix matched (find "aab" in "aaab")
@@ -142,8 +146,8 @@ const char* memmatch(
   // A C-style cast is used here to work around the fact that memchr returns a
   // void* on Posix-compliant systems and const void* on Windows.
   while (
-      (match =
-           (const char*)(memchr(phaystack, pneedle[0], hayend - phaystack)))) {
+      (match = static_cast<const char*>(
+           memchr(phaystack, pneedle[0], hayend - phaystack)))) {
     if (memcmp(match, pneedle, neelen) == 0)
       return match;
     else
