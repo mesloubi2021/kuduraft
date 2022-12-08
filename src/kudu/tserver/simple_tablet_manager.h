@@ -71,12 +71,25 @@ namespace tserver {
 class TabletServer;
 struct TabletServerOptions;
 
+class TabletManagerIf {
+ public:
+  virtual ~TabletManagerIf() {}
+  virtual const NodeInstancePB& NodeInstance() const = 0;
+  virtual std::shared_ptr<consensus::RaftConsensus> shared_consensus(
+      const std::string& = "") const = 0;
+  virtual Status Init(bool is_first_run) = 0;
+  virtual Status Start(bool is_first_run) = 0;
+  virtual bool IsInitialized() const = 0;
+  virtual void Shutdown() = 0;
+};
+
 // Keeps track of the tablets hosted on the tablet server side.
 //
 // TODO(todd): will also be responsible for keeping the local metadata about
 // which tablets are hosted on this server persistent on disk, as well as
 // re-opening all the tablets at startup, etc.
-class TSTabletManager : public consensus::ConsensusRoundHandler {
+class TSTabletManager : public TabletManagerIf,
+                        consensus::ConsensusRoundHandler {
  public:
   // Construct the tablet manager.
   explicit TSTabletManager(TabletServer* server);
@@ -90,22 +103,22 @@ class TSTabletManager : public consensus::ConsensusRoundHandler {
   // Load all tablet metadata blocks from disk, and open their respective
   // tablets. Upon return of this method all existing tablets are registered,
   // but the bootstrap is performed asynchronously.
-  Status Init(bool is_first_run);
+  Status Init(bool is_first_run) override;
 
   // Start the raft ring.
   // At the end of this consensus has been completed and ring should be up
   // and running.
   // In case of is_first_run, some parts of bootstrapping are bypassed
-  Status Start(bool is_first_run);
+  Status Start(bool is_first_run) override;
 
-  bool IsInitialized() const;
+  bool IsInitialized() const override;
 
   bool IsRunning() const;
 
   // Shut down all of the tablets, gracefully flushing before shutdown.
-  void Shutdown();
+  void Shutdown() override;
 
-  virtual const NodeInstancePB& NodeInstance() const;
+  const NodeInstancePB& NodeInstance() const override;
 
   // Used by consensus to create and start a new ReplicaTransaction.
   virtual Status StartFollowerTransaction(
@@ -119,7 +132,8 @@ class TSTabletManager : public consensus::ConsensusRoundHandler {
   virtual Status StartConsensusOnlyRound(
       const scoped_refptr<consensus::ConsensusRound>& round) override;
 
-  std::shared_ptr<consensus::RaftConsensus> shared_consensus() const {
+  std::shared_ptr<consensus::RaftConsensus> shared_consensus(
+      const std::string& = "") const override {
     shared_lock<RWMutex> l(lock_);
     return consensus_;
   }
