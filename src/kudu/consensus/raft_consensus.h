@@ -207,7 +207,7 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   typedef std::function<void(const ElectionResult&, const ElectionContext&)>
       ElectionDecisionCallback;
   typedef std::function<void(int64_t)> TermAdvancementCallback;
-  typedef std::function<void(const OpId opId, const RaftPeerPB&)>
+  typedef std::function<void(const OpId& opId, const RaftPeerPB&)>
       NoOpReceivedCallback;
   typedef std::function<void(int64_t, const RaftPeerPB&)>
       LeaderDetectedCallback;
@@ -1055,7 +1055,7 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
       const ElectionContext& context,
       const ElectionResult& result);
   void NestedElectionDecisionCallback(
-      ElectionContext context,
+      const ElectionContext& context,
       const ElectionResult& result);
 
   // Enables or disables the failure detector based on the role of the local
@@ -1204,7 +1204,7 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
 
   void ScheduleNoOpReceivedCallback(const ReplicateRefPtr& msg);
   void DoNoOpReceivedCallback(
-      const OpId opid,
+      const OpId& opid,
       const RaftPeerPB& leader_details);
 
   void ScheduleLeaderDetectedCallback(int64_t term);

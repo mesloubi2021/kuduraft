@@ -304,7 +304,7 @@ class FsManager {
   // 'created_files' respectively. It is the responsibility of the caller to
   // synchronize the directories containing these newly created file objects.
   Status CreateFileSystemRoots(
-      CanonicalizedRootsList canonicalized_roots,
+      const CanonicalizedRootsList& canonicalized_roots,
       const InstanceMetadataPB& metadata,
       std::vector<std::string>* created_dirs,
       std::vector<std::string>* created_files);

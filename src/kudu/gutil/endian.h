@@ -241,7 +241,7 @@ class LittleEndian {
         ToHost64(UNALIGNED_LOAD64(p)));
   }
 
-  static void Store128(void* p, const uint128 v) {
+  static void Store128(void* p, const uint128& v) {
     UNALIGNED_STORE64(p, FromHost64(Uint128Low64(v)));
     UNALIGNED_STORE64(
         reinterpret_cast<uint64*>(p) + 1, FromHost64(Uint128High64(v)));
@@ -411,7 +411,7 @@ class BigEndian {
         ToHost64(UNALIGNED_LOAD64(reinterpret_cast<const uint64*>(p) + 1)));
   }
 
-  static void Store128(void* p, const uint128 v) {
+  static void Store128(void* p, const uint128& v) {
     UNALIGNED_STORE64(p, FromHost64(Uint128High64(v)));
     UNALIGNED_STORE64(
         reinterpret_cast<uint64*>(p) + 1, FromHost64(Uint128Low64(v)));

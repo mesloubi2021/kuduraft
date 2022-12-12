@@ -4084,7 +4084,7 @@ void RaftConsensus::DoElectionCallback(
 }
 
 void RaftConsensus::NestedElectionDecisionCallback(
-    ElectionContext context,
+    const ElectionContext& context,
     const ElectionResult& result) {
   DCHECK(result.vote_request.mode() != MOCK_ELECTION);
   DoElectionCallback(context, result);
@@ -4814,7 +4814,7 @@ void RaftConsensus::ScheduleNoOpReceivedCallback(const ReplicateRefPtr& msg) {
 }
 
 void RaftConsensus::DoNoOpReceivedCallback(
-    const OpId id,
+    const OpId& id,
     const RaftPeerPB& leader_details) {
   if (norcb_)
     norcb_(id, leader_details);

@@ -65,7 +65,7 @@ struct AlphaNum {
   AlphaNum(const char* c_str) // NOLINT(google-explicit-constructor)
       : piece(c_str) {}
   AlphaNum(StringPiece pc) // NOLINT(google-explicit-constructor)
-      : piece(std::move(pc)) {}
+      : piece(pc) {}
   AlphaNum(const std::string& s) // NOLINT(google-explicit-constructor)
       : piece(s) {}
 

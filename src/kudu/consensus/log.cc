@@ -565,7 +565,12 @@ Status LogFactory::createLog(
     std::string tablet_id,
     scoped_refptr<MetricEntity> metric_entity,
     scoped_refptr<Log>* new_log) {
-  *new_log = new Log(options, fs_manager, log_path, tablet_id, metric_entity);
+  *new_log = new Log(
+      std::move(options),
+      fs_manager,
+      std::move(log_path),
+      std::move(tablet_id),
+      std::move(metric_entity));
   return Status::OK();
 }
 

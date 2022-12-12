@@ -329,7 +329,7 @@ class LogBlockManager : public BlockManager {
   //
   // Returns the first deletion failure that was seen, if any.
   Status RemoveLogBlocks(
-      std::vector<BlockId> block_ids,
+      const std::vector<BlockId>& block_ids,
       std::vector<scoped_refptr<internal::LogBlock>>* log_blocks,
       std::vector<BlockId>* deleted);
 
@@ -354,8 +354,8 @@ class LogBlockManager : public BlockManager {
       DataDir* dir,
       FsReport* report,
       std::vector<scoped_refptr<internal::LogBlock>> need_repunching,
-      std::vector<std::string> dead_containers,
-      std::unordered_map<std::string, std::vector<BlockRecordPB>>
+      const std::vector<std::string>& dead_containers,
+      const std::unordered_map<std::string, std::vector<BlockRecordPB>>&
           low_live_block_containers);
 
   // Rewrites a container metadata file, appending all entries in 'records'.

@@ -263,12 +263,12 @@ class DataDirManager {
   // expected to be the successfully canonicalized directories.
   static Status CreateNewForTests(
       Env* env,
-      std::vector<std::string> data_fs_roots,
+      const std::vector<std::string>& data_fs_roots,
       DataDirManagerOptions opts,
       std::unique_ptr<DataDirManager>* dd_manager);
   static Status OpenExistingForTests(
       Env* env,
-      std::vector<std::string> data_fs_roots,
+      const std::vector<std::string>& data_fs_roots,
       DataDirManagerOptions opts,
       std::unique_ptr<DataDirManager>* dd_manager);
 
@@ -460,11 +460,11 @@ class DataDirManager {
   //
   // Returns an error if any disk operations fail.
   Status CreateNewDataDirectoriesAndUpdateInstances(
-      std::vector<std::pair<std::string, std::string>>
+      const std::vector<std::pair<std::string, std::string>>&
           root_uuid_pairs_to_create,
-      std::vector<std::unique_ptr<PathInstanceMetadataFile>>
+      const std::vector<std::unique_ptr<PathInstanceMetadataFile>>&
           instances_to_update,
-      std::vector<std::string> all_uuids);
+      const std::vector<std::string>& all_uuids);
 
   // Updates the on-disk instance files specified by 'instances_to_update'
   // using the contents of 'new_all_uuids', skipping any unhealthy instance
@@ -472,9 +472,9 @@ class DataDirManager {
   //
   // Returns an error if any disk operations fail.
   Status UpdateInstances(
-      std::vector<std::unique_ptr<PathInstanceMetadataFile>>
+      const std::vector<std::unique_ptr<PathInstanceMetadataFile>>&
           instances_to_update,
-      std::vector<std::string> new_all_uuids);
+      const std::vector<std::string>& new_all_uuids);
 
   // Repeatedly selects directories from those available to put into a new
   // DataDirGroup until 'group_indices' reaches 'target_size' elements.

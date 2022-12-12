@@ -426,7 +426,7 @@ void DataDirManager::Shutdown() {
 
 Status DataDirManager::OpenExistingForTests(
     Env* env,
-    vector<string> data_fs_roots,
+    const vector<string>& data_fs_roots,
     DataDirManagerOptions opts,
     unique_ptr<DataDirManager>* dd_manager) {
   CanonicalizedRootsList roots;
@@ -451,7 +451,7 @@ Status DataDirManager::OpenExisting(
 
 Status DataDirManager::CreateNewForTests(
     Env* env,
-    vector<string> data_fs_roots,
+    const vector<string>& data_fs_roots,
     DataDirManagerOptions opts,
     unique_ptr<DataDirManager>* dd_manager) {
   CanonicalizedRootsList roots;
@@ -497,9 +497,9 @@ Status DataDirManager::Create() {
 }
 
 Status DataDirManager::CreateNewDataDirectoriesAndUpdateInstances(
-    vector<pair<string, string>> root_uuid_pairs_to_create,
-    vector<unique_ptr<PathInstanceMetadataFile>> instances_to_update,
-    vector<string> all_uuids) {
+    const vector<pair<string, string>>& root_uuid_pairs_to_create,
+    const vector<unique_ptr<PathInstanceMetadataFile>>& instances_to_update,
+    const vector<string>& all_uuids) {
   CHECK(!opts_.read_only);
 
   vector<string> created_dirs;
@@ -542,7 +542,7 @@ Status DataDirManager::CreateNewDataDirectoriesAndUpdateInstances(
 
   // Update existing instances, if any.
   RETURN_NOT_OK_PREPEND(
-      UpdateInstances(std::move(instances_to_update), std::move(all_uuids)),
+      UpdateInstances(instances_to_update, all_uuids),
       "could not update existing data directories");
 
   // Ensure newly created directories are synchronized to disk.
@@ -558,8 +558,8 @@ Status DataDirManager::CreateNewDataDirectoriesAndUpdateInstances(
 }
 
 Status DataDirManager::UpdateInstances(
-    vector<unique_ptr<PathInstanceMetadataFile>> instances_to_update,
-    vector<string> new_all_uuids) {
+    const vector<unique_ptr<PathInstanceMetadataFile>>& instances_to_update,
+    const vector<string>& new_all_uuids) {
   // Prepare a scoped cleanup for managing instance metadata copies.
   unordered_map<string, string> copies_to_restore;
   unordered_set<string> copies_to_delete;
@@ -818,7 +818,7 @@ Status DataDirManager::Open() {
   TabletsByUuidIndexMap tablets_by_uuid_idx_map;
   FailedDataDirSet failed_data_dirs;
 
-  const auto insert_to_maps = [&](int idx, string uuid, DataDir* dd) {
+  const auto insert_to_maps = [&](int idx, const string& uuid, DataDir* dd) {
     InsertOrDie(&uuid_by_root, DirName(dd->dir()), uuid);
     InsertOrDie(&uuid_by_idx, idx, uuid);
     InsertOrDie(&idx_by_uuid, uuid, idx);

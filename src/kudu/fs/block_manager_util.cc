@@ -63,10 +63,10 @@ using strings::Substitute;
   do {                                                                     \
     const Status& _s = (status_expr);                                      \
     if (PREDICT_FALSE(!_s.ok())) {                                         \
-      const Status _s_prepended = _s.CloneAndPrepend(msg);                 \
+      Status _s_prepended = _s.CloneAndPrepend(msg);                       \
       if (_s.IsNotFound() || _s.IsDiskFailure()) {                         \
-        health_status_ = _s_prepended;                                     \
         LOG(INFO) << "Instance is unhealthy: " << _s_prepended.ToString(); \
+        health_status_ = std::move(_s_prepended);                          \
         return Status::OK();                                               \
       }                                                                    \
       return _s_prepended;                                                 \

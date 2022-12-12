@@ -570,7 +570,7 @@ Status FsManager::CreateInitialFileSystemLayout(boost::optional<string> uuid) {
 }
 
 Status FsManager::CreateFileSystemRoots(
-    CanonicalizedRootsList canonicalized_roots,
+    const CanonicalizedRootsList& canonicalized_roots,
     const InstanceMetadataPB& metadata,
     vector<string>* created_dirs,
     vector<string>* created_files) {

@@ -2226,7 +2226,7 @@ bool LogBlockManager::AddLogBlockUnlocked(scoped_refptr<LogBlock> lb) {
 }
 
 Status LogBlockManager::RemoveLogBlocks(
-    vector<BlockId> block_ids,
+    const vector<BlockId>& block_ids,
     vector<scoped_refptr<LogBlock>>* log_blocks,
     vector<BlockId>* deleted) {
   Status first_failure;
@@ -2611,8 +2611,8 @@ void LogBlockManager::OpenDataDir(
       dir,
       &local_report,
       std::move(need_repunching),
-      std::move(dead_containers),
-      std::move(low_live_block_containers));
+      dead_containers,
+      low_live_block_containers);
   if (!s.ok()) {
     *result_status = s.CloneAndPrepend(Substitute(
         "fatal error while repairing inconsistencies in data directory $0",
@@ -2648,8 +2648,9 @@ Status LogBlockManager::Repair(
     DataDir* dir,
     FsReport* report,
     vector<scoped_refptr<internal::LogBlock>> need_repunching,
-    vector<string> dead_containers,
-    unordered_map<string, vector<BlockRecordPB>> low_live_block_containers) {
+    const vector<string>& dead_containers,
+    const unordered_map<string, vector<BlockRecordPB>>&
+        low_live_block_containers) {
   if (opts_.read_only) {
     LOG(INFO) << "Read-only block manager, skipping repair";
     return Status::OK();

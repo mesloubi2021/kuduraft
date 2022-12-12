@@ -109,7 +109,7 @@ TabletServerOptions::TabletServerOptions() {
           << "The number of tserver bbd tags has to be same as tservers: "
           << FLAGS_tserver_bbd << " " << FLAGS_tserver_addresses;
     }
-    for (auto tsbbd : bbds) {
+    for (const auto& tsbbd : bbds) {
       if (tsbbd == "true") {
         tserver_bbd.push_back(true);
       } else if (tsbbd == "false") {
