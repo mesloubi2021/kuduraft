@@ -724,7 +724,10 @@ Status Log::AsyncAppendReplicates(
 Status Log::AsyncAppendCommit(
     gscoped_ptr<consensus::CommitMsg> commit_msg,
     const StatusCallback& callback) {
-  CHECK(!FLAGS_raft_derived_log_mode);
+  if (FLAGS_raft_derived_log_mode) {
+    // ignore append commit in derived log mode
+    return Status::OK();
+  }
   MAYBE_FAULT(FLAGS_fault_crash_before_append_commit);
 
   unique_ptr<LogEntryBatchPB> batch_pb(new LogEntryBatchPB);

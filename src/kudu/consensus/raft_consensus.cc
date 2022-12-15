@@ -1214,6 +1214,8 @@ Status RaftConsensus::BecomeLeaderUnlocked() {
   auto replicate = new ReplicateMsg;
   replicate->set_op_type(NO_OP);
   replicate->mutable_noop_request(); // Define the no-op request field.
+  replicate->set_timestamp(
+      Timestamp::kInitialTimestamp.value()); // some default timestamp
   CHECK_OK(time_manager_->AssignTimestamp(replicate));
 
   scoped_refptr<ConsensusRound> round(new ConsensusRound(
