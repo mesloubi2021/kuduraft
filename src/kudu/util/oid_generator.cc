@@ -38,6 +38,11 @@ DEFINE_bool(
     "If set this strips -/dashes from all uuids and makes "
     "it a 16 character string at generation time.");
 
+DEFINE_bool(
+    skip_uuid_validation,
+    false,
+    "If an app wants to use a custom unique ID as uuid.");
+
 namespace kudu {
 
 namespace {
@@ -78,6 +83,10 @@ string ObjectIdGenerator::Next() {
 
 Status ObjectIdGenerator::Canonicalize(const string& input, string* output)
     const {
+  if (FLAGS_skip_uuid_validation) {
+    *output = input;
+    return Status::OK();
+  }
   try {
     boost::uuids::uuid uuid = oid_validator_(input);
     *output = ConvertUuidToString(uuid);
