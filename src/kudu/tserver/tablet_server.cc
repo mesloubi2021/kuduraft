@@ -73,6 +73,15 @@ TabletServer::TabletServer(const TabletServerOptions& opts)
 {
 }
 
+TabletServer::TabletServer(
+    const TabletServerOptions& opts,
+    const std::function<std::unique_ptr<TabletManagerIf>(TabletServer*)>&
+        factory)
+    : KuduServer("TabletServer", opts, "kudu.tabletserver"),
+      initted_(false),
+      opts_(opts),
+      tablet_manager_(factory(this)) {}
+
 TabletServer::~TabletServer() {
   Shutdown();
 }
@@ -134,7 +143,7 @@ Status TabletServer::Init() {
   // distributed config. We need the service to be here, because
   // Raft::create makes remote GetNodeInstance RPC calls.
   gscoped_ptr<ServiceIf> consensus_service(
-      new ConsensusServiceImpl(this, tablet_manager_.get()));
+      new ConsensusServiceImpl(this, *tablet_manager_));
   RETURN_NOT_OK(RegisterService(std::move(consensus_service)));
   RETURN_NOT_OK(KuduServer::Start());
 

@@ -70,13 +70,13 @@ class RpcContext;
 
 namespace tserver {
 
-class TSTabletManager;
+class TabletManagerIf;
 
 class ConsensusServiceImpl : public consensus::ConsensusServiceIf {
  public:
   ConsensusServiceImpl(
       server::ServerBase* server,
-      TSTabletManager* tablet_manager);
+      TabletManagerIf& tablet_manager);
 
   virtual ~ConsensusServiceImpl();
 
@@ -142,7 +142,7 @@ class ConsensusServiceImpl : public consensus::ConsensusServiceIf {
 
  private:
   server::ServerBase* server_;
-  TSTabletManager* tablet_manager_;
+  TabletManagerIf& tablet_manager_;
 
   scoped_refptr<Counter> request_rpc_token_mismatches_;
 };

@@ -45,6 +45,7 @@ class ScannerManager;
 class TabletServerPathHandlers;
 #endif
 class TSTabletManager;
+class TabletManagerIf;
 
 class TabletServer : public kserver::KuduServer {
  public:
@@ -56,6 +57,12 @@ class TabletServer : public kserver::KuduServer {
 #endif
 
   explicit TabletServer(const TabletServerOptions& opts);
+
+  TabletServer(
+      const TabletServerOptions& opts,
+      const std::function<std::unique_ptr<TabletManagerIf>(TabletServer*)>&
+          factory);
+
   ~TabletServer();
 
   // Initializes the tablet server, including the bootstrapping of all
@@ -75,7 +82,7 @@ class TabletServer : public kserver::KuduServer {
 
   std::string ToString() const;
 
-  TSTabletManager* tablet_manager() {
+  TabletManagerIf* tablet_manager() {
     return tablet_manager_.get();
   }
 
@@ -149,7 +156,7 @@ class TabletServer : public kserver::KuduServer {
   const TabletServerOptions opts_;
 
   // Manager for tablets which are available on this server.
-  gscoped_ptr<TSTabletManager> tablet_manager_;
+  std::unique_ptr<TabletManagerIf> tablet_manager_;
 
 #ifdef FB_DO_NOT_REMOVE
   // Manager for open scanners from clients.

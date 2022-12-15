@@ -144,12 +144,12 @@ namespace {
 
 template <class ReqClass, class RespClass>
 bool CheckUuidMatchOrRespondGeneric(
-    TSTabletManager* tablet_manager,
+    TabletManagerIf& tablet_manager,
     const char* method_name,
     const ReqClass* req,
     RespClass* resp,
     rpc::RpcContext* context) {
-  const string& local_uuid = tablet_manager->NodeInstance().permanent_uuid();
+  const string& local_uuid = tablet_manager.NodeInstance().permanent_uuid();
   if (PREDICT_FALSE(!req->has_dest_uuid())) {
     // Maintain compat in release mode, but complain.
     string msg = Substitute(
@@ -182,7 +182,7 @@ bool CheckUuidMatchOrRespondGeneric(
 
 template <class ReqClass, class RespClass>
 bool CheckUuidMatchOrRespond(
-    TSTabletManager* tablet_manager,
+    TabletManagerIf& tablet_manager,
     const char* method_name,
     const ReqClass* req,
     RespClass* resp,
@@ -193,12 +193,12 @@ bool CheckUuidMatchOrRespond(
 
 template <>
 bool CheckUuidMatchOrRespond(
-    TSTabletManager* tablet_manager,
+    TabletManagerIf& tablet_manager,
     const char* method_name,
     const ConsensusRequestPB* req,
     ConsensusResponsePB* resp,
     rpc::RpcContext* context) {
-  const string& local_uuid = tablet_manager->NodeInstance().permanent_uuid();
+  const string& local_uuid = tablet_manager.NodeInstance().permanent_uuid();
   if (req->has_proxy_dest_uuid()) {
     if (PREDICT_FALSE(req->proxy_dest_uuid() != local_uuid)) {
       Status s = Status::InvalidArgument(Substitute(
@@ -219,13 +219,15 @@ bool CheckUuidMatchOrRespond(
       tablet_manager, method_name, req, resp, context);
 }
 
-template <class RespClass>
+template <class ReqClass, class RespClass>
 bool GetConsensusOrRespond(
-    TSTabletManager* tablet_manager,
+    TabletManagerIf& tablet_manager,
+    ReqClass* req,
     RespClass* resp,
     rpc::RpcContext* context,
     shared_ptr<RaftConsensus>* consensus_out) {
-  shared_ptr<RaftConsensus> tmp_consensus = tablet_manager->shared_consensus();
+  shared_ptr<RaftConsensus> tmp_consensus =
+      tablet_manager.shared_consensus(req->tablet_id());
   if (!tmp_consensus) {
     Status s = Status::ServiceUnavailable(
         "Raft Consensus unavailable", "Tablet replica not initialized");
@@ -335,7 +337,7 @@ void HandleErrorResponse(
 
 ConsensusServiceImpl::ConsensusServiceImpl(
     ServerBase* server,
-    TSTabletManager* tablet_manager)
+    TabletManagerIf& tablet_manager)
     : ConsensusServiceIf(server->metric_entity(), server->result_tracker()),
       server_(server),
       tablet_manager_(tablet_manager),
@@ -365,7 +367,7 @@ void ConsensusServiceImpl::UpdateConsensus(
 
   // Submit the update directly to the TabletReplica's RaftConsensus instance.
   shared_ptr<RaftConsensus> consensus;
-  if (!GetConsensusOrRespond(tablet_manager_, resp, context, &consensus))
+  if (!GetConsensusOrRespond(tablet_manager_, req, resp, context, &consensus))
     return;
 
   if (auto ownToken = consensus->GetRaftRpcToken()) {
@@ -432,7 +434,7 @@ void ConsensusServiceImpl::RequestConsensusVote(
   boost::optional<OpId> last_logged_opid;
   // Submit the vote request directly to the consensus instance.
   shared_ptr<RaftConsensus> consensus;
-  if (!GetConsensusOrRespond(tablet_manager_, resp, context, &consensus))
+  if (!GetConsensusOrRespond(tablet_manager_, req, resp, context, &consensus))
     return;
 
   if (auto ownToken = consensus->GetRaftRpcToken()) {
@@ -476,7 +478,7 @@ void ConsensusServiceImpl::ChangeConfig(
   }
 
   shared_ptr<RaftConsensus> consensus;
-  if (!GetConsensusOrRespond(tablet_manager_, resp, context, &consensus))
+  if (!GetConsensusOrRespond(tablet_manager_, req, resp, context, &consensus))
     return;
   boost::optional<ServerErrorPB::Code> error_code;
   Status s = consensus->ChangeConfig(
@@ -499,7 +501,7 @@ void ConsensusServiceImpl::BulkChangeConfig(
   }
 
   shared_ptr<RaftConsensus> consensus;
-  if (!GetConsensusOrRespond(tablet_manager_, resp, context, &consensus))
+  if (!GetConsensusOrRespond(tablet_manager_, req, resp, context, &consensus))
     return;
   boost::optional<ServerErrorPB::Code> error_code;
   Status s = consensus->BulkChangeConfig(
@@ -523,7 +525,7 @@ void ConsensusServiceImpl::UnsafeChangeConfig(
   }
 
   shared_ptr<RaftConsensus> consensus;
-  if (!GetConsensusOrRespond(tablet_manager_, resp, context, &consensus)) {
+  if (!GetConsensusOrRespond(tablet_manager_, req, resp, context, &consensus)) {
     return;
   }
   boost::optional<ServerErrorPB::Code> error_code;
@@ -547,7 +549,7 @@ void ConsensusServiceImpl::ChangeProxyTopology(
   }
 
   shared_ptr<RaftConsensus> consensus;
-  if (!GetConsensusOrRespond(tablet_manager_, resp, context, &consensus)) {
+  if (!GetConsensusOrRespond(tablet_manager_, req, resp, context, &consensus)) {
     return;
   }
 
@@ -560,7 +562,7 @@ void ConsensusServiceImpl::GetNodeInstance(
     GetNodeInstanceResponsePB* resp,
     rpc::RpcContext* context) {
   VLOG(1) << "Received Get Node Instance RPC: " << SecureDebugString(*req);
-  resp->mutable_node_instance()->CopyFrom(tablet_manager_->NodeInstance());
+  resp->mutable_node_instance()->CopyFrom(tablet_manager_.NodeInstance());
   context->RespondSuccess();
 }
 
@@ -576,7 +578,7 @@ void ConsensusServiceImpl::RunLeaderElection(
   }
 
   shared_ptr<RaftConsensus> consensus;
-  if (!GetConsensusOrRespond(tablet_manager_, resp, context, &consensus))
+  if (!GetConsensusOrRespond(tablet_manager_, req, resp, context, &consensus))
     return;
 
   if (!CheckRaftRpcTokenOrRespond(
@@ -659,7 +661,7 @@ void ConsensusServiceImpl::LeaderStepDown(
   }
 
   shared_ptr<RaftConsensus> consensus;
-  if (!GetConsensusOrRespond(tablet_manager_, resp, context, &consensus))
+  if (!GetConsensusOrRespond(tablet_manager_, req, resp, context, &consensus))
     return;
   Status s = consensus->StepDown(resp);
   if (PREDICT_FALSE(!s.ok())) {
@@ -681,7 +683,7 @@ void ConsensusServiceImpl::GetLastOpId(
   }
 
   shared_ptr<RaftConsensus> consensus;
-  if (!GetConsensusOrRespond(tablet_manager_, resp, context, &consensus))
+  if (!GetConsensusOrRespond(tablet_manager_, req, resp, context, &consensus))
     return;
   if (PREDICT_FALSE(req->opid_type() == consensus::UNKNOWN_OPID_TYPE)) {
     HandleUnknownError(
@@ -717,7 +719,7 @@ void ConsensusServiceImpl::GetConsensusState(
   bool all_ids = requested_ids.empty();
 
   vector<scoped_refptr<TabletReplica>> tablet_replicas;
-  tablet_manager_->GetTabletReplicas(&tablet_replicas);
+  tablet_manager_.GetTabletReplicas(&tablet_replicas);
   for (const scoped_refptr<TabletReplica>& replica : tablet_replicas) {
     if (!all_ids && !ContainsKey(requested_ids, replica->tablet_id())) {
       continue;
