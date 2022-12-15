@@ -1152,7 +1152,9 @@ Status PeerMessageQueue::RequestForPeer(
           << ". Size: " << request->ops_size()
           << ". From: " << SecureShortDebugString(request->ops(0).id())
           << ". To: "
-          << SecureShortDebugString(request->ops(request->ops_size() - 1).id());
+          << SecureShortDebugString(request->ops(request->ops_size() - 1).id())
+          << ". Preceding Opid: "
+          << SecureShortDebugString(request->preceding_id());
     } else {
       VLOG_WITH_PREFIX_UNLOCKED(2)
           << "Sending status only request to Peer: " << uuid << ": "
