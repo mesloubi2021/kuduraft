@@ -406,6 +406,7 @@ ServerBase::ServerBase(
   fs_opts.block_manager_type = options.fs_opts.block_manager_type;
   fs_opts.wal_root = options.fs_opts.wal_root;
   fs_opts.data_roots = options.fs_opts.data_roots;
+  fs_opts.allow_non_empty_root = options.fs_opts.allow_non_empty_root;
   fs_manager_.reset(new FsManager(options.env, std::move(fs_opts)));
 
   if (FLAGS_use_hybrid_clock) {

@@ -598,7 +598,7 @@ Status FsManager::CreateFileSystemRoots(
     }
   }
 
-  if (!non_empty_roots.empty()) {
+  if (!non_empty_roots.empty() && !opts_.allow_non_empty_root) {
     return Status::AlreadyPresent(Substitute(
         "FSManager roots already exist: $0",
         JoinStrings(non_empty_roots, ",")));

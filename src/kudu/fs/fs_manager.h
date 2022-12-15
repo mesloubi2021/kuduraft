@@ -113,6 +113,9 @@ struct FsManagerOpts {
   //
   // Defaults to ENFORCE_CONSISTENCY.
   fs::ConsistencyCheckBehavior consistency_check;
+
+  // Allow non empty root directory; default is false
+  bool allow_non_empty_root = false;
 };
 
 // FsManager provides helpers to read data and metadata files,
