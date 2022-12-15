@@ -235,13 +235,13 @@ class LittleEndian {
     UNALIGNED_STORE64(p, FromHost64(v));
   }
 
-  static uint128 Load128(const void* p) {
-    return uint128(
+  static kudu::uint128 Load128(const void* p) {
+    return kudu::uint128(
         ToHost64(UNALIGNED_LOAD64(reinterpret_cast<const uint64*>(p) + 1)),
         ToHost64(UNALIGNED_LOAD64(p)));
   }
 
-  static void Store128(void* p, const uint128& v) {
+  static void Store128(void* p, const kudu::uint128& v) {
     UNALIGNED_STORE64(p, FromHost64(Uint128Low64(v)));
     UNALIGNED_STORE64(
         reinterpret_cast<uint64*>(p) + 1, FromHost64(Uint128High64(v)));
@@ -251,11 +251,11 @@ class LittleEndian {
   // 8 * len least significant bits are loaded from the memory with
   // LittleEndian order. The 128 - 8 * len most significant bits are
   // set all to 0.
-  static uint128 Load128VariableLength(const void* p, int len) {
+  static kudu::uint128 Load128VariableLength(const void* p, int len) {
     if (len <= 8) {
-      return uint128(Load64VariableLength(p, len));
+      return kudu::uint128(Load64VariableLength(p, len));
     } else {
-      return uint128(
+      return kudu::uint128(
           Load64VariableLength(static_cast<const char*>(p) + 8, len - 8),
           Load64(p));
     }
@@ -340,10 +340,10 @@ class BigEndian {
     return x;
   }
 
-  static uint128 FromHost128(uint128 x) {
+  static kudu::uint128 FromHost128(kudu::uint128 x) {
     return x;
   }
-  static uint128 ToHost128(uint128 x) {
+  static kudu::uint128 ToHost128(kudu::uint128 x) {
     return x;
   }
 
@@ -405,13 +405,13 @@ class BigEndian {
     UNALIGNED_STORE64(p, FromHost64(v));
   }
 
-  static uint128 Load128(const void* p) {
-    return uint128(
+  static kudu::uint128 Load128(const void* p) {
+    return kudu::uint128(
         ToHost64(UNALIGNED_LOAD64(p)),
         ToHost64(UNALIGNED_LOAD64(reinterpret_cast<const uint64*>(p) + 1)));
   }
 
-  static void Store128(void* p, const uint128& v) {
+  static void Store128(void* p, const kudu::uint128& v) {
     UNALIGNED_STORE64(p, FromHost64(Uint128High64(v)));
     UNALIGNED_STORE64(
         reinterpret_cast<uint64*>(p) + 1, FromHost64(Uint128Low64(v)));
@@ -421,12 +421,12 @@ class BigEndian {
   // 8 * len least significant bits are loaded from the memory with
   // BigEndian order. The 128 - 8 * len most significant bits are
   // set all to 0.
-  static uint128 Load128VariableLength(const void* p, int len) {
+  static kudu::uint128 Load128VariableLength(const void* p, int len) {
     if (len <= 8) {
-      return uint128(
+      return kudu::uint128(
           Load64VariableLength(static_cast<const char*>(p) + 8, len));
     } else {
-      return uint128(
+      return kudu::uint128(
           Load64VariableLength(p, len - 8),
           Load64(static_cast<const char*>(p) + 8));
     }

@@ -41,6 +41,8 @@ using std::swap;
 
 namespace util_hash {
 
+using kudu::uint128;
+
 // Some primes between 2^63 and 2^64 for various uses.
 static const uint64 k0 = 0xa5b85c5e198ed849ULL;
 static const uint64 k1 = 0x8d58ac26afe12e47ULL;

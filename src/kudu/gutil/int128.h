@@ -8,6 +8,8 @@
 #include <iosfwd>
 #include "kudu/gutil/integral_types.h"
 
+namespace kudu {
+
 struct uint128_pod;
 
 // An unsigned 128-bit integer type. Thread-compatible.
@@ -335,5 +337,7 @@ inline uint128& uint128::operator--() {
   *this -= 1;
   return *this;
 }
+
+} // namespace kudu
 
 #endif // BASE_INT128_H_

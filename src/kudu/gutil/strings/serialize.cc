@@ -16,6 +16,7 @@
 #include "kudu/gutil/strings/split.h"
 #include "kudu/gutil/strtoint.h"
 
+using kudu::uint128;
 using std::make_pair;
 using std::pair;
 using std::string;
