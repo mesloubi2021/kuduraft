@@ -169,7 +169,7 @@ int64 ReverseOrderedStringToInt64(const StringPiece& key);
 //   string s = EncodeUint32(static_cast<uint32>(i));
 template <typename T>
 inline std::string EncodePOD(const T& value) {
-  ENFORCE_POD(T);
+  KENFORCE_POD(T);
   std::string s;
   STLStringResizeUninitialized(&s, sizeof(T));
   memcpy(string_as_array(&s), &value, sizeof(T));
@@ -195,7 +195,7 @@ inline std::string EncodePOD(const T& value) {
 //   CHECK(DecodesUint32(s, static_cast<uint32*>(&j)));
 template <typename T>
 inline bool DecodePOD(const StringPiece& str, T* result) {
-  ENFORCE_POD(T);
+  KENFORCE_POD(T);
   CHECK(result != NULL);
   if (sizeof(*result) != str.size()) {
     return false;
@@ -209,7 +209,7 @@ inline bool DecodePOD(const StringPiece& str, T* result) {
 // in the vector into a newly created string.
 template <typename T>
 inline std::string EncodeVectorPOD(const std::vector<T>& vec) {
-  ENFORCE_POD(T);
+  KENFORCE_POD(T);
   std::string s;
   STLStringResizeUninitialized(&s, vec.size() * sizeof(T));
   typename std::vector<T>::const_iterator iter;
@@ -229,7 +229,7 @@ inline std::string EncodeVectorPOD(const std::vector<T>& vec) {
 // done on the type of data stored in the string.
 template <typename T>
 inline bool DecodeVectorPOD(const std::string& str, std::vector<T>* result) {
-  ENFORCE_POD(T);
+  KENFORCE_POD(T);
   CHECK(result != NULL);
   if (str.size() % sizeof(T) != 0)
     return false;

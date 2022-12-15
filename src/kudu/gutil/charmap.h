@@ -89,6 +89,6 @@ class Charmap {
     }
   }
 };
-DECLARE_POD(Charmap);
+KDECLARE_POD(Charmap);
 
 #endif // UTIL_GTL_CHARMAP_H_

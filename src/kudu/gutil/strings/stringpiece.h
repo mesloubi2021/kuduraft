@@ -323,7 +323,7 @@ class StringPiece {
 };
 
 #ifndef SWIG
-DECLARE_POD(StringPiece); // So vector<StringPiece> becomes really fast
+KDECLARE_POD(StringPiece); // So vector<StringPiece> becomes really fast
 #endif
 
 // This large function is defined inline so that in a fairly common case where
