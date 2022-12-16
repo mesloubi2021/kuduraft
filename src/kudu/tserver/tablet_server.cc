@@ -75,12 +75,12 @@ TabletServer::TabletServer(const TabletServerOptions& opts)
 
 TabletServer::TabletServer(
     const TabletServerOptions& opts,
-    const std::function<std::unique_ptr<TabletManagerIf>(TabletServer*)>&
+    const std::function<std::unique_ptr<TabletManagerIf>(TabletServer&)>&
         factory)
     : KuduServer("TabletServer", opts, "kudu.tabletserver"),
       initted_(false),
       opts_(opts),
-      tablet_manager_(factory(this)) {}
+      tablet_manager_(factory(*this)) {}
 
 TabletServer::~TabletServer() {
   Shutdown();

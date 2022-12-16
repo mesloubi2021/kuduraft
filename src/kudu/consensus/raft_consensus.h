@@ -70,6 +70,12 @@
 
 DECLARE_int32(lag_threshold_for_request_vote);
 
+namespace facebook {
+namespace datashuttle {
+class KuduRingManager;
+} // namespace datashuttle
+} // namespace facebook
+
 namespace kudu {
 
 typedef std::lock_guard<simple_mutexlock> Lock;
@@ -759,6 +765,7 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
  private:
   friend class RaftConsensusQuorumTest;
   friend class tserver::TSTabletManager;
+  friend class facebook::datashuttle::KuduRingManager;
   FRIEND_TEST(
       RaftConsensusQuorumTest,
       TestConsensusContinuesIfAMinorityFallsBehind);

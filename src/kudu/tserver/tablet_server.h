@@ -60,7 +60,7 @@ class TabletServer : public kserver::KuduServer {
 
   TabletServer(
       const TabletServerOptions& opts,
-      const std::function<std::unique_ptr<TabletManagerIf>(TabletServer*)>&
+      const std::function<std::unique_ptr<TabletManagerIf>(TabletServer&)>&
           factory);
 
   ~TabletServer();
