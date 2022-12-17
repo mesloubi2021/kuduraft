@@ -1547,6 +1547,10 @@ class ConsensusRound : public RefCountedThreadSafe<ConsensusRound> {
   // If this round has not been bound to any term, this is a no-op.
   Status CheckBoundTerm(int64_t current_term) const;
 
+  const std::string& tablet_id() const {
+    return consensus_->tablet_id();
+  }
+
  private:
   friend class RefCountedThreadSafe<ConsensusRound>;
   friend class RaftConsensusQuorumTest;
