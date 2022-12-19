@@ -2337,7 +2337,8 @@ Status RaftConsensus::UpdateReplica(
       // Since we've prepared, we need to be able to append (or we risk trying
       // to apply later something that wasn't logged). We crash if we can't.
       CHECK_OK(queue_->AppendOperations(msg_wrappers, sync_status_cb));
-      if (last_from_leader.term() != preceding_term) {
+      if (cmeta_->last_known_leader().uuid().empty() ||
+          last_from_leader.term() != preceding_term) {
         HandleNewTermAppendedUnlocked(last_from_leader.term());
       }
     } else {
