@@ -152,7 +152,7 @@ void OutboundCall::SetRequestPayload(
     vector<unique_ptr<RpcSidecar>>&& sidecars) {
   DCHECK_EQ(-1, sidecar_byte_size_);
 
-  sidecars_ = move(sidecars);
+  sidecars_ = std::move(sidecars);
   DCHECK_LE(sidecars_.size(), TransferLimits::kMaxSidecars);
 
   // Compute total size of sidecar payload so that extra space can be reserved
