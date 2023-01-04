@@ -356,6 +356,16 @@ bool PeerMessageQueue::HasProxyPeerFailedUnlocked(
   return false;
 }
 
+Status PeerMessageQueue::SetCompressionDictionary(const std::string& dict) {
+  std::lock_guard<simple_mutexlock> lock(queue_lock_);
+  RETURN_NOT_OK(log_cache()->Clear());
+  RETURN_NOT_OK(CompressionCodecManager::SetDictionary(dict));
+  for (const PeersMap::value_type& entry : peers_map_) {
+    entry.second->should_send_compression_dict = true;
+  }
+  return Status::OK();
+}
+
 void PeerMessageQueue::SetLeaderMode(
     int64_t committed_index,
     int64_t current_term,
@@ -967,6 +977,13 @@ Status PeerMessageQueue::RequestForPeer(
     request->set_region_durable_index(queue_state_.region_durable_index);
     if (auto rpc_token = persistent_vars_->raft_rpc_token()) {
       request->set_raft_rpc_token(*rpc_token);
+    }
+    request->clear_compression_dictionary();
+    if (peer->should_send_compression_dict) {
+      LOG_WITH_PREFIX_UNLOCKED(INFO)
+          << "Setting compression dictionary in request";
+      request->set_compression_dictionary(
+          CompressionCodecManager::GetDictionary());
     }
     unreachable_time = MonoTime::Now() - peer_copy.last_communication_time;
 
@@ -1782,6 +1799,11 @@ void PeerMessageQueue::UpdatePeerStatus(
     case PeerStatus::INVALID_TERM:
     case PeerStatus::LMP_MISMATCH:
     case PeerStatus::CANNOT_PREPARE:
+      if (status.IsCompressionDictMismatch()) {
+        peer->should_send_compression_dict = true;
+        LOG_WITH_PREFIX_UNLOCKED(INFO)
+            << "Got compression dict error from peer: " << peer->ToString();
+      }
       // No special handling here for these - we assume that we'll just retry
       // until we make progress.
       break;
@@ -1808,6 +1830,11 @@ void PeerMessageQueue::UpdateExchangeStatus(
     peer->last_exchange_status = PeerStatus::OK;
     peer->last_successful_exchange = now;
     *lmp_mismatch = false;
+    if (peer->should_send_compression_dict) {
+      LOG_WITH_PREFIX_UNLOCKED(INFO)
+          << "Resetting compression dict flag for peer: " << peer->ToString();
+      peer->should_send_compression_dict = false;
+    }
     return;
   }
 

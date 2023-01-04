@@ -581,12 +581,9 @@ Status Log::Init() {
 
   // Init the compression codec.
   if (!FLAGS_log_compression_codec.empty()) {
-    auto codec_type = GetCompressionCodecType(FLAGS_log_compression_codec);
-    if (codec_type != NO_COMPRESSION) {
-      RETURN_NOT_OK_PREPEND(
-          GetCompressionCodec(codec_type, &codec_),
-          "could not instantiate compression codec");
-    }
+    RETURN_NOT_OK_PREPEND(
+        CompressionCodecManager::GetCodec(FLAGS_log_compression_codec, &codec_),
+        "could not instantiate compression codec");
   }
 
   // Init the index

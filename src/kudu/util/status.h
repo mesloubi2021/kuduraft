@@ -346,6 +346,24 @@ class KUDU_EXPORT Status {
       int64_t posix_code = -1) {
     return Status(kEndOfFile, msg, msg2, posix_code);
   }
+  static Status CompressionError(
+      const Slice& msg,
+      const Slice& msg2 = Slice(),
+      int64_t posix_code = -1) {
+    return Status(kCompressionError, msg, msg2, posix_code);
+  }
+  static Status DecompressionError(
+      const Slice& msg,
+      const Slice& msg2 = Slice(),
+      int64_t posix_code = -1) {
+    return Status(kDecompressionError, msg, msg2, posix_code);
+  }
+  static Status CompressionDictMismatch(
+      const Slice& msg,
+      const Slice& msg2 = Slice(),
+      int64_t posix_code = -1) {
+    return Status(kCompressionDictMismatch, msg, msg2, posix_code);
+  }
   ///@}
 
   /// @return @c true iff the status indicates success.
@@ -443,6 +461,21 @@ class KUDU_EXPORT Status {
     return code() == kEndOfFile;
   }
 
+  /// @return @c true iff the status indicates compression error.
+  bool IsCompressionError() const {
+    return code() == kCompressionError;
+  }
+
+  /// @return @c true iff the status indicates decompression error
+  bool IsDecompressionError() const {
+    return code() == kDecompressionError;
+  }
+
+  /// @return @c true iff the status indicates compression dict mismatch
+  bool IsCompressionDictMismatch() const {
+    return code() == kCompressionDictMismatch;
+  }
+
   /// @return @c true iff the status indicates a disk failure.
   bool IsDiskFailure() const {
     switch (posix_code()) {
@@ -534,6 +567,9 @@ class KUDU_EXPORT Status {
     kConfigurationError = 16,
     kIncomplete = 17,
     kEndOfFile = 18,
+    kCompressionError = 19,
+    kDecompressionError = 20,
+    kCompressionDictMismatch = 21,
     // NOTE: Remember to duplicate these constants into wire_protocol.proto and
     // and to add StatusTo/FromPB ser/deser cases in wire_protocol.cc !
     // Also remember to make the same changes to the java client in Status.java.

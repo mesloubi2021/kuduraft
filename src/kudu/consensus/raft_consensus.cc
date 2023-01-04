@@ -43,6 +43,7 @@
 #include <gflags/gflags.h>
 #include <gflags/gflags_declare.h>
 #include <google/protobuf/util/message_differencer.h>
+#include <sys/stat.h>
 
 #include "kudu/common/timestamp.h"
 #include "kudu/common/wire_protocol.h"
@@ -587,6 +588,12 @@ Status RaftConsensus::Start(
     queue_ = std::move(queue);
     peer_manager_ = std::move(peer_manager);
     pending_ = std::move(pending);
+
+    const std::string& compression_dict =
+        persistent_vars_->compression_dictionary();
+    if (!compression_dict.empty()) {
+      queue_->SetCompressionDictionary(compression_dict);
+    }
 
     ClearLeaderUnlocked();
 
@@ -1321,7 +1328,7 @@ Status RaftConsensus::AppendNewRoundToQueueUnlocked(
   }
   RETURN_NOT_OK(AddPendingOperationUnlocked(round));
 
-  ReplicateMsgWrapper msg_wrapper(round->replicate_scoped_refptr(), codec_);
+  ReplicateMsgWrapper msg_wrapper(round->replicate_scoped_refptr());
   RETURN_NOT_OK(msg_wrapper.Init(&compression_buffer_));
 
   // The only reasons for a bad status would be if the log itself were shut
@@ -2234,12 +2241,17 @@ Status RaftConsensus::UpdateReplica(
     }
 
     std::vector<ReplicateMsgWrapper> msg_wrappers;
-
     // This is a best-effort way of isolating safe and expected failures
     // from true warnings.
     bool expected_rotation_delay = false;
     Status prepare_status;
     auto iter = messages.begin();
+    if (request->has_compression_dictionary()) {
+      KLOG_EVERY_N_SECS(INFO, 1)
+          << "[EVERY 1 second] Received compression dictionary from leader";
+      const std::string& compression_dict = request->compression_dictionary();
+      RETURN_NOT_OK(CompressionCodecManager::SetDictionary(compression_dict));
+    }
     // NB - (arahut)
     // By this time new_leader_detected_failsafe_ has been set to
     // true if a new leader has been detected via this UpdateReplica call.
@@ -2254,8 +2266,11 @@ Status RaftConsensus::UpdateReplica(
         new_leader_detected_failsafe_ = false;
       }
 
-      ReplicateMsgWrapper msg_wrapper(*iter, codec_);
+      // Create a ReplicateMsgWrapper which handles compression, here we'll be
+      // decompressing the msg
+      ReplicateMsgWrapper msg_wrapper(*iter);
       prepare_status = msg_wrapper.Init(&compression_buffer_);
+
       if (prepare_status.ok()) {
         prepare_status = StartFollowerTransactionUnlocked(msg_wrapper);
       }
@@ -2305,10 +2320,14 @@ Status RaftConsensus::UpdateReplica(
           LOG_WITH_PREFIX_UNLOCKED(INFO) << msg;
         }
 
+        Status s = Status::IllegalState(msg);
+
+        if (prepare_status.IsCompressionDictMismatch()) {
+          s = Status::CompressionDictMismatch(msg);
+        }
+
         FillConsensusResponseError(
-            response,
-            ConsensusErrorPB::CANNOT_PREPARE,
-            Status::IllegalState(msg));
+            response, ConsensusErrorPB::CANNOT_PREPARE, s);
         FillConsensusResponseOKUnlocked(response);
         return Status::OK();
       }
@@ -5357,30 +5376,64 @@ void RaftConsensus::HandleProxyRequest(
 
 Status RaftConsensus::SetCompressionCodec(const std::string& codec) {
   LockGuard l(lock_);
-  if (codec.empty()) {
-    LOG(INFO) << "Disabling compression";
-    codec_ = nullptr;
-  } else {
-    const CompressionCodec* comp_codec = nullptr;
-    auto codec_type = GetCompressionCodecType(codec);
-    if (codec_type != NO_COMPRESSION) {
-      auto status = GetCompressionCodec(codec_type, &comp_codec);
-      if (!status.ok()) {
-        LOG(ERROR) << "Failed to set compression codec";
-        return status;
-      }
-    }
+  return CompressionCodecManager::SetCurrentCodec(codec);
+}
 
-    LOG(INFO) << "Updating compression codec to: " << codec;
-    codec_ = comp_codec;
-  }
-  queue_->log_cache()->SetCompressionCodec(codec_);
-  return Status::OK();
+Status RaftConsensus::SetCompressionLevel(int level) {
+  LockGuard l(lock_);
+  return CompressionCodecManager::SetCurrentCompressionLevel(level);
 }
 
 Status RaftConsensus::EnableCompressionOnCacheMiss(bool enable) {
   LockGuard l(lock_);
   return queue_->log_cache()->EnableCompressionOnCacheMiss(enable);
+}
+
+Status RaftConsensus::LoadCompressionDict(const std::string& filename) {
+  std::string dict_buffer;
+
+  if (filename.empty()) {
+    return Status::InvalidArgument("Compression dict filename is empty");
+  }
+
+  struct stat st;
+  if (stat(filename.c_str(), &st) != 0) {
+    return Status::InvalidArgument(
+        "Could not find compression dict file's size");
+  }
+
+  const off_t file_size = st.st_size;
+  const size_t size = static_cast<size_t>(file_size);
+
+  if ((file_size < 0) || (file_size != static_cast<size_t>(size))) {
+    return Status::InvalidArgument("Compression dict file is too large");
+  }
+
+  dict_buffer.resize(size);
+
+  FILE* const dict_file = fopen(filename.c_str(), "rb");
+  if (!dict_file) {
+    return Status::InvalidArgument("Could not open compression dict file");
+  }
+
+  SCOPED_CLEANUP({ fclose(dict_file); });
+
+  size_t const read_size = fread(dict_buffer.data(), 1, file_size, dict_file);
+  if (read_size != size) {
+    return Status::InvalidArgument("Could not read compression dict file");
+  }
+
+  LockGuard l(lock_);
+  RETURN_NOT_OK(queue_->SetCompressionDictionary(dict_buffer));
+  persistent_vars_->set_compression_dictionary(dict_buffer);
+  RETURN_NOT_OK(persistent_vars_->Flush());
+  return Status::OK();
+}
+
+std::string RaftConsensus::GetCompressionStats() const {
+  LockGuard l(lock_);
+  auto codec = CompressionCodecManager::GetCurrentCodec();
+  return codec ? codec->Stats() : "";
 }
 
 Status RaftConsensus::SetProxyPolicy(const ProxyPolicy& proxy_policy) {

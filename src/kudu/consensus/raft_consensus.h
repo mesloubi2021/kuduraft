@@ -742,8 +742,16 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // Set the compression codec to be used to compress ReplicateMsg payload
   Status SetCompressionCodec(const std::string& codec);
 
+  // Set the compression level to be used to compress ReplicateMsg payload
+  Status SetCompressionLevel(int level);
+
   // Enables (or disables) compression of messages read from log
   Status EnableCompressionOnCacheMiss(bool enable);
+
+  // Load and set compression dictionary from file
+  Status LoadCompressionDict(const std::string& filename);
+
+  std::string GetCompressionStats() const;
 
   // Clear the 'removed_peers_' list managed by consensus_meta
   void ClearRemovedPeersList();
@@ -1437,7 +1445,6 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   scoped_refptr<Counter> raft_proxy_num_requests_log_read_timeout_;
   scoped_refptr<Counter> raft_proxy_num_requests_hops_remaining_exhausted_;
 
-  const CompressionCodec* codec_ = nullptr;
   faststring compression_buffer_;
 
   DISALLOW_COPY_AND_ASSIGN(RaftConsensus);

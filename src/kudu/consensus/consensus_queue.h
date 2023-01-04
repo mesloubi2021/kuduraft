@@ -191,6 +191,9 @@ class PeerMessageQueue {
     // the local peer's WAL.
     bool wal_catchup_possible;
 
+    // Should we send compression dictionary in the next request to this peer?
+    bool should_send_compression_dict = false;
+
     // The peer's latest overall health status.
     HealthReportPB::HealthStatus last_overall_health_status;
 
@@ -470,6 +473,8 @@ class PeerMessageQueue {
   LogCache* log_cache() {
     return &log_cache_;
   }
+
+  Status SetCompressionDictionary(const std::string& dict);
 
   // Set the threshold (in milliseconds) that is used to determine the health of
   // the 'proxy peer'

@@ -43,7 +43,6 @@
 #include "kudu/gutil/strings/human_readable.h"
 #include "kudu/gutil/strings/substitute.h"
 #include "kudu/util/compression/compression.pb.h"
-#include "kudu/util/compression/compression_codec.h"
 #include "kudu/util/crc.h"
 #include "kudu/util/faststring.h"
 #include "kudu/util/flag_tags.h"
@@ -126,7 +125,6 @@ LogCache::LogCache(
       next_sequential_op_index_(0),
       min_pinned_op_index_(0),
       metrics_(metric_entity),
-      codec_(nullptr),
       enable_compression_on_cache_miss_(false) {
   const int64_t max_ops_size_bytes =
       FLAGS_log_cache_size_limit_mb * 1024L * 1024L;
@@ -166,22 +164,8 @@ void LogCache::Init(const OpId& preceding_op) {
   min_pinned_op_index_ = next_sequential_op_index_;
 }
 
-void LogCache::SetCompressionCodec(const CompressionCodec* codec) {
-  codec_.store(codec);
-  if (codec_ == nullptr) {
-    enable_compression_on_cache_miss_ = false;
-  }
-}
-
 Status LogCache::EnableCompressionOnCacheMiss(bool enable) {
-  if (enable && codec_ == nullptr) {
-    LOG(INFO)
-        << "Compression codec needs to be set before enabling compression on cache miss";
-    return Status::NotSupported("Compression codec is not set");
-  }
-
   enable_compression_on_cache_miss_ = enable;
-
   LOG(INFO) << "Compression on cache miss is set to: " << enable;
   return Status::OK();
 }
@@ -631,8 +615,7 @@ Status LogCache::ReadOps(
 
       for (const auto& replicate : raw_replicate_ptrs) {
         ReplicateMsgWrapper msg_wrapper(
-            make_scoped_refptr_replicate(replicate),
-            should_compress ? codec_.load() : nullptr);
+            make_scoped_refptr_replicate(replicate), should_compress);
         RETURN_NOT_OK(msg_wrapper.Init(&buffer));
         msg_wrappers.push_back(msg_wrapper);
       }
@@ -700,6 +683,28 @@ Status LogCache::ReadOps(
   return Status::OK();
 }
 
+Status LogCache::Clear() {
+  std::lock_guard<Mutex> lock(lock_);
+  // If the next sequential index is not the min pinned index then the cache
+  // cannot be cleared. To make sure that they are equal the caller will need to
+  // make sure that this method is called when there is no ongoing appends to
+  // the log.
+  if (next_sequential_op_index_ != min_pinned_op_index_) {
+    std::string msg = strings::Substitute(
+        "Log cache cannot be cleared because min "
+        "pinned op index {} is not equal to next sequential log index {}",
+        min_pinned_op_index_,
+        next_sequential_op_index_);
+    LOG(ERROR) << msg;
+    return Status::RuntimeError(msg);
+  }
+  EvictSomeUnlocked(
+      next_sequential_op_index_, MathLimits<int64_t>::kMax, /*force =*/true);
+  // Placeholder opid 0 will not be evicted from the cache
+  return cache_.size() == 1 ? Status::OK()
+                            : Status::RuntimeError("Log cache clearing failed");
+}
+
 void LogCache::EvictThroughOp(int64_t index) {
   std::lock_guard<Mutex> lock(lock_);
 
@@ -708,7 +713,8 @@ void LogCache::EvictThroughOp(int64_t index) {
 
 void LogCache::EvictSomeUnlocked(
     int64_t stop_after_index,
-    int64_t bytes_to_evict) {
+    int64_t bytes_to_evict,
+    bool force) {
   VLOG_WITH_PREFIX_UNLOCKED(2)
       << "Evicting log cache index <= " << stop_after_index << " or "
       << HumanReadableNumBytes::ToString(bytes_to_evict)
@@ -731,7 +737,10 @@ void LogCache::EvictSomeUnlocked(
       break;
     }
 
-    if (!msg->HasOneRef()) {
+    // If a msg has more than one ref that means it is in flight to some peer.
+    // We don't remove it so that memory accounting is accurate. If force is
+    // passed then we ignore this.
+    if (!force && !msg->HasOneRef()) {
       VLOG_WITH_PREFIX_UNLOCKED(2)
           << "Evicting cache: cannot remove " << msg->get()->id()
           << " because it is in-use by a peer.";

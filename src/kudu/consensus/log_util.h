@@ -399,7 +399,7 @@ class ReadableLogSegment : public RefCountedThreadSafe<ReadableLogSegment> {
   const std::shared_ptr<RandomAccessFile> readable_file_;
 
   // Compression codec used to decompress entries in this file.
-  const CompressionCodec* codec_;
+  std::shared_ptr<CompressionCodec> codec_;
 
   bool is_initialized_;
 
@@ -442,7 +442,9 @@ class WritableLogSegment {
   // and checksum. If 'codec' is not NULL, compresses the batch.
   // Makes sure that the log segment has not been closed.
   // Write a compressed entry to the log.
-  Status WriteEntryBatch(const Slice& data, const CompressionCodec* codec);
+  Status WriteEntryBatch(
+      const Slice& data,
+      const std::shared_ptr<CompressionCodec>& codec);
 
   // Makes sure the I/O buffers in the underlying writable file are flushed.
   Status Sync() {

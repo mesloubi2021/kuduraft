@@ -16,20 +16,22 @@ namespace consensus {
  */
 class ReplicateMsgWrapper {
  public:
-  ReplicateMsgWrapper(
+  explicit ReplicateMsgWrapper(
       const ReplicateRefPtr& msg,
-      const CompressionCodec* codec_hint) {
+      const bool should_compress = true) {
     orig_msg_ = msg;
+    auto codec_hint = CompressionCodecManager::GetCurrentCodec();
     const CompressionType msg_codec_type =
         orig_msg_->get()->write_payload().compression_codec();
     if (msg_codec_type == NO_COMPRESSION) {
       msg_ = orig_msg_;
       codec_ = codec_hint;
-      should_compress_ =
+      should_compress_ = should_compress &&
           msg_->get()->op_type() == WRITE_OP_EXT && codec_ != nullptr;
     } else {
       compressed_msg_ = orig_msg_;
-      CHECK_OK(GetCompressionCodec(msg_codec_type, &codec_));
+      CHECK_OK(CompressionCodecManager::SetCurrentCodec(msg_codec_type));
+      codec_ = CompressionCodecManager::GetCurrentCodec();
     }
     DCHECK(msg_ || compressed_msg_);
   }
@@ -45,7 +47,7 @@ class ReplicateMsgWrapper {
    *
    * @return    Status::OK() if everthing is good, error otherwise
    */
-  Status Init(faststring* compression_buffer = nullptr) {
+  Status Init(faststring* compression_buffer) {
     if (!msg_ && !compressed_msg_) {
       return Status::IllegalState(
           "Both compressed and uncompressed msg are not populated!");
@@ -108,15 +110,15 @@ class ReplicateMsgWrapper {
 
     Slice compressed_slice(payload.payload().c_str(), compressed_size);
 
-    Status status =
-        codec_->Uncompress(compressed_slice, buffer->data(), uncompressed_size);
+    Status status = codec_->UncompressWithStats(
+        compressed_slice, buffer->data(), uncompressed_size);
 
     // Return early if uncompression failed
     RETURN_NOT_OK_PREPEND(
         status,
         strings::Substitute(
             "Failed to uncompress OpId $0. Compression codec used: $1, "
-            "Operation type: $2, Compressed payload size: $3"
+            "Operation type: $2, Compressed payload size: $3 "
             "Uncompressed payload size: $4",
             compressed_msg_->get()->id().ShortDebugString(),
             compression_codec,
@@ -161,8 +163,10 @@ class ReplicateMsgWrapper {
     buffer->resize(codec_->MaxCompressedLength(uncompressed_slice.size()));
 
     size_t compressed_len = 0;
-    auto status =
-        codec_->Compress(uncompressed_slice, &(*buffer)[0], &compressed_len);
+    auto status = codec_->CompressWithStats(
+        uncompressed_slice,
+        reinterpret_cast<unsigned char*>(&(*buffer)[0]),
+        &compressed_len);
 
     if (!status.ok()) {
       LOG(ERROR) << "Compression failed for OpId: "
@@ -201,7 +205,7 @@ class ReplicateMsgWrapper {
   // Should we compress?
   bool should_compress_ = false;
   // The compression codec to use
-  const CompressionCodec* codec_ = nullptr;
+  std::shared_ptr<CompressionCodec> codec_ = nullptr;
   // Buffer used for compression if user hasn't provided one
   std::shared_ptr<faststring> compression_buffer_;
 };

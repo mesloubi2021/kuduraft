@@ -108,6 +108,15 @@ std::string Status::CodeAsString() const {
     case kEndOfFile:
       type = "End of file";
       break;
+    case kCompressionError:
+      type = "Compression error";
+      break;
+    case kDecompressionError:
+      type = "Decompression error";
+      break;
+    case kCompressionDictMismatch:
+      type = "Compression dictionary mismatch";
+      break;
   }
   return std::string(type);
 }

@@ -38,7 +38,7 @@ class TestCompression : public KuduTest {};
 static void TestCompressionCodec(CompressionType compression) {
   const int kInputSize = 64;
 
-  const CompressionCodec* codec;
+  std::shared_ptr<CompressionCodec> codec;
   uint8_t ibuffer[kInputSize];
   uint8_t ubuffer[kInputSize];
   size_t compressed;
@@ -47,7 +47,7 @@ static void TestCompressionCodec(CompressionType compression) {
   memset(ibuffer, 'Z', kInputSize);
 
   // Get the specified compression codec
-  ASSERT_OK(GetCompressionCodec(compression, &codec));
+  ASSERT_OK(CompressionCodecManager::GetCodec(compression, &codec));
 
   // Allocate the compression buffer
   size_t max_compressed = codec->MaxCompressedLength(kInputSize);
@@ -75,7 +75,7 @@ static void TestCompressionCodec(CompressionType compression) {
 
 TEST_F(TestCompression, TestNoCompressionCodec) {
   const CompressionCodec* codec;
-  ASSERT_OK(GetCompressionCodec(NO_COMPRESSION, &codec));
+  ASSERT_OK(CompressionCodecManager::GetCodec(NO_COMPRESSION, &codec));
   ASSERT_EQ(nullptr, codec);
 }
 

@@ -62,6 +62,12 @@ class PersistentVars : public RefCountedThreadSafe<PersistentVars> {
   // Change the RPC token, boost::none unsets the token
   void set_raft_rpc_token(boost::optional<std::string> rpc_token);
 
+  // Fetches compression dict from PB
+  const std::string& compression_dictionary() const;
+
+  // Sets compression dict in PB
+  void set_compression_dictionary(const std::string& dict);
+
   // Persist current state of the protobuf to disk.
   Status Flush(FlushMode flush_mode = OVERWRITE);
 

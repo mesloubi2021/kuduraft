@@ -112,6 +112,8 @@ void StatusToPB(const Status& status, AppStatusPB* pb) {
     pb->set_code(AppStatusPB::INCOMPLETE);
   } else if (status.IsEndOfFile()) {
     pb->set_code(AppStatusPB::END_OF_FILE);
+  } else if (status.IsCompressionDictMismatch()) {
+    pb->set_code(AppStatusPB::COMPRESSION_DICT_MISMATCH);
   } else {
     LOG(WARNING) << "Unknown error code translation from internal error "
                  << status.ToString() << ": sending UNKNOWN_ERROR";
@@ -175,6 +177,8 @@ Status StatusFromPB(const AppStatusPB& pb) {
       return Status::Incomplete(pb.message(), "", posix_code);
     case AppStatusPB::END_OF_FILE:
       return Status::EndOfFile(pb.message(), "", posix_code);
+    case AppStatusPB::COMPRESSION_DICT_MISMATCH:
+      return Status::CompressionDictMismatch(pb.message(), "", posix_code);
     case AppStatusPB::UNKNOWN_ERROR:
     default:
       LOG(WARNING) << "Unknown error code in status: "

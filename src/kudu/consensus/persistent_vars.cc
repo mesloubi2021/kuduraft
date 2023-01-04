@@ -71,6 +71,16 @@ void PersistentVars::set_raft_rpc_token(
   }
 }
 
+const std::string& PersistentVars::compression_dictionary() const {
+  DFAKE_SCOPED_RECURSIVE_LOCK(fake_lock_);
+  return pb_.compression_dictionary();
+}
+
+void PersistentVars::set_compression_dictionary(const std::string& dict) {
+  DFAKE_SCOPED_RECURSIVE_LOCK(fake_lock_);
+  pb_.set_compression_dictionary(dict);
+}
+
 Status PersistentVars::Flush(FlushMode flush_mode) {
   DFAKE_SCOPED_RECURSIVE_LOCK(fake_lock_);
   SCOPED_LOG_SLOW_EXECUTION_PREFIX(

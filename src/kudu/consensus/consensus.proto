@@ -594,6 +594,9 @@ message ConsensusRequestPB {
   // A token stamped to the request to prove to the remote host that we're part
   // of a ring
   optional string raft_rpc_token = 16;
+
+  // Dictionary to use for decompression when dictionary compression is used
+  optional bytes compression_dictionary = 17;
 }
 
 message ConsensusResponsePB {

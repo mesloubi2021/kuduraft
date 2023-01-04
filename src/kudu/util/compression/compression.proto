@@ -26,4 +26,7 @@ enum CompressionType {
   SNAPPY = 2;
   LZ4 = 3;
   ZLIB = 4;
+  ZSTD = 5;
+  ZSTD_DICT = 6;
+  LZ4_DICT = 7;
 }

@@ -149,6 +149,9 @@ class LogCache {
   // still be en route to the log.
   bool HasOpBeenWritten(int64_t index) const;
 
+  // Clear the cache
+  Status Clear();
+
   // Evict any operations with op index <= 'index'.
   void EvictThroughOp(int64_t index);
 
@@ -181,11 +184,6 @@ class LogCache {
   // error).
   Status LookupOpId(int64_t op_index, OpId* op_id) const;
 
-  // Sets compression codec and updates the internal codec_ atomic pointer
-  Status SetCompressionCodec(const std::string& codec);
-
-  void SetCompressionCodec(const CompressionCodec* codec);
-
   // Enable (or disable) compression of messages read from log
   Status EnableCompressionOnCacheMiss(bool enable);
 
@@ -195,21 +193,6 @@ class LogCache {
   FRIEND_TEST(LogCacheTest, TestReplaceMessages);
   FRIEND_TEST(LogCacheTest, TestTruncation);
   friend class LogCacheTest;
-
-  // Compress the payload in 'msg' and populate a new ReplicateMsg with
-  // compressed payload in 'compressed_msg'. Uses 'buffer' as a temporary buffer
-  // to hold the compressed message
-  Status CompressMsg(
-      const ReplicateMsg* msg,
-      faststring& buffer,
-      std::unique_ptr<ReplicateMsg>* compressed_msg);
-
-  // Compress all messages in 'replicate_ptrs' and return the compressed
-  // messages in 'compressed_replicate_ptrs'. If any message is uncompressable,
-  // then it inserts the original msg into 'compressed_replicate_ptrs'
-  Status CompressMsgs(
-      const std::vector<ReplicateMsg*>& replicate_ptrs,
-      std::vector<ReplicateMsg*>* compressed_repliate_ptrs);
 
   // Uncompresses the payload of 'msg' based on its compression_codec and
   // populates a new ReplicateMsg with uncompressed payload in
@@ -234,7 +217,13 @@ class LogCache {
   // Try to evict the oldest operations from the queue, stopping either when
   // 'bytes_to_evict' bytes have been evicted, or the op with index
   // 'stop_after_index' has been evicted, whichever comes first.
-  void EvictSomeUnlocked(int64_t stop_after_index, int64_t bytes_to_evict);
+  // Set 'force' to true when msgs that have refs in peers (i.e. in flight)
+  // should also be evicted. This will not cause any correctness issues because
+  // msgs are ref counted but it can throw off memory accounting.
+  void EvictSomeUnlocked(
+      int64_t stop_after_index,
+      int64_t bytes_to_evict,
+      bool force = false);
 
   // Update metrics and MemTracker to account for the removal of the
   // given message.
@@ -315,9 +304,6 @@ class LogCache {
     scoped_refptr<Counter> log_cache_compressed_payload_size;
   };
   Metrics metrics_;
-
-  // Compression codec to use
-  std::atomic<const CompressionCodec*> codec_;
 
   // Temporary buffer to use for compression. This is used during append
   // operation to compress and/or uncompress payloads. Note that the same buffer

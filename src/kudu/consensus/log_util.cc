@@ -388,7 +388,7 @@ Status ReadableLogSegment::InitCompressionCodec() {
   if (header_.has_compression_codec() &&
       header_.compression_codec() != NO_COMPRESSION) {
     RETURN_NOT_OK_PREPEND(
-        GetCompressionCodec(header_.compression_codec(), &codec_),
+        CompressionCodecManager::GetCodec(header_.compression_codec(), &codec_),
         "could not init compression codec");
   }
   return Status::OK();
@@ -895,7 +895,7 @@ Status WritableLogSegment::WriteFooterAndClose(
 
 Status WritableLogSegment::WriteEntryBatch(
     const Slice& data,
-    const CompressionCodec* codec) {
+    const std::shared_ptr<CompressionCodec>& codec) {
   DCHECK(is_header_written_);
   DCHECK(!is_footer_written_);
   uint8_t header_buf[kEntryHeaderSizeV2];
