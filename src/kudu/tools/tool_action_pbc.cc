@@ -217,12 +217,12 @@ Status EditFile(const RunnerContext& context) {
     RETURN_NOT_OK(LoadFileToLines(tmp_json_path, &lines));
     for (const string& l : lines) {
       m->Clear();
-      const auto& google_status =
+      const auto& status =
           google::protobuf::util::JsonStringToMessage(l, m.get());
-      if (!google_status.ok()) {
+      if (!status.ok()) {
         return Status::InvalidArgument(
             Substitute("Unable to parse JSON line: $0", l),
-            google_status.error_message().ToString());
+            status.message().ToString());
       }
       RETURN_NOT_OK_PREPEND(
           pb_writer.Append(*m), "unable to append PB to output");
