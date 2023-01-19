@@ -3,10 +3,8 @@
 //
 //
 
-#include <iostream>
-using std::cout;
-using std::endl;
 #include "kudu/gutil/int128.h"
+#include <iostream>
 #include "kudu/gutil/integral_types.h"
 
 namespace kudu {

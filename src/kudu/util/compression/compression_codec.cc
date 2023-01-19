@@ -41,7 +41,6 @@
 #include "kudu/util/jsonwriter.h"
 #include "kudu/util/logging.h"
 #include "kudu/util/scoped_cleanup.h"
-#include "kudu/util/string_case.h"
 
 DEFINE_string(compression_dict_filename, "", "Compression dictionary filename");
 

@@ -30,7 +30,6 @@
 #include <rapidjson/rapidjson.h>
 #include <rapidjson/writer.h>
 
-#include "kudu/gutil/port.h"
 #include "kudu/util/faststring.h"
 #include "kudu/util/logging.h"
 #include "kudu/util/pb_util.pb.h"

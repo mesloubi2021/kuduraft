@@ -35,7 +35,6 @@
 #include "kudu/gutil/stringprintf.h"
 #include "kudu/gutil/strings/substitute.h"
 #include "kudu/gutil/walltime.h"
-#include "kudu/util/array_view.h"
 #include "kudu/util/condition_variable.h"
 #include "kudu/util/debug-util.h"
 #include "kudu/util/env.h"
@@ -57,7 +56,6 @@ using std::priority_queue;
 using std::string;
 using std::unique_ptr;
 using std::vector;
-using strings::Substitute;
 
 // GLog already implements symbolization. Just import their hidden symbol.
 namespace google {

@@ -212,7 +212,6 @@ static bool dummy = gflags::RegisterFlagValidator(
 namespace kudu {
 namespace log {
 
-using consensus::CommitMsg;
 using consensus::OpId;
 using consensus::ReplicateRefPtr;
 using env_util::OpenFileForRandom;

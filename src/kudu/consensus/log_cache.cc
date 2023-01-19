@@ -111,8 +111,6 @@ METRIC_DEFINE_counter(
 
 static const char kParentMemTrackerId[] = "log_cache";
 
-typedef vector<const ReplicateMsg*>::const_iterator MsgIter;
-
 LogCache::LogCache(
     const scoped_refptr<MetricEntity>& metric_entity,
     scoped_refptr<log::Log> log,

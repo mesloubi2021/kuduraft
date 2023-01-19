@@ -47,7 +47,6 @@
 #include "kudu/util/status.h"
 #include "kudu/util/subprocess.h"
 
-using std::cout;
 using std::string;
 using std::unique_ptr;
 using std::vector;

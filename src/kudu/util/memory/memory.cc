@@ -33,7 +33,6 @@
 #include "kudu/util/mem_tracker.h"
 #include "kudu/util/memory/overwrite.h"
 
-using std::copy;
 using std::min;
 
 // TODO(onufry) - test whether the code still tests OK if we set this to true,

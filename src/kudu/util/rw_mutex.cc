@@ -24,11 +24,6 @@
 
 #include <glog/logging.h>
 
-#include "kudu/gutil/map-util.h"
-#include "kudu/util/env.h"
-
-using std::lock_guard;
-
 namespace {
 
 void unlock_rwlock(pthread_rwlock_t* rwlock) {

@@ -56,7 +56,6 @@ TAG_FLAG(file_cache_expiry_period_ms, advanced);
 using std::shared_ptr;
 using std::string;
 using std::unique_ptr;
-using std::vector;
 using strings::Substitute;
 
 namespace kudu {

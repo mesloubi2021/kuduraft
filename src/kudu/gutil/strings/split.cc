@@ -21,7 +21,6 @@
 #include "kudu/gutil/strings/util.h"
 #include "kudu/gutil/strtoint.h"
 
-using std::back_insert_iterator;
 using std::map;
 using std::numeric_limits;
 using std::pair;

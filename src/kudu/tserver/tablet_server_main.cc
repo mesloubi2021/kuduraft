@@ -35,8 +35,6 @@
 #include "kudu/util/status.h"
 #include "kudu/util/version_info.h"
 
-using kudu::tserver::TabletServer;
-
 DECLARE_int32(rpc_num_service_threads);
 DECLARE_int32(webserver_port);
 DECLARE_string(rpc_bind_addresses);

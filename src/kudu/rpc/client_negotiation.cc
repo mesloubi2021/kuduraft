@@ -52,7 +52,6 @@
 #include "kudu/util/slice.h"
 #include "kudu/util/trace.h"
 
-using std::map;
 using std::set;
 using std::string;
 using std::unique_ptr;

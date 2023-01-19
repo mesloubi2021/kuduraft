@@ -44,9 +44,6 @@ class Message;
 }
 } // namespace google
 
-using google::protobuf::Message;
-using std::string;
-
 METRIC_DEFINE_counter(
     server,
     rpc_connections_accepted,

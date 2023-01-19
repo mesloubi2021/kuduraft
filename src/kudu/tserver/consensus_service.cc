@@ -58,7 +58,6 @@
 #include "kudu/tserver/tablet_server.h"
 #include "kudu/tserver/tserver_admin.pb.h"
 #include "kudu/util/auto_release_pool.h"
-#include "kudu/util/crc.h"
 #include "kudu/util/debug/trace_event.h"
 #include "kudu/util/faststring.h"
 #include "kudu/util/flag_tags.h"
@@ -67,7 +66,6 @@
 #include "kudu/util/metrics.h"
 #include "kudu/util/monotime.h"
 #include "kudu/util/pb_util.h"
-#include "kudu/util/process_memory.h"
 #include "kudu/util/slice.h"
 #include "kudu/util/status.h"
 #include "kudu/util/status_callback.h"
@@ -77,13 +75,11 @@
 DECLARE_bool(raft_prepare_replacement_before_eviction);
 DECLARE_int32(memory_limit_warn_threshold_percentage);
 
-using google::protobuf::RepeatedPtrField;
 using kudu::consensus::BulkChangeConfigRequestPB;
 using kudu::consensus::ChangeConfigRequestPB;
 using kudu::consensus::ChangeConfigResponsePB;
 using kudu::consensus::ConsensusRequestPB;
 using kudu::consensus::ConsensusResponsePB;
-using kudu::consensus::GetLastOpIdRequestPB;
 using kudu::consensus::GetNodeInstanceRequestPB;
 using kudu::consensus::GetNodeInstanceResponsePB;
 using kudu::consensus::LeaderElectionContextPB;
@@ -94,7 +90,6 @@ using kudu::consensus::RaftConsensus;
 using kudu::consensus::RunLeaderElectionRequestPB;
 using kudu::consensus::RunLeaderElectionResponsePB;
 using kudu::consensus::ServerErrorPB;
-using kudu::consensus::TimeManager;
 using kudu::consensus::UnsafeChangeConfigRequestPB;
 using kudu::consensus::UnsafeChangeConfigResponsePB;
 using kudu::consensus::VoteRequestPB;
@@ -102,13 +97,9 @@ using kudu::consensus::VoteResponsePB;
 using kudu::pb_util::SecureDebugString;
 using kudu::pb_util::SecureShortDebugString;
 using kudu::rpc::RpcContext;
-using kudu::rpc::RpcSidecar;
 using kudu::server::ServerBase;
 using std::shared_ptr;
 using std::string;
-using std::unique_ptr;
-using std::unordered_set;
-using std::vector;
 using strings::Substitute;
 
 METRIC_DEFINE_counter(

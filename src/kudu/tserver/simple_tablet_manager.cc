@@ -48,7 +48,6 @@
 #include "kudu/consensus/persistent_vars.h"
 #include "kudu/consensus/persistent_vars.pb.h"
 #include "kudu/consensus/persistent_vars_manager.h"
-#include "kudu/consensus/proxy_policy.h"
 #include "kudu/consensus/quorum_util.h"
 #include "kudu/consensus/raft_consensus.h"
 #include "kudu/consensus/time_manager.h"
@@ -56,7 +55,6 @@
 #include "kudu/fs/fs_manager.h"
 #include "kudu/gutil/bind.h"
 #include "kudu/gutil/bind_helpers.h"
-#include "kudu/gutil/map-util.h"
 #include "kudu/gutil/port.h"
 #include "kudu/gutil/strings/join.h"
 #include "kudu/gutil/strings/substitute.h"
@@ -87,15 +85,11 @@ using strings::Substitute;
 namespace kudu {
 
 using consensus::ConsensusMetadata;
-using consensus::ConsensusMetadataCreateMode;
 using consensus::ConsensusMetadataManager;
 using consensus::ConsensusOptions;
 using consensus::ConsensusRound;
 using consensus::ConsensusStatePB;
-using consensus::EXCLUDE_HEALTH_REPORT;
 using consensus::ITimeManager;
-using consensus::kMinimumTerm;
-using consensus::OpId;
 using consensus::PeerProxyFactory;
 using consensus::PersistentVars;
 using consensus::PersistentVarsManager;
@@ -105,7 +99,6 @@ using consensus::RaftPeerPB;
 using consensus::RpcPeerProxyFactory;
 using consensus::TimeManager;
 using consensus::TimeManagerDummy;
-using fs::DataDirManager;
 using log::Log;
 using log::LogOptions;
 using pb_util::SecureDebugString;

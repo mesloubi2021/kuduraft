@@ -41,7 +41,6 @@
 using std::array;
 using std::cout;
 using std::endl;
-using std::ifstream;
 using std::string;
 using strings::Substitute;
 

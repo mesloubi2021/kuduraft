@@ -29,8 +29,6 @@
 #include "kudu/gutil/strings/substitute.h"
 #include "kudu/util/status.h"
 
-using std::string;
-
 namespace kudu {
 
 Status BadCPUStatus(const base::CPU& cpu, const char* instruction_set) {

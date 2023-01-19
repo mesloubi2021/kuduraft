@@ -50,7 +50,6 @@
 #include "kudu/util/status.h"
 #include "kudu/util/thread.h"
 
-using kudu::fs::ErrorHandlerType;
 using kudu::rpc::ServiceIf;
 using std::string;
 

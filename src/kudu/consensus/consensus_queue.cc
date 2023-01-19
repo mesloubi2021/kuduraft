@@ -124,7 +124,6 @@ TAG_FLAG(synchronous_transfer_leadership, advanced);
 DECLARE_bool(enable_flexi_raft);
 DECLARE_int32(default_quorum_size);
 
-using kudu::log::Log;
 using kudu::pb_util::SecureDebugString;
 using kudu::pb_util::SecureShortDebugString;
 using std::string;

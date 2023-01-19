@@ -21,7 +21,6 @@
 #include <memory>
 #include <mutex>
 
-#include <boost/function.hpp>
 #include <glog/logging.h>
 
 #include "kudu/rpc/messenger.h"

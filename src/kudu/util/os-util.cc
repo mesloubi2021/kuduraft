@@ -52,7 +52,6 @@ using std::ostringstream;
 using std::string;
 using std::vector;
 using strings::Split;
-using strings::Substitute;
 
 namespace kudu {
 

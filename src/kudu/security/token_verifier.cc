@@ -36,7 +36,6 @@
 #include "kudu/util/status.h"
 
 using std::lock_guard;
-using std::string;
 using std::transform;
 using std::unique_ptr;
 using std::vector;

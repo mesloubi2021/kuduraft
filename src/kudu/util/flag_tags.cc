@@ -33,7 +33,6 @@ using std::multimap;
 using std::pair;
 using std::string;
 using std::unordered_set;
-using std::vector;
 
 namespace kudu {
 namespace flag_tags_internal {

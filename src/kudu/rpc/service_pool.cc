@@ -45,7 +45,6 @@
 #include "kudu/util/thread.h"
 #include "kudu/util/trace.h"
 
-using std::shared_ptr;
 using std::string;
 using std::vector;
 using strings::Substitute;

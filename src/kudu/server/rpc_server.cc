@@ -44,7 +44,6 @@
 
 using kudu::rpc::AcceptorPool;
 using kudu::rpc::Messenger;
-using kudu::rpc::ServiceIf;
 using std::shared_ptr;
 using std::string;
 using std::vector;

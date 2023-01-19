@@ -36,10 +36,6 @@
 #include "kudu/util/flag_tags.h"
 #include "kudu/util/trace.h"
 
-using std::string;
-using strings::Substitute;
-using strings::SubstituteAndAppend;
-
 #ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
 DEFINE_bool(
     debug_mutex_collect_stacktrace,

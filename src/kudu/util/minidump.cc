@@ -36,7 +36,6 @@
 #include <gflags/gflags_declare.h>
 #include <glog/logging.h>
 
-#include "kudu/gutil/linux_syscall_support.h"
 #include "kudu/gutil/macros.h"
 #include "kudu/gutil/strings/human_readable.h"
 #include "kudu/util/env.h"
@@ -47,7 +46,6 @@
 #include "kudu/util/status.h"
 #include "kudu/util/thread.h"
 
-using kudu::env_util::CreateDirIfMissing;
 using std::string;
 
 #if defined(__linux__) && defined(FB_DO_NOT_REMOVE)

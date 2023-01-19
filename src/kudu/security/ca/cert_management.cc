@@ -41,7 +41,6 @@
 #include "kudu/util/status.h"
 
 using std::lock_guard;
-using std::move;
 using std::string;
 using strings::Substitute;
 

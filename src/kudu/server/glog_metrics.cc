@@ -19,7 +19,6 @@
 #include <glog/logging.h>
 #include <cstddef>
 
-#include "kudu/gutil/port.h"
 #include "kudu/util/metrics.h"
 
 METRIC_DEFINE_counter(

@@ -41,7 +41,6 @@ DECLARE_bool(enable_data_block_fsync);
 namespace kudu {
 namespace fs {
 
-using pb_util::CreateMode;
 using std::set;
 using std::string;
 using std::unique_ptr;

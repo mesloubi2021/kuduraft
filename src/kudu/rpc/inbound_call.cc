@@ -46,7 +46,6 @@ class FieldDescriptor;
 } // namespace google
 
 using google::protobuf::FieldDescriptor;
-using google::protobuf::Message;
 using google::protobuf::MessageLite;
 using std::string;
 using std::unique_ptr;

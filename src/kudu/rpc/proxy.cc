@@ -37,8 +37,6 @@
 #include "kudu/util/status.h"
 #include "kudu/util/user.h"
 
-using google::protobuf::Message;
-using std::shared_ptr;
 using std::string;
 
 namespace kudu {

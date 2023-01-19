@@ -51,7 +51,6 @@ DECLARE_bool(enable_flexi_raft);
 namespace kudu {
 namespace consensus {
 
-using std::lock_guard;
 using std::string;
 using strings::Substitute;
 

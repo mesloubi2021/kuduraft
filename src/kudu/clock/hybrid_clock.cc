@@ -43,7 +43,6 @@
 #include "kudu/clock/system_unsync_time.h"
 #endif
 
-using kudu::Status;
 using std::string;
 using strings::Substitute;
 

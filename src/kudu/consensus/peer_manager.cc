@@ -33,7 +33,6 @@
 #include "kudu/gutil/strings/substitute.h"
 #include "kudu/util/pb_util.h"
 
-using kudu::log::Log;
 using kudu::pb_util::SecureShortDebugString;
 using std::shared_ptr;
 using strings::Substitute;

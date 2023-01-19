@@ -344,7 +344,6 @@ METRIC_DEFINE_counter(
     "exceeding the maximum allowable number of hops. This is usually due to "
     "either a routing loop or a misconfigured value for --raft_proxy_max_hops");
 
-using boost::optional;
 using google::protobuf::util::MessageDifferencer;
 using kudu::pb_util::SecureShortDebugString;
 using kudu::rpc::PeriodicTimer;

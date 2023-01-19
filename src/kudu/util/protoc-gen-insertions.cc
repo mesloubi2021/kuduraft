@@ -29,7 +29,6 @@
 #include <google/protobuf/io/zero_copy_stream.h>
 
 #include "kudu/gutil/gscoped_ptr.h"
-#include "kudu/gutil/port.h"
 #include "kudu/gutil/strings/strip.h"
 #include "kudu/gutil/strings/substitute.h"
 

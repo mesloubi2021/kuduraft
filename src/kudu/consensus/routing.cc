@@ -35,10 +35,8 @@
 #include "kudu/util/scoped_cleanup.h"
 #include "kudu/util/status.h"
 
-using boost::optional;
 using google::protobuf::util::MessageDifferencer;
 using kudu::pb_util::SecureShortDebugString;
-using std::shared_ptr;
 using std::string;
 using std::unique_ptr;
 using std::unordered_map;

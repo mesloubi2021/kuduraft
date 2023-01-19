@@ -57,15 +57,11 @@
 #include "kudu/util/net/net_util.h"
 #include "kudu/util/net/sockaddr.h"
 #include "kudu/util/pb_util.h"
-#include "kudu/util/safe_math.h"
 #include "kudu/util/slice.h"
 
 using google::protobuf::RepeatedPtrField;
-using kudu::pb_util::SecureDebugString;
 using kudu::pb_util::SecureShortDebugString;
-using std::string;
 using std::vector;
-using strings::Substitute;
 
 namespace kudu {
 

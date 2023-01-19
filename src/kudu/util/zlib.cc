@@ -32,7 +32,6 @@
 #include "kudu/util/status.h"
 
 using std::ostream;
-using std::string;
 using std::unique_ptr;
 
 #define ZRETURN_NOT_OK(call) RETURN_NOT_OK(ZlibResultToStatus(call))

@@ -78,7 +78,6 @@
 #include "kudu/util/thread.h"
 
 using std::string;
-using std::unique_ptr;
 using std::vector;
 
 #if defined(__APPLE__)

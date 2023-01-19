@@ -70,7 +70,6 @@ using std::random_device;
 using std::string;
 using std::uniform_int_distribution;
 using std::uniform_real_distribution;
-using strings::Substitute;
 
 namespace kudu {
 namespace security {

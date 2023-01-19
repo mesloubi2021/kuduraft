@@ -77,7 +77,6 @@ using google::protobuf::DescriptorPool;
 using google::protobuf::DynamicMessageFactory;
 using google::protobuf::FieldDescriptor;
 using google::protobuf::FileDescriptor;
-using google::protobuf::FileDescriptorProto;
 using google::protobuf::FileDescriptorSet;
 using google::protobuf::Message;
 using google::protobuf::MessageLite;

@@ -21,14 +21,12 @@
 #include <string>
 
 #include <boost/bind.hpp> // IWYU pragma: keep
-#include <boost/function.hpp>
 #include <glog/logging.h>
 
 #include "kudu/gutil/strings/substitute.h"
 #include "kudu/rpc/messenger.h"
 #include "kudu/rpc/rpc_header.pb.h"
 
-using std::shared_ptr;
 using std::string;
 using strings::Substitute;
 using strings::SubstituteAndAppend;

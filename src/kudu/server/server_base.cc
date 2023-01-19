@@ -227,14 +227,10 @@ TAG_FLAG(rpc_default_keepalive_time_ms, advanced);
 
 DECLARE_bool(use_hybrid_clock);
 
-using kudu::security::RpcAuthentication;
-using kudu::security::RpcEncryption;
-using std::ostringstream;
 using std::shared_ptr;
 using std::string;
 using std::unique_ptr;
 using std::vector;
-using strings::Substitute;
 
 namespace kudu {
 

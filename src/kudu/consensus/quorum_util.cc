@@ -49,7 +49,6 @@ using kudu::pb_util::SecureShortDebugString;
 using std::map;
 using std::pair;
 using std::priority_queue;
-using std::set;
 using std::string;
 using std::vector;
 using strings::Substitute;

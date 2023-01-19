@@ -63,8 +63,6 @@ static bool dummy = gflags::RegisterFlagValidator(
 namespace kudu {
 namespace rpc {
 
-using std::ostringstream;
-using std::set;
 using std::string;
 using strings::Substitute;
 

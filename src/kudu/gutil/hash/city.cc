@@ -30,14 +30,8 @@
 #include "kudu/gutil/integral_types.h"
 #include "kudu/gutil/port.h"
 
-using std::copy;
 using std::make_pair;
-using std::max;
-using std::min;
 using std::pair;
-using std::reverse;
-using std::sort;
-using std::swap;
 
 namespace util_hash {
 

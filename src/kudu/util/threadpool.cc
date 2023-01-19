@@ -25,7 +25,6 @@
 #include <string>
 #include <utility>
 
-#include <boost/function.hpp> // IWYU pragma: keep
 #include <glog/logging.h>
 
 #include "kudu/gutil/callback.h"
@@ -42,7 +41,6 @@
 
 namespace kudu {
 
-using std::deque;
 using std::shared_ptr;
 using std::string;
 using std::unique_ptr;
