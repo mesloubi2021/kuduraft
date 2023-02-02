@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "common/services/cpp/ServiceFramework.h"
+#include "common/services/cpp/ServiceFrameworkLight.h"
 #include "kudu/thrift/thrift_consensus_handler.h"
 #include "thrift/lib/cpp2/server/ThriftServer.h"
 
