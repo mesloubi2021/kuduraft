@@ -124,6 +124,12 @@ TAG_FLAG(synchronous_transfer_leadership, advanced);
 DECLARE_bool(enable_flexi_raft);
 DECLARE_int32(default_quorum_size);
 
+DEFINE_int32(
+    consecutive_failures_unhealthy_threshold,
+    20,
+    "Number of consecutive failed requests before we consider a peer "
+    "unhealthy");
+
 using kudu::pb_util::SecureDebugString;
 using kudu::pb_util::SecureShortDebugString;
 using std::string;
@@ -193,6 +199,7 @@ PeerMessageQueue::TrackedPeer::TrackedPeer(
       last_communication_time(MonoTime::Now()),
       wal_catchup_possible(true),
       last_overall_health_status(HealthReportPB::UNKNOWN),
+      consecutive_failures(0),
       status_log_throttler(std::make_shared<logging::LogThrottler>()),
       last_seen_term_(0),
       queue(queue) {
@@ -242,6 +249,10 @@ void PeerMessageQueue::TrackedPeer::PopulateIsPeerInLocalRegion() {
   if (!local_peer_region.empty() && !peer_region.empty()) {
     is_peer_in_local_region = (local_peer_region == peer_region);
   }
+}
+
+bool PeerMessageQueue::TrackedPeer::is_healthy() const {
+  return consecutive_failures < FLAGS_consecutive_failures_unhealthy_threshold;
 }
 
 std::string PeerMessageQueue::TrackedPeer::ToString() const {
@@ -396,6 +407,7 @@ void PeerMessageQueue::SetLeaderMode(
   for (const PeersMap::value_type& entry : peers_map_) {
     entry.second->last_communication_time = now;
     entry.second->last_successful_exchange = now;
+    entry.second->consecutive_failures = 0;
   }
   time_manager_->SetLeaderMode();
 }
@@ -1778,6 +1790,7 @@ void PeerMessageQueue::UpdatePeerStatus(
       break;
 
     case PeerStatus::RPC_LAYER_ERROR:
+      peer->consecutive_failures++;
       // Most controller errors are caused by network issues or corner cases
       // like shutdown and failure to deserialize a protobuf. Therefore, we
       // generally consider these errors to indicate an unreachable peer.
@@ -1785,11 +1798,13 @@ void PeerMessageQueue::UpdatePeerStatus(
       break;
 
     case PeerStatus::TABLET_NOT_FOUND:
+      peer->consecutive_failures++;
       VLOG_WITH_PREFIX_UNLOCKED(1)
           << "Peer needs tablet copy: " << peer->ToString();
       break;
 
     case PeerStatus::TABLET_FAILED: {
+      peer->consecutive_failures++;
       UpdatePeerHealthUnlocked(peer);
       return;
     }
@@ -1798,6 +1813,8 @@ void PeerMessageQueue::UpdatePeerStatus(
     case PeerStatus::INVALID_TERM:
     case PeerStatus::LMP_MISMATCH:
     case PeerStatus::CANNOT_PREPARE:
+      peer->consecutive_failures++;
+
       if (status.IsCompressionDictMismatch()) {
         peer->should_send_compression_dict = true;
         LOG_WITH_PREFIX_UNLOCKED(INFO)
@@ -1808,6 +1825,7 @@ void PeerMessageQueue::UpdatePeerStatus(
       break;
 
     case PeerStatus::OK:
+      peer->consecutive_failures = 0;
       DCHECK(status.ok());
       break;
   }
@@ -1828,6 +1846,7 @@ void PeerMessageQueue::UpdateExchangeStatus(
   if (PREDICT_TRUE(!status.has_error())) {
     peer->last_exchange_status = PeerStatus::OK;
     peer->last_successful_exchange = now;
+    peer->consecutive_failures = 0;
     *lmp_mismatch = false;
     if (peer->should_send_compression_dict) {
       LOG_WITH_PREFIX_UNLOCKED(INFO)
@@ -1836,6 +1855,8 @@ void PeerMessageQueue::UpdateExchangeStatus(
     }
     return;
   }
+
+  peer->consecutive_failures++;
 
   switch (status.error().code()) {
     case ConsensusErrorPB::PRECEDING_ENTRY_DIDNT_MATCH:

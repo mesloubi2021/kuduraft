@@ -197,6 +197,10 @@ class PeerMessageQueue {
     // The peer's latest overall health status.
     HealthReportPB::HealthStatus last_overall_health_status;
 
+    // Number of consecutive errors received by a leader from a peer. This
+    // counter is not meaningful for a non-leader.
+    int32_t consecutive_failures;
+
     // Throttler for how often we will log status messages pertaining to this
     // peer (eg when it is lagging, etc).
     std::shared_ptr<logging::LogThrottler> status_log_throttler;
@@ -206,6 +210,10 @@ class PeerMessageQueue {
 
     void PopulateIsPeerInLocalRegion();
     void PopulateIsPeerInLocalQuorum();
+
+    // Determines health based on number of consecutive rpc failures exceeding
+    // a configured limit.
+    bool is_healthy() const;
 
    private:
     // The last term we saw from a given peer.
