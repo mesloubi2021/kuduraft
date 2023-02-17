@@ -2570,16 +2570,17 @@ Status RaftConsensus::RequestVote(
   response->mutable_voter_context()->set_is_candidate_removed(false);
 
   // to be used later for lag check.
-  std::string candidate_region;
+  std::string candidate_quorum_id;
   bool is_candidate_voter = false;
 
   // Check if the CANDIDATE is in current config.
-  if (!cmeta_->IsMemberInConfigWithDetail(
+  if (FLAGS_enable_flexi_raft &&
+      !cmeta_->IsMemberInConfigWithDetail(
           request->candidate_uuid(),
           ACTIVE_CONFIG,
           &hostname_port,
           &is_candidate_voter,
-          &candidate_region)) {
+          &candidate_quorum_id)) {
     LOG_WITH_PREFIX_UNLOCKED(INFO)
         << "Handling vote request from an unknown peer "
         << request->candidate_uuid();
@@ -2588,7 +2589,7 @@ Status RaftConsensus::RequestVote(
     }
 
     // Now try to see if Candidate Context was sent in order to populate
-    // candidate_region and hostname_port. This is best effort since
+    // candidate_quorum_id and hostname_port. This is best effort since
     // CANDIDATEs are not guaranteed to send their context, however in current
     // use cases @Meta, it is always sent.
     std::string hname_port;
@@ -2600,7 +2601,8 @@ Status RaftConsensus::RequestVote(
           candidate_peer_pb,
           &hname_port,
           &is_candidate_voter,
-          &candidate_region);
+          &candidate_quorum_id,
+          cmeta_->ActiveConfig().commit_rule());
       hostname_port = strings::Substitute("$0 ($1)", hostname_port, hname_port);
     }
   }
@@ -2682,8 +2684,8 @@ Status RaftConsensus::RequestVote(
     bool srd_mode = committed_config.has_commit_rule() &&
         (committed_config.commit_rule().mode() ==
          QuorumMode::SINGLE_REGION_DYNAMIC);
-    check_srd_lag = srd_mode && !candidate_region.empty() &&
-        (peer_region() == candidate_region);
+    check_srd_lag = srd_mode && !candidate_quorum_id.empty() &&
+        (peer_quorum_id() == candidate_quorum_id);
   }
 
   // Regular Raft protocol: Give vote if CANDIDATE is ahead of VOTER.

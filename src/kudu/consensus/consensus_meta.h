@@ -97,7 +97,7 @@ class ConsensusMetadata : public RefCountedThreadSafe<ConsensusMetadata> {
       RaftConfigState type,
       std::string* hostname_port,
       bool* is_voter,
-      std::string* region);
+      std::string* quorum_id);
 
   // Returns a count of the number of voters in the specified local Raft
   // config.

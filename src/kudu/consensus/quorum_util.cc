@@ -70,10 +70,11 @@ bool IsRaftConfigMemberWithDetail(
     const RaftConfigPB& config,
     std::string* hostname_port,
     bool* is_voter,
-    std::string* region) {
+    std::string* quorum_id) {
   for (const RaftPeerPB& peer : config.peers()) {
     if (peer.permanent_uuid() == uuid) {
-      GetRaftPeerDetail(peer, hostname_port, is_voter, region);
+      GetRaftPeerDetail(
+          peer, hostname_port, is_voter, quorum_id, config.commit_rule());
       return true;
     }
   }
@@ -84,7 +85,8 @@ void GetRaftPeerDetail(
     const RaftPeerPB& peer,
     std::string* hostname_port,
     bool* is_voter,
-    std::string* region) {
+    std::string* quorum_id,
+    const CommitRulePB& commit_rule) {
   const ::kudu::HostPortPB& host_port = peer.last_known_addr();
   if (!peer.hostname().empty()) {
     *hostname_port = Substitute("$0:$1", peer.hostname(), host_port.port());
@@ -92,7 +94,7 @@ void GetRaftPeerDetail(
     *hostname_port = Substitute("[$0]:$1", host_port.host(), host_port.port());
   }
   *is_voter = (peer.member_type() == RaftPeerPB::VOTER);
-  *region = peer.attrs().region();
+  *quorum_id = GetQuorumId(peer, commit_rule);
 }
 
 bool IsRaftConfigVoter(const std::string& uuid, const RaftConfigPB& config) {

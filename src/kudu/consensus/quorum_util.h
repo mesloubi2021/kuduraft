@@ -63,12 +63,13 @@ bool IsRaftConfigMemberWithDetail(
     const RaftConfigPB& config,
     std::string* hostname_port,
     bool* is_voter,
-    std::string* region);
+    std::string* quorum_id);
 void GetRaftPeerDetail(
     const RaftPeerPB& peer,
     std::string* hostname_port,
     bool* is_voter,
-    std::string* region);
+    std::string* quorum_id,
+    const CommitRulePB& commit_rule);
 
 // Whether the specified Raft role is attributed to a peer which can participate
 // in leader elections.
