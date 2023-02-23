@@ -1281,6 +1281,8 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
       const boost::optional<std::string>& new_leader_uuid,
       LeaderStepDownResponsePB* resp);
 
+  void UpdateLocalPeerUnlocked(RaftConfigPB& active_config);
+
   const ConsensusOptions options_;
 
   // Information about the local peer, including the local UUID.

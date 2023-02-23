@@ -94,6 +94,7 @@
 #include "kudu/util/threadpool.h"
 #include "kudu/util/trace.h"
 #include "kudu/util/url-coding.h"
+#include "raft_consensus.h"
 
 DEFINE_int32(
     raft_heartbeat_interval_ms,
@@ -2952,21 +2953,12 @@ Status RaftConsensus::CheckBulkConfigChangeAndGetNewConfigUnlocked(
                 "peer must have last_known_addr specified",
                 SecureShortDebugString(req));
           }
-          if (peer.has_member_type() &&
-              peer.member_type() == RaftPeerPB::VOTER) {
-            if (FLAGS_enable_flexi_raft &&
-                IsUseQuorumId(committed_config.commit_rule())) {
-              if (!PeerHasValidQuorumId(peer)) {
-                return Status::InvalidArgument(
-                    "Peer must have a non-empty quorum_id in "
-                    "QuorumId type quorum",
-                    SecureShortDebugString(req));
-              }
-            }
-          } else {
-            if (PeerHasValidQuorumId(peer)) {
+          if (FLAGS_enable_flexi_raft &&
+              IsUseQuorumId(committed_config.commit_rule())) {
+            if (!PeerHasValidQuorumId(peer)) {
               return Status::InvalidArgument(
-                  "Non-voter must not have quorum_id",
+                  "Peer must have a non-empty quorum_id for voter and empty quorum_id "
+                  "for non-voter",
                   SecureShortDebugString(req));
             }
           }
@@ -3093,6 +3085,15 @@ Status RaftConsensus::CheckBulkConfigChangeAndGetNewConfigUnlocked(
 
         case MODIFY_PEER: {
           LOG(INFO) << "modifying peer" << peer.ShortDebugString();
+          if (FLAGS_enable_flexi_raft &&
+              IsUseQuorumId(committed_config.commit_rule())) {
+            if (!PeerHasValidQuorumId(peer)) {
+              return Status::InvalidArgument(
+                  "Peer must have a non-empty quorum_id for voter and empty quorum_id "
+                  "for non-voter",
+                  SecureShortDebugString(req));
+            }
+          }
           RaftPeerPB* modified_peer;
           RETURN_NOT_OK(
               GetRaftConfigMember(new_config, server_uuid, &modified_peer));
@@ -3124,6 +3125,12 @@ Status RaftConsensus::CheckBulkConfigChangeAndGetNewConfigUnlocked(
           }
           if (peer.attrs().has_replace()) {
             modified_peer->mutable_attrs()->set_replace(peer.attrs().replace());
+          }
+          if (peer.attrs().has_quorum_id()) {
+            modified_peer->mutable_attrs()->set_quorum_id(
+                peer.attrs().quorum_id());
+          } else {
+            modified_peer->mutable_attrs()->clear_quorum_id();
           }
           // Ensure that MODIFY_PEER actually modified something.
           if (MessageDifferencer::Equals(orig_peer, *modified_peer)) {
@@ -4263,8 +4270,9 @@ void RaftConsensus::CompleteConfigChangeRoundUnlocked(
       cmeta_->clear_pending_config();
       // We should not forget to "abort" the config change in the routing table
       // as well.
-      CHECK_OK(
-          routing_table_container_->UpdateRaftConfig(cmeta_->ActiveConfig()));
+      RaftConfigPB active_config = cmeta_->ActiveConfig();
+      CHECK_OK(routing_table_container_->UpdateRaftConfig(active_config));
+      UpdateLocalPeerUnlocked(active_config);
 
       // Disable leader failure detection if transitioning from VOTER to
       // NON_VOTER and vice versa.
@@ -4583,8 +4591,9 @@ Status RaftConsensus::SetPendingConfigUnlocked(const RaftConfigPB& new_config) {
         << "New pending config: " << SecureShortDebugString(new_config);
   }
   cmeta_->set_pending_config(new_config);
-  RETURN_NOT_OK(
-      routing_table_container_->UpdateRaftConfig(cmeta_->ActiveConfig()));
+  RaftConfigPB active_config = cmeta_->ActiveConfig();
+  RETURN_NOT_OK(routing_table_container_->UpdateRaftConfig(active_config));
+  UpdateLocalPeerUnlocked(active_config);
 
   UpdateFailureDetectorState();
 
@@ -4662,7 +4671,7 @@ Status RaftConsensus::ChangeQuorumType(QuorumType type) {
       // We only check voter
       if (peer.has_member_type() && peer.member_type() == RaftPeerPB::VOTER &&
           // Peer quorum_id can not be null or empty
-          !PeerHasValidQuorumId(peer)) {
+          !PeerHasNonEmptyQuorumId(peer)) {
         return Status::ConfigurationError(Substitute(
             "Unable to change QuorumType to QuorumId. "
             "No quorum_id found for peer $0",
@@ -4812,8 +4821,9 @@ Status RaftConsensus::SetCommittedConfigUnlocked(
   cmeta_->set_committed_config(config_to_commit);
   cmeta_->clear_pending_config();
   CHECK_OK(cmeta_->Flush());
-  RETURN_NOT_OK(
-      routing_table_container_->UpdateRaftConfig(cmeta_->ActiveConfig()));
+  RaftConfigPB active_config = cmeta_->ActiveConfig();
+  RETURN_NOT_OK(routing_table_container_->UpdateRaftConfig(active_config));
+  UpdateLocalPeerUnlocked(active_config);
   return Status::OK();
 }
 
@@ -5369,7 +5379,7 @@ void RaftConsensus::HandleProxyRequest(
   if (PREDICT_FALSE(!controller.status().ok())) {
     RET_RESPOND_ERROR_NOT_OK(controller.status().CloneAndPrepend(Substitute(
         "Error proxying request from $0 to $1",
-        SecureShortDebugString(local_peer_pb_),
+        "local peer " + local_peer_pb_.permanent_uuid(),
         SecureShortDebugString(*next_peer_pb))));
   }
 
@@ -5510,6 +5520,28 @@ std::vector<std::string> RaftConsensus::RemovedPeersList() {
   return cmeta_->RemovedPeersList();
 }
 
+void RaftConsensus::UpdateLocalPeerUnlocked(RaftConfigPB& active_config) {
+  DCHECK(lock_.is_locked());
+  RaftPeerPB* new_local_peer_pb;
+  Status s =
+      GetRaftConfigMember(&active_config, peer_uuid(), &new_local_peer_pb);
+  if (!s.ok()) {
+    LOG_WITH_PREFIX_UNLOCKED(WARNING)
+        << "Unable to find local peer in active config";
+    return;
+  }
+
+  local_peer_pb_.set_member_type(new_local_peer_pb->member_type());
+
+  if (new_local_peer_pb->has_attrs()) {
+    if (new_local_peer_pb->attrs().has_quorum_id()) {
+      local_peer_pb_.mutable_attrs()->set_quorum_id(
+          new_local_peer_pb->attrs().quorum_id());
+    } else {
+      local_peer_pb_.mutable_attrs()->clear_quorum_id();
+    }
+  }
+}
 ////////////////////////////////////////////////////////////////////////
 // ConsensusBootstrapInfo
 ////////////////////////////////////////////////////////////////////////

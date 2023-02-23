@@ -214,6 +214,9 @@ const std::string& GetQuorumId(
 const std::string& GetQuorumId(const RaftPeerPB& peer, bool use_quorum_id);
 
 // Return true of the peer has a non-empty quorum_id
+bool PeerHasNonEmptyQuorumId(const RaftPeerPB& peer);
+
+// Voter should have non-empty quorum id, non-voter should not have quorum-id
 bool PeerHasValidQuorumId(const RaftPeerPB& peer);
 
 } // namespace consensus

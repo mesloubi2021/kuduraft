@@ -121,7 +121,7 @@ bool GetRaftConfigMemberRegion(
   return false;
 }
 
-bool GetRaftConfigMemberQuorumId(
+bool GetRaftConfigMemberQuorumIdRegardlessQuorumType(
     const std::string& uuid,
     const RaftConfigPB& config,
     bool* is_voter,
@@ -129,7 +129,9 @@ bool GetRaftConfigMemberQuorumId(
   for (const RaftPeerPB& peer : config.peers()) {
     if (peer.permanent_uuid() == uuid) {
       *is_voter = (peer.member_type() == RaftPeerPB::VOTER);
-      *quorum_id = GetQuorumId(peer, config.commit_rule());
+      if (peer.has_attrs() && peer.attrs().has_quorum_id()) {
+        *quorum_id = peer.attrs().quorum_id();
+      }
       return true;
     }
   }
@@ -1096,9 +1098,14 @@ const std::string& GetQuorumId(
   return GetQuorumId(peer, IsUseQuorumId(commit_rule));
 }
 
-bool PeerHasValidQuorumId(const RaftPeerPB& peer) {
+bool PeerHasNonEmptyQuorumId(const RaftPeerPB& peer) {
   return peer.has_attrs() && peer.attrs().has_quorum_id() &&
       !peer.attrs().quorum_id().empty();
+}
+
+bool PeerHasValidQuorumId(const RaftPeerPB& peer) {
+  return (peer.has_member_type() && peer.member_type() == RaftPeerPB::VOTER) ==
+      PeerHasNonEmptyQuorumId(peer);
 }
 
 } // namespace consensus
