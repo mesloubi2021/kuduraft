@@ -263,6 +263,25 @@ DEFINE_bool(
     true,
     "Should only update LKL after a op from the new term has been appened");
 
+DEFINE_bool(check_quorum, false, "Enable check quorum");
+
+DEFINE_bool(
+    check_quorum_failure_callback,
+    false,
+    "Enable check quorum failure callback");
+
+DEFINE_int32(
+    check_quorum_failure_callback_cooldown_ms,
+    300000,
+    "Milliseconds to wait before running the check quorum failure callback "
+    "again after a failure");
+
+DEFINE_int32(
+    check_quorum_interval_ms,
+    60000,
+    "Interval in milliseconds at which to check whether the leader can commit "
+    "to a quorum number of nodes.");
+
 // Metrics
 // ---------
 METRIC_DEFINE_counter(
