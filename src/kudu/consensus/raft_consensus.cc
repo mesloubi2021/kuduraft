@@ -2685,7 +2685,7 @@ Status RaftConsensus::RequestVote(
         (committed_config.commit_rule().mode() ==
          QuorumMode::SINGLE_REGION_DYNAMIC);
     check_srd_lag = srd_mode && !candidate_quorum_id.empty() &&
-        (peer_quorum_id() == candidate_quorum_id);
+        (peer_quorum_id(/*need_lock=*/false) == candidate_quorum_id);
   }
 
   // Regular Raft protocol: Give vote if CANDIDATE is ahead of VOTER.
