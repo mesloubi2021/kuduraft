@@ -511,6 +511,9 @@ class PeerMessageQueue {
   void UpdatePeerQuorumIdUnlocked(
       const std::map<std::string, std::string>& quorum_id_map);
 
+  // Whether peer's region/quorum id has a majority of committers being tracked.
+  bool RegionHasQuorumCommitUnlocked(const RaftPeerPB& target_peer);
+
  private:
   FRIEND_TEST(ConsensusQueueTest, TestQueueAdvancesCommittedIndex);
   FRIEND_TEST(ConsensusQueueTest, TestQueueMovesWatermarksBackward);
@@ -588,6 +591,13 @@ class PeerMessageQueue {
     gscoped_ptr<RaftConfigPB> active_config;
 
     std::string ToString() const;
+  };
+
+  struct QuorumResults {
+    bool quorum_satisfied;
+    int32_t num_satisfied;
+    int32_t quorum_size;
+    std::string quorum_id;
   };
 
   // Returns true iff given 'desired_op' is found in the local WAL.
@@ -753,6 +763,11 @@ class PeerMessageQueue {
   // return the region of peer or quorum_id of peer based on use_quorum_id
   // in commit rule
   const std::string& getQuorumIdUsingCommitRule(const RaftPeerPB& peer) const;
+
+  // Canonical method to determine whether a commit quorum is satisfied.
+  QuorumResults IsQuorumSatisfiedUnlocked(
+      const RaftPeerPB& peer,
+      const std::function<bool(const TrackedPeer*)>& predicate);
 
   std::vector<PeerMessageQueueObserver*> observers_;
 

@@ -130,6 +130,12 @@ DEFINE_int32(
     "Number of consecutive failed requests before we consider a peer "
     "unhealthy");
 
+DEFINE_bool(
+    filter_out_bad_quorums_in_lmp,
+    true,
+    "Whether to filter out candidates that don't have a quorum of voters being "
+    "tracked during untargeted LMPs.");
+
 using kudu::pb_util::SecureDebugString;
 using kudu::pb_util::SecureShortDebugString;
 using std::string;
@@ -1490,42 +1496,14 @@ int64_t PeerMessageQueue::DoComputeNewWatermarkStaticMode(
   return old_watermark;
 }
 
-int64_t PeerMessageQueue::ComputeNewWatermarkDynamicMode(int64_t* watermark) {
-  CHECK(watermark);
-  CHECK(queue_state_.active_config->has_commit_rule());
-  CHECK(
-      queue_state_.active_config->commit_rule().mode() ==
-      QuorumMode::SINGLE_REGION_DYNAMIC);
-
-  const std::string& leader_quorum_id =
-      getQuorumIdUsingCommitRule(local_peer_pb_);
-
-  // Compute the watermarks in leader quorum. As an example, at the end of this
-  // loop, watermarks_in_leader_quorum might have entries (3, 7, 5) which
-  // indicates that the leader quorum has 3 peers that have responded to OpId
-  // indexes 3, 7 and 5 respectively
-  std::vector<int64_t> watermarks_in_leader_quorum;
-  watermarks_in_leader_quorum.reserve(FLAGS_default_quorum_size * 2);
-  for (const PeersMap::value_type& peer : peers_map_) {
-    // Only voter members are considered for advancing watermark
-    if (peer.second->peer_pb.member_type() != RaftPeerPB::VOTER) {
-      continue;
-    }
-
-    // Refer to the comment in AdvanceQueueWatermark method for why only
-    // successful last exchanges are considered.
-    if (peer.second->last_exchange_status == PeerStatus::OK) {
-      if (peer.second->is_peer_in_local_quorum.has_value() &&
-          peer.second->is_peer_in_local_quorum.value()) {
-        watermarks_in_leader_quorum.push_back(
-            peer.second->last_received.index());
-      }
-    }
-  }
+PeerMessageQueue::QuorumResults PeerMessageQueue::IsQuorumSatisfiedUnlocked(
+    const RaftPeerPB& peer,
+    const std::function<bool(const TrackedPeer*)>& predicate) {
+  const std::string& peer_quorum_id = getQuorumIdUsingCommitRule(peer);
 
   // Compute total number of voters in each region.
   std::optional<int> total_from_vd = GetTotalVotersFromVoterDistribution(
-      *(queue_state_.active_config), leader_quorum_id);
+      *(queue_state_.active_config), peer_quorum_id);
 
   CHECK(total_from_vd.has_value());
 
@@ -1546,7 +1524,7 @@ int64_t PeerMessageQueue::ComputeNewWatermarkDynamicMode(int64_t* watermark) {
 
     CHECK(peer_pb.has_permanent_uuid());
     const std::string& peer_pb_quorum_id = getQuorumIdUsingCommitRule(peer_pb);
-    if (peer_pb_quorum_id != leader_quorum_id) {
+    if (peer_pb_quorum_id != peer_quorum_id) {
       // In dynamic mode, only the leader region matters
       continue;
     }
@@ -1564,7 +1542,70 @@ int64_t PeerMessageQueue::ComputeNewWatermarkDynamicMode(int64_t* watermark) {
   }
 
   DCHECK(total_voters >= 1 || !adjust_voter_distribution_);
-  int commit_req = MajoritySize(total_voters);
+  int majority_size = MajoritySize(total_voters);
+
+  bool is_local_peer = peer.permanent_uuid() == local_peer_pb_.permanent_uuid();
+  int num_satisfied = 0;
+  for (const PeersMap::value_type& tracked_peer : peers_map_) {
+    if (!tracked_peer.second->peer_pb.has_member_type() ||
+        tracked_peer.second->peer_pb.member_type() != RaftPeerPB::VOTER) {
+      continue;
+    }
+
+    // We are either computing quorum on the local peer or on a remote peer.
+    // For local peer, we can resort to the optimization of looking at
+    // is_peer_in_local_quorum which is previously set. This is a worthy
+    // optimization because this code path is called on every write.
+    if (PREDICT_TRUE(is_local_peer)) {
+      if (!tracked_peer.second->is_peer_in_local_quorum.has_value() ||
+          !tracked_peer.second->is_peer_in_local_quorum.value()) {
+        continue;
+      }
+    } else {
+      string quorum_id =
+          getQuorumIdUsingCommitRule(tracked_peer.second->peer_pb);
+      if (quorum_id != peer_quorum_id) {
+        continue;
+      }
+    }
+
+    if (predicate(tracked_peer.second)) {
+      num_satisfied++;
+    }
+  }
+
+  QuorumResults results = {
+      num_satisfied >= majority_size,
+      num_satisfied,
+      majority_size,
+      peer_quorum_id};
+  return results;
+}
+
+int64_t PeerMessageQueue::ComputeNewWatermarkDynamicMode(int64_t* watermark) {
+  CHECK(watermark);
+  CHECK(queue_state_.active_config->has_commit_rule());
+  CHECK(
+      queue_state_.active_config->commit_rule().mode() ==
+      QuorumMode::SINGLE_REGION_DYNAMIC);
+
+  // Compute the watermarks in leader quorum. As an example, at the end of this
+  // loop, watermarks_in_leader_quorum might have entries (3, 7, 5) which
+  // indicates that the leader quorum has 3 peers that have responded to OpId
+  // indexes 3, 7 and 5 respectively
+  std::vector<int64_t> watermarks_in_leader_quorum;
+  watermarks_in_leader_quorum.reserve(FLAGS_default_quorum_size * 2);
+
+  auto results = IsQuorumSatisfiedUnlocked(
+      local_peer_pb_, [&watermarks_in_leader_quorum](auto peer) {
+        // Refer to the comment in AdvanceQueueWatermark method for why only
+        // successful last exchanges are considered.
+        if (peer->last_exchange_status == PeerStatus::OK) {
+          watermarks_in_leader_quorum.push_back(peer->last_received.index());
+          return true;
+        }
+        return false;
+      });
 
   VLOG_WITH_PREFIX_UNLOCKED(1) << "Computing new commit index in single "
                                << "region dynamic mode.";
@@ -1572,12 +1613,12 @@ int64_t PeerMessageQueue::ComputeNewWatermarkDynamicMode(int64_t* watermark) {
   // Return without advancing the commit watermark, if majority in leader
   // region is not satisfied, ie. not enough number of replicas have responded
   // from that region.
-  if (watermarks_in_leader_quorum.size() < commit_req) {
+  if (!results.quorum_satisfied) {
     if (VLOG_IS_ON(3)) {
       VLOG_WITH_PREFIX_UNLOCKED(3)
           << "Watermarks size: " << watermarks_in_leader_quorum.size()
-          << ", Num peers required: " << commit_req
-          << ", Quorum: " << leader_quorum_id;
+          << ", Num peers required: " << results.quorum_size
+          << ", Quorum: " << results.quorum_id;
     }
     return *watermark;
   }
@@ -1588,7 +1629,7 @@ int64_t PeerMessageQueue::ComputeNewWatermarkDynamicMode(int64_t* watermark) {
 
   int64_t old_watermark = *watermark;
   *watermark = watermarks_in_leader_quorum
-      [watermarks_in_leader_quorum.size() - commit_req];
+      [watermarks_in_leader_quorum.size() - results.quorum_size];
   return old_watermark;
 }
 
@@ -2021,6 +2062,19 @@ void PeerMessageQueue::TransferLeadershipIfNeeded(
 
   // check if this instance is filtered, if filter_fn has been provided
   if (!designated_successor_uuid_ && tl_filter_fn_ && tl_filter_fn_(*peer_pb)) {
+    return;
+  }
+
+  // We want to make sure that we are not promoting to a region that doesn't
+  // have a majority of nodes running otherwise, it won't be able to accept
+  // writes. We do a quick local check to see if there are a quorum number of
+  // nodes being tracked. It is not bulletproof since it doesn't actually
+  // verify that the nodes are up and running but the common case is that
+  // tracked nodes are up and running.
+  if (FLAGS_filter_out_bad_quorums_in_lmp &&
+      !RegionHasQuorumCommitUnlocked(*peer_pb)) {
+    LOG(WARNING) << "Candidate peer " << peer_pb->permanent_uuid()
+                 << " does not have majority voters running";
     return;
   }
 
@@ -2641,6 +2695,21 @@ void PeerMessageQueue::UpdatePeerQuorumIdUnlocked(
     }
     entry.second->PopulateIsPeerInLocalQuorum();
   }
+}
+
+bool PeerMessageQueue::RegionHasQuorumCommitUnlocked(
+    const RaftPeerPB& target_peer) {
+  DCHECK(queue_lock_.is_locked());
+
+  // If we don't have VD, we assume this is vanilla raft and we don't need to
+  // check if peer region has majority.
+  if (!FLAGS_enable_flexi_raft) {
+    return true;
+  }
+
+  QuorumResults results = IsQuorumSatisfiedUnlocked(
+      target_peer, [](auto peer) { return peer->is_healthy(); });
+  return results.quorum_satisfied;
 }
 
 } // namespace consensus
