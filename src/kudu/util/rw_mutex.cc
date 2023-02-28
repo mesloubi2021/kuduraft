@@ -35,19 +35,11 @@ void unlock_rwlock(pthread_rwlock_t* rwlock) {
 
 namespace kudu {
 
-RWMutex::RWMutex()
-#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
-    : writer_tid_(0)
-#endif
-{
+RWMutex::RWMutex() {
   Init(Priority::PREFER_READING);
 }
 
-RWMutex::RWMutex(Priority prio)
-#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
-    : writer_tid_(0)
-#endif
-{
+RWMutex::RWMutex(Priority prio) {
   Init(prio);
 }
 
@@ -132,72 +124,5 @@ bool RWMutex::TryWriteLock() {
   MarkForWriting();
   return true;
 }
-
-#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
-
-void RWMutex::AssertAcquired() const {
-  lock_guard<simple_spinlock> l(tid_lock_);
-  CHECK(
-      ContainsKey(reader_tids_, Env::Default()->gettid()) ||
-      Env::Default()->gettid() == writer_tid_);
-}
-
-void RWMutex::AssertAcquiredForReading() const {
-  lock_guard<simple_spinlock> l(tid_lock_);
-  CHECK(ContainsKey(reader_tids_, Env::Default()->gettid()));
-}
-
-void RWMutex::AssertAcquiredForWriting() const {
-  lock_guard<simple_spinlock> l(tid_lock_);
-  CHECK_EQ(Env::Default()->gettid(), writer_tid_);
-}
-
-void RWMutex::CheckLockState(LockState state) const {
-  pid_t my_tid = Env::Default()->gettid();
-  bool is_reader;
-  bool is_writer;
-  {
-    lock_guard<simple_spinlock> l(tid_lock_);
-    is_reader = ContainsKey(reader_tids_, my_tid);
-    is_writer = writer_tid_ == my_tid;
-  }
-
-  switch (state) {
-    case LockState::NEITHER:
-      CHECK(!is_reader) << "Invalid state, already holding lock for reading";
-      CHECK(!is_writer) << "Invalid state, already holding lock for writing";
-      break;
-    case LockState::READER:
-      CHECK(!is_writer) << "Invalid state, already holding lock for writing";
-      CHECK(is_reader) << "Invalid state, wasn't holding lock for reading";
-      break;
-    case LockState::WRITER:
-      CHECK(!is_reader) << "Invalid state, already holding lock for reading";
-      CHECK(is_writer) << "Invalid state, wasn't holding lock for writing";
-      break;
-  }
-}
-
-void RWMutex::MarkForReading() {
-  lock_guard<simple_spinlock> l(tid_lock_);
-  reader_tids_.insert(Env::Default()->gettid());
-}
-
-void RWMutex::MarkForWriting() {
-  lock_guard<simple_spinlock> l(tid_lock_);
-  writer_tid_ = Env::Default()->gettid();
-}
-
-void RWMutex::UnmarkForReading() {
-  lock_guard<simple_spinlock> l(tid_lock_);
-  reader_tids_.erase(Env::Default()->gettid());
-}
-
-void RWMutex::UnmarkForWriting() {
-  lock_guard<simple_spinlock> l(tid_lock_);
-  writer_tid_ = 0;
-}
-
-#endif
 
 } // namespace kudu

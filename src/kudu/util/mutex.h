@@ -17,11 +17,6 @@
 #ifndef KUDU_UTIL_MUTEX_H
 #define KUDU_UTIL_MUTEX_H
 
-#include <pthread.h>
-#include <sys/types.h>
-
-#include <string>
-
 #include <glog/logging.h>
 
 #include "kudu/gutil/gscoped_ptr.h"
@@ -56,28 +51,12 @@ class Mutex {
     return TryAcquire();
   }
 
-#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
-  void AssertAcquired() const;
-#else
   void AssertAcquired() const {}
-#endif
 
  private:
   friend class ConditionVariable;
 
   pthread_mutex_t native_handle_;
-
-#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
-  // Members and routines taking care of locks assertions.
-  void CheckHeldAndUnmark();
-  void CheckUnheldAndMark();
-  std::string GetOwnerThreadInfo() const;
-
-  // All private data is implicitly protected by native_handle_.
-  // Be VERY careful to only access members under that lock.
-  pid_t owning_tid_;
-  gscoped_ptr<StackTrace> stack_trace_;
-#endif
 
   DISALLOW_COPY_AND_ASSIGN(Mutex);
 };

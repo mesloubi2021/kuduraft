@@ -63,15 +63,9 @@ class RWMutex {
   void WriteUnlock();
   bool TryWriteLock();
 
-#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
-  void AssertAcquired() const;
-  void AssertAcquiredForReading() const;
-  void AssertAcquiredForWriting() const;
-#else
   void AssertAcquired() const {}
   void AssertAcquiredForReading() const {}
   void AssertAcquiredForWriting() const {}
-#endif
 
   // Aliases for use with std::lock_guard and kudu::shared_lock.
   void lock() {
@@ -101,32 +95,14 @@ class RWMutex {
     READER,
     WRITER,
   };
-#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
-  void CheckLockState(LockState state) const;
-  void MarkForReading();
-  void MarkForWriting();
-  void UnmarkForReading();
-  void UnmarkForWriting();
-#else
+
   void CheckLockState(LockState state) const {}
   void MarkForReading() {}
   void MarkForWriting() {}
   void UnmarkForReading() {}
   void UnmarkForWriting() {}
-#endif
 
   pthread_rwlock_t native_handle_;
-
-#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
-  // Protects reader_tids_ and writer_tid_.
-  mutable simple_spinlock tid_lock_;
-
-  // Tracks all current readers by tid.
-  std::unordered_set<pid_t> reader_tids_;
-
-  // Tracks the current writer (if one exists) by tid.
-  pid_t writer_tid_;
-#endif
 
   DISALLOW_COPY_AND_ASSIGN(RWMutex);
 };

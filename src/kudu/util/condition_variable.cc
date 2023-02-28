@@ -20,12 +20,7 @@
 namespace kudu {
 
 ConditionVariable::ConditionVariable(Mutex* user_lock)
-    : user_mutex_(&user_lock->native_handle_)
-#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
-      ,
-      user_lock_(user_lock)
-#endif
-{
+    : user_mutex_(&user_lock->native_handle_) {
   int rv = 0;
 #if defined(__APPLE__)
   rv = pthread_cond_init(&condition_, nullptr);
@@ -50,14 +45,8 @@ ConditionVariable::~ConditionVariable() {
 
 void ConditionVariable::Wait() const {
   ThreadRestrictions::AssertWaitAllowed();
-#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
-  user_lock_->CheckHeldAndUnmark();
-#endif
   int rv = pthread_cond_wait(&condition_, user_mutex_);
   DCHECK_EQ(0, rv);
-#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
-  user_lock_->CheckUnheldAndMark();
-#endif
 }
 
 bool ConditionVariable::WaitUntil(const MonoTime& until) const {
@@ -68,10 +57,6 @@ bool ConditionVariable::WaitUntil(const MonoTime& until) const {
   if (now > until) {
     return false;
   }
-
-#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
-  user_lock_->CheckHeldAndUnmark();
-#endif
 
 #if defined(__APPLE__)
   // macOS does not provide a way to configure pthread_cond_timedwait() to use
@@ -90,9 +75,6 @@ bool ConditionVariable::WaitUntil(const MonoTime& until) const {
   DCHECK(rv == 0 || rv == ETIMEDOUT)
       << "unexpected pthread_cond_timedwait return value: " << rv;
 
-#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
-  user_lock_->CheckUnheldAndMark();
-#endif
   return rv == 0;
 }
 
@@ -104,10 +86,6 @@ bool ConditionVariable::WaitFor(const MonoDelta& delta) const {
   if (nsecs < 0) {
     return false;
   }
-
-#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
-  user_lock_->CheckHeldAndUnmark();
-#endif
 
 #if defined(__APPLE__)
   struct timespec relative_time;
@@ -124,9 +102,6 @@ bool ConditionVariable::WaitFor(const MonoDelta& delta) const {
 
   DCHECK(rv == 0 || rv == ETIMEDOUT)
       << "unexpected pthread_cond_timedwait return value: " << rv;
-#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
-  user_lock_->CheckUnheldAndMark();
-#endif
   return rv == 0;
 }
 

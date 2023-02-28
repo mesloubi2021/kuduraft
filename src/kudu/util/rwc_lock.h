@@ -137,13 +137,6 @@ class RWCLock {
   int reader_count_;
   bool write_locked_;
 
-#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
-  static const int kBacktraceBufSize = 1024;
-  int64_t writer_tid_;
-  int64_t last_writelock_acquire_time_;
-  char last_writer_backtrace_[kBacktraceBufSize];
-#endif // NDEBUG
-
   DISALLOW_COPY_AND_ASSIGN(RWCLock);
 };
 

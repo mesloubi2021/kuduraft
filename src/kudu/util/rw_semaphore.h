@@ -144,19 +144,12 @@ class rw_semaphore {
 
     WaitPendingReaders();
 
-#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
-    writer_tid_ = Thread::CurrentThreadId();
-#endif // NDEBUG
     RecordLockHolderStack();
   }
 
   void unlock() {
     // I expect to be the only writer
     DCHECK_EQ(base::subtle::NoBarrier_Load(&state_), kWriteFlag);
-
-#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
-    writer_tid_ = -1; // Invalid tid.
-#endif // NDEBUG
 
     ResetLockHolderStack();
     // Reset: no writers & no readers.
@@ -202,9 +195,6 @@ class rw_semaphore {
 
  private:
   volatile Atomic32 state_;
-#ifdef FB_DO_NOT_REMOVE // #ifndef NDEBUG
-  int64_t writer_tid_;
-#endif // NDEBUG
 };
 
 } // namespace kudu
