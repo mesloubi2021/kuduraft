@@ -149,7 +149,10 @@ enum ElectionReason {
   ELECTION_TIMEOUT_EXPIRED,
 
   // The election is being started because of an explicit external request.
-  EXTERNAL_REQUEST
+  EXTERNAL_REQUEST,
+
+  // There was a failure to commit to quorum of nodes from the leader.
+  FAILED_CHECK_QUORUM
 };
 
 struct ElectionContext {
@@ -217,6 +220,7 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
       NoOpReceivedCallback;
   typedef std::function<void(int64_t, const RaftPeerPB&)>
       LeaderDetectedCallback;
+  typedef std::function<void(void)> CheckQuorumFailureCallback;
 
   ~RaftConsensus();
 
@@ -624,7 +628,7 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   std::string peer_region() const;
 
   // It is own peer region or quorum_id
-  std::string peer_quorum_id(bool need_lock) const;
+  std::string peer_quorum_id(bool need_lock = true) const;
 
   // Returns the id of the tablet whose updates this consensus instance helps
   // coordinate. Thread-safe.
@@ -761,6 +765,16 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
 
   // Returns the 'removed_peers_' list managed by consensus-meta
   std::vector<std::string> RemovedPeersList();
+
+  // Sets the callback that is called when we detect a failure in the
+  // CheckQuorum detector.
+  void SetCheckQuorumFailureCallback(
+      CheckQuorumFailureCallback failure_callback);
+
+  // Changes the interval at which to call the Check Quorum detector.
+  // This method exists because changing the interval requires re-initializing
+  // the check quorum timer.
+  void SetCheckQuorumFailureInterval(MonoDelta check_quorum_interval);
 
  protected:
   RaftConsensus(
@@ -1283,6 +1297,14 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
 
   void UpdateLocalPeerUnlocked(RaftConfigPB& active_config);
 
+  // Initializes timer that periodically checks whether leader can satisfy
+  // commit quorum.
+  void InitCheckQuorumDetectorUnlocked();
+
+  void SnoozeCheckQuorumDetector(MonoDelta snooze_time);
+
+  void StopCheckQuorumDetectorUnlocked();
+
   const ConsensusOptions options_;
 
   // Information about the local peer, including the local UUID.
@@ -1448,6 +1470,11 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   scoped_refptr<Counter> raft_proxy_num_requests_hops_remaining_exhausted_;
 
   faststring compression_buffer_;
+
+  CheckQuorumFailureCallback check_quorum_failure_callback_;
+  MonoDelta check_quorum_interval_;
+  std::mutex check_quorum_running_;
+  std::shared_ptr<kudu::rpc::PeriodicTimer> check_quorum_timer_;
 
   DISALLOW_COPY_AND_ASSIGN(RaftConsensus);
 };

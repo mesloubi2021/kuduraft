@@ -391,6 +391,9 @@ class PeerMessageQueue {
   // metric. This should not be called by a leader.
   void UpdateLastIndexAppendedToLeader(int64_t last_idx_appended_to_leader);
 
+  // If leader, checks whether it can successfully commit to majority of peers.
+  bool CheckQuorum();
+
   // Closes the queue. Once the queue is closed, peers are still allowed to
   // call UntrackPeer() and ResponseFromPeer(), however no additional peers may
   // be tracked and no additional messages may be enqueued.
@@ -417,6 +420,11 @@ class PeerMessageQueue {
 
   // Returns the current majority replicated index, for tests.
   int64_t GetMajorityReplicatedIndexForTests() const;
+
+  // Updates peer. Only used for tests.
+  void UpdatePeerForTests(
+      const std::string& peer_uuid,
+      const std::function<void(TrackedPeer*)>& fn);
 
   // Returns a copy of the TrackedPeer with 'uuid' or crashes if the peer is
   // not being tracked.
@@ -445,6 +453,10 @@ class PeerMessageQueue {
     // as the difference between the latest appended op index on this peer
     // versus on the leader (0 if leader).
     scoped_refptr<AtomicGauge<int64_t>> num_ops_behind_leader;
+    // Number of check quorum runs.
+    scoped_refptr<Counter> check_quorum_runs;
+    // Number of check quorum failures.
+    scoped_refptr<Counter> check_quorum_failures;
 
     explicit Metrics(const scoped_refptr<MetricEntity>& metric_entity);
   };

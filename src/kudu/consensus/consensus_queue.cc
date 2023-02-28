@@ -56,6 +56,7 @@
 #include "kudu/gutil/map-util.h"
 #include "kudu/gutil/port.h"
 #include "kudu/gutil/stl_util.h"
+#include "kudu/gutil/strings/join.h"
 #include "kudu/gutil/strings/substitute.h"
 #include "kudu/util/fault_injection.h"
 #include "kudu/util/flag_tags.h"
@@ -167,6 +168,18 @@ METRIC_DEFINE_gauge_int64(
     "Operations Behind Leader",
     MetricUnit::kOperations,
     "Number of operations this server believes it is behind the leader.");
+METRIC_DEFINE_counter(
+    server,
+    check_quorum_runs,
+    "Check Quorum Runs",
+    kudu::MetricUnit::kRequests,
+    "Number of times Check Quorum was run.");
+METRIC_DEFINE_counter(
+    server,
+    check_quorum_failures,
+    "Check Quorum Failures",
+    kudu::MetricUnit::kRequests,
+    "Number of times Check Quorum failed.");
 
 const char* PeerStatusToString(PeerStatus p) {
   switch (p) {
@@ -278,7 +291,12 @@ PeerMessageQueue::Metrics::Metrics(
     const scoped_refptr<MetricEntity>& metric_entity)
     : num_majority_done_ops(INSTANTIATE_METRIC(METRIC_majority_done_ops)),
       num_in_progress_ops(INSTANTIATE_METRIC(METRIC_in_progress_ops)),
-      num_ops_behind_leader(INSTANTIATE_METRIC(METRIC_ops_behind_leader)) {}
+      num_ops_behind_leader(INSTANTIATE_METRIC(METRIC_ops_behind_leader)) {
+  check_quorum_runs =
+      metric_entity->FindOrCreateCounter(&METRIC_check_quorum_runs);
+  check_quorum_failures =
+      metric_entity->FindOrCreateCounter(&METRIC_check_quorum_failures);
+}
 #undef INSTANTIATE_METRIC
 
 PeerMessageQueue::PeerMessageQueue(
@@ -1505,9 +1523,7 @@ PeerMessageQueue::QuorumResults PeerMessageQueue::IsQuorumSatisfiedUnlocked(
   std::optional<int> total_from_vd = GetTotalVotersFromVoterDistribution(
       *(queue_state_.active_config), peer_quorum_id);
 
-  CHECK(total_from_vd.has_value());
-
-  int total_voters_from_voter_distribution = total_from_vd.value();
+  int total_voters_from_voter_distribution = total_from_vd.value_or(0);
 
   // Compute number of voters in each region in the active config.
   // As voter distribution provided in topology config can lag,
@@ -2695,6 +2711,54 @@ void PeerMessageQueue::UpdatePeerQuorumIdUnlocked(
     }
     entry.second->PopulateIsPeerInLocalQuorum();
   }
+}
+
+bool PeerMessageQueue::CheckQuorum() {
+  std::lock_guard<simple_mutexlock> lock(queue_lock_);
+
+  // We only check quorum if we're a leader.
+  if (queue_state_.mode != LEADER) {
+    return true;
+  }
+
+  // We only support check quorum for Single Region Dynamic for now.
+  if (queue_state_.active_config->commit_rule().mode() !=
+      QuorumMode::SINGLE_REGION_DYNAMIC) {
+    return true;
+  }
+
+  metrics_.check_quorum_runs->Increment();
+
+  vector<string> unhealthy_peers;
+  string local_uuid = local_peer_pb_.permanent_uuid();
+  QuorumResults results = IsQuorumSatisfiedUnlocked(
+      local_peer_pb_, [&local_uuid, &unhealthy_peers](auto peer) {
+        const string& peer_uuid = peer->uuid();
+        if (peer_uuid == local_uuid || peer->is_healthy()) {
+          return true;
+        }
+        unhealthy_peers.push_back(peer_uuid);
+        return false;
+      });
+
+  if (!results.quorum_satisfied) {
+    metrics_.check_quorum_failures->Increment();
+    LOG(WARNING) << "Check quorum failed. " << results.quorum_size
+                 << " is required commit quorum. " << results.num_satisfied
+                 << " peers are healthy. " << unhealthy_peers.size()
+                 << " peers have failed: "
+                 << JoinStrings(unhealthy_peers, ", ");
+  }
+  return results.quorum_satisfied;
+}
+
+void PeerMessageQueue::UpdatePeerForTests(
+    const std::string& peer_uuid,
+    const std::function<void(TrackedPeer*)>& fn) {
+  std::lock_guard<simple_mutexlock> lock(queue_lock_);
+  TrackedPeer* peer = FindPtrOrNull(peers_map_, peer_uuid);
+  CHECK(peer);
+  fn(peer);
 }
 
 bool PeerMessageQueue::RegionHasQuorumCommitUnlocked(

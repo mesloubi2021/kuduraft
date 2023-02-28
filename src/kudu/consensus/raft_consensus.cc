@@ -410,7 +410,9 @@ RaftConsensus::RaftConsensus(
       failed_elections_candidate_not_in_config_(0),
       disable_noop_(false),
       shutdown_(false),
-      update_calls_for_tests_(0) {
+      update_calls_for_tests_(0),
+      check_quorum_interval_(
+          MonoDelta::FromMilliseconds(FLAGS_check_quorum_interval_ms)) {
   DCHECK(local_peer_pb_.has_permanent_uuid());
   DCHECK(cmeta_manager_ != NULL);
   DCHECK(persistent_vars_manager_ != NULL);
@@ -739,6 +741,8 @@ string ReasonString(ElectionReason reason, StringPiece leader_uuid) {
         return "no leader contacted us within the election timeout";
       }
       return Substitute("detected failure of leader $0", leader_uuid);
+    case ElectionReason::FAILED_CHECK_QUORUM:
+      return "failed check quorum";
   }
   __builtin_unreachable(); // silence gcc warnings
 }
@@ -1231,6 +1235,8 @@ Status RaftConsensus::BecomeLeaderUnlocked() {
   queue_->RegisterObserver(this);
   RETURN_NOT_OK(RefreshConsensusQueueAndPeersUnlocked());
 
+  InitCheckQuorumDetectorUnlocked();
+
   if (disable_noop_) {
     return Status::OK();
   }
@@ -1269,6 +1275,8 @@ Status RaftConsensus::BecomeReplicaUnlocked(
   // Enable/disable leader failure detection if becoming VOTER/NON_VOTER replica
   // correspondingly.
   UpdateFailureDetectorState(std::move(fd_delta));
+
+  StopCheckQuorumDetectorUnlocked();
 
   // Now that we're a replica, we can allow voting for other nodes.
   withhold_votes_until_ = MonoTime::Min();
@@ -5589,6 +5597,88 @@ Status ConsensusRound::CheckBoundTerm(int64_t current_term) const {
         current_term));
   }
   return Status::OK();
+}
+
+void RaftConsensus::SetCheckQuorumFailureCallback(
+    CheckQuorumFailureCallback failure_callback) {
+  LockGuard l(lock_);
+  check_quorum_failure_callback_ = std::move(failure_callback);
+  InitCheckQuorumDetectorUnlocked();
+}
+
+void RaftConsensus::SetCheckQuorumFailureInterval(
+    MonoDelta check_quorum_interval) {
+  LockGuard l(lock_);
+  check_quorum_interval_ = check_quorum_interval;
+  InitCheckQuorumDetectorUnlocked();
+}
+
+void RaftConsensus::InitCheckQuorumDetectorUnlocked() {
+  if (!check_quorum_failure_callback_) {
+    LOG(ERROR) << "No Check Quorum Failure Callback set. Unable to initialize "
+               << "CheckQuorum.";
+    return;
+  }
+
+  CHECK(peer_proxy_factory_);
+  DCHECK(lock_.is_locked());
+  PeriodicTimer::Options opts;
+  // Capture a weak_ptr reference into the functor so it can safely handle
+  // outliving the consensus instance.
+  weak_ptr<RaftConsensus> w = shared_from_this();
+  check_quorum_timer_ = PeriodicTimer::Create(
+      peer_proxy_factory_->messenger(),
+      [w]() {
+        if (!FLAGS_check_quorum) {
+          return;
+        }
+
+        if (auto consensus = w.lock()) {
+          // We submit to the pool because we should not be waiting for locks
+          // or doing anything expensive in this thread.
+          Status status = consensus->raft_pool_token_->SubmitFunc([=]() {
+            std::unique_lock<std::mutex> lock(
+                consensus->check_quorum_running_, std::try_to_lock);
+            if (!lock.owns_lock()) {
+              return;
+            }
+
+            if (!consensus->queue_->CheckQuorum()) {
+              if (FLAGS_check_quorum_failure_callback &&
+                  consensus->check_quorum_failure_callback_) {
+                // If we're running the failure callback, we want to snooze the
+                // next check to avoid piling up further callbacks. Also, if we
+                // are repeatedly failing to elect a new leader, we want to
+                // snooze to avoid starving other operations that require the
+                // election mutex.
+                consensus->SnoozeCheckQuorumDetector(
+                    MonoDelta::FromMilliseconds(
+                        FLAGS_check_quorum_failure_callback_cooldown_ms));
+                consensus->check_quorum_failure_callback_();
+              }
+            }
+          });
+          if (!status.ok()) {
+            LOG(ERROR) << "Unable to schedule check quorum failure callback: "
+                       << status.ToString();
+          }
+        }
+      },
+      check_quorum_interval_,
+      opts);
+  check_quorum_timer_->Start(check_quorum_interval_);
+}
+
+void RaftConsensus::SnoozeCheckQuorumDetector(MonoDelta snooze_time) {
+  LockGuard l(lock_);
+  if (check_quorum_timer_) {
+    check_quorum_timer_->Snooze(snooze_time);
+  }
+}
+
+void RaftConsensus::StopCheckQuorumDetectorUnlocked() {
+  DCHECK(lock_.is_locked());
+  check_quorum_timer_.reset();
 }
 
 } // namespace consensus

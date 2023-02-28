@@ -144,6 +144,60 @@ inline RaftConfigPB BuildRaftConfigPBForTests(
   return raft_config;
 }
 
+// Builds a Raft config with commit rule of `QuorumMode::SINGLE_REGION_DYNAMIC`
+// and `QuorumType::QUORUM_ID`.
+// `instance_regions` is map index -> (quorum id, member type)
+inline RaftConfigPB BuildQuorumIdRaftConfigPBForTests(
+    std::map<size_t, std::tuple<std::string, RaftPeerPB::MemberType>>
+        instance_regions) {
+  RaftConfigPB raft_config;
+  for (auto it = instance_regions.begin(); it != instance_regions.end(); it++) {
+    auto id = it->first;
+    auto [quorum_id, member_type] = it->second;
+
+    auto peer_pb = raft_config.add_peers();
+    peer_pb->set_permanent_uuid(strings::Substitute("peer-$0", id));
+    peer_pb->set_member_type(member_type);
+    auto hp = peer_pb->mutable_last_known_addr();
+    hp->set_host(strings::Substitute("peer-$0.fake-domain-for-tests", id));
+    hp->set_port(0);
+    peer_pb->mutable_attrs()->set_quorum_id(quorum_id);
+  }
+
+  auto commit_rule = raft_config.mutable_commit_rule();
+  commit_rule->set_mode(QuorumMode::SINGLE_REGION_DYNAMIC);
+  commit_rule->set_quorum_type(QuorumType::QUORUM_ID);
+
+  return raft_config;
+}
+
+// Builds a Raft config with commit rule of `QuorumMode::SINGLE_REGION_DYNAMIC`
+// and `QuorumType::REGION`.
+// `instance_regions` is map index -> (region, member type)
+inline RaftConfigPB BuildRegionRaftConfigPBForTests(
+    std::map<size_t, std::tuple<std::string, RaftPeerPB::MemberType>>
+        instance_regions) {
+  RaftConfigPB raft_config;
+  for (auto it = instance_regions.begin(); it != instance_regions.end(); it++) {
+    auto id = it->first;
+    auto [region, member_type] = it->second;
+
+    auto peer_pb = raft_config.add_peers();
+    peer_pb->set_permanent_uuid(strings::Substitute("peer-$0", id));
+    peer_pb->set_member_type(member_type);
+    auto hp = peer_pb->mutable_last_known_addr();
+    hp->set_host(strings::Substitute("peer-$0.fake-domain-for-tests", id));
+    hp->set_port(0);
+    peer_pb->mutable_attrs()->set_region(region);
+  }
+
+  auto commit_rule = raft_config.mutable_commit_rule();
+  commit_rule->set_mode(QuorumMode::SINGLE_REGION_DYNAMIC);
+  commit_rule->set_quorum_type(QuorumType::REGION);
+
+  return raft_config;
+}
+
 // Abstract base class to build PeerProxy implementations on top of for testing.
 // Provides a single-threaded pool to run callbacks in and callback
 // registration/running, along with an enum to identify the supported methods.
