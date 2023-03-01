@@ -526,6 +526,17 @@ class PeerMessageQueue {
   // Whether peer's region/quorum id has a majority of committers being tracked.
   bool RegionHasQuorumCommitUnlocked(const RaftPeerPB& target_peer);
 
+  // Returns number of healthy peers that can most likely accept replicated
+  // writes based on recent RPC failure rates.
+  //
+  // If local peer is a leader, this method return at least '1' since it always
+  // deems itself as a healthy peer.
+  // If local peer is not a leader, this method will return -1.
+  //
+  // This method only works for SINGLE_REGION_DYNAMIC mode. If we're not in this
+  // mode, this method will return -1.
+  int32_t GetAvailableCommitPeers();
+
  private:
   FRIEND_TEST(ConsensusQueueTest, TestQueueAdvancesCommittedIndex);
   FRIEND_TEST(ConsensusQueueTest, TestQueueMovesWatermarksBackward);

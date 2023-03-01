@@ -5681,5 +5681,10 @@ void RaftConsensus::StopCheckQuorumDetectorUnlocked() {
   check_quorum_timer_.reset();
 }
 
+int32_t RaftConsensus::GetAvailableCommitPeers() {
+  LockGuard l(lock_);
+  return queue_->GetAvailableCommitPeers();
+}
+
 } // namespace consensus
 } // namespace kudu

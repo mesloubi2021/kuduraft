@@ -2776,5 +2776,26 @@ bool PeerMessageQueue::RegionHasQuorumCommitUnlocked(
   return results.quorum_satisfied;
 }
 
+int32_t PeerMessageQueue::GetAvailableCommitPeers() {
+  std::lock_guard<simple_mutexlock> lock(queue_lock_);
+
+  // If we are not leader, we are not concerned about commit peers, hence, we
+  // simply return 0.
+  if (queue_state_.mode != LEADER) {
+    return -1;
+  }
+
+  // We only support getting available commit peers for Single Region Dynamic
+  // for now.
+  if (queue_state_.active_config->commit_rule().mode() !=
+      QuorumMode::SINGLE_REGION_DYNAMIC) {
+    return -1;
+  }
+
+  QuorumResults results = IsQuorumSatisfiedUnlocked(
+      local_peer_pb_, [](auto peer) { return peer->is_healthy(); });
+  return results.num_satisfied;
+}
+
 } // namespace consensus
 } // namespace kudu

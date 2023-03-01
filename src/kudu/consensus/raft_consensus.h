@@ -776,6 +776,9 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // the check quorum timer.
   void SetCheckQuorumFailureInterval(MonoDelta check_quorum_interval);
 
+  // See kudu::consensus::PeerMessageQueue::GetAvailableCommitPeers().
+  int32_t GetAvailableCommitPeers();
+
  protected:
   RaftConsensus(
       ConsensusOptions options,
