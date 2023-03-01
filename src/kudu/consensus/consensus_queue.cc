@@ -180,6 +180,14 @@ METRIC_DEFINE_counter(
     "Check Quorum Failures",
     kudu::MetricUnit::kRequests,
     "Number of times Check Quorum failed.");
+METRIC_DEFINE_gauge_int64(
+    server,
+    available_commit_peers,
+    "Available Commit Peers",
+    MetricUnit::kUnits,
+    "Number of peers, including leader, that are healthy in commit quorum. If "
+    "local peer is not a leader, -1 is returned. If quorum mode is not "
+    "SINGLE_REGION_DYNAMIC, -1 is returned.");
 
 const char* PeerStatusToString(PeerStatus p) {
   switch (p) {
@@ -291,7 +299,9 @@ PeerMessageQueue::Metrics::Metrics(
     const scoped_refptr<MetricEntity>& metric_entity)
     : num_majority_done_ops(INSTANTIATE_METRIC(METRIC_majority_done_ops)),
       num_in_progress_ops(INSTANTIATE_METRIC(METRIC_in_progress_ops)),
-      num_ops_behind_leader(INSTANTIATE_METRIC(METRIC_ops_behind_leader)) {
+      num_ops_behind_leader(INSTANTIATE_METRIC(METRIC_ops_behind_leader)),
+      available_commit_peers(
+          INSTANTIATE_METRIC(METRIC_available_commit_peers)) {
   check_quorum_runs =
       metric_entity->FindOrCreateCounter(&METRIC_check_quorum_runs);
   check_quorum_failures =
@@ -2740,6 +2750,8 @@ bool PeerMessageQueue::CheckQuorum() {
         unhealthy_peers.push_back(peer_uuid);
         return false;
       });
+
+  metrics_.available_commit_peers->set_value(results.num_satisfied);
 
   if (!results.quorum_satisfied) {
     metrics_.check_quorum_failures->Increment();

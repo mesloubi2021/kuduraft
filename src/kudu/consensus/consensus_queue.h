@@ -457,6 +457,8 @@ class PeerMessageQueue {
     scoped_refptr<Counter> check_quorum_runs;
     // Number of check quorum failures.
     scoped_refptr<Counter> check_quorum_failures;
+    // Number of peers, including leader, that are healthy in commit quorum.
+    scoped_refptr<AtomicGauge<int64_t>> available_commit_peers;
 
     explicit Metrics(const scoped_refptr<MetricEntity>& metric_entity);
   };
