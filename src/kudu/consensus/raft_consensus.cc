@@ -278,10 +278,10 @@ DEFINE_int32(
     "again after a failure");
 
 DEFINE_int32(
-    check_quorum_interval_ms,
-    60000,
-    "Interval in milliseconds at which to check whether the leader can commit "
-    "to a quorum number of nodes.");
+    check_quorum_interval_heartbeats,
+    120,
+    "Interval in multiples of heartbeats at which to check whether the leader "
+    "can commit to a quorum number of nodes.");
 
 // Metrics
 // ---------
@@ -411,8 +411,8 @@ RaftConsensus::RaftConsensus(
       disable_noop_(false),
       shutdown_(false),
       update_calls_for_tests_(0),
-      check_quorum_interval_(
-          MonoDelta::FromMilliseconds(FLAGS_check_quorum_interval_ms)) {
+      check_quorum_interval_heartbeats_(
+          FLAGS_check_quorum_interval_heartbeats) {
   DCHECK(local_peer_pb_.has_permanent_uuid());
   DCHECK(cmeta_manager_ != NULL);
   DCHECK(persistent_vars_manager_ != NULL);
@@ -5606,10 +5606,10 @@ void RaftConsensus::SetCheckQuorumFailureCallback(
   InitCheckQuorumDetectorUnlocked();
 }
 
-void RaftConsensus::SetCheckQuorumFailureInterval(
-    MonoDelta check_quorum_interval) {
+void RaftConsensus::SetCheckQuorumFailureIntervalHeartbeats(
+    int32_t heartbeats) {
   LockGuard l(lock_);
-  check_quorum_interval_ = check_quorum_interval;
+  check_quorum_interval_heartbeats_ = heartbeats;
   InitCheckQuorumDetectorUnlocked();
 }
 
@@ -5623,6 +5623,8 @@ void RaftConsensus::InitCheckQuorumDetectorUnlocked() {
   CHECK(peer_proxy_factory_);
   DCHECK(lock_.is_locked());
   PeriodicTimer::Options opts;
+  MonoDelta check_interval = MonoDelta::FromMilliseconds(static_cast<int64_t>(
+      check_quorum_interval_heartbeats_ * FLAGS_raft_heartbeat_interval_ms));
   // Capture a weak_ptr reference into the functor so it can safely handle
   // outliving the consensus instance.
   weak_ptr<RaftConsensus> w = shared_from_this();
@@ -5664,9 +5666,9 @@ void RaftConsensus::InitCheckQuorumDetectorUnlocked() {
           }
         }
       },
-      check_quorum_interval_,
+      check_interval,
       opts);
-  check_quorum_timer_->Start(check_quorum_interval_);
+  check_quorum_timer_->Start(check_interval);
 }
 
 void RaftConsensus::SnoozeCheckQuorumDetector(MonoDelta snooze_time) {

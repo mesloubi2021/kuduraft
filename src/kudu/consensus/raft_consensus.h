@@ -774,7 +774,7 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // Changes the interval at which to call the Check Quorum detector.
   // This method exists because changing the interval requires re-initializing
   // the check quorum timer.
-  void SetCheckQuorumFailureInterval(MonoDelta check_quorum_interval);
+  void SetCheckQuorumFailureIntervalHeartbeats(int heartbeats);
 
   // See kudu::consensus::PeerMessageQueue::GetAvailableCommitPeers().
   int32_t GetAvailableCommitPeers();
@@ -1475,7 +1475,7 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   faststring compression_buffer_;
 
   CheckQuorumFailureCallback check_quorum_failure_callback_;
-  MonoDelta check_quorum_interval_;
+  int32_t check_quorum_interval_heartbeats_;
   std::mutex check_quorum_running_;
   std::shared_ptr<kudu::rpc::PeriodicTimer> check_quorum_timer_;
 
