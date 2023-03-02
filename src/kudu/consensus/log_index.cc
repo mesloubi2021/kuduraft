@@ -507,5 +507,16 @@ string LogIndexEntry::ToString() const {
       offset_in_segment);
 }
 
+bool LogIndexEntry::operator==(const LogIndexEntry& other) const {
+  return other.op_id.term() == op_id.term() &&
+      other.op_id.index() == op_id.index() &&
+      other.segment_sequence_number == segment_sequence_number &&
+      other.offset_in_segment == offset_in_segment;
+}
+
+bool LogIndexEntry::operator!=(const LogIndexEntry& other) const {
+  return !operator==(other);
+}
+
 } // namespace log
 } // namespace kudu

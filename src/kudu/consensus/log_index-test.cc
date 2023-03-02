@@ -117,5 +117,32 @@ TEST_F(LogIndexTest, TestMultiSegmentWithGC) {
   VerifyNotFound(2500000);
 }
 
+TEST(LogIndexEntry, Comparison) {
+  LogIndexEntry a;
+  LogIndexEntry b;
+  a.op_id = MakeOpId(1, 1);
+  b.op_id = MakeOpId(1, 1);
+  a.segment_sequence_number = 10;
+  b.segment_sequence_number = 10;
+  a.offset_in_segment = 5;
+  b.offset_in_segment = 5;
+  EXPECT_EQ(a, b);
+
+  b.segment_sequence_number = 12;
+  EXPECT_NE(a, b);
+
+  b = a;
+  b.offset_in_segment = 6;
+  EXPECT_NE(a, b);
+
+  b = a;
+  b.op_id = MakeOpId(1, 2);
+  EXPECT_NE(a, b);
+
+  b = a;
+  b.op_id = MakeOpId(2, 1);
+  EXPECT_NE(a, b);
+}
+
 } // namespace log
 } // namespace kudu

@@ -45,6 +45,9 @@ struct LogIndexEntry {
   int64_t offset_in_segment;
 
   std::string ToString() const;
+
+  bool operator==(const LogIndexEntry& other) const;
+  bool operator!=(const LogIndexEntry& other) const;
 };
 
 // An on-disk structure which indexes from OpId index to the specific position
