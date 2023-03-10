@@ -1455,11 +1455,8 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   scoped_refptr<AtomicGauge<int64_t>> term_metric_;
   scoped_refptr<AtomicGauge<int64_t>> num_failed_elections_metric_;
 
-  // we use this variable to fire a leader detected callback in
-  // case a NORCB has not been fired previously.
-  // Ensures that we don't miss a leader detection on plain follower
-  // restarts
-  bool new_leader_detected_failsafe_;
+  // Have we queued LDCB or NORCB in raft thread pool at least once?
+  bool have_queued_ldcb_or_norcb_ = false;
 
   // Number of times ops in raft log were truncated as a result of new leader
   // overwriting the log

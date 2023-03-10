@@ -2049,7 +2049,6 @@ Status RaftConsensus::CheckLeaderRequestUnlocked(
   }
   if (PREDICT_FALSE(!HasLeaderUnlocked())) {
     RETURN_NOT_OK(SetLeaderUuidUnlocked(request->caller_uuid()));
-    new_leader_detected_failsafe_ = true;
   }
 
   return Status::OK();
@@ -2067,8 +2066,6 @@ Status RaftConsensus::UpdateReplica(
       options_.tablet_id);
   Synchronizer log_synchronizer;
   StatusCallback sync_status_cb = log_synchronizer.AsStatusCallback();
-  // this is a temp variable. reset every time.
-  new_leader_detected_failsafe_ = false;
 
   // The ordering of the following operations is crucial, read on for details.
   //
@@ -2279,20 +2276,7 @@ Status RaftConsensus::UpdateReplica(
       const std::string& compression_dict = request->compression_dictionary();
       RETURN_NOT_OK(CompressionCodecManager::SetDictionary(compression_dict));
     }
-    // NB - (arahut)
-    // By this time new_leader_detected_failsafe_ has been set to
-    // true if a new leader has been detected via this UpdateReplica call.
-    // However if that new LEADER has not sent any messages in this round,
-    // and we are past LMP mismatch, then new_leader_detected_failsafe_
-    // will remain true. The No-Op can still come later.
-    // So there is a possibility that TACB, LDCB and NORCB all fire on
-    // same term. We have to handle this on plugin side.
     while (iter != messages.end()) {
-      OperationType op_type = (*iter)->get()->op_type();
-      if (op_type == NO_OP) {
-        new_leader_detected_failsafe_ = false;
-      }
-
       // Create a ReplicateMsgWrapper which handles compression, here we'll be
       // decompressing the msg
       ReplicateMsgWrapper msg_wrapper(*iter);
@@ -2428,7 +2412,7 @@ Status RaftConsensus::UpdateReplica(
     // state until we actually reply to the leader, we'll just wait for the
     // messages to be durable.
     FillConsensusResponseOKUnlocked(response);
-    if (new_leader_detected_failsafe_) {
+    if (!have_queued_ldcb_or_norcb_) {
       ScheduleLeaderDetectedCallback(CurrentTermUnlocked());
     }
   }
@@ -4864,13 +4848,17 @@ void RaftConsensus::ScheduleNoOpReceivedCallback(const ReplicateRefPtr& msg) {
     current_leader.set_permanent_uuid(cmeta_->leader_uuid());
   }
 
-  WARN_NOT_OK(
-      raft_pool_token_->SubmitFunc(std::bind(
-          &RaftConsensus::DoNoOpReceivedCallback,
-          shared_from_this(),
-          msg->get()->id(),
-          std::move(current_leader))),
-      LogPrefixThreadSafe() + "Unable to run no op received callback");
+  s_ok = raft_pool_token_->SubmitFunc(std::bind(
+      &RaftConsensus::DoNoOpReceivedCallback,
+      shared_from_this(),
+      msg->get()->id(),
+      std::move(current_leader)));
+
+  if (!s_ok.ok()) {
+    LOG_WITH_PREFIX(WARNING) << "Unable to run no op received callback";
+  }
+
+  have_queued_ldcb_or_norcb_ = s_ok.ok();
 }
 
 void RaftConsensus::DoNoOpReceivedCallback(
@@ -4893,13 +4881,17 @@ void RaftConsensus::ScheduleLeaderDetectedCallback(int64_t term) {
     current_leader.set_permanent_uuid(cmeta_->leader_uuid());
   }
 
-  WARN_NOT_OK(
-      raft_pool_token_->SubmitFunc(std::bind(
-          &RaftConsensus::DoLeaderDetectedCallback,
-          shared_from_this(),
-          term,
-          std::move(current_leader))),
-      LogPrefixThreadSafe() + "Unable to run leader detected callback");
+  s_ok = raft_pool_token_->SubmitFunc(std::bind(
+      &RaftConsensus::DoLeaderDetectedCallback,
+      shared_from_this(),
+      term,
+      std::move(current_leader)));
+
+  if (!s_ok.ok()) {
+    LOG_WITH_PREFIX(WARNING) << "Unable to run leader detected callback";
+  }
+
+  have_queued_ldcb_or_norcb_ = s_ok.ok();
 }
 
 void RaftConsensus::DoLeaderDetectedCallback(
