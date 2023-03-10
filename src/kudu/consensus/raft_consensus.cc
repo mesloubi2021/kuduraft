@@ -2275,6 +2275,8 @@ Status RaftConsensus::UpdateReplica(
           << "[EVERY 1 second] Received compression dictionary from leader";
       const std::string& compression_dict = request->compression_dictionary();
       RETURN_NOT_OK(CompressionCodecManager::SetDictionary(compression_dict));
+      persistent_vars_->set_compression_dictionary(compression_dict);
+      RETURN_NOT_OK(persistent_vars_->Flush());
     }
     while (iter != messages.end()) {
       // Create a ReplicateMsgWrapper which handles compression, here we'll be
