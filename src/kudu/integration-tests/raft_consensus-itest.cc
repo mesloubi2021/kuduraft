@@ -2903,6 +2903,40 @@ TEST_F(RaftConsensusITest, TestUpdateConsensusErrorNonePrepared) {
       SecureShortDebugString(resp), "Could not prepare a single transaction");
 }
 
+TEST_F(RaftConsensusITest, TestLeaderLease) {
+  const int kNumOps = 10;
+  vector<string> kTsFlags = {
+      "--enable_leader_failure_detection=false",
+  };
+  const vector<string> kMasterFlags = {
+      "--catalog_manager_wait_for_new_tablets_to_elect_leader=false",
+  };
+
+  NO_FATALS(BuildAndStart(kTsFlags, kMasterFlags));
+
+  vector<TServerDetails*> tservers;
+  AppendValuesFromMap(tablet_servers_, &tservers);
+  ASSERT_EQ(3, tservers.size());
+
+  ConsensusRequestPB req;
+  ConsensusResponsePB resp;
+  RpcController rpc;
+  req.set_dest_uuid(replica_ts->uuid());
+  req.set_tablet_id(tablet_id_);
+  req.set_caller_uuid(tservers[2]->instance_id.permanent_uuid());
+  req.set_caller_term(0);
+  req.set_committed_index(0);
+  req.set_all_replicated_index(0);
+  req.mutable_preceding_id()->CopyFrom(MakeOpId(0, 0));
+  int64_t base_ts = GetTimestampOnServer(replica_ts);
+  for (int i = 0; i < kNumOps; i++) {
+    AddOp(MakeOpId(0, 1 + i), base_ts, &req);
+  }
+
+  ASSERT_OK(replica_ts->consensus_proxy->UpdateConsensus(req, &resp, &rpc));
+  LOG(INFO) << SecureShortDebugString(resp);
+}
+
 // Test that, if the raft metadata on a replica is corrupt, then the server
 // doesn't crash, but instead marks the tablet as failed.
 TEST_F(RaftConsensusITest, TestCorruptReplicaMetadata) {

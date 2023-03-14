@@ -113,6 +113,21 @@ DEFINE_double(
     "The value passed to this flag may be fractional.");
 TAG_FLAG(leader_failure_max_missed_heartbeat_periods, advanced);
 
+DEFINE_int32(
+    raft_leader_lease_interval_ms,
+    2000,
+    "The lease interval for Leader leases. The Leader creates a Lease and waits for "
+    "Followers to accept the lease before becoming active-lease. The Followers expect "
+    "the Lease to be renewed for all updates until the Leader is active.");
+TAG_FLAG(raft_leader_lease_interval_ms, experimental);
+
+DEFINE_bool(
+    enable_raft_leader_lease,
+    false,
+    "Whether to enable leader leases support in raft. If enabled, before Lease times out "
+    "Leader attempts to renew. And Followers either accept or reject.");
+TAG_FLAG(enable_raft_leader_lease, experimental);
+
 DEFINE_double(
     snooze_for_leader_ban_ratio,
     1.0,
@@ -402,6 +417,8 @@ RaftConsensus::RaftConsensus(
       rng_(GetRandomSeed32()),
       leader_transfer_in_progress_(false),
       withhold_votes_until_(MonoTime::Min()),
+      leader_lease_until_(MonoTime::Min()),
+      leader_lease_term_(-1),
       reject_append_entries_(false),
       adjust_voter_distribution_(true),
       withhold_votes_(false),
@@ -1239,6 +1256,12 @@ Status RaftConsensus::BecomeLeaderUnlocked() {
 
   if (disable_noop_) {
     return Status::OK();
+  }
+
+  if (FLAGS_enable_raft_leader_lease) {
+    // Leader Lease initialized
+    leader_lease_until_ = MonoTime::Now() + LeaderLeaseTimeout();
+    leader_lease_term_ = CurrentTermUnlocked();
   }
 
   // Initiate a NO_OP transaction that is sent at the beginning of every term
@@ -2216,6 +2239,14 @@ Status RaftConsensus::UpdateReplica(
     // However it will allow itself to solicit votes only after a Random
     // interval from 1x -> 2X of election timeout.
     withhold_votes_until_ = MonoTime::Now() + MinimumElectionTimeout();
+
+    if (FLAGS_enable_raft_leader_lease) {
+      // Renew the Leader Lease
+      // TODO (jaganmaddukuri): Update placeholder values with lease duration
+      // sent from Leader
+      leader_lease_until_ = MonoTime::Now() + LeaderLeaseTimeout();
+      leader_lease_term_ = request->caller_term();
+    }
 
     // 1 - Early commit pending (and committed) transactions
 
@@ -4432,6 +4463,11 @@ MonoDelta RaftConsensus::MinimumElectionTimeout() const {
   int32_t failure_timeout = FLAGS_leader_failure_max_missed_heartbeat_periods *
       FLAGS_raft_heartbeat_interval_ms;
   return MonoDelta::FromMilliseconds(failure_timeout);
+}
+
+MonoDelta RaftConsensus::LeaderLeaseTimeout() {
+  int32_t lease_timeout = FLAGS_raft_leader_lease_interval_ms;
+  return MonoDelta::FromMilliseconds(lease_timeout);
 }
 
 MonoDelta RaftConsensus::MinimumElectionTimeoutWithBan() {
