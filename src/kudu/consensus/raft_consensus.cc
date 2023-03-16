@@ -5722,5 +5722,10 @@ int32_t RaftConsensus::GetAvailableCommitPeers() {
   return queue_->GetAvailableCommitPeers();
 }
 
+Status RaftConsensus::GetQuorumHealth(PeerMessageQueue::QuorumHealth* health) {
+  LockGuard l(lock_);
+  return queue_->GetQuorumHealth(health);
+}
+
 } // namespace consensus
 } // namespace kudu

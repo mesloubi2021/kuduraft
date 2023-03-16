@@ -782,6 +782,8 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // See kudu::consensus::PeerMessageQueue::GetAvailableCommitPeers().
   int32_t GetAvailableCommitPeers();
 
+  Status GetQuorumHealth(PeerMessageQueue::QuorumHealth* health);
+
  protected:
   RaftConsensus(
       ConsensusOptions options,

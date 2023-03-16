@@ -230,6 +230,37 @@ class PeerMessageQueue {
     bool is_origin_dead_promotion;
   };
 
+  enum QuorumIdHealthStatus {
+    UNKNOWN = 0,
+    UNHEALTHY = 1,
+    AT_RISK = 2,
+    DEGRADED = 3,
+    HEALTHY = 4
+  };
+
+  struct QuorumIdHealth {
+    // Whether the leader exists in this quorum id.
+    bool primary = 0;
+
+    // Number of active voting peers.
+    int total_voters = 0;
+
+    // Number of voters defined in voter distribution.
+    int num_vd_voters = 0;
+
+    int quorum_size = 0;
+
+    QuorumIdHealthStatus health_status = UNKNOWN;
+
+    std::vector<RaftPeerPB> healthy_peers;
+
+    std::vector<RaftPeerPB> unhealthy_peers;
+  };
+
+  struct QuorumHealth {
+    std::unordered_map<std::string, QuorumIdHealth> by_quorum_id;
+  };
+
   PeerMessageQueue(
       const scoped_refptr<MetricEntity>& metric_entity,
       scoped_refptr<log::Log> log,
@@ -538,6 +569,9 @@ class PeerMessageQueue {
   // This method only works for SINGLE_REGION_DYNAMIC mode. If we're not in this
   // mode, this method will return -1.
   int32_t GetAvailableCommitPeers();
+
+  // If leader, returns quorum health for all regions/quorum ids.
+  Status GetQuorumHealth(QuorumHealth* health);
 
  private:
   FRIEND_TEST(ConsensusQueueTest, TestQueueAdvancesCommittedIndex);

@@ -2809,5 +2809,71 @@ int32_t PeerMessageQueue::GetAvailableCommitPeers() {
   return results.num_satisfied;
 }
 
+Status PeerMessageQueue::GetQuorumHealth(QuorumHealth* health) {
+  CHECK(health);
+  std::lock_guard<simple_mutexlock> lock(queue_lock_);
+
+  // Only leaders can provide quorum health.
+  if (queue_state_.mode != LEADER) {
+    return Status::NotFound("Quorum health can only be retrieved on a leader");
+  }
+
+  std::unordered_multimap<std::string, TrackedPeer*> by_quorum_id;
+  std::unordered_set<std::string> quorum_ids;
+  const std::string leader_quorum_id =
+      getQuorumIdUsingCommitRule(local_peer_pb_);
+
+  for (const PeersMap::value_type& entry : peers_map_) {
+    auto* peer = entry.second;
+    // We only include voters.
+    if (peer->peer_pb.has_member_type() &&
+        peer->peer_pb.member_type() == RaftPeerPB::VOTER) {
+      const std::string quorum_id = getQuorumIdUsingCommitRule(peer->peer_pb);
+      by_quorum_id.insert(std::make_pair(quorum_id, peer));
+      quorum_ids.insert(quorum_id);
+    }
+  }
+
+  for (const auto& quorum_id : quorum_ids) {
+    QuorumIdHealth quorum_id_health;
+
+    quorum_id_health.primary = leader_quorum_id == quorum_id;
+
+    quorum_id_health.num_vd_voters =
+        GetTotalVotersFromVoterDistribution(
+            *(queue_state_.active_config), quorum_id)
+            .value_or(0);
+    quorum_id_health.quorum_size = MajoritySize(quorum_id_health.num_vd_voters);
+
+    auto range = by_quorum_id.equal_range(quorum_id);
+    for (auto it = range.first; it != range.second; it++) {
+      auto* peer = it->second;
+      if (peer->is_healthy()) {
+        quorum_id_health.healthy_peers.push_back(peer->peer_pb);
+      } else {
+        quorum_id_health.unhealthy_peers.push_back(peer->peer_pb);
+      }
+    }
+
+    const int num_healthy = quorum_id_health.num_vd_voters -
+        static_cast<int>(quorum_id_health.unhealthy_peers.size());
+    if (num_healthy < quorum_id_health.quorum_size) {
+      quorum_id_health.health_status = UNHEALTHY;
+    } else if (num_healthy == quorum_id_health.quorum_size) {
+      quorum_id_health.health_status = AT_RISK;
+    } else if (num_healthy >= quorum_id_health.num_vd_voters) {
+      quorum_id_health.health_status = HEALTHY;
+    } else {
+      quorum_id_health.health_status = DEGRADED;
+    }
+
+    quorum_id_health.total_voters = static_cast<int>(
+        quorum_id_health.healthy_peers.size() +
+        quorum_id_health.unhealthy_peers.size());
+    health->by_quorum_id.emplace(quorum_id, std::move(quorum_id_health));
+  }
+  return Status::OK();
+}
+
 } // namespace consensus
 } // namespace kudu
