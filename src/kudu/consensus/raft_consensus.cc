@@ -5263,6 +5263,10 @@ void RaftConsensus::HandleProxyRequest(
   if (request->has_raft_rpc_token()) {
     downstream_request.set_raft_rpc_token(request->raft_rpc_token());
   }
+  if (request->has_compression_dictionary()) {
+    downstream_request.set_compression_dictionary(
+        request->compression_dictionary());
+  }
 
   downstream_request.set_proxy_caller_uuid(peer_uuid());
 

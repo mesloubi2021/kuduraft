@@ -192,7 +192,7 @@ class PeerMessageQueue {
     bool wal_catchup_possible;
 
     // Should we send compression dictionary in the next request to this peer?
-    bool should_send_compression_dict = false;
+    bool should_send_compression_dict = true;
 
     // The peer's latest overall health status.
     HealthReportPB::HealthStatus last_overall_health_status;
