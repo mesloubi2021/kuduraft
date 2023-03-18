@@ -2815,7 +2815,7 @@ Status PeerMessageQueue::GetQuorumHealth(QuorumHealth* health) {
 
   // Only leaders can provide quorum health.
   if (queue_state_.mode != LEADER) {
-    return Status::NotFound("Quorum health can only be retrieved on a leader");
+    return Status::OK();
   }
 
   std::unordered_multimap<std::string, TrackedPeer*> by_quorum_id;
