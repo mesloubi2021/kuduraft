@@ -95,6 +95,7 @@ DECLARE_int32(consensus_rpc_timeout_ms);
 DECLARE_bool(safe_time_advancement_without_writes);
 DECLARE_bool(raft_prepare_replacement_before_eviction);
 DECLARE_bool(raft_attempt_to_replace_replica_without_majority);
+DECLARE_bool(enable_raft_leader_lease);
 DEFINE_bool(
     synchronous_transfer_leadership,
     false,

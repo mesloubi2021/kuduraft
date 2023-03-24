@@ -2242,10 +2242,24 @@ Status RaftConsensus::UpdateReplica(
 
     if (FLAGS_enable_raft_leader_lease) {
       // Renew the Leader Lease
-      // TODO (jaganmaddukuri): Update placeholder values with lease duration
-      // sent from Leader
-      leader_lease_until_ = MonoTime::Now() + LeaderLeaseTimeout();
-      leader_lease_term_ = request->caller_term();
+      if ((request->ops_size() == 1 &&
+           request->ops(0).op_type() == NO_OP) /* No-op */
+          || leader_lease_term_ == -1) {
+        leader_lease_term_ = request->caller_term();
+        leader_lease_until_ = MonoTime::Now() +
+            MonoDelta::FromMilliseconds(request->requested_lease_duration());
+        response->set_lease_granted(true);
+      } else if (leader_lease_term_ == request->caller_term()) {
+        if (request->requested_lease_duration() == 0 /* Revoke Lease */) {
+          leader_lease_until_ = MonoTime::Now();
+        } else /* Extend Lease */ {
+          leader_lease_until_ = MonoTime::Now() +
+              MonoDelta::FromMilliseconds(request->requested_lease_duration());
+        }
+        response->set_lease_granted(true);
+      } else {
+        response->set_lease_granted(false);
+      }
     }
 
     // 1 - Early commit pending (and committed) transactions

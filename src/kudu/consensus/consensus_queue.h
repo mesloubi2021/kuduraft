@@ -170,6 +170,9 @@ class PeerMessageQueue {
     // See the comments within the PeerStatus enum above for details.
     PeerStatus last_exchange_status;
 
+    // Whether Peer has granted Lease duration
+    bool lease_granted;
+
     // The time of the last successful Raft consensus exchange with the peer
     // Defaults to the time of construction, so does not necessarily mean that
     // successful communication ever took place.

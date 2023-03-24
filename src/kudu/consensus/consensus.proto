@@ -597,6 +597,9 @@ message ConsensusRequestPB {
 
   // Dictionary to use for decompression when dictionary compression is used
   optional bytes compression_dictionary = 17;
+
+  // Leader requesting the lease duration for Followers to ACK on
+  optional int32 requested_lease_duration = 18;
 }
 
 message ConsensusResponsePB {
@@ -614,6 +617,9 @@ message ConsensusResponsePB {
   // A token stamped to the request to prove to the remote host that we're part
   // of a ring
   optional string raft_rpc_token = 4;
+
+  // True if the follower had accepted the lease renewal
+  optional bool lease_granted = 5;
 
   // A generic error message (such as tablet not found), per operation
   // error messages are sent along with the consensus status.

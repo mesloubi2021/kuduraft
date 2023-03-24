@@ -2928,6 +2928,7 @@ TEST_F(RaftConsensusITest, TestLeaderLease) {
   req.set_committed_index(0);
   req.set_all_replicated_index(0);
   req.mutable_preceding_id()->CopyFrom(MakeOpId(0, 0));
+  req.set_requested_lease_duration(2000);
   int64_t base_ts = GetTimestampOnServer(replica_ts);
   for (int i = 0; i < kNumOps; i++) {
     AddOp(MakeOpId(0, 1 + i), base_ts, &req);
@@ -2935,6 +2936,7 @@ TEST_F(RaftConsensusITest, TestLeaderLease) {
 
   ASSERT_OK(replica_ts->consensus_proxy->UpdateConsensus(req, &resp, &rpc));
   LOG(INFO) << SecureShortDebugString(resp);
+  ASSERT_TRUE(resp.lease_granted());
 }
 
 // Test that, if the raft metadata on a replica is corrupt, then the server
