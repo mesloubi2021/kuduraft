@@ -38,7 +38,7 @@
 
 DEFINE_int64(
     rpc_max_message_size,
-    (50 * 1024 * 1024),
+    (600 * 1024 * 1024),
     "The maximum size of a message that any RPC that the server will accept. "
     "Must be at least 1MB.");
 TAG_FLAG(rpc_max_message_size, advanced);
