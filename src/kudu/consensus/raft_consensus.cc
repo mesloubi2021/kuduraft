@@ -3159,18 +3159,7 @@ Status RaftConsensus::CheckBulkConfigChangeAndGetNewConfigUnlocked(
             }
             modified_peer->set_member_type(peer.member_type());
           }
-          if (peer.attrs().has_promote()) {
-            modified_peer->mutable_attrs()->set_promote(peer.attrs().promote());
-          }
-          if (peer.attrs().has_replace()) {
-            modified_peer->mutable_attrs()->set_replace(peer.attrs().replace());
-          }
-          if (peer.attrs().has_quorum_id()) {
-            modified_peer->mutable_attrs()->set_quorum_id(
-                peer.attrs().quorum_id());
-          } else {
-            modified_peer->mutable_attrs()->clear_quorum_id();
-          }
+          modified_peer->mutable_attrs()->MergeFrom(peer.attrs());
           // Ensure that MODIFY_PEER actually modified something.
           if (MessageDifferencer::Equals(orig_peer, *modified_peer)) {
             return Status::InvalidArgument(
