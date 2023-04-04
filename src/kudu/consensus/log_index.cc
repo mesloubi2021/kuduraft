@@ -57,6 +57,10 @@ using std::string;
 using std::vector;
 using strings::Substitute;
 
+DEFINE_bool(
+    uncache_unmapped_index,
+    false,
+    "Whether explicitly uncache log cache index file after the file is closed");
 METRIC_DEFINE_counter(
     server,
     log_index_chunk_mmap_for_read,
@@ -135,9 +139,7 @@ LogIndex::IndexChunk::IndexChunk(std::string path, int64_t size)
     : path_(std::move(path)), fd_(-1), mapping_(nullptr), size_(size) {}
 
 LogIndex::IndexChunk::~IndexChunk() {
-  if (mapping_ != nullptr) {
-    munmap(mapping_, size_);
-  }
+  Munmap();
 
   if (fd_ >= 0) {
     int ret;
@@ -183,6 +185,10 @@ void LogIndex::IndexChunk::Munmap() {
   if (mapping_ != nullptr) {
     munmap(mapping_, size_);
     mapping_ = nullptr;
+    if (fd_ > 0 && FLAGS_uncache_unmapped_index) {
+      VLOG(5) << "Going to uncache " << path_;
+      posix_fadvise(fd_, 0, 0, POSIX_FADV_DONTNEED);
+    }
   }
 }
 
