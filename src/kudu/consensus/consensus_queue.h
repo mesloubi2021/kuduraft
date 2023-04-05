@@ -264,6 +264,8 @@ class PeerMessageQueue {
     std::unordered_map<std::string, QuorumIdHealth> by_quorum_id;
   };
 
+  static const std::string kVanillaRaftQuorumId;
+
   PeerMessageQueue(
       const scoped_refptr<MetricEntity>& metric_entity,
       scoped_refptr<log::Log> log,
@@ -830,6 +832,10 @@ class PeerMessageQueue {
   QuorumResults IsQuorumSatisfiedUnlocked(
       const RaftPeerPB& peer,
       const std::function<bool(const TrackedPeer*)>& predicate);
+
+  Status GetQuorumHealthForFlexiRaftUnlocked(QuorumHealth* health);
+
+  Status GetQuorumHealthForVanillaRaftUnlocked(QuorumHealth* health);
 
   std::vector<PeerMessageQueueObserver*> observers_;
 

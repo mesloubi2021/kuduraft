@@ -310,6 +310,8 @@ PeerMessageQueue::Metrics::Metrics(
 }
 #undef INSTANTIATE_METRIC
 
+const std::string PeerMessageQueue::kVanillaRaftQuorumId = "__default__";
+
 PeerMessageQueue::PeerMessageQueue(
     const scoped_refptr<MetricEntity>& metric_entity,
     scoped_refptr<log::Log> log,
@@ -2810,19 +2812,12 @@ int32_t PeerMessageQueue::GetAvailableCommitPeers() {
   return results.num_satisfied;
 }
 
-Status PeerMessageQueue::GetQuorumHealth(QuorumHealth* health) {
+Status PeerMessageQueue::GetQuorumHealthForFlexiRaftUnlocked(
+    QuorumHealth* health) {
   CHECK(health);
-  std::lock_guard<simple_mutexlock> lock(queue_lock_);
-
-  // Only leaders can provide quorum health.
-  if (queue_state_.mode != LEADER) {
-    return Status::OK();
-  }
-
+  DCHECK(queue_lock_.is_locked());
   std::unordered_multimap<std::string, TrackedPeer*> by_quorum_id;
   std::unordered_set<std::string> quorum_ids;
-  const std::string leader_quorum_id =
-      getQuorumIdUsingCommitRule(local_peer_pb_);
 
   for (const PeersMap::value_type& entry : peers_map_) {
     auto* peer = entry.second;
@@ -2834,6 +2829,9 @@ Status PeerMessageQueue::GetQuorumHealth(QuorumHealth* health) {
       quorum_ids.insert(quorum_id);
     }
   }
+
+  const std::string& leader_quorum_id =
+      getQuorumIdUsingCommitRule(local_peer_pb_);
 
   for (const auto& quorum_id : quorum_ids) {
     QuorumIdHealth quorum_id_health;
@@ -2874,6 +2872,67 @@ Status PeerMessageQueue::GetQuorumHealth(QuorumHealth* health) {
     health->by_quorum_id.emplace(quorum_id, std::move(quorum_id_health));
   }
   return Status::OK();
+}
+
+Status PeerMessageQueue::GetQuorumHealthForVanillaRaftUnlocked(
+    QuorumHealth* health) {
+  CHECK(health);
+  DCHECK(queue_lock_.is_locked());
+  QuorumIdHealth quorum_id_health;
+
+  // There's only one region, so it is deemed to be the primary.
+  quorum_id_health.primary = true;
+
+  for (const PeersMap::value_type& entry : peers_map_) {
+    auto* peer = entry.second;
+    // We only include voters.
+    if (peer->peer_pb.has_member_type() &&
+        peer->peer_pb.member_type() == RaftPeerPB::VOTER) {
+      if (peer->is_healthy()) {
+        quorum_id_health.healthy_peers.push_back(peer->peer_pb);
+      } else {
+        quorum_id_health.unhealthy_peers.push_back(peer->peer_pb);
+      }
+    }
+  }
+
+  quorum_id_health.total_voters = static_cast<int>(
+      quorum_id_health.healthy_peers.size() +
+      quorum_id_health.unhealthy_peers.size());
+  // We don't use VD in vanilla raft. If we did, it would be equal to
+  // total_voters.
+  quorum_id_health.num_vd_voters = quorum_id_health.total_voters;
+  quorum_id_health.quorum_size = MajoritySize(quorum_id_health.total_voters);
+
+  const size_t num_healthy = quorum_id_health.healthy_peers.size();
+  if (num_healthy < quorum_id_health.quorum_size) {
+    quorum_id_health.health_status = UNHEALTHY;
+  } else if (num_healthy == quorum_id_health.quorum_size) {
+    quorum_id_health.health_status = AT_RISK;
+  } else if (num_healthy == quorum_id_health.total_voters) {
+    quorum_id_health.health_status = HEALTHY;
+  } else {
+    quorum_id_health.health_status = DEGRADED;
+  }
+
+  health->by_quorum_id.emplace(
+      kVanillaRaftQuorumId, std::move(quorum_id_health));
+  return Status::OK();
+}
+
+Status PeerMessageQueue::GetQuorumHealth(QuorumHealth* health) {
+  CHECK(health);
+  std::lock_guard<simple_mutexlock> lock(queue_lock_);
+
+  // Only leaders can provide quorum health.
+  if (queue_state_.mode != LEADER) {
+    return Status::OK();
+  }
+
+  if (FLAGS_enable_flexi_raft) {
+    return GetQuorumHealthForFlexiRaftUnlocked(health);
+  }
+  return GetQuorumHealthForVanillaRaftUnlocked(health);
 }
 
 } // namespace consensus
