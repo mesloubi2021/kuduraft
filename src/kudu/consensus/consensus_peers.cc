@@ -116,6 +116,7 @@ DEFINE_int32(
     "Time (in ms) to wait before reading ops for proxy requests");
 
 DECLARE_bool(raft_enforce_rpc_token);
+DECLARE_bool(enable_raft_leader_lease);
 
 METRIC_DEFINE_counter(
     server,
@@ -181,7 +182,8 @@ Peer::Peer(
       failed_attempts_(0),
       last_request_time_(MonoTime::Now()),
       messenger_(std::move(messenger)),
-      raft_pool_token_(raft_pool_token) {
+      raft_pool_token_(raft_pool_token),
+      rpc_start_(MonoTime::Min()) {
   request_pending_ = false;
 }
 
@@ -419,6 +421,9 @@ void Peer::SendNextRequest(bool even_if_queue_empty, bool from_heartbeater) {
                                     << " not found in peer proxy pool";
   }
 
+  if (FLAGS_enable_raft_leader_lease) {
+    s_this->SetUpdateConsensusRpcStart(MonoTime::Now());
+  }
   next_hop_proxy->UpdateAsync(&request_, &response_, &controller_, [s_this]() {
     s_this->ProcessResponse();
   });
@@ -525,6 +530,9 @@ void Peer::DoProcessResponse() {
       << "Response from peer " << peer_pb().permanent_uuid() << ": "
       << SecureShortDebugString(response_);
 
+  if (FLAGS_enable_raft_leader_lease) {
+    queue_->SetPeerRpcStartTime(peer_pb().permanent_uuid(), rpc_start_);
+  }
   bool send_more_immediately =
       queue_->ResponseFromPeer(peer_pb_.permanent_uuid(), response_);
 

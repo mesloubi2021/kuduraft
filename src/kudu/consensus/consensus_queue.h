@@ -170,8 +170,8 @@ class PeerMessageQueue {
     // See the comments within the PeerStatus enum above for details.
     PeerStatus last_exchange_status;
 
-    // Whether Peer has granted Lease duration
-    bool lease_granted;
+    // Last OpId when Peer granted Lease duration
+    OpId lease_granted;
 
     // The time of the last successful Raft consensus exchange with the peer
     // Defaults to the time of construction, so does not necessarily mean that
@@ -189,6 +189,9 @@ class PeerMessageQueue {
     // Defaults to the time of construction, so does not necessarily mean that
     // successful communication ever took place.
     MonoTime last_communication_time;
+
+    // Leader Leases: captures UpdateConsensus rpc start time for each peer
+    MonoTime rpc_start_;
 
     // Set to false if it is determined that the remote peer has fallen behind
     // the local peer's WAL.
@@ -493,6 +496,8 @@ class PeerMessageQueue {
     scoped_refptr<Counter> check_quorum_runs;
     // Number of check quorum failures.
     scoped_refptr<Counter> check_quorum_failures;
+    // Keeps track of number of remote peers that are Leader lease grantors.
+    scoped_refptr<AtomicGauge<int64_t>> available_leader_lease_grantors;
     // Number of peers, including leader, that are healthy in commit quorum.
     scoped_refptr<AtomicGauge<int64_t>> available_commit_peers;
 
@@ -578,6 +583,22 @@ class PeerMessageQueue {
   // If leader, returns quorum health for all regions/quorum ids.
   Status GetQuorumHealth(QuorumHealth* health);
 
+  // Gets the Leader Lease timestamp
+  MonoTime GetLeaderLeaseUntil() {
+    return leader_lease_until_;
+  }
+
+  // Sets the Leader lease until timestamp
+  void SetLeaderLeaseUntil(MonoTime update) {
+    leader_lease_until_ = update;
+  }
+
+  // Return the Leader Lease timeout.
+  static MonoDelta LeaderLeaseTimeout();
+
+  // Sets the UpdateConsensus rpc start time for peer
+  void SetPeerRpcStartTime(const std::string& peer_uuid, MonoTime rpcStart);
+
  private:
   FRIEND_TEST(ConsensusQueueTest, TestQueueAdvancesCommittedIndex);
   FRIEND_TEST(ConsensusQueueTest, TestQueueMovesWatermarksBackward);
@@ -662,6 +683,7 @@ class PeerMessageQueue {
     int32_t num_satisfied;
     int32_t quorum_size;
     std::string quorum_id;
+    std::vector<TrackedPeer*> quorum_peers;
   };
 
   // Returns true iff given 'desired_op' is found in the local WAL.
@@ -833,6 +855,10 @@ class PeerMessageQueue {
       const RaftPeerPB& peer,
       const std::function<bool(const TrackedPeer*)>& predicate);
 
+  // Checks and renews Leader lease if the UpdateConsensus response has
+  // lease_granted by followers
+  bool CanLeaderLeaseRenewUnlocked(QuorumResults& qresults);
+
   Status GetQuorumHealthForFlexiRaftUnlocked(QuorumHealth* health);
 
   Status GetQuorumHealthForVanillaRaftUnlocked(QuorumHealth* health);
@@ -889,6 +915,9 @@ class PeerMessageQueue {
 
   // An instance of PersistentVars with access to some persistent global vars
   scoped_refptr<PersistentVars> persistent_vars_;
+
+  // Leader Leases to support strong reads on primary
+  std::atomic<MonoTime> leader_lease_until_;
 };
 
 // The interface between RaftConsensus and the PeerMessageQueue.

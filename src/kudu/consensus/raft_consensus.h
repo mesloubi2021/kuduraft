@@ -642,9 +642,6 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // jitter, election timeouts may be longer than this.
   MonoDelta MinimumElectionTimeout() const;
 
-  // Return the Leader Lease timeout.
-  static MonoDelta LeaderLeaseTimeout();
-
   // Return the minimum election timeout considering ban-factor
   MonoDelta MinimumElectionTimeoutWithBan();
 
@@ -1403,9 +1400,6 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // the request will be ignored. This prevents abandoned or partitioned
   // nodes from disturbing the healthy leader.
   MonoTime withhold_votes_until_;
-
-  // Leader Leases to support strong reads on primary
-  MonoTime leader_lease_until_;
 
   // Identifies the term for which the Leader Lease is active.
   int64_t leader_lease_term_;

@@ -101,6 +101,10 @@ class Peer : public std::enable_shared_from_this<Peer> {
     return peer_pb_;
   }
 
+  void SetUpdateConsensusRpcStart(MonoTime starttime) {
+    rpc_start_ = starttime;
+  }
+
   // Stop sending requests and periodic heartbeats.
   //
   // This does not block waiting on any current outstanding requests to finish.
@@ -232,6 +236,8 @@ class Peer : public std::enable_shared_from_this<Peer> {
   // can be stale, consult the PeerMessageQueue to get the upto date info
   // -1 means we've not inited the variable, 0 means false, 1 means true
   std::atomic<int> cached_is_peer_proxied_{-1};
+  // Leader Leases: captures UpdateConsensus rpc start time for each peer
+  MonoTime rpc_start_;
 };
 
 // A proxy to another peer. Usually a thin wrapper around an rpc proxy but can

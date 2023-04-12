@@ -417,7 +417,6 @@ RaftConsensus::RaftConsensus(
       rng_(GetRandomSeed32()),
       leader_transfer_in_progress_(false),
       withhold_votes_until_(MonoTime::Min()),
-      leader_lease_until_(MonoTime::Min()),
       leader_lease_term_(-1),
       reject_append_entries_(false),
       adjust_voter_distribution_(true),
@@ -1260,7 +1259,6 @@ Status RaftConsensus::BecomeLeaderUnlocked() {
 
   if (FLAGS_enable_raft_leader_lease) {
     // Leader Lease initialized
-    leader_lease_until_ = MonoTime::Now() + LeaderLeaseTimeout();
     leader_lease_term_ = CurrentTermUnlocked();
   }
 
@@ -2246,15 +2244,17 @@ Status RaftConsensus::UpdateReplica(
            request->ops(0).op_type() == NO_OP) /* No-op */
           || leader_lease_term_ == -1) {
         leader_lease_term_ = request->caller_term();
-        leader_lease_until_ = MonoTime::Now() +
-            MonoDelta::FromMilliseconds(request->requested_lease_duration());
+        queue_->SetLeaderLeaseUntil(
+            MonoTime::Now() +
+            MonoDelta::FromMilliseconds(request->requested_lease_duration()));
         response->set_lease_granted(true);
       } else if (leader_lease_term_ == request->caller_term()) {
         if (request->requested_lease_duration() == 0 /* Revoke Lease */) {
-          leader_lease_until_ = MonoTime::Now();
+          queue_->SetLeaderLeaseUntil(MonoTime::Now());
         } else /* Extend Lease */ {
-          leader_lease_until_ = MonoTime::Now() +
-              MonoDelta::FromMilliseconds(request->requested_lease_duration());
+          queue_->SetLeaderLeaseUntil(
+              MonoTime::Now() +
+              MonoDelta::FromMilliseconds(request->requested_lease_duration()));
         }
         response->set_lease_granted(true);
       } else {
@@ -4466,11 +4466,6 @@ MonoDelta RaftConsensus::MinimumElectionTimeout() const {
   int32_t failure_timeout = FLAGS_leader_failure_max_missed_heartbeat_periods *
       FLAGS_raft_heartbeat_interval_ms;
   return MonoDelta::FromMilliseconds(failure_timeout);
-}
-
-MonoDelta RaftConsensus::LeaderLeaseTimeout() {
-  int32_t lease_timeout = FLAGS_raft_leader_lease_interval_ms;
-  return MonoDelta::FromMilliseconds(lease_timeout);
 }
 
 MonoDelta RaftConsensus::MinimumElectionTimeoutWithBan() {

@@ -125,6 +125,8 @@ DEFINE_bool(
 TAG_FLAG(synchronous_transfer_leadership, advanced);
 DECLARE_bool(enable_flexi_raft);
 DECLARE_int32(default_quorum_size);
+DECLARE_int32(raft_leader_lease_interval_ms);
+DECLARE_bool(enable_raft_leader_lease);
 
 DEFINE_int32(
     consecutive_failures_unhealthy_threshold,
@@ -189,6 +191,12 @@ METRIC_DEFINE_gauge_int64(
     "Number of peers, including leader, that are healthy in commit quorum. If "
     "local peer is not a leader, -1 is returned. If quorum mode is not "
     "SINGLE_REGION_DYNAMIC, -1 is returned.");
+METRIC_DEFINE_gauge_int64(
+    server,
+    available_leader_lease_grantors,
+    "Available Leader lease grantors",
+    MetricUnit::kUnits,
+    "Number of remote peers who are Leader lease grantors.");
 
 const char* PeerStatusToString(PeerStatus p) {
   switch (p) {
@@ -223,8 +231,10 @@ PeerMessageQueue::TrackedPeer::TrackedPeer(
       last_received(MinimumOpId()),
       last_known_committed_index(MinimumOpId().index()),
       last_exchange_status(PeerStatus::NEW),
+      lease_granted(MinimumOpId()),
       last_successful_exchange(MonoTime::Now()),
       last_communication_time(MonoTime::Now()),
+      rpc_start_(MonoTime::Min()),
       wal_catchup_possible(true),
       last_overall_health_status(HealthReportPB::UNKNOWN),
       consecutive_failures(0),
@@ -301,6 +311,8 @@ PeerMessageQueue::Metrics::Metrics(
     : num_majority_done_ops(INSTANTIATE_METRIC(METRIC_majority_done_ops)),
       num_in_progress_ops(INSTANTIATE_METRIC(METRIC_in_progress_ops)),
       num_ops_behind_leader(INSTANTIATE_METRIC(METRIC_ops_behind_leader)),
+      available_leader_lease_grantors(
+          INSTANTIATE_METRIC(METRIC_available_leader_lease_grantors)),
       available_commit_peers(
           INSTANTIATE_METRIC(METRIC_available_commit_peers)) {
   check_quorum_runs =
@@ -335,7 +347,8 @@ PeerMessageQueue::PeerMessageQueue(
           local_peer_pb_.permanent_uuid(),
           tablet_id_),
       metrics_(metric_entity),
-      time_manager_(std::move(time_manager)) {
+      time_manager_(std::move(time_manager)),
+      leader_lease_until_(MonoTime::Min()) {
   DCHECK(local_peer_pb_.has_permanent_uuid());
   DCHECK(local_peer_pb_.has_last_known_addr());
   DCHECK(last_locally_replicated.IsInitialized());
@@ -1575,6 +1588,7 @@ PeerMessageQueue::QuorumResults PeerMessageQueue::IsQuorumSatisfiedUnlocked(
 
   bool is_local_peer = peer.permanent_uuid() == local_peer_pb_.permanent_uuid();
   int num_satisfied = 0;
+  std::vector<TrackedPeer*> quorum_peers;
   for (const PeersMap::value_type& tracked_peer : peers_map_) {
     if (!tracked_peer.second->peer_pb.has_member_type() ||
         tracked_peer.second->peer_pb.member_type() != RaftPeerPB::VOTER) {
@@ -1600,6 +1614,7 @@ PeerMessageQueue::QuorumResults PeerMessageQueue::IsQuorumSatisfiedUnlocked(
 
     if (predicate(tracked_peer.second)) {
       num_satisfied++;
+      quorum_peers.push_back(tracked_peer.second);
     }
   }
 
@@ -1607,7 +1622,8 @@ PeerMessageQueue::QuorumResults PeerMessageQueue::IsQuorumSatisfiedUnlocked(
       num_satisfied >= majority_size,
       num_satisfied,
       majority_size,
-      peer_quorum_id};
+      peer_quorum_id,
+      quorum_peers};
   return results;
 }
 
@@ -2071,6 +2087,27 @@ bool PeerMessageQueue::PeerTransferLeadershipImmediatelyUnlocked(
   return peer_caught_up;
 }
 
+MonoDelta PeerMessageQueue::LeaderLeaseTimeout() {
+  int32_t const lease_timeout = FLAGS_raft_leader_lease_interval_ms;
+  return MonoDelta::FromMilliseconds(lease_timeout);
+}
+
+void PeerMessageQueue::SetPeerRpcStartTime(
+    const std::string& peer_uuid,
+    MonoTime rpc_start) {
+  std::lock_guard<simple_mutexlock> lock(queue_lock_);
+  TrackedPeer* peer = FindPtrOrNull(peers_map_, peer_uuid);
+  if (PREDICT_FALSE(peer == nullptr)) {
+    LOG(WARNING) << "Candidate peer " << peer_uuid
+                 << " is not foung in Message Queue's Peers map";
+    return;
+  }
+
+  if (peer != nullptr) {
+    peer->rpc_start_ = rpc_start;
+  }
+}
+
 void PeerMessageQueue::TransferLeadershipIfNeeded(
     const TrackedPeer& peer,
     const ConsensusStatusPB& status) {
@@ -2262,6 +2299,13 @@ bool PeerMessageQueue::DoResponseFromPeer(
           << "Response: " << SecureShortDebugString(response);
     }
 
+    if (FLAGS_enable_raft_leader_lease && response.has_lease_granted()) {
+      if (response.lease_granted() &&
+          peer->last_exchange_status == PeerStatus::OK) {
+        peer->lease_granted = peer->last_received;
+      }
+    }
+
     mode_copy = queue_state_.mode;
 
     // If we're the leader, we can compute the new watermarks based on the
@@ -2332,6 +2376,35 @@ bool PeerMessageQueue::DoResponseFromPeer(
           queue_state_.majority_replicated_index >
               queue_state_.committed_index) {
         queue_state_.committed_index = queue_state_.majority_replicated_index;
+
+        if (FLAGS_enable_raft_leader_lease && response.has_lease_granted()) {
+          // Check for Quorum of lease renewal approvals from followers
+          QuorumResults qresults;
+          if (CanLeaderLeaseRenewUnlocked(qresults)) {
+            std::vector<MonoTime> rpc_starts;
+            rpc_starts.reserve(qresults.quorum_peers.size());
+            for (const TrackedPeer* peer : qresults.quorum_peers) {
+              rpc_starts.emplace_back(peer->rpc_start_);
+            }
+
+            // sort rpc_start times in descending order
+            if (qresults.quorum_size > 1 &&
+                rpc_starts.size() >= qresults.quorum_size - 1) {
+              std::sort(rpc_starts.begin(), rpc_starts.end(), std::greater<>());
+              leader_lease_until_.store(std::max(
+                  leader_lease_until_.load(),
+                  rpc_starts
+                          [qresults.quorum_size -
+                           1 /* Leader rpc_start does not exist */] +
+                      LeaderLeaseTimeout()));
+            } else {
+              LOG_WITH_PREFIX_UNLOCKED(WARNING)
+                  << "Unable to increment Leader Lease timestamp, "
+                  << "Quorum size: " << qresults.quorum_size << ". "
+                  << "Number of remote peers: " << rpc_starts.size() << ".";
+            }
+          }
+        }
       } else {
         VLOG_WITH_PREFIX_UNLOCKED(2)
             << "Cannot advance commit index, waiting for > "
@@ -2382,6 +2455,31 @@ PeerMessageQueue::TrackedPeer PeerMessageQueue::GetTrackedPeerForTests(
   std::lock_guard<simple_mutexlock> scoped_lock(queue_lock_);
   TrackedPeer* tracked = FindOrDie(peers_map_, uuid);
   return *tracked;
+}
+
+bool PeerMessageQueue::CanLeaderLeaseRenewUnlocked(QuorumResults& qresults) {
+  DCHECK(queue_lock_.is_locked());
+  string local_uuid = local_peer_pb_.permanent_uuid();
+  auto results =
+      IsQuorumSatisfiedUnlocked(local_peer_pb_, [this, &local_uuid](auto peer) {
+        // Check for Leader
+        const string& peer_uuid = peer->uuid();
+        if (peer_uuid == local_uuid) {
+          return true;
+        }
+        return peer->lease_granted.index() >= queue_state_.committed_index;
+      });
+
+  metrics_.available_leader_lease_grantors->set_value(results.quorum_size);
+
+  if (!results.quorum_satisfied) {
+    LOG(WARNING) << "Lease granted quorum failed. " << results.quorum_size
+                 << " is required lease grant quorum. " << results.num_satisfied
+                 << " peers grants are healthy.";
+    return false;
+  }
+  qresults = std::move(results);
+  return true;
 }
 
 int64_t PeerMessageQueue::GetAllReplicatedIndex() const {
