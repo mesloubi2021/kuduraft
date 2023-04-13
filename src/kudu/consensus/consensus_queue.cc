@@ -796,6 +796,13 @@ OpId PeerMessageQueue::GetNextOpId() const {
       queue_state_.current_term, queue_state_.last_appended.index() + 1);
 }
 
+MonoTime PeerMessageQueue::GetLeaderLeaseUntil() {
+  if (queue_state_.mode != LEADER) {
+    return MonoTime().Min();
+  }
+  return leader_lease_until_;
+}
+
 bool PeerMessageQueue::SafeToEvictUnlocked(const string& evict_uuid) const {
   DCHECK(queue_lock_.is_locked());
   DCHECK_EQ(LEADER, queue_state_.mode);
@@ -2394,7 +2401,7 @@ bool PeerMessageQueue::DoResponseFromPeer(
               leader_lease_until_.store(std::max(
                   leader_lease_until_.load(),
                   rpc_starts
-                          [qresults.quorum_size -
+                          [qresults.quorum_size - 1 -
                            1 /* Leader rpc_start does not exist */] +
                       LeaderLeaseTimeout()));
             } else {

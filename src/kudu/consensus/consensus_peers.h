@@ -86,7 +86,8 @@ class Peer : public std::enable_shared_from_this<Peer> {
   // status-only requests.
   Status SignalRequest(
       bool even_if_queue_empty = false,
-      bool from_heartbeater = false);
+      bool from_heartbeater = false,
+      bool is_leader_lease_revoke = false);
 
   // Synchronously starts a leader election on this peer.
   // This method is ad hoc, using this instance's PeerProxy to send the
@@ -146,7 +147,10 @@ class Peer : public std::enable_shared_from_this<Peer> {
       std::shared_ptr<PeerProxy> proxy,
       std::shared_ptr<rpc::Messenger> messenger);
 
-  void SendNextRequest(bool even_if_queue_empty, bool from_heartbeater = false);
+  void SendNextRequest(
+      bool even_if_queue_empty,
+      bool from_heartbeater = false,
+      bool is_leader_lease_revoke = false);
 
   // Signals that a response was received from the peer.
   //

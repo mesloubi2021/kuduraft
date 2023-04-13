@@ -749,6 +749,19 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // Set the compression level to be used to compress ReplicateMsg payload
   Status SetCompressionLevel(int level);
 
+  enum LeaderLeaseState {
+    RENEW = 0,
+    REVOKE = 1,
+  };
+
+  // Set whether Leader Lease is set to Renewal/Revoke state
+  Status SetLeaseRenewStateUnlocked(LeaderLeaseState state);
+
+  bool IsLeaderLeaseSetForRevoke() const;
+
+  // Gets the Leader Lease timestamp
+  MonoTime GetLeaderLeaseUntil();
+
   // Enables (or disables) compression of messages read from log
   Status EnableCompressionOnCacheMiss(bool enable);
 
@@ -1428,6 +1441,8 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // was not present in the active config of the voters.
   // The counter is reset when this node hears from a valid leader
   int64_t failed_elections_candidate_not_in_config_;
+
+  std::atomic<bool> leader_lease_state_;
 
   Callback<void(const std::string& reason)> mark_dirty_clbk_;
 

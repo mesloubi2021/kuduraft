@@ -424,6 +424,7 @@ RaftConsensus::RaftConsensus(
       last_received_cur_leader_(MinimumOpId()),
       failed_elections_since_stable_leader_(0),
       failed_elections_candidate_not_in_config_(0),
+      leader_lease_state_(LeaderLeaseState::RENEW),
       disable_noop_(false),
       shutdown_(false),
       update_calls_for_tests_(0),
@@ -1077,6 +1078,12 @@ Status RaftConsensus::TransferLeadership(
     return validation_status;
   }
 
+  if (FLAGS_enable_raft_leader_lease) {
+    // Set lease expire time to now so that we can revoke the lease immediately.
+    queue_->SetLeaderLeaseUntil(MonoTime::Now());
+    SetLeaseRenewStateUnlocked(LeaderLeaseState::REVOKE);
+  }
+
   return BeginLeaderTransferPeriodUnlocked(
       new_leader_uuid, filter_fn, election_ctx);
 }
@@ -1158,6 +1165,10 @@ Status RaftConsensus::CancelTransferLeadership() {
   return Status::OK();
 }
 
+MonoTime RaftConsensus::GetLeaderLeaseUntil() {
+  return queue_->GetLeaderLeaseUntil();
+}
+
 Status RaftConsensus::BeginLeaderTransferPeriodUnlocked(
     const boost::optional<string>& successor_uuid,
     const std::function<bool(const kudu::consensus::RaftPeerPB&)>& filter_fn,
@@ -1173,6 +1184,13 @@ Status RaftConsensus::BeginLeaderTransferPeriodUnlocked(
       successor_uuid, filter_fn, election_ctx.TransferContext());
 
   transfer_period_timer_->Start();
+
+  if (FLAGS_enable_raft_leader_lease) {
+    // Revoke for Leader lease here
+    peer_manager_->SignalRequest(
+        /*force_if_queue_empty*/ true, IsLeaderLeaseSetForRevoke());
+  }
+
   return Status::OK();
 }
 
@@ -4466,6 +4484,15 @@ MonoDelta RaftConsensus::MinimumElectionTimeout() const {
   int32_t failure_timeout = FLAGS_leader_failure_max_missed_heartbeat_periods *
       FLAGS_raft_heartbeat_interval_ms;
   return MonoDelta::FromMilliseconds(failure_timeout);
+}
+
+Status RaftConsensus::SetLeaseRenewStateUnlocked(LeaderLeaseState lease_state) {
+  leader_lease_state_ = lease_state;
+  return Status::OK();
+}
+
+bool RaftConsensus::IsLeaderLeaseSetForRevoke() const {
+  return leader_lease_state_ == LeaderLeaseState::REVOKE;
 }
 
 MonoDelta RaftConsensus::MinimumElectionTimeoutWithBan() {

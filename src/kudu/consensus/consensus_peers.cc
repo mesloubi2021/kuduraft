@@ -110,6 +110,10 @@ TAG_FLAG(raft_proxy_max_hops, advanced);
 
 DECLARE_int32(raft_heartbeat_interval_ms);
 
+DECLARE_bool(enable_raft_leader_lease);
+
+DECLARE_int32(raft_leader_lease_interval_ms);
+
 DEFINE_int32(
     proxy_batch_duration_ms,
     0,
@@ -208,7 +212,10 @@ Status Peer::Init() {
   return Status::OK();
 }
 
-Status Peer::SignalRequest(bool even_if_queue_empty, bool from_heartbeater) {
+Status Peer::SignalRequest(
+    bool even_if_queue_empty,
+    bool from_heartbeater,
+    bool is_leader_lease_revoke) {
   // Only allow one request at a time. No sense waking up the
   // raft thread pool if the task will just abort anyway.
   //
@@ -235,12 +242,15 @@ Status Peer::SignalRequest(bool even_if_queue_empty, bool from_heartbeater) {
   // Capture a weak_ptr reference into the submitted functor so that we can
   // safely handle the functor outliving its peer.
   weak_ptr<Peer> w_this = shared_from_this();
-  RETURN_NOT_OK(raft_pool_token_->SubmitFunc(
-      [even_if_queue_empty, from_heartbeater, w_this]() {
-        if (auto p = w_this.lock()) {
-          p->SendNextRequest(even_if_queue_empty, from_heartbeater);
-        }
-      }));
+  RETURN_NOT_OK(raft_pool_token_->SubmitFunc([even_if_queue_empty,
+                                              from_heartbeater,
+                                              is_leader_lease_revoke,
+                                              w_this]() {
+    if (auto p = w_this.lock()) {
+      p->SendNextRequest(
+          even_if_queue_empty, from_heartbeater, is_leader_lease_revoke);
+    }
+  }));
   return Status::OK();
 }
 
@@ -267,7 +277,10 @@ bool Peer::ProxyBatchDurationHasPassed() {
   return cached_is_peer_proxied_ != 1 || has_duration_passed;
 }
 
-void Peer::SendNextRequest(bool even_if_queue_empty, bool from_heartbeater) {
+void Peer::SendNextRequest(
+    bool even_if_queue_empty,
+    bool from_heartbeater,
+    bool is_leader_lease_revoke) {
   std::unique_lock<simple_spinlock> l(peer_lock_);
 
   if (PREDICT_FALSE(closed_)) {
@@ -380,6 +393,15 @@ void Peer::SendNextRequest(bool even_if_queue_empty, bool from_heartbeater) {
   request_.set_tablet_id(tablet_id_);
   request_.set_caller_uuid(leader_uuid_);
   request_.set_dest_uuid(peer_pb_.permanent_uuid());
+
+  if (FLAGS_enable_raft_leader_lease) {
+    bool is_noop_request =
+        request_.ops_size() == 1 && request_.ops(0).op_type() == NO_OP;
+    int32_t lease_duration = is_leader_lease_revoke && !is_noop_request
+        ? 0 /* For Lease revoke by old leader */
+        : FLAGS_raft_leader_lease_interval_ms;
+    request_.set_requested_lease_duration(lease_duration);
+  }
 
   bool req_has_ops =
       request_.ops_size() > 0 || (commit_index_after > commit_index_before);

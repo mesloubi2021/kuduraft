@@ -56,7 +56,9 @@ class PeerManager {
 
   // Signals all peers of the current configuration that there is a new request
   // pending.
-  void SignalRequest(bool force_if_queue_empty = false);
+  void SignalRequest(
+      bool force_if_queue_empty = false,
+      bool is_leader_lease_revoke = false);
 
   // Start an election on the peer with UUID 'uuid'.
   Status StartElection(

@@ -584,9 +584,7 @@ class PeerMessageQueue {
   Status GetQuorumHealth(QuorumHealth* health);
 
   // Gets the Leader Lease timestamp
-  MonoTime GetLeaderLeaseUntil() {
-    return leader_lease_until_;
-  }
+  MonoTime GetLeaderLeaseUntil();
 
   // Sets the Leader lease until timestamp
   void SetLeaderLeaseUntil(MonoTime update) {
