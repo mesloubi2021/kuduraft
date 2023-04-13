@@ -2715,7 +2715,11 @@ Status RaftConsensus::RequestVote(
 
   if (request->mode() != ELECT_EVEN_IF_LEADER_IS_ALIVE &&
       request->mode() != MOCK_ELECTION &&
-      MonoTime::Now() < withhold_votes_until_) {
+      (FLAGS_enable_raft_leader_lease
+           ? MonoTime::Now() <
+               std::max<MonoTime>(
+                   withhold_votes_until_, queue_->GetLeaderLeaseUntil())
+           : MonoTime::Now() < withhold_votes_until_)) {
     return RequestVoteRespondLeaderIsAlive(request, hostname_port, response);
   }
 
