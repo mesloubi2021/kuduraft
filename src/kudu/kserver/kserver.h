@@ -47,6 +47,8 @@ class KuduServer : public server::ServerBase {
       const server::ServerBaseOptions& options,
       const std::string& metric_namespace);
 
+  virtual ~KuduServer() override {}
+
   // Finalizes the initialization of a KuduServer by performing any member
   // initializations that may fail.
   virtual Status Init() override;

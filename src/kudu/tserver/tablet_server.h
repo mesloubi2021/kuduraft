@@ -63,7 +63,7 @@ class TabletServer : public kserver::KuduServer {
       const std::function<std::unique_ptr<TabletManagerIf>(TabletServer&)>&
           factory);
 
-  ~TabletServer();
+  virtual ~TabletServer() override;
 
   // Initializes the tablet server, including the bootstrapping of all
   // existing tablets.
