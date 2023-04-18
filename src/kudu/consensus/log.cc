@@ -299,7 +299,7 @@ class Log::AppendThread {
 
   // Pool with a single thread, which handles shutting down the thread
   // when idle.
-  gscoped_ptr<ThreadPool> append_pool_;
+  std::unique_ptr<ThreadPool> append_pool_;
 };
 
 Log::AppendThread::AppendThread(Log* log) : log_(log) {}

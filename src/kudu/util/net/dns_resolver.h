@@ -17,9 +17,9 @@
 #ifndef KUDU_UTIL_NET_DNS_RESOLVER_H
 #define KUDU_UTIL_NET_DNS_RESOLVER_H
 
+#include <memory>
 #include <vector>
 
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/macros.h"
 #include "kudu/util/status_callback.h"
 
@@ -54,7 +54,7 @@ class DnsResolver {
       const StatusCallback& cb);
 
  private:
-  gscoped_ptr<ThreadPool> pool_;
+  std::unique_ptr<ThreadPool> pool_;
 
   DISALLOW_COPY_AND_ASSIGN(DnsResolver);
 };

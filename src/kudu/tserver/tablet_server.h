@@ -23,7 +23,6 @@
 #include <vector>
 
 #include "kudu/gutil/atomicops.h"
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/macros.h"
 #include "kudu/kserver/kserver.h"
 #include "kudu/tserver/tablet_server_options.h"
@@ -150,7 +149,7 @@ class TabletServer : public kserver::KuduServer {
 #endif
 
   // For initializing the catalog manager.
-  gscoped_ptr<ThreadPool> init_pool_;
+  std::unique_ptr<ThreadPool> init_pool_;
 
   // The options passed at construction time.
   const TabletServerOptions opts_;

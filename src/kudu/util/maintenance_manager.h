@@ -335,7 +335,7 @@ class MaintenanceManager
   OpMapTy ops_; // registered operations
   Mutex lock_;
   scoped_refptr<kudu::Thread> monitor_thread_;
-  gscoped_ptr<ThreadPool> thread_pool_;
+  std::unique_ptr<ThreadPool> thread_pool_;
   ConditionVariable cond_;
   bool shutdown_;
   int32_t polling_interval_ms_;

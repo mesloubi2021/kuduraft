@@ -492,7 +492,7 @@ class NoOpTestPeerProxyFactory : public PeerProxyFactory {
   }
 
  private:
-  gscoped_ptr<ThreadPool> pool_;
+  std::unique_ptr<ThreadPool> pool_;
   std::shared_ptr<rpc::Messenger> messenger_;
 };
 
@@ -733,7 +733,7 @@ class LocalTestPeerProxyFactory : public PeerProxyFactory {
   }
 
  private:
-  gscoped_ptr<ThreadPool> pool_;
+  std::unique_ptr<ThreadPool> pool_;
   std::shared_ptr<rpc::Messenger> messenger_;
   TestPeerMapManager* const peers_;
   // NOTE: There is no need to delete this on the dctor because proxies are
@@ -842,7 +842,7 @@ class TestTransactionFactory : public ConsensusRoundHandler {
   }
 
  private:
-  gscoped_ptr<ThreadPool> pool_;
+  std::unique_ptr<ThreadPool> pool_;
   RaftConsensus* consensus_;
   log::Log* log_;
 };

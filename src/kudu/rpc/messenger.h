@@ -445,8 +445,8 @@ class Messenger {
 
   // Separate client and server negotiation pools to avoid possibility of
   // distributed deadlock. See KUDU-2041.
-  gscoped_ptr<ThreadPool> client_negotiation_pool_;
-  gscoped_ptr<ThreadPool> server_negotiation_pool_;
+  std::unique_ptr<ThreadPool> client_negotiation_pool_;
+  std::unique_ptr<ThreadPool> server_negotiation_pool_;
 
   std::unique_ptr<security::TlsContext> tls_context_;
 

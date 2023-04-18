@@ -490,7 +490,7 @@ class Log : public RefCountedThreadSafe<Log> {
   // Thread writing to the log
   gscoped_ptr<AppendThread> append_thread_;
 
-  gscoped_ptr<ThreadPool> allocation_pool_;
+  std::unique_ptr<ThreadPool> allocation_pool_;
 
   // If true, sync on all appends.
   bool force_sync_all_;
