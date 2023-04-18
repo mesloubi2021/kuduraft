@@ -40,7 +40,6 @@
 #include "kudu/consensus/consensus.proxy.h"
 #include "kudu/consensus/metadata.pb.h"
 #include "kudu/gutil/basictypes.h"
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/map-util.h"
 #include "kudu/gutil/stl_util.h"
 #include "kudu/gutil/strings/substitute.h"
@@ -364,7 +363,7 @@ class ChecksumStepper {
   }
 
   void HandleResponse() {
-    gscoped_ptr<ChecksumStepper> deleter(this);
+    std::unique_ptr<ChecksumStepper> deleter(this);
     Status s = rpc_.status();
     if (s.ok() && resp_.has_error()) {
       s = StatusFromPB(resp_.error().status());
@@ -430,7 +429,7 @@ class ChecksumStepper {
         LOG(FATAL) << "Unknown type";
         break;
     }
-    gscoped_ptr<ChecksumCallbackHandler> handler(
+    std::unique_ptr<ChecksumCallbackHandler> handler(
         new ChecksumCallbackHandler(this));
     rpc::ResponseCallback cb =
         boost::bind(&ChecksumCallbackHandler::Run, handler.get());
@@ -465,7 +464,7 @@ void RemoteKsckTabletServer::RunTabletChecksumScanAsync(
     const Schema& schema,
     const KsckChecksumOptions& options,
     shared_ptr<KsckChecksumManager> manager) {
-  gscoped_ptr<ChecksumStepper> stepper(new ChecksumStepper(
+  std::unique_ptr<ChecksumStepper> stepper(new ChecksumStepper(
       tablet_id, schema, uuid(), options, manager, ts_proxy_));
   stepper->Start();
   ignore_result(stepper.release()); // Deletes self on callback.

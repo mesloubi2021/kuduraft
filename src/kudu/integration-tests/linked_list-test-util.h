@@ -247,7 +247,7 @@ class LinkedListChainGenerator {
     int64_t this_key = (Rand64() << 16) | chain_idx_;
     int64_t ts = GetCurrentTimeMicros();
 
-    gscoped_ptr<client::KuduInsert> insert(table->NewInsert());
+    std::unique_ptr<client::KuduInsert> insert(table->NewInsert());
     CHECK_OK(insert->mutable_row()->SetInt64(kKeyColumnName, this_key));
     CHECK_OK(insert->mutable_row()->SetInt64(kInsertTsColumnName, ts));
     CHECK_OK(insert->mutable_row()->SetInt64(kLinkColumnName, prev_key_));
@@ -493,7 +493,7 @@ std::vector<int64_t> LinkedListTester::GenerateSplitInts() {
 }
 
 Status LinkedListTester::CreateLinkedListTable() {
-  gscoped_ptr<client::KuduTableCreator> table_creator(
+  std::unique_ptr<client::KuduTableCreator> table_creator(
       client_->NewTableCreator());
   RETURN_NOT_OK_PREPEND(
       table_creator->table_name(table_name_)
@@ -689,7 +689,7 @@ Status LinkedListTester::VerifyLinkedListRemote(
     if (snapshot_timestamp != kSnapshotAtNow && !cb_called) {
       client::KuduTabletServer* kts_ptr;
       scanner.GetCurrentServer(&kts_ptr);
-      gscoped_ptr<client::KuduTabletServer> kts(kts_ptr);
+      std::unique_ptr<client::KuduTabletServer> kts(kts_ptr);
       const std::string down_ts = kts->uuid();
       LOG(INFO) << "Calling callback on tserver " << down_ts;
       RETURN_NOT_OK(cb(down_ts));
@@ -736,7 +736,7 @@ Status LinkedListTester::VerifyLinkedListLocal(
   const Schema* tablet_schema = tablet->schema();
   // Cannot use schemas with col indexes in a scan (assertions fire).
   Schema projection(tablet_schema->columns(), tablet_schema->num_key_columns());
-  gscoped_ptr<RowwiseIterator> iter;
+  std::unique_ptr<RowwiseIterator> iter;
   RETURN_NOT_OK_PREPEND(
       tablet->NewRowIterator(projection, &iter),
       "Cannot create new row iterator");

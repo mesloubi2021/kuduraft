@@ -34,7 +34,6 @@
 #include "kudu/client/shared_ptr.h"
 #include "kudu/client/write_op.h"
 #include "kudu/common/partial_row.h"
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/macros.h"
 #include "kudu/gutil/port.h"
 #include "kudu/gutil/ref_counted.h"
@@ -115,7 +114,7 @@ class RemoteKsckTest : public KuduTest {
     ASSERT_OK(mini_cluster_->CreateClient(nullptr, &client_));
 
     // Create one table.
-    gscoped_ptr<KuduTableCreator> table_creator(client_->NewTableCreator());
+    std::unique_ptr<KuduTableCreator> table_creator(client_->NewTableCreator());
     ASSERT_OK(table_creator->table_name(kTableName)
                   .schema(&schema_)
                   .num_replicas(3)
@@ -165,7 +164,7 @@ class RemoteKsckTest : public KuduTest {
     }
 
     for (uint64_t i = 0; continue_writing.Load(); i++) {
-      gscoped_ptr<KuduInsert> insert(table->NewInsert());
+      std::unique_ptr<KuduInsert> insert(table->NewInsert());
       GenerateDataForRow(table->schema(), i, &random_, insert->mutable_row());
       status = session->Apply(insert.release());
       if (!status.ok()) {

@@ -32,7 +32,6 @@
 #include <glog/logging.h>
 
 #include "kudu/consensus/quorum_util.h"
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/map-util.h"
 #include "kudu/gutil/port.h"
 #include "kudu/gutil/strings/join.h"
@@ -326,7 +325,7 @@ Status Ksck::FetchInfoFromTabletServers() {
     return Status::NotFound("No tablet servers found");
   }
 
-  gscoped_ptr<ThreadPool> pool;
+  std::unique_ptr<ThreadPool> pool;
   RETURN_NOT_OK(ThreadPoolBuilder("ksck-fetch")
                     .set_max_threads(FLAGS_fetch_replica_info_concurrency)
                     .Build(&pool));

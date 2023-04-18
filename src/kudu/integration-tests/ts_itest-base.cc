@@ -73,6 +73,7 @@ using kudu::itest::TServerDetails;
 using std::pair;
 using std::set;
 using std::string;
+using std::unique_ptr;
 using std::unordered_multimap;
 using std::unordered_set;
 using std::vector;
@@ -549,7 +550,7 @@ void TabletServerIntegrationTestBase::CreateTable(const string& table_id) {
   // The tests here make extensive use of server schemas, but we need
   // a client schema to create the table.
   client::KuduSchema client_schema(client::KuduSchemaFromSchema(schema_));
-  gscoped_ptr<client::KuduTableCreator> table_creator(
+  unique_ptr<client::KuduTableCreator> table_creator(
       client_->NewTableCreator());
   ASSERT_OK(table_creator->table_name(table_id)
                 .schema(&client_schema)

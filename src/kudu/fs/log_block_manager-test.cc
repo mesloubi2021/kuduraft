@@ -46,7 +46,6 @@
 #include "kudu/gutil/bind.h"
 #include "kudu/gutil/bind_helpers.h"
 #include "kudu/gutil/casts.h"
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/map-util.h"
 #include "kudu/gutil/ref_counted.h"
 #include "kudu/gutil/strings/strip.h"
@@ -777,7 +776,7 @@ TEST_F(LogBlockManagerTest, TestMetadataTruncation) {
   uint64_t latest_meta_size;
   ASSERT_OK(env_->GetFileSize(metadata_path, &latest_meta_size));
   ASSERT_OK(env_->NewRandomAccessFile(metadata_path, &meta_file));
-  gscoped_ptr<uint8_t[]> scratch(new uint8_t[latest_meta_size]);
+  std::unique_ptr<uint8_t[]> scratch(new uint8_t[latest_meta_size]);
   Slice result(scratch.get(), latest_meta_size);
   ASSERT_OK(meta_file->Read(0, result));
   string data = result.ToString();

@@ -29,7 +29,6 @@
 #include "kudu/client/value.h"
 #include "kudu/client/write_op.h"
 #include "kudu/common/partial_row.h"
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/integration-tests/external_mini_cluster-itest-base.h"
 #include "kudu/util/decimal_util.h"
 #include "kudu/util/int128.h"
@@ -37,6 +36,7 @@
 #include "kudu/util/test_macros.h"
 
 using std::string;
+using std::unique_ptr;
 using std::vector;
 
 namespace kudu {
@@ -101,7 +101,7 @@ TEST_F(DecimalItest, TestDecimalTypes) {
   ASSERT_OK(builder.Build(&schema));
 
   // Create Table
-  gscoped_ptr<client::KuduTableCreator> table_creator(
+  unique_ptr<client::KuduTableCreator> table_creator(
       client_->NewTableCreator());
   ASSERT_OK(table_creator->table_name(kTableName)
                 .schema(&schema)
@@ -112,7 +112,7 @@ TEST_F(DecimalItest, TestDecimalTypes) {
   ASSERT_OK(client_->OpenTable(kTableName, &table));
 
   // Alter Default Value
-  gscoped_ptr<client::KuduTableAlterer> table_alterer(
+  unique_ptr<client::KuduTableAlterer> table_alterer(
       client_->NewTableAlterer(kTableName));
   table_alterer->AlterColumn("alteredDefault")
       ->Default(KuduValue::FromDecimal(456789, 2));

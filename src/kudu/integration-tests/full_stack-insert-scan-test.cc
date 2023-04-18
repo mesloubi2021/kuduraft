@@ -38,7 +38,6 @@
 #include "kudu/client/write_op.h"
 #include "kudu/codegen/compilation_manager.h"
 #include "kudu/common/partial_row.h"
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/port.h"
 #include "kudu/gutil/ref_counted.h"
 #include "kudu/gutil/strings/split.h"
@@ -154,7 +153,7 @@ class FullStackInsertScanTest : public KuduTest {
     ASSERT_GE(kNumInsertClients, 0);
     ASSERT_GE(kNumInsertsPerClient, 0);
     NO_FATALS(InitCluster());
-    gscoped_ptr<KuduTableCreator> table_creator(client_->NewTableCreator());
+    unique_ptr<KuduTableCreator> table_creator(client_->NewTableCreator());
     ASSERT_OK(table_creator->table_name(kTableName)
                   .schema(&schema_)
                   .set_range_partition_columns({"key"})
@@ -395,7 +394,7 @@ void FullStackInsertScanTest::InsertRows(
   char randstr[kRandomStrMaxLength + 1];
   // Insert in the id's key range
   for (int64_t key = start; key < end; ++key) {
-    gscoped_ptr<KuduInsert> insert(table->NewInsert());
+    unique_ptr<KuduInsert> insert(table->NewInsert());
     RandomRow(&rng, insert->mutable_row(), randstr, key, id);
     CHECK_OK(session->Apply(insert.release()));
 

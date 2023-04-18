@@ -49,7 +49,6 @@
 #include "kudu/fs/fs.pb.h"
 #include "kudu/fs/fs_manager.h"
 #include "kudu/fs/fs_report.h"
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/map-util.h"
 #include "kudu/gutil/ref_counted.h"
 #include "kudu/gutil/strings/ascii_ctype.h"
@@ -275,7 +274,7 @@ Status DumpCFile(const RunnerContext& context) {
   }
 
   if (FLAGS_print_rows) {
-    gscoped_ptr<CFileIterator> it;
+    unique_ptr<CFileIterator> it;
     RETURN_NOT_OK(
         reader->NewIterator(&it, CFileReader::DONT_CACHE_BLOCK, nullptr));
     RETURN_NOT_OK(it->SeekToFirst());
@@ -647,7 +646,7 @@ string FormatCFileKeyMetadata(
   }
 
   Arena arena(1024);
-  gscoped_ptr<EncodedKey> key;
+  unique_ptr<EncodedKey> key;
   CHECK_OK(
       EncodedKey::DecodeEncodedString(tablet.schema(), &arena, value, &key));
   return key->Stringify(tablet.schema());

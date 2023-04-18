@@ -37,7 +37,6 @@
 #include "kudu/common/partial_row.h"
 #include "kudu/common/schema.h"
 #include "kudu/common/wire_protocol-test-util.h"
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/mathlimits.h"
 #include "kudu/gutil/ref_counted.h"
 #include "kudu/integration-tests/cluster_itest_util.h"
@@ -59,6 +58,7 @@
 using std::multimap;
 using std::set;
 using std::string;
+using std::unique_ptr;
 using std::vector;
 
 METRIC_DECLARE_entity(server);
@@ -91,7 +91,7 @@ TEST_F(CreateTableITest, TestCreateWhenMajorityOfReplicasFailCreation) {
   // Try to create a single-tablet table.
   // This won't succeed because we can't create enough replicas to get
   // a quorum.
-  gscoped_ptr<client::KuduTableCreator> table_creator(
+  unique_ptr<client::KuduTableCreator> table_creator(
       client_->NewTableCreator());
   client::KuduSchema client_schema(
       client::KuduSchemaFromSchema(GetSimpleTestSchema()));
@@ -160,7 +160,7 @@ TEST_F(CreateTableITest, TestSpreadReplicasEvenly) {
   const int kNumTablets = 20;
   NO_FATALS(StartCluster({}, {}, kNumServers));
 
-  gscoped_ptr<client::KuduTableCreator> table_creator(
+  unique_ptr<client::KuduTableCreator> table_creator(
       client_->NewTableCreator());
   client::KuduSchema client_schema(
       client::KuduSchemaFromSchema(GetSimpleTestSchema()));
@@ -230,7 +230,7 @@ static void LookUpRandomKeysLoop(
     AtomicBool* quit) {
   Schema schema(GetSimpleTestSchema());
   client::KuduSchema client_schema(client::KuduSchemaFromSchema(schema));
-  gscoped_ptr<KuduPartialRow> r(client_schema.NewRow());
+  unique_ptr<KuduPartialRow> r(client_schema.NewRow());
 
   while (!quit->Load()) {
     master::GetTableLocationsRequestPB req;
@@ -297,7 +297,7 @@ TEST_F(CreateTableITest, TestCreateTableWithDeadTServers) {
 
   Schema schema(GetSimpleTestSchema());
   client::KuduSchema client_schema(client::KuduSchemaFromSchema(schema));
-  gscoped_ptr<client::KuduTableCreator> table_creator(
+  unique_ptr<client::KuduTableCreator> table_creator(
       client_->NewTableCreator());
 
   // Don't bother waiting for table creation to finish; it'll never happen

@@ -45,7 +45,6 @@
 
 #include "kudu/client/shared_ptr.h"
 #include "kudu/common/wire_protocol.pb.h"
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/port.h"
 #include "kudu/integration-tests/cluster_itest_util.h"
 #include "kudu/integration-tests/linked_list-test-util.h"
@@ -89,6 +88,7 @@ using kudu::itest::WaitForReplicasReportedToMaster;
 using kudu::itest::WaitForServersToAgree;
 using kudu::master::VOTER_REPLICA;
 using std::string;
+using std::unique_ptr;
 using std::vector;
 
 namespace kudu {
@@ -166,7 +166,7 @@ class LinkedListTest : public tserver::TabletServerIntegrationTestBase {
 
  protected:
   shared_ptr<client::KuduClient> client_;
-  gscoped_ptr<LinkedListTester> tester_;
+  unique_ptr<LinkedListTester> tester_;
 };
 
 TEST_F(LinkedListTest, TestLoadAndVerify) {

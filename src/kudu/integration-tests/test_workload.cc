@@ -30,7 +30,6 @@
 #include "kudu/client/write_op.h"
 #include "kudu/common/partial_row.h"
 #include "kudu/common/wire_protocol-test-util.h"
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/mathlimits.h"
 #include "kudu/gutil/port.h"
 #include "kudu/gutil/stl_util.h"
@@ -142,12 +141,12 @@ void TestWorkload::WriteThread() {
     int inserted = 0;
     for (int i = 0; i < write_batch_size_; i++) {
       if (write_pattern_ == UPDATE_ONE_ROW) {
-        gscoped_ptr<KuduUpdate> update(table->NewUpdate());
+        std::unique_ptr<KuduUpdate> update(table->NewUpdate());
         KuduPartialRow* row = update->mutable_row();
         tools::GenerateDataForRow(schema_, 0, &rng_, row);
         CHECK_OK(session->Apply(update.release()));
       } else {
-        gscoped_ptr<KuduInsert> insert(table->NewInsert());
+        std::unique_ptr<KuduInsert> insert(table->NewInsert());
         KuduPartialRow* row = insert->mutable_row();
         int32_t key;
         if (write_pattern_ == INSERT_SEQUENTIAL_ROWS) {
@@ -273,7 +272,7 @@ void TestWorkload::Setup() {
     }
 
     // Create the table.
-    gscoped_ptr<KuduTableCreator> table_creator(client_->NewTableCreator());
+    std::unique_ptr<KuduTableCreator> table_creator(client_->NewTableCreator());
     Status s = table_creator->table_name(table_name_)
                    .schema(&schema_)
                    .num_replicas(num_replicas_)

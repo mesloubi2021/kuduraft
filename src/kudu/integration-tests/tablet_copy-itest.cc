@@ -48,7 +48,6 @@
 #include "kudu/consensus/opid_util.h"
 #include "kudu/fs/fs_manager.h"
 #include "kudu/gutil/basictypes.h"
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/map-util.h"
 #include "kudu/gutil/ref_counted.h"
 #include "kudu/gutil/strings/substitute.h"
@@ -135,6 +134,7 @@ using std::mutex;
 using std::set;
 using std::string;
 using std::thread;
+using std::unique_ptr;
 using std::unordered_map;
 using std::vector;
 using strings::Substitute;
@@ -544,7 +544,7 @@ TEST_F(TabletCopyITest, TestDeleteTabletDuringTabletCopy) {
   ASSERT_OK(env_->CreateDir(testbase));
   opts.wal_root = JoinPathSegments(testbase, "wals");
   opts.data_roots.push_back(JoinPathSegments(testbase, "data-0"));
-  gscoped_ptr<FsManager> fs_manager(new FsManager(env_, opts));
+  unique_ptr<FsManager> fs_manager(new FsManager(env_, opts));
   ASSERT_OK(fs_manager->CreateInitialFileSystemLayout());
   ASSERT_OK(fs_manager->Open());
   scoped_refptr<ConsensusMetadataManager> cmeta_manager(
@@ -694,7 +694,7 @@ TEST_F(TabletCopyITest, TestConcurrentTabletCopys) {
         0, std::numeric_limits<int32_t>::max() / kNumTablets * (i + 1)));
     splits.push_back(row);
   }
-  gscoped_ptr<KuduTableCreator> table_creator(client_->NewTableCreator());
+  unique_ptr<KuduTableCreator> table_creator(client_->NewTableCreator());
   ASSERT_OK(table_creator->table_name(TestWorkload::kDefaultTableName)
                 .split_rows(splits)
                 .schema(&client_schema)

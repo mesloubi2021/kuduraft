@@ -36,7 +36,6 @@
 #include "kudu/common/common.pb.h"
 #include "kudu/common/partial_row.h"
 #include "kudu/common/types.h"
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/mathlimits.h"
 #include "kudu/gutil/port.h"
 #include "kudu/gutil/stringprintf.h"
@@ -58,6 +57,7 @@ DEFINE_int32(
     "The number of rows to be inserted into each tablet");
 
 using std::string;
+using std::unique_ptr;
 using std::vector;
 
 namespace kudu {
@@ -351,7 +351,7 @@ class AllTypesItest : public KuduTest {
     CreateAllTypesSchema();
     vector<const KuduPartialRow*> split_rows =
         setup_.GenerateSplitRows(schema_);
-    gscoped_ptr<client::KuduTableCreator> table_creator(
+    unique_ptr<client::KuduTableCreator> table_creator(
         client_->NewTableCreator());
 
     for (const KuduPartialRow* row : split_rows) {
@@ -567,7 +567,7 @@ class AllTypesItest : public KuduTest {
   KuduSchema schema_;
   vector<KuduPartialRow> split_rows_;
   shared_ptr<KuduClient> client_;
-  gscoped_ptr<ExternalMiniCluster> cluster_;
+  unique_ptr<ExternalMiniCluster> cluster_;
   shared_ptr<KuduTable> table_;
 };
 

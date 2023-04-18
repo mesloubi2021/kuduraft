@@ -38,7 +38,6 @@
 #include "kudu/fs/log_block_manager.h"
 #include "kudu/gutil/bind.h"
 #include "kudu/gutil/bind_helpers.h"
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/map-util.h"
 #include "kudu/gutil/port.h"
 #include "kudu/gutil/stringprintf.h"
@@ -356,7 +355,7 @@ Status FsManager::Open(FsReport* report) {
     if (!root.status.ok()) {
       continue;
     }
-    gscoped_ptr<InstanceMetadataPB> pb(new InstanceMetadataPB);
+    unique_ptr<InstanceMetadataPB> pb(new InstanceMetadataPB);
     Status s = pb_util::ReadPBContainerFromPath(
         env_, GetInstanceMetadataPath(root.path), pb.get());
     if (PREDICT_FALSE(!s.ok())) {

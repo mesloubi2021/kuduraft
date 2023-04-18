@@ -33,7 +33,6 @@
 #include "kudu/client/scan_predicate.h"
 #include "kudu/client/shared_ptr.h"
 #include "kudu/client/value.h"
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/port.h"
 #include "kudu/gutil/ref_counted.h"
 #include "kudu/gutil/strings/join.h"
@@ -57,6 +56,7 @@ METRIC_DECLARE_counter(follower_memory_pressure_rejections);
 
 using std::set;
 using std::string;
+using std::unique_ptr;
 using std::vector;
 using strings::Substitute;
 
@@ -115,7 +115,7 @@ class ClientStressTest : public KuduTest {
     return ExternalMiniClusterOptions();
   }
 
-  gscoped_ptr<ExternalMiniCluster> cluster_;
+  unique_ptr<ExternalMiniCluster> cluster_;
 };
 
 // Stress test a case where most of the operations are expected to time out.

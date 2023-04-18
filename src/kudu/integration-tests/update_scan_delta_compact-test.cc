@@ -34,7 +34,6 @@
 #include "kudu/client/shared_ptr.h"
 #include "kudu/client/write_op.h"
 #include "kudu/common/partial_row.h"
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/port.h"
 #include "kudu/gutil/ref_counted.h"
 #include "kudu/gutil/strings/strcat.h"
@@ -70,6 +69,7 @@ DEFINE_int32(
     "How long this test runs for, after inserting the base data, in seconds");
 
 using std::string;
+using std::unique_ptr;
 using std::vector;
 
 namespace kudu {
@@ -114,7 +114,7 @@ class UpdateScanDeltaCompactionTest : public KuduTest {
 
   void CreateTable() {
     ASSERT_NO_FATAL_FAILURE(InitCluster());
-    gscoped_ptr<KuduTableCreator> table_creator(client_->NewTableCreator());
+    unique_ptr<KuduTableCreator> table_creator(client_->NewTableCreator());
     ASSERT_OK(table_creator->table_name(kTableName)
                   .schema(&schema_)
                   .set_range_partition_columns({"key"})
@@ -216,7 +216,7 @@ void UpdateScanDeltaCompactionTest::InsertBaseData() {
 
   LOG_TIMING(INFO, "Insert") {
     for (int64_t key = 0; key < FLAGS_row_count; key++) {
-      gscoped_ptr<KuduInsert> insert(table_->NewInsert());
+      unique_ptr<KuduInsert> insert(table_->NewInsert());
       MakeRow(key, 0, insert->mutable_row());
       ASSERT_OK(session->Apply(insert.release()));
       ASSERT_OK(WaitForLastBatchAndFlush(key, &last_s, &last_s_cb, session));
@@ -287,7 +287,7 @@ void UpdateScanDeltaCompactionTest::UpdateRows(CountDownLatch* stop_latch) {
     LOG_TIMING(INFO, "Update") {
       for (int64_t key = 0; key < FLAGS_row_count && stop_latch->count() > 0;
            key++) {
-        gscoped_ptr<KuduUpdate> update(table_->NewUpdate());
+        unique_ptr<KuduUpdate> update(table_->NewUpdate());
         MakeRow(key, iteration, update->mutable_row());
         CHECK_OK(session->Apply(update.release()));
         CHECK_OK(WaitForLastBatchAndFlush(key, &last_s, &last_s_cb, session));

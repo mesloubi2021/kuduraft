@@ -52,7 +52,6 @@
 #include "kudu/fs/fs.pb.h"
 #include "kudu/fs/fs_manager.h"
 #include "kudu/gutil/basictypes.h"
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/ref_counted.h"
 #include "kudu/gutil/strings/substitute.h"
 #include "kudu/gutil/strings/util.h"
@@ -210,7 +209,7 @@ TEST_F(TsRecoveryITest, TestTabletRecoveryAfterSegmentDelete) {
     opts.wal_root = ets->wal_dir();
     opts.data_roots = ets->data_dirs();
 
-    gscoped_ptr<FsManager> fs_manager(new FsManager(env_, opts));
+    unique_ptr<FsManager> fs_manager(new FsManager(env_, opts));
 
     ASSERT_OK(fs_manager->Open());
 
@@ -637,7 +636,7 @@ TEST_P(TsRecoveryITestDeathTest, TestRecoverFromOpIdOverflow) {
     FsManagerOpts opts;
     opts.wal_root = ets->wal_dir();
     opts.data_roots = ets->data_dirs();
-    gscoped_ptr<FsManager> fs_manager(new FsManager(env_, opts));
+    unique_ptr<FsManager> fs_manager(new FsManager(env_, opts));
     ASSERT_OK(fs_manager->Open());
     scoped_refptr<ConsensusMetadataManager> cmeta_manager(
         new ConsensusMetadataManager(fs_manager.get()));
@@ -810,7 +809,7 @@ class UpdaterThreads {
       if (i == 0)
         continue;
 
-      gscoped_ptr<KuduUpdate> up(table_->NewUpdate());
+      unique_ptr<KuduUpdate> up(table_->NewUpdate());
       CHECK_OK(
           up->mutable_row()->SetInt32("key", IntToKey(rng.Uniform(i) + 1)));
       CHECK_OK(up->mutable_row()->SetInt32("int_val", rng.Next32()));
@@ -901,7 +900,7 @@ TEST_P(Kudu969Test, Test) {
   session->SetTimeoutMillis(1000);
   CHECK_OK(session->SetFlushMode(KuduSession::MANUAL_FLUSH));
   for (int i = 1; ts->IsProcessAlive(); i++) {
-    gscoped_ptr<KuduInsert> ins(table->NewInsert());
+    unique_ptr<KuduInsert> ins(table->NewInsert());
     ASSERT_OK(ins->mutable_row()->SetInt32("key", IntToKey(i)));
     ASSERT_OK(ins->mutable_row()->SetInt32("int_val", i));
     ASSERT_OK(ins->mutable_row()->SetNull("string_val"));

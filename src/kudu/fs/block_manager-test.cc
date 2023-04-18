@@ -43,7 +43,6 @@
 #include "kudu/gutil/basictypes.h"
 #include "kudu/gutil/bind.h"
 #include "kudu/gutil/casts.h"
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/map-util.h"
 #include "kudu/gutil/ref_counted.h"
 #include "kudu/gutil/strings/substitute.h"
@@ -532,7 +531,7 @@ TYPED_TEST(BlockManagerTest, ReadAfterDeleteTest) {
   ASSERT_TRUE(this->bm_->OpenBlock(written_block->id(), nullptr).IsNotFound());
 
   // But we should still be able to read from the opened block.
-  gscoped_ptr<uint8_t[]> scratch(new uint8_t[test_data.length()]);
+  unique_ptr<uint8_t[]> scratch(new uint8_t[test_data.length()]);
   Slice data(scratch.get(), test_data.length());
   ASSERT_OK(read_block->Read(0, data));
   ASSERT_EQ(test_data, data);
@@ -721,7 +720,7 @@ TYPED_TEST(BlockManagerTest, PersistenceTest) {
   // The existing block manager is left open, which proxies for the process
   // having crashed without cleanly shutting down the block manager. The
   // on-disk metadata should still be clean.
-  gscoped_ptr<BlockManager> new_bm(this->CreateBlockManager(
+  unique_ptr<BlockManager> new_bm(this->CreateBlockManager(
       scoped_refptr<MetricEntity>(),
       MemTracker::CreateTracker(-1, "other tracker")));
   ASSERT_OK(new_bm->Open(nullptr));
@@ -736,7 +735,7 @@ TYPED_TEST(BlockManagerTest, PersistenceTest) {
   ASSERT_OK(new_bm->OpenBlock(written_block2->id(), &read_block));
   ASSERT_OK(read_block->Size(&sz));
   ASSERT_EQ(test_data.length(), sz);
-  gscoped_ptr<uint8_t[]> scratch(new uint8_t[test_data.length()]);
+  unique_ptr<uint8_t[]> scratch(new uint8_t[test_data.length()]);
   Slice data(scratch.get(), test_data.length());
   ASSERT_OK(read_block->Read(0, data));
   ASSERT_EQ(test_data, data);
@@ -850,7 +849,7 @@ TYPED_TEST(BlockManagerTest, MetricsTest) {
         (i + 1) * kTestData.length()));
 
     // The read is reflected in total_bytes_read.
-    gscoped_ptr<uint8_t[]> scratch(new uint8_t[kTestData.length()]);
+    unique_ptr<uint8_t[]> scratch(new uint8_t[kTestData.length()]);
     Slice data(scratch.get(), kTestData.length());
     ASSERT_OK(reader->Read(0, data));
     ASSERT_NO_FATAL_FAILURE(CheckMetrics(

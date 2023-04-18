@@ -29,7 +29,6 @@
 #include "kudu/common/schema.h"
 #include "kudu/common/wire_protocol.h"
 #include "kudu/common/wire_protocol.pb.h"
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/ref_counted.h"
 #include "kudu/gutil/strings/substitute.h"
 #include "kudu/master/catalog_manager.h"
@@ -66,6 +65,7 @@ METRIC_DECLARE_counter(rows_updated);
 
 using std::shared_ptr;
 using std::string;
+using std::unique_ptr;
 using std::vector;
 
 namespace kudu {
@@ -208,7 +208,7 @@ class RegistrationTest : public KuduTest {
   }
 
  protected:
-  gscoped_ptr<InternalMiniCluster> cluster_;
+  unique_ptr<InternalMiniCluster> cluster_;
   Schema schema_;
 };
 
