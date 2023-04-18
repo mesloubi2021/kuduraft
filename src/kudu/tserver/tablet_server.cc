@@ -52,6 +52,7 @@
 
 using kudu::rpc::ServiceIf;
 using std::string;
+using std::unique_ptr;
 
 namespace kudu {
 namespace tserver {
@@ -141,7 +142,7 @@ Status TabletServer::Init() {
   // start to Init. This allows us to create a barebones Raft
   // distributed config. We need the service to be here, because
   // Raft::create makes remote GetNodeInstance RPC calls.
-  gscoped_ptr<ServiceIf> consensus_service(
+  unique_ptr<ServiceIf> consensus_service(
       new ConsensusServiceImpl(this, *tablet_manager_));
   RETURN_NOT_OK(RegisterService(std::move(consensus_service)));
   RETURN_NOT_OK(KuduServer::Start());
@@ -175,10 +176,10 @@ Status TabletServer::Start() {
           &TSTabletManager::FailTabletAndScheduleShutdown,
           Unretained(tablet_manager_.get())));
 
-  gscoped_ptr<ServiceIf> ts_service(new TabletServiceImpl(this));
-  gscoped_ptr<ServiceIf> admin_service(new TabletServiceAdminImpl(this));
+  unique_ptr<ServiceIf> ts_service(new TabletServiceImpl(this));
+  unique_ptr<ServiceIf> admin_service(new TabletServiceAdminImpl(this));
 
-  gscoped_ptr<ServiceIf> tablet_copy_service(
+  unique_ptr<ServiceIf> tablet_copy_service(
       new TabletCopyServiceImpl(this, tablet_manager_.get()));
 
   RETURN_NOT_OK(RegisterService(std::move(ts_service)));

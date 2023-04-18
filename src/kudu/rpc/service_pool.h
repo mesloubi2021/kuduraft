@@ -54,7 +54,7 @@ struct RpcMethodInfo;
 class ServicePool : public RpcService {
  public:
   ServicePool(
-      gscoped_ptr<ServiceIf> service,
+      std::unique_ptr<ServiceIf> service,
       const scoped_refptr<MetricEntity>& metric_entity,
       size_t service_queue_length);
   virtual ~ServicePool();
@@ -103,7 +103,7 @@ class ServicePool : public RpcService {
   void RunThread();
   void RejectTooBusy(InboundCall* c);
 
-  gscoped_ptr<ServiceIf> service_;
+  std::unique_ptr<ServiceIf> service_;
   std::vector<scoped_refptr<kudu::Thread>> threads_;
   LifoServiceQueue service_queue_;
   scoped_refptr<Histogram> incoming_queue_time_;

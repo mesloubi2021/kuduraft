@@ -46,6 +46,7 @@
 #include "kudu/util/trace.h"
 
 using std::string;
+using std::unique_ptr;
 using std::vector;
 using strings::Substitute;
 
@@ -78,7 +79,7 @@ namespace kudu {
 namespace rpc {
 
 ServicePool::ServicePool(
-    gscoped_ptr<ServiceIf> service,
+    unique_ptr<ServiceIf> service,
     const scoped_refptr<MetricEntity>& entity,
     size_t service_queue_length)
     : service_(std::move(service)),

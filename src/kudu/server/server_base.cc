@@ -704,7 +704,7 @@ Status ServerBase::DumpServerInfo(const string& path, const string& format)
   return Status::OK();
 }
 
-Status ServerBase::RegisterService(gscoped_ptr<rpc::ServiceIf> rpc_impl) {
+Status ServerBase::RegisterService(unique_ptr<rpc::ServiceIf> rpc_impl) {
   return rpc_server_->RegisterService(std::move(rpc_impl));
 }
 
@@ -783,7 +783,7 @@ Status ServerBase::Start() {
 
 #ifdef FB_DO_NOT_REMOVE
   RETURN_NOT_OK(RegisterService(
-      make_gscoped_ptr<rpc::ServiceIf>(new GenericServiceImpl(this))));
+      std::make_unique<rpc::ServiceIf>(new GenericServiceImpl(this))));
 #endif
 
   RETURN_NOT_OK(rpc_server_->Start());

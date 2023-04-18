@@ -21,7 +21,6 @@
 #include <string>
 
 #include "kudu/consensus/consensus.service.h"
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/port.h"
 #include "kudu/tserver/tserver_admin.service.h"
 

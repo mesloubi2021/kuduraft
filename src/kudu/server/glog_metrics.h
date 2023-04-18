@@ -17,7 +17,8 @@
 #ifndef KUDU_SERVER_GLOG_METRICS_H
 #define KUDU_SERVER_GLOG_METRICS_H
 
-#include "kudu/gutil/gscoped_ptr.h"
+#include <memory>
+
 #include "kudu/gutil/ref_counted.h"
 
 namespace google {
@@ -38,7 +39,7 @@ class ScopedGLogMetrics {
   ~ScopedGLogMetrics();
 
  private:
-  gscoped_ptr<google::LogSink> sink_;
+  std::unique_ptr<google::LogSink> sink_;
 };
 
 // Registers glog-related metrics.

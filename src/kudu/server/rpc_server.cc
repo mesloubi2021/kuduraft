@@ -27,7 +27,6 @@
 #include <glog/logging.h>
 
 #include "kudu/gutil/casts.h"
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/macros.h"
 #include "kudu/gutil/ref_counted.h"
 #include "kudu/gutil/strings/substitute.h"
@@ -46,6 +45,7 @@ using kudu::rpc::AcceptorPool;
 using kudu::rpc::Messenger;
 using std::shared_ptr;
 using std::string;
+using std::unique_ptr;
 using std::vector;
 using strings::Substitute;
 
@@ -162,7 +162,7 @@ Status RpcServer::Init(const shared_ptr<Messenger>& messenger) {
   return Status::OK();
 }
 
-Status RpcServer::RegisterService(gscoped_ptr<rpc::ServiceIf> service) {
+Status RpcServer::RegisterService(unique_ptr<rpc::ServiceIf> service) {
   CHECK(server_state_ == INITIALIZED || server_state_ == BOUND)
       << "bad state: " << server_state_;
   string service_name = service->service_name();

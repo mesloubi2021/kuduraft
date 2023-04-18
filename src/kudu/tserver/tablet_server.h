@@ -162,13 +162,13 @@ class TabletServer : public kserver::KuduServer {
   // Manager for open scanners from clients.
   // This is always non-NULL. It is scoped only to minimize header
   // dependencies.
-  gscoped_ptr<ScannerManager> scanner_manager_;
+  std::unique_ptr<ScannerManager> scanner_manager_;
 
   // Thread responsible for heartbeating to the master.
-  gscoped_ptr<Heartbeater> heartbeater_;
+  std::unique_ptr<Heartbeater> heartbeater_;
 
   // Webserver path handlers
-  gscoped_ptr<TabletServerPathHandlers> path_handlers_;
+  std::unique_ptr<TabletServerPathHandlers> path_handlers_;
 
   // The maintenance manager for this tablet server
   std::shared_ptr<MaintenanceManager> maintenance_manager_;
