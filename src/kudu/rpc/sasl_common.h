@@ -143,7 +143,7 @@ Status SaslEncode(sasl_conn_t* conn, Slice plaintext, Slice* ciphertext)
 Status SaslDecode(sasl_conn_t* conn, Slice ciphertext, Slice* plaintext)
     WARN_UNUSED_RESULT;
 
-// Deleter for sasl_conn_t instances, for use with gscoped_ptr after calling
+// Deleter for sasl_conn_t instances, for use with std::unique_ptr after calling
 // sasl_*_new()
 struct SaslDeleter {
   inline void operator()(sasl_conn_t* conn) {

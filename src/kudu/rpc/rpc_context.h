@@ -23,7 +23,6 @@
 
 #include <glog/logging.h>
 
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/ref_counted.h"
 #include "kudu/rpc/rpc_header.pb.h"
 #include "kudu/util/monotime.h"
@@ -252,8 +251,8 @@ class RpcContext {
  private:
   friend class ResultTracker;
   InboundCall* const call_;
-  const gscoped_ptr<const google::protobuf::Message> request_pb_;
-  const gscoped_ptr<google::protobuf::Message> response_pb_;
+  const std::unique_ptr<const google::protobuf::Message> request_pb_;
+  const std::unique_ptr<google::protobuf::Message> response_pb_;
   scoped_refptr<ResultTracker> result_tracker_;
 };
 

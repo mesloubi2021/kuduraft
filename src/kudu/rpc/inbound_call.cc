@@ -65,7 +65,7 @@ InboundCall::InboundCall(Connection* conn)
 
 InboundCall::~InboundCall() {}
 
-Status InboundCall::ParseFrom(gscoped_ptr<InboundTransfer> transfer) {
+Status InboundCall::ParseFrom(unique_ptr<InboundTransfer> transfer) {
   TRACE_EVENT_FLOW_BEGIN0("rpc", "InboundCall", this);
   TRACE_EVENT0("rpc", "InboundCall::ParseFrom");
   RETURN_NOT_OK(serialization::ParseMessage(
@@ -174,7 +174,7 @@ void InboundCall::Respond(const MessageLite& response, bool is_success) {
   TRACE_TO(trace_, "Queueing $0 response", is_success ? "success" : "failure");
   RecordHandlingCompleted();
   conn_->rpcz_store()->AddCall(this);
-  conn_->QueueResponseForCall(gscoped_ptr<InboundCall>(this));
+  conn_->QueueResponseForCall(unique_ptr<InboundCall>(this));
 }
 
 void InboundCall::SerializeResponseBuffer(

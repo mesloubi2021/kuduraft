@@ -38,7 +38,6 @@
 #include <gtest/gtest.h>
 
 #include "kudu/gutil/atomicops.h"
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/ref_counted.h"
 #include "kudu/gutil/stl_util.h"
 #include "kudu/rpc/messenger.h"
@@ -491,7 +490,7 @@ TEST_F(RpcStubTest, TestDontHandleTimedOutCalls) {
 
   // Send enough sleep calls to occupy the worker threads.
   for (int i = 0; i < n_worker_threads_; i++) {
-    gscoped_ptr<AsyncSleep> sleep(new AsyncSleep);
+    unique_ptr<AsyncSleep> sleep(new AsyncSleep);
     sleep->rpc.set_timeout(MonoDelta::FromSeconds(1));
     sleep->req.set_sleep_micros(1000 * 1000); // 1sec
     p.SleepAsync(

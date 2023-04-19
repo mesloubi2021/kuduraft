@@ -303,7 +303,7 @@ void OutboundCall::CallCallback() {
   }
 }
 
-void OutboundCall::SetResponse(gscoped_ptr<CallResponse> resp) {
+void OutboundCall::SetResponse(unique_ptr<CallResponse> resp) {
   call_response_ = std::move(resp);
   Slice r(call_response_->serialized_response());
 
@@ -527,7 +527,7 @@ Status CallResponse::GetSidecar(int idx, Slice* sidecar) const {
   return Status::OK();
 }
 
-Status CallResponse::ParseFrom(gscoped_ptr<InboundTransfer> transfer) {
+Status CallResponse::ParseFrom(unique_ptr<InboundTransfer> transfer) {
   CHECK(!parsed_);
   RETURN_NOT_OK(serialization::ParseMessage(
       transfer->data(), &header_, &serialized_response_));

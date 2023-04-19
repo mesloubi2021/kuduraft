@@ -39,7 +39,6 @@
 #include <gtest/gtest.h>
 
 #include "kudu/gutil/casts.h"
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/map-util.h"
 #include "kudu/gutil/ref_counted.h"
 #include "kudu/gutil/stl_util.h"
@@ -1457,7 +1456,7 @@ TEST_P(TestRpc, TestCancellationAsync) {
   RpcController controller;
 
   // The payload to be used during the RPC.
-  gscoped_array<uint8_t> payload(new uint8_t[TEST_PAYLOAD_SIZE]);
+  std::unique_ptr<uint8_t[]> payload(new uint8_t[TEST_PAYLOAD_SIZE]);
 
   // Used to generate sleep time between invoking RPC and requesting
   // cancellation.

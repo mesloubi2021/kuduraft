@@ -16,6 +16,7 @@
 // under the License.
 #ifndef KUDU_RPC_SERVICE_H_
 #define KUDU_RPC_SERVICE_H_
+#include <memory>
 
 #include "kudu/gutil/ref_counted.h"
 #include "kudu/util/status.h"
@@ -34,7 +35,7 @@ class RpcService : public RefCountedThreadSafe<RpcService> {
   // Enqueue a call for processing.
   // On failure, the RpcService::QueueInboundCall() implementation is
   // responsible for responding to the client with a failure message.
-  virtual Status QueueInboundCall(gscoped_ptr<InboundCall> call) = 0;
+  virtual Status QueueInboundCall(std::unique_ptr<InboundCall> call) = 0;
 
   virtual RpcMethodInfo* LookupMethod(const RemoteMethod& method) {
     return nullptr;

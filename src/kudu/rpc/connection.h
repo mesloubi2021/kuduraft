@@ -32,7 +32,6 @@
 #include <ev++.h>
 #include <glog/logging.h>
 
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/port.h"
 #include "kudu/gutil/ref_counted.h"
 #include "kudu/rpc/connection_direction.h"
@@ -124,7 +123,7 @@ class Connection : public RefCountedThreadSafe<Connection> {
   // Queue a call response back to the client on the server side.
   //
   // This may be called from a non-reactor thread.
-  void QueueResponseForCall(gscoped_ptr<InboundCall> call);
+  void QueueResponseForCall(std::unique_ptr<InboundCall> call);
 
   // Cancel an outbound call by removing any reference to it by
   // CallAwaitingResponse in 'awaiting_responses_'.
@@ -308,12 +307,12 @@ class Connection : public RefCountedThreadSafe<Connection> {
 
   // An incoming packet has completed transferring on the server side.
   // This parses the call and delivers it into the call queue.
-  void HandleIncomingCall(gscoped_ptr<InboundTransfer> transfer);
+  void HandleIncomingCall(std::unique_ptr<InboundTransfer> transfer);
 
   // An incoming packet has completed on the client side. This parses the
   // call response, looks up the CallAwaitingResponse, and calls the
   // client callback.
-  void HandleCallResponse(gscoped_ptr<InboundTransfer> transfer);
+  void HandleCallResponse(std::unique_ptr<InboundTransfer> transfer);
 
   // The given CallAwaitingResponse has elapsed its user-defined timeout.
   // Set it to Failed.
@@ -322,7 +321,7 @@ class Connection : public RefCountedThreadSafe<Connection> {
   // Queue a transfer for sending on this connection.
   // We will take ownership of the transfer.
   // This must be called from the reactor thread.
-  void QueueOutbound(gscoped_ptr<OutboundTransfer> transfer);
+  void QueueOutbound(std::unique_ptr<OutboundTransfer> transfer);
 
   // Internal test function for injecting cancellation request when 'call'
   // reaches state specified in 'FLAGS_rpc_inject_cancellation_state'.
@@ -352,7 +351,7 @@ class Connection : public RefCountedThreadSafe<Connection> {
   MonoTime last_activity_time_;
 
   // the inbound transfer, if any
-  gscoped_ptr<InboundTransfer> inbound_;
+  std::unique_ptr<InboundTransfer> inbound_;
 
   // notifies us when our socket is writable.
   ev::io write_io_;

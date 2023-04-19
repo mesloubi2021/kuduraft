@@ -29,7 +29,6 @@
 #include <glog/logging.h>
 #include <gtest/gtest_prod.h>
 
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/macros.h"
 #include "kudu/rpc/connection_id.h"
 #include "kudu/rpc/constants.h"
@@ -150,7 +149,7 @@ class OutboundCall {
   bool IsFinished() const;
 
   // Fill in the call response.
-  void SetResponse(gscoped_ptr<CallResponse> resp);
+  void SetResponse(std::unique_ptr<CallResponse> resp);
 
   const std::set<RpcFeatureFlag>& required_rpc_features() const {
     return required_rpc_features_;
@@ -283,7 +282,7 @@ class OutboundCall {
 
   // Once a response has been received for this call, contains that response.
   // Otherwise NULL.
-  gscoped_ptr<CallResponse> call_response_;
+  std::unique_ptr<CallResponse> call_response_;
 
   // All sidecars to be sent with this call.
   std::vector<std::unique_ptr<RpcSidecar>> sidecars_;
@@ -313,7 +312,7 @@ class CallResponse {
 
   // Parse the response received from a call. This must be called before any
   // other methods on this object.
-  Status ParseFrom(gscoped_ptr<InboundTransfer> transfer);
+  Status ParseFrom(std::unique_ptr<InboundTransfer> transfer);
 
   // Return true if the call succeeded.
   bool is_success() const {
@@ -354,7 +353,7 @@ class CallResponse {
 
   // The incoming transfer data - retained because serialized_response_
   // and sidecar_slices_ refer into its data.
-  gscoped_ptr<InboundTransfer> transfer_;
+  std::unique_ptr<InboundTransfer> transfer_;
 
   DISALLOW_COPY_AND_ASSIGN(CallResponse);
 };

@@ -27,7 +27,6 @@
 
 #include <glog/logging.h>
 
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/map-util.h"
 #include "kudu/gutil/port.h"
 #include "kudu/gutil/stl_util.h"
@@ -60,6 +59,7 @@
 using std::make_shared;
 using std::shared_ptr;
 using std::string;
+using std::unique_ptr;
 using strings::Substitute;
 
 constexpr int kMinSockBuf = 1024;
@@ -412,7 +412,7 @@ void Messenger::QueueOutboundCall(const shared_ptr<OutboundCall>& call) {
   reactor->QueueOutboundCall(call);
 }
 
-void Messenger::QueueInboundCall(gscoped_ptr<InboundCall> call) {
+void Messenger::QueueInboundCall(unique_ptr<InboundCall> call) {
   shared_lock<rw_spinlock> guard(lock_.get_lock());
   scoped_refptr<RpcService>* service =
       FindOrNull(rpc_services_, call->remote_method().service_name());

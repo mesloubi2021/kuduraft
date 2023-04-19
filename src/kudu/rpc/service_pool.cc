@@ -29,7 +29,6 @@
 #include <glog/logging.h>
 
 #include "kudu/gutil/basictypes.h"
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/ref_counted.h"
 #include "kudu/gutil/strings/join.h"
 #include "kudu/gutil/strings/substitute.h"
@@ -168,7 +167,7 @@ RpcMethodInfo* ServicePool::LookupMethod(const RemoteMethod& method) {
   return service_->LookupMethod(method);
 }
 
-Status ServicePool::QueueInboundCall(gscoped_ptr<InboundCall> call) {
+Status ServicePool::QueueInboundCall(unique_ptr<InboundCall> call) {
   InboundCall* c = call.release();
 
   vector<uint32_t> unsupported_features;

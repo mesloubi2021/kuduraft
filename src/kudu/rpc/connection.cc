@@ -192,7 +192,7 @@ void Connection::Shutdown(
   }
 }
 
-void Connection::QueueOutbound(gscoped_ptr<OutboundTransfer> transfer) {
+void Connection::QueueOutbound(unique_ptr<OutboundTransfer> transfer) {
   DCHECK(reactor_thread_->IsCurrentThread());
 
   if (!shutdown_status_.ok()) {
@@ -410,7 +410,7 @@ void Connection::QueueOutboundCall(shared_ptr<OutboundCall> call) {
   TransferCallbacks* cb = new CallTransferCallbacks(std::move(call), this);
   awaiting_response_[call_id] = car.release();
   QueueOutbound(
-      gscoped_ptr<OutboundTransfer>(OutboundTransfer::CreateForCallRequest(
+      unique_ptr<OutboundTransfer>(OutboundTransfer::CreateForCallRequest(
           call_id, tmp_slices, n_slices, cb)));
 }
 
@@ -419,7 +419,7 @@ void Connection::QueueOutboundCall(shared_ptr<OutboundCall> call) {
 // been responded to, we can free up all of the associated memory.
 struct ResponseTransferCallbacks : public TransferCallbacks {
  public:
-  ResponseTransferCallbacks(gscoped_ptr<InboundCall> call, Connection* conn)
+  ResponseTransferCallbacks(unique_ptr<InboundCall> call, Connection* conn)
       : call_(std::move(call)), conn_(conn) {}
 
   ~ResponseTransferCallbacks() {
@@ -440,14 +440,14 @@ struct ResponseTransferCallbacks : public TransferCallbacks {
   }
 
  private:
-  gscoped_ptr<InboundCall> call_;
+  unique_ptr<InboundCall> call_;
   Connection* conn_;
 };
 
 // Reactor task which puts a transfer on the outbound transfer queue.
 class QueueTransferTask : public ReactorTask {
  public:
-  QueueTransferTask(gscoped_ptr<OutboundTransfer> transfer, Connection* conn)
+  QueueTransferTask(unique_ptr<OutboundTransfer> transfer, Connection* conn)
       : transfer_(std::move(transfer)), conn_(conn) {}
 
   virtual void Run(ReactorThread* /* thr */) override {
@@ -461,11 +461,11 @@ class QueueTransferTask : public ReactorTask {
   }
 
  private:
-  gscoped_ptr<OutboundTransfer> transfer_;
+  unique_ptr<OutboundTransfer> transfer_;
   Connection* conn_;
 };
 
-void Connection::QueueResponseForCall(gscoped_ptr<InboundCall> call) {
+void Connection::QueueResponseForCall(unique_ptr<InboundCall> call) {
   // This is usually called by the IPC worker thread when the response
   // is set, but in some circumstances may also be called by the
   // reactor thread (e.g. if the service has shut down)
@@ -483,7 +483,7 @@ void Connection::QueueResponseForCall(gscoped_ptr<InboundCall> call) {
   // After the response is sent, can delete the InboundCall object.
   // We set a dummy call ID and required feature set, since these are not needed
   // when sending responses.
-  gscoped_ptr<OutboundTransfer> t(
+  unique_ptr<OutboundTransfer> t(
       OutboundTransfer::CreateForCallResponse(tmp_slices, n_slices, cb));
 
   QueueTransferTask* task = new QueueTransferTask(std::move(t), this);
@@ -559,10 +559,10 @@ void Connection::ReadHandler(ev::io& /* watcher */, int revents) {
   }
 }
 
-void Connection::HandleIncomingCall(gscoped_ptr<InboundTransfer> transfer) {
+void Connection::HandleIncomingCall(unique_ptr<InboundTransfer> transfer) {
   DCHECK(reactor_thread_->IsCurrentThread());
 
-  gscoped_ptr<InboundCall> call(new InboundCall(this));
+  unique_ptr<InboundCall> call(new InboundCall(this));
   Status s = call->ParseFrom(std::move(transfer));
   if (!s.ok()) {
     LOG(WARNING) << ToString() << ": received bad data: " << s.ToString();
@@ -584,9 +584,9 @@ void Connection::HandleIncomingCall(gscoped_ptr<InboundTransfer> transfer) {
   reactor_thread_->reactor()->messenger()->QueueInboundCall(std::move(call));
 }
 
-void Connection::HandleCallResponse(gscoped_ptr<InboundTransfer> transfer) {
+void Connection::HandleCallResponse(unique_ptr<InboundTransfer> transfer) {
   DCHECK(reactor_thread_->IsCurrentThread());
-  gscoped_ptr<CallResponse> resp(new CallResponse);
+  unique_ptr<CallResponse> resp(new CallResponse);
   CHECK_OK(resp->ParseFrom(std::move(transfer)));
 
   CallAwaitingResponse* car_ptr =

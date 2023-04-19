@@ -710,7 +710,7 @@ class RpcTestBase : public KuduTest {
     mem_tracker_ = MemTracker::CreateTracker(-1, "result_tracker");
     result_tracker_.reset(new ResultTracker(mem_tracker_));
 
-    gscoped_ptr<ServiceIf> service(
+    std::unique_ptr<ServiceIf> service(
         new ServiceClass(metric_entity_, result_tracker_));
     service_name_ = service->service_name();
     scoped_refptr<MetricEntity> metric_entity =
