@@ -742,7 +742,7 @@ void ReverseMap(
 //     delete EraseKeyReturnValuePtr(&my_map, "abc");
 //
 // Use returned value:
-//     gscoped_ptr<MyType> value_ptr(EraseKeyReturnValuePtr(&my_map, "abc"));
+//     unique_ptr<MyType> value_ptr(EraseKeyReturnValuePtr(&my_map, "abc"));
 //     if (value_ptr.get())
 //       value_ptr->DoSomething();
 //

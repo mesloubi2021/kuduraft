@@ -63,7 +63,6 @@ src/kudu/gutil/cpu.cc
 src/kudu/gutil/cpu.h
 src/kudu/gutil/dynamic_annotations.c
 src/kudu/gutil/dynamic_annotations.h
-src/kudu/gutil/gscoped_ptr.h
 src/kudu/gutil/int128.cc
 src/kudu/gutil/int128.h
 src/kudu/gutil/integral_types.h
@@ -71,7 +70,6 @@ src/kudu/gutil/linux_syscall_support.h
 src/kudu/gutil/macros.h
 src/kudu/gutil/manual_constructor.h
 src/kudu/gutil/map-util.h
-src/kudu/gutil/move.h
 src/kudu/gutil/once.cc
 src/kudu/gutil/once.h
 src/kudu/gutil/paranoid.h
