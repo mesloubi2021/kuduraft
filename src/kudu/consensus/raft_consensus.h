@@ -48,7 +48,6 @@
 #include "kudu/consensus/ref_counted_replicate.h"
 #include "kudu/consensus/routing.h"
 #include "kudu/gutil/callback.h"
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/macros.h"
 #include "kudu/gutil/port.h"
 #include "kudu/gutil/ref_counted.h"
@@ -78,8 +77,8 @@ class KuduRingManager;
 
 namespace kudu {
 
-typedef std::lock_guard<simple_mutexlock> Lock;
-typedef gscoped_ptr<Lock> ScopedLock;
+using Lock = std::lock_guard<simple_mutexlock>;
+using ScopedLock = std::unique_ptr<Lock>;
 
 class Status;
 class ThreadPool;
@@ -242,7 +241,7 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // synchronized with calls accessing non-const members of this class.
   Status Start(
       const ConsensusBootstrapInfo& info,
-      gscoped_ptr<PeerProxyFactory> peer_proxy_factory,
+      std::unique_ptr<PeerProxyFactory> peer_proxy_factory,
       scoped_refptr<log::Log> log,
       scoped_refptr<ITimeManager> time_manager,
       ConsensusRoundHandler* round_handler,
@@ -424,13 +423,13 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // (and later on the CommitMsg). ConsensusRound will also point to and
   // increase the reference count for the provided callbacks.
   scoped_refptr<ConsensusRound> NewRound(
-      gscoped_ptr<ReplicateMsg> replicate_msg,
+      std::unique_ptr<ReplicateMsg> replicate_msg,
       ConsensusReplicatedCallback replicated_cb);
 
   // Creates a new ConsensusRound, the entity that owns all the data
   // structures required for a consensus round, such as the ReplicateMsg
   scoped_refptr<ConsensusRound> NewRound(
-      gscoped_ptr<ReplicateMsg> replicate_msg);
+      std::unique_ptr<ReplicateMsg> replicate_msg);
 
   // Called by a Leader to replicate an entry to the state machine.
   //
@@ -1367,7 +1366,7 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
 
   scoped_refptr<log::Log> log_;
   scoped_refptr<ITimeManager> time_manager_;
-  gscoped_ptr<PeerProxyFactory> peer_proxy_factory_;
+  std::unique_ptr<PeerProxyFactory> peer_proxy_factory_;
 
   // When we receive a message from a remote peer telling us to start a
   // transaction, or finish a round, we use this handler to handle it.
@@ -1550,7 +1549,7 @@ class ConsensusRound : public RefCountedThreadSafe<ConsensusRound> {
   // the callbacks prior to initiating the consensus round.
   ConsensusRound(
       RaftConsensus* consensus,
-      gscoped_ptr<ReplicateMsg> replicate_msg,
+      std::unique_ptr<ReplicateMsg> replicate_msg,
       ConsensusReplicatedCallback replicated_cb);
 
   // Ctor used when the ConsensusReplicatedCallback will be set after the round

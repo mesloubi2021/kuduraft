@@ -79,6 +79,7 @@ DECLARE_bool(enable_flexi_raft);
 using std::set;
 using std::shared_ptr;
 using std::string;
+using std::unique_ptr;
 using std::vector;
 using strings::Substitute;
 
@@ -415,7 +416,7 @@ Status TSTabletManager::Start(bool is_first_run) {
   VLOG(2) << "RaftConfig before starting: "
           << SecureDebugString(consensus_->CommittedConfig());
 
-  gscoped_ptr<PeerProxyFactory> peer_proxy_factory;
+  unique_ptr<PeerProxyFactory> peer_proxy_factory;
   scoped_refptr<ITimeManager> time_manager;
 
   peer_proxy_factory.reset(

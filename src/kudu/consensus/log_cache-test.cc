@@ -42,7 +42,6 @@
 #include "kudu/consensus/ref_counted_replicate.h"
 #include "kudu/fs/fs_manager.h"
 #include "kudu/gutil/bind.h"
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/port.h"
 #include "kudu/gutil/ref_counted.h"
 #include "kudu/gutil/strings/substitute.h"
@@ -57,6 +56,7 @@
 using std::atomic;
 using std::shared_ptr;
 using std::thread;
+using std::unique_ptr;
 using std::vector;
 using strings::Substitute;
 
@@ -132,8 +132,8 @@ class LogCacheTest : public KuduTest {
   const Schema schema_;
   MetricRegistry metric_registry_;
   scoped_refptr<MetricEntity> metric_entity_;
-  gscoped_ptr<FsManager> fs_manager_;
-  gscoped_ptr<LogCache> cache_;
+  unique_ptr<FsManager> fs_manager_;
+  unique_ptr<LogCache> cache_;
   scoped_refptr<log::Log> log_;
   scoped_refptr<clock::Clock> clock_;
 };

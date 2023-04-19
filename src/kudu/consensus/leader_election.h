@@ -443,7 +443,7 @@ class LeaderElection : public RefCountedThreadSafe<LeaderElection> {
       RaftConfigPB config,
       PeerProxyFactory* proxy_factory,
       VoteRequestPB request,
-      gscoped_ptr<VoteCounter> vote_counter,
+      std::unique_ptr<VoteCounter> vote_counter,
       MonoDelta timeout,
       ElectionDecisionCallback decision_callback,
       std::shared_ptr<VoteLoggerInterface> vote_logger);
@@ -508,7 +508,7 @@ class LeaderElection : public RefCountedThreadSafe<LeaderElection> {
 
   // The result returned by the ElectionDecisionCallback.
   // NULL if not yet known.
-  gscoped_ptr<ElectionResult> result_;
+  std::unique_ptr<ElectionResult> result_;
 
   // Whether we have responded via the callback yet.
   bool has_responded_;
@@ -523,7 +523,7 @@ class LeaderElection : public RefCountedThreadSafe<LeaderElection> {
   const VoteRequestPB request_;
 
   // Object to count the votes.
-  const gscoped_ptr<VoteCounter> vote_counter_;
+  const std::unique_ptr<VoteCounter> vote_counter_;
 
   // Timeout for sending RPCs.
   const MonoDelta timeout_;

@@ -137,6 +137,7 @@ using kudu::rpc::RpcController;
 // using kudu::tserver::TabletServerErrorPB;
 using std::shared_ptr;
 using std::string;
+using std::unique_ptr;
 using std::vector;
 using std::weak_ptr;
 using strings::Substitute;
@@ -751,7 +752,7 @@ void CheckAndEnforceResponseToken(
 }
 
 RpcPeerProxy::RpcPeerProxy(
-    gscoped_ptr<HostPort> hostport,
+    unique_ptr<HostPort> hostport,
     shared_ptr<ConsensusServiceProxy> consensus_proxy,
     scoped_refptr<Counter> num_rpc_token_mismatches)
     : hostport_(std::move(hostport)),
@@ -876,7 +877,7 @@ RpcPeerProxyFactory::RpcPeerProxyFactory(
 Status RpcPeerProxyFactory::NewProxy(
     const RaftPeerPB& peer_pb,
     shared_ptr<PeerProxy>* proxy) {
-  gscoped_ptr<HostPort> hostport(new HostPort);
+  unique_ptr<HostPort> hostport(new HostPort);
   RETURN_NOT_OK(HostPortFromPB(peer_pb.last_known_addr(), hostport.get()));
   shared_ptr<ConsensusServiceProxy> new_proxy;
   RETURN_NOT_OK(

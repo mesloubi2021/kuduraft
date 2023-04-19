@@ -45,7 +45,6 @@
 #include "kudu/consensus/ref_counted_replicate.h"
 #include "kudu/consensus/routing.h"
 #include "kudu/consensus/time_manager.h"
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/ref_counted.h"
 #include "kudu/gutil/threading/thread_collision_warner.h"
 #include "kudu/util/locks.h"
@@ -671,7 +670,7 @@ class PeerMessageQueue {
     Mode mode;
 
     // The currently-active raft config. Only set if in LEADER mode.
-    gscoped_ptr<RaftConfigPB> active_config;
+    std::unique_ptr<RaftConfigPB> active_config;
 
     std::string ToString() const;
   };

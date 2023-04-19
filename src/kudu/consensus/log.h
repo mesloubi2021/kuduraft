@@ -46,7 +46,6 @@
 #include "kudu/consensus/opid.pb.h"
 #include "kudu/consensus/ref_counted_replicate.h"
 #include "kudu/gutil/callback.h" // IWYU pragma: keep
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/macros.h"
 #include "kudu/gutil/ref_counted.h"
 #include "kudu/util/blocking_queue.h"
@@ -184,7 +183,7 @@ class Log : public RefCountedThreadSafe<Log> {
   //
   // Returns a bad status if the log is already shut down.
   Status AsyncAppendCommit(
-      gscoped_ptr<consensus::CommitMsg> commit_msg,
+      std::unique_ptr<consensus::CommitMsg> commit_msg,
       const StatusCallback& callback);
 
   // Blocks the current thread until all the entries in the log queue
@@ -451,7 +450,7 @@ class Log : public RefCountedThreadSafe<Log> {
 #endif
 
   // The currently active segment being written.
-  gscoped_ptr<WritableLogSegment> active_segment_;
+  std::unique_ptr<WritableLogSegment> active_segment_;
 
   // The current (active) segment sequence number.
   uint64_t active_segment_sequence_number_;
@@ -488,7 +487,7 @@ class Log : public RefCountedThreadSafe<Log> {
   LogEntryBatchQueue entry_batch_queue_;
 
   // Thread writing to the log
-  gscoped_ptr<AppendThread> append_thread_;
+  std::unique_ptr<AppendThread> append_thread_;
 
   std::unique_ptr<ThreadPool> allocation_pool_;
 
@@ -510,7 +509,7 @@ class Log : public RefCountedThreadSafe<Log> {
   std::shared_ptr<CompressionCodec> codec_;
 
   scoped_refptr<MetricEntity> metric_entity_;
-  gscoped_ptr<LogMetrics> metrics_;
+  std::unique_ptr<LogMetrics> metrics_;
 
   std::shared_ptr<LogFaultHooks> log_hooks_;
 

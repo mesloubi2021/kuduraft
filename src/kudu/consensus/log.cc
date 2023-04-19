@@ -718,7 +718,7 @@ Status Log::AsyncAppendReplicates(
 }
 
 Status Log::AsyncAppendCommit(
-    gscoped_ptr<consensus::CommitMsg> commit_msg,
+    unique_ptr<consensus::CommitMsg> commit_msg,
     const StatusCallback& callback) {
   if (FLAGS_raft_derived_log_mode) {
     // ignore append commit in derived log mode
@@ -1278,7 +1278,7 @@ Status Log::SwitchToAllocatedSegment() {
   }
 
   // Create a new segment.
-  gscoped_ptr<WritableLogSegment> new_segment(
+  unique_ptr<WritableLogSegment> new_segment(
       new WritableLogSegment(new_segment_path, next_segment_file_));
 
   // Set up the new header and footer.

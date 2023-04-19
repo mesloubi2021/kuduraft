@@ -44,7 +44,6 @@
 #include "kudu/consensus/metadata.pb.h"
 #include "kudu/consensus/opid_util.h"
 #include "kudu/fs/fs_manager.h"
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/stl_util.h"
 #include "kudu/gutil/stringprintf.h"
 #include "kudu/gutil/strings/substitute.h"
@@ -290,7 +289,7 @@ class LogTestBase : public KuduTest {
       int rs_id,
       int dms_id,
       bool sync = APPEND_SYNC) {
-    gscoped_ptr<consensus::CommitMsg> commit(new consensus::CommitMsg);
+    std::unique_ptr<consensus::CommitMsg> commit(new consensus::CommitMsg);
     commit->set_op_type(consensus::WRITE_OP);
 
     commit->mutable_commited_op_id()->CopyFrom(original_opid);
@@ -312,7 +311,7 @@ class LogTestBase : public KuduTest {
   // "NotFound" errors.
   Status AppendCommitWithNotFoundOpResults(
       const consensus::OpId& original_opid) {
-    gscoped_ptr<consensus::CommitMsg> commit(new consensus::CommitMsg);
+    std::unique_ptr<consensus::CommitMsg> commit(new consensus::CommitMsg);
     commit->set_op_type(consensus::WRITE_OP);
     commit->mutable_commited_op_id()->CopyFrom(original_opid);
 
@@ -329,7 +328,7 @@ class LogTestBase : public KuduTest {
   }
 
   Status AppendCommit(
-      gscoped_ptr<consensus::CommitMsg> commit,
+      std::unique_ptr<consensus::CommitMsg> commit,
       bool sync = APPEND_SYNC) {
     if (sync) {
       Synchronizer s;
@@ -406,8 +405,8 @@ class LogTestBase : public KuduTest {
   enum { kStartIndex = 1 };
 
   const Schema schema_;
-  gscoped_ptr<FsManager> fs_manager_;
-  gscoped_ptr<MetricRegistry> metric_registry_;
+  std::unique_ptr<FsManager> fs_manager_;
+  std::unique_ptr<MetricRegistry> metric_registry_;
   scoped_refptr<MetricEntity> metric_entity_;
   scoped_refptr<Log> log_;
   int64_t current_index_;

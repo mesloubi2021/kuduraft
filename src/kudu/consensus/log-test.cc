@@ -51,7 +51,6 @@
 #include "kudu/consensus/opid.pb.h"
 #include "kudu/consensus/opid_util.h"
 #include "kudu/fs/fs_manager.h"
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/ref_counted.h"
 #include "kudu/gutil/stl_util.h"
 #include "kudu/gutil/strings/substitute.h"
@@ -948,7 +947,7 @@ void LogTest::AppendTestSequence(const vector<TestLogSequenceElem>& seq) {
         break;
       }
       case TestLogSequenceElem::COMMIT: {
-        gscoped_ptr<CommitMsg> commit(new CommitMsg);
+        unique_ptr<CommitMsg> commit(new CommitMsg);
         commit->set_op_type(NO_OP);
         commit->mutable_commited_op_id()->CopyFrom(e.id);
         Synchronizer s;

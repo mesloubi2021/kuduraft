@@ -48,7 +48,6 @@
 #include "kudu/consensus/routing.h"
 #include "kudu/consensus/time_manager.h"
 #include "kudu/fs/fs_manager.h"
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/port.h"
 #include "kudu/gutil/ref_counted.h"
 #include "kudu/rpc/messenger.h"
@@ -196,12 +195,12 @@ class ConsensusPeersTest : public KuduTest {
  protected:
   MetricRegistry metric_registry_;
   scoped_refptr<MetricEntity> metric_entity_;
-  gscoped_ptr<FsManager> fs_manager_;
+  unique_ptr<FsManager> fs_manager_;
   scoped_refptr<Log> log_;
   shared_ptr<DurableRoutingTable> routing_table_;
   shared_ptr<RoutingTableContainer> routing_table_container_;
-  gscoped_ptr<ThreadPool> raft_pool_;
-  gscoped_ptr<PeerMessageQueue> message_queue_;
+  unique_ptr<ThreadPool> raft_pool_;
+  unique_ptr<PeerMessageQueue> message_queue_;
 #ifdef FB_DO_NOT_REMOVE
   const Schema schema_;
 #endif

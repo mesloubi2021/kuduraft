@@ -19,7 +19,6 @@
 #define KUDU_CONSENSUS_REF_COUNTED_REPLICATE_H_
 
 #include "kudu/consensus/consensus.pb.h"
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/ref_counted.h"
 
 namespace kudu {
@@ -35,7 +34,7 @@ class RefCountedReplicate : public RefCountedThreadSafe<RefCountedReplicate> {
   }
 
  private:
-  gscoped_ptr<ReplicateMsg> msg_;
+  std::unique_ptr<ReplicateMsg> msg_;
 };
 
 typedef scoped_refptr<RefCountedReplicate> ReplicateRefPtr;

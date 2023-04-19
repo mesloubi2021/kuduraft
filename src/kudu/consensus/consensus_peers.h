@@ -321,7 +321,7 @@ class PeerProxyPool {
 class RpcPeerProxy : public PeerProxy {
  public:
   RpcPeerProxy(
-      gscoped_ptr<HostPort> hostport,
+      std::unique_ptr<HostPort> hostport,
       std::shared_ptr<ConsensusServiceProxy> consensus_proxy,
       scoped_refptr<Counter> num_rpc_token_mismatches);
 
@@ -353,7 +353,7 @@ class RpcPeerProxy : public PeerProxy {
   std::string PeerName() const override;
 
  private:
-  gscoped_ptr<HostPort> hostport_;
+  std::unique_ptr<HostPort> hostport_;
   std::shared_ptr<ConsensusServiceProxy> consensus_proxy_;
 
   scoped_refptr<Counter> num_rpc_token_mismatches_;

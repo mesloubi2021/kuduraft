@@ -42,7 +42,6 @@
 #include "kudu/consensus/metadata.pb.h"
 #include "kudu/consensus/raft_consensus.h"
 #include "kudu/gutil/casts.h"
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/map-util.h"
 #include "kudu/gutil/ref_counted.h"
 #include "kudu/gutil/stl_util.h"
@@ -65,6 +64,7 @@ namespace consensus {
 
 using std::shared_ptr;
 using std::string;
+using std::unique_ptr;
 using std::unordered_map;
 using std::vector;
 using strings::Substitute;
@@ -144,7 +144,7 @@ class LeaderElectionTest : public KuduTest {
   void InitUUIDs(int num_voters);
   void InitNoOpPeerProxies();
   void InitDelayableMockedProxies(bool enable_delay);
-  gscoped_ptr<VoteCounter> InitVoteCounter(int num_voters, int majority_size);
+  unique_ptr<VoteCounter> InitVoteCounter(int num_voters, int majority_size);
 
   // Voter 0 is the high-term voter.
   scoped_refptr<LeaderElection> SetUpElectionWithHighTermVoter(
@@ -166,11 +166,11 @@ class LeaderElectionTest : public KuduTest {
 
   RaftConfigPB config_;
   ProxyMap proxies_;
-  gscoped_ptr<PeerProxyFactory> proxy_factory_;
-  gscoped_ptr<ThreadPool> pool_;
+  unique_ptr<PeerProxyFactory> proxy_factory_;
+  unique_ptr<ThreadPool> pool_;
 
   CountDownLatch latch_;
-  gscoped_ptr<ElectionResult> result_;
+  unique_ptr<ElectionResult> result_;
 };
 
 void LeaderElectionTest::ElectionCallback(const ElectionResult& result) {
@@ -211,16 +211,16 @@ void LeaderElectionTest::InitDelayableMockedProxies(bool enable_delay) {
   }
 }
 
-gscoped_ptr<VoteCounter> LeaderElectionTest::InitVoteCounter(
+unique_ptr<VoteCounter> LeaderElectionTest::InitVoteCounter(
     int num_voters,
     int majority_size) {
-  gscoped_ptr<VoteCounter> counter(new VoteCounter(num_voters, majority_size));
+  unique_ptr<VoteCounter> counter(new VoteCounter(num_voters, majority_size));
   bool duplicate;
   VoteInfo vote_info;
   vote_info.vote = VOTE_GRANTED;
   CHECK_OK(counter->RegisterVote(candidate_uuid_, vote_info, &duplicate));
   CHECK(!duplicate);
-  return std::move(counter);
+  return counter;
 }
 
 scoped_refptr<LeaderElection>
@@ -231,7 +231,7 @@ LeaderElectionTest::SetUpElectionWithHighTermVoter(
 
   InitUUIDs(kNumVoters);
   InitDelayableMockedProxies(true);
-  gscoped_ptr<VoteCounter> counter = InitVoteCounter(kNumVoters, kMajoritySize);
+  unique_ptr<VoteCounter> counter = InitVoteCounter(kNumVoters, kMajoritySize);
 
   VoteResponsePB response;
   response.set_responder_uuid(voter_uuids_[0]);
@@ -283,7 +283,7 @@ LeaderElectionTest::SetUpElectionWithGrantDenyErrorVotes(
 
   InitUUIDs(kNumVoters);
   InitDelayableMockedProxies(false); // Don't delay the vote responses.
-  gscoped_ptr<VoteCounter> counter = InitVoteCounter(kNumVoters, kMajoritySize);
+  unique_ptr<VoteCounter> counter = InitVoteCounter(kNumVoters, kMajoritySize);
   int num_grant_followers = num_grant - 1;
 
   // Set up mocked responses based on the params specified in the method
@@ -355,7 +355,7 @@ TEST_F(LeaderElectionTest, TestPerfectElection) {
 
     InitUUIDs(num_voters);
     InitNoOpPeerProxies();
-    gscoped_ptr<VoteCounter> counter =
+    unique_ptr<VoteCounter> counter =
         InitVoteCounter(num_voters, majority_size);
 
     VoteRequestPB request;
@@ -501,7 +501,7 @@ TEST_F(LeaderElectionTest, TestFailToCreateProxy) {
   request.set_candidate_term(kElectionTerm);
   request.set_tablet_id(tablet_id_);
 
-  gscoped_ptr<VoteCounter> counter = InitVoteCounter(kNumVoters, kMajoritySize);
+  unique_ptr<VoteCounter> counter = InitVoteCounter(kNumVoters, kMajoritySize);
   scoped_refptr<LeaderElection> election(new LeaderElection(
       config_,
       proxy_factory_.get(),

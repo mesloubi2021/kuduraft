@@ -1330,7 +1330,7 @@ LeaderElection::LeaderElection(
     RaftConfigPB config,
     PeerProxyFactory* proxy_factory,
     VoteRequestPB request,
-    gscoped_ptr<VoteCounter> vote_counter,
+    std::unique_ptr<VoteCounter> vote_counter,
     MonoDelta timeout,
     ElectionDecisionCallback decision_callback,
     std::shared_ptr<VoteLoggerInterface> vote_logger)
@@ -1370,7 +1370,7 @@ void LeaderElection::Run() {
     }
     other_voter_uuids.emplace_back(peer.permanent_uuid());
 
-    gscoped_ptr<VoterState> state(new VoterState());
+    std::unique_ptr<VoterState> state(new VoterState());
     state->peer_uuid = peer.permanent_uuid();
     state->proxy_status = proxy_factory_->NewProxy(peer, &state->proxy);
     InsertOrDie(&voter_state_, peer.permanent_uuid(), state.release());

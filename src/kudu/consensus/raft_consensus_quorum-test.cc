@@ -66,7 +66,6 @@
 #include "kudu/fs/fs_manager.h"
 #include "kudu/gutil/bind.h"
 #include "kudu/gutil/casts.h"
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/map-util.h"
 #include "kudu/gutil/ref_counted.h"
 #include "kudu/gutil/stl_util.h"
@@ -160,7 +159,7 @@ class RaftConsensusQuorumTest : public KuduTest {
       opts.parent_mem_tracker = parent_mem_tracker;
       opts.wal_root = test_path;
       opts.data_roots = {test_path};
-      gscoped_ptr<FsManager> fs_manager(new FsManager(env_, opts));
+      unique_ptr<FsManager> fs_manager(new FsManager(env_, opts));
       RETURN_NOT_OK(fs_manager->CreateInitialFileSystemLayout());
       RETURN_NOT_OK(fs_manager->Open());
 
@@ -239,7 +238,7 @@ class RaftConsensusQuorumTest : public KuduTest {
       shared_ptr<RaftConsensus> peer;
       RETURN_NOT_OK(peers_->GetPeerByIdx(i, &peer));
 
-      gscoped_ptr<PeerProxyFactory> proxy_factory(
+      unique_ptr<PeerProxyFactory> proxy_factory(
           new LocalTestPeerProxyFactory(peers_.get()));
       scoped_refptr<TimeManager> time_manager(
           new TimeManager(clock_, Timestamp::kMin));
@@ -297,7 +296,7 @@ class RaftConsensusQuorumTest : public KuduTest {
   Status AppendDummyMessage(
       int peer_idx,
       scoped_refptr<ConsensusRound>* round) {
-    gscoped_ptr<ReplicateMsg> msg(new ReplicateMsg());
+    unique_ptr<ReplicateMsg> msg(new ReplicateMsg());
     msg->set_op_type(NO_OP);
     msg->mutable_noop_request();
     msg->set_timestamp(clock_->Now().ToUint64());
@@ -306,7 +305,7 @@ class RaftConsensusQuorumTest : public KuduTest {
     CHECK_OK(peers_->GetPeerByIdx(peer_idx, &peer));
 
     // Use a latch in place of a Transaction callback.
-    gscoped_ptr<Synchronizer> sync(new Synchronizer());
+    unique_ptr<Synchronizer> sync(new Synchronizer());
     *round = peer->NewRound(std::move(msg), sync->AsStdStatusCallback());
     InsertOrDie(&syncs_, round->get(), sync.release());
     RETURN_NOT_OK_PREPEND(
@@ -333,7 +332,7 @@ class RaftConsensusQuorumTest : public KuduTest {
       commit_callback = Bind(&DoNothingStatusCB);
     }
 
-    gscoped_ptr<CommitMsg> msg(new CommitMsg());
+    unique_ptr<CommitMsg> msg(new CommitMsg());
     msg->set_op_type(NO_OP);
     msg->mutable_commited_op_id()->CopyFrom(round->id());
     CHECK_OK(
@@ -647,10 +646,10 @@ class RaftConsensusQuorumTest : public KuduTest {
   vector<shared_ptr<MemTracker>> parent_mem_trackers_;
   vector<FsManager*> fs_managers_;
   vector<scoped_refptr<Log>> logs_;
-  gscoped_ptr<ThreadPool> raft_pool_;
+  unique_ptr<ThreadPool> raft_pool_;
   vector<scoped_refptr<ConsensusMetadataManager>> cmeta_managers_;
   vector<scoped_refptr<PersistentVarsManager>> persistent_vars_managers_;
-  gscoped_ptr<TestPeerMapManager> peers_;
+  unique_ptr<TestPeerMapManager> peers_;
   vector<TestTransactionFactory*> txn_factories_;
   scoped_refptr<clock::Clock> clock_;
   MetricRegistry metric_registry_;
