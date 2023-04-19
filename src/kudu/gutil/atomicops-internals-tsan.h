@@ -6,8 +6,7 @@
 // ThreadSanitizer. Use base/atomicops.h instead.
 // IWYU pragma: private, include "kudu/gutil/atomicops.h"
 
-#ifndef BASE_ATOMICOPS_INTERNALS_TSAN_H_
-#define BASE_ATOMICOPS_INTERNALS_TSAN_H_
+#pragma once
 
 // This struct is not part of the public API of this module; clients may not
 // use it.
@@ -242,5 +241,3 @@ inline void PauseCPU() {}
 } // namespace base
 
 #undef ATOMICOPS_COMPILER_BARRIER
-
-#endif // BASE_ATOMICOPS_INTERNALS_TSAN_H_

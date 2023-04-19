@@ -15,8 +15,7 @@
 // TODO: this is pretty lock-heavy. Would be good to sub out something
 // a little more concurrent.
 
-#ifndef KUDU_UTIL_CACHE_H_
-#define KUDU_UTIL_CACHE_H_
+#pragma once
 
 #include <cstddef>
 #include <cstdint>
@@ -208,5 +207,3 @@ class Cache {
 };
 
 } // namespace kudu
-
-#endif

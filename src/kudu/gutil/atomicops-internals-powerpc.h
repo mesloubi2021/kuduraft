@@ -28,9 +28,7 @@
 // *** WARNING EXPERIMENTAL CODE ***
 // This is not tested and may contain bugs.  Until we have bootstrapped
 // this.
-
-#ifndef GUTIL_ATOMICOPS_INTERNALS_POWERPC_H_
-#define GUTIL_ATOMICOPS_INTERNALS_POWERPC_H_
+#pragma once
 
 typedef int32_t Atomic32;
 #define BASE_HAS_ATOMIC64 1 // Use only in tests and base/atomic*
@@ -324,5 +322,3 @@ inline Atomic64 Release_CompareAndSwap(
 } // namespace base
 
 #undef ATOMICOPS_COMPILER_BARRIER
-
-#endif // GUTIL_ATOMICOPS_INTERNALS_POWERPC_H_

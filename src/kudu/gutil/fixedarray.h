@@ -20,8 +20,7 @@
 // ---
 //
 
-#ifndef UTIL_GTL_FIXEDARRAY_H__
-#define UTIL_GTL_FIXEDARRAY_H__
+#pragma once
 
 #include <stddef.h>
 
@@ -194,5 +193,3 @@ inline FixedArray<T, S>::~FixedArray() {
     }
   }
 }
-
-#endif // UTIL_GTL_FIXEDARRAY_H__

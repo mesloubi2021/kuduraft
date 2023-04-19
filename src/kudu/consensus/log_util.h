@@ -15,8 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#ifndef KUDU_CONSENSUS_LOG_UTIL_H_
-#define KUDU_CONSENSUS_LOG_UTIL_H_
+#pragma once
 
 #include <cstddef>
 #include <cstdint>
@@ -530,5 +529,3 @@ void UpdateFooterForReplicateEntry(
 
 } // namespace log
 } // namespace kudu
-
-#endif /* KUDU_CONSENSUS_LOG_UTIL_H_ */

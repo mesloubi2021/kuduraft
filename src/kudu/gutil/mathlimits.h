@@ -28,8 +28,7 @@
 // numeric_limits for the compilers we use.
 //
 
-#ifndef UTIL_MATH_MATHLIMITS_H__
-#define UTIL_MATH_MATHLIMITS_H__
+#pragma once
 
 #include <cfloat>
 #include <cmath>
@@ -287,5 +286,3 @@ DECL_FP_LIMITS(long double, LDBL)
 #undef DECL_FP_LIMIT_FUNCS
 
 // ========================================================================= //
-
-#endif // UTIL_MATH_MATHLIMITS_H__

@@ -6,8 +6,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef KUDU_GUTIL_BIND_H_
-#define KUDU_GUTIL_BIND_H_
+#pragma once
 
 #include "kudu/gutil/bind_internal.h"
 #include "kudu/gutil/callback_internal.h"
@@ -613,5 +612,3 @@ Bind(
 }
 
 } // namespace kudu
-
-#endif // KUDU_GUTIL_BIND_H_

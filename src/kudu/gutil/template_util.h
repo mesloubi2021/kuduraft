@@ -48,8 +48,7 @@
 //
 
 // These #defines collide with sparsehash
-#ifndef KUDU_BASE_TEMPLATE_UTIL_H_
-#define KUDU_BASE_TEMPLATE_UTIL_H_
+#pragma once
 
 namespace base {
 
@@ -162,5 +161,3 @@ struct is_class : integral_constant<
                       sizeof(IsClassHelper::Test<T>(0)) == sizeof(YesType)> {};
 
 } // namespace base
-
-#endif // KUDU_BASE_TEMPLATE_UTIL_H_

@@ -144,8 +144,7 @@ def main():
 // THIS FILE IS AUTO-GENERATED! DO NOT EDIT!
 //
 // id_hash=%(identifying_hash)s
-#ifndef VERSION_INFO_H_
-#define VERSION_INFO_H_
+#pragma once
 
 #define KUDU_GIT_HASH "%(git_hash)s"
 #define KUDU_BUILD_HOSTNAME "%(hostname)s"
@@ -155,7 +154,6 @@ def main():
 #define KUDU_BUILD_ID "%(build_id)s"
 #define KUDU_BUILD_TYPE "%(build_type)s"
 #define KUDU_VERSION_STRING "%(version_string)s"
-#endif
 """
             % locals()
         )

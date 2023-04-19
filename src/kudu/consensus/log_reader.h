@@ -14,8 +14,8 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
-#ifndef KUDU_LOG_LOG_READER_H_
-#define KUDU_LOG_LOG_READER_H_
+
+#pragma once
 
 #include <cstdint>
 #include <memory>
@@ -205,5 +205,3 @@ class LogReader : public enable_make_shared<LogReader> {
 
 } // namespace log
 } // namespace kudu
-
-#endif /* KUDU_LOG_LOG_READER_H_ */

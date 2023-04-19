@@ -29,8 +29,7 @@
 // Note that a single delay may begin on one thread and end on another. This
 // implies that a single delay cannot not be applied in several threads at once.
 
-#ifndef KUDU_UTIL_DEBUG_TRACE_EVENT_SYNTHETIC_DELAY_H_
-#define KUDU_UTIL_DEBUG_TRACE_EVENT_SYNTHETIC_DELAY_H_
+#pragma once
 
 #include <string>
 
@@ -162,5 +161,3 @@ TRACE_EVENT_API_CLASS_EXPORT kudu::debug::TraceEventSyntheticDelay*
 GetOrCreateDelay(const char* name, AtomicWord* impl_ptr);
 
 } // namespace trace_event_internal
-
-#endif /* KUDU_UTIL_DEBUG_TRACE_EVENT_SYNTHETIC_DELAY_H_ */

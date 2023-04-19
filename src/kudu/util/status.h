@@ -10,8 +10,7 @@
 // non-const method, all threads accessing the same Status must use
 // external synchronization.
 
-#ifndef KUDU_UTIL_STATUS_H_
-#define KUDU_UTIL_STATUS_H_
+#pragma once
 
 // NOTE: using stdint.h instead of cstdint and errno.h instead of errno because
 // this file is supposed to be processed by a compiler lacking C++11 support.
@@ -616,5 +615,3 @@ inline Status& Status::operator=(Status&& s) noexcept {
 #endif
 
 } // namespace kudu
-
-#endif // KUDU_UTIL_STATUS_H_

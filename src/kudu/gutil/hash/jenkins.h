@@ -7,8 +7,7 @@
 // consistent hashing libraries. New code which does not explicitly desire this
 // behavior should use the generic hashing routines in hash.h.
 
-#ifndef UTIL_HASH_JENKINS_H_
-#define UTIL_HASH_JENKINS_H_
+#pragma once
 
 #include "kudu/gutil/integral_types.h"
 
@@ -38,5 +37,3 @@ uint32 Hash32StringWithSeedReferenceImplementation(
     const char* s,
     uint32 len,
     uint32 c);
-
-#endif // UTIL_HASH_JENKINS_H_

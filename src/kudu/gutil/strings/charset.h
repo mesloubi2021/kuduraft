@@ -1,7 +1,6 @@
 // Copyright 2008 Google Inc. All Rights Reserved.
 
-#ifndef STRINGS_CHARSET_H_
-#define STRINGS_CHARSET_H_
+#pragma once
 
 #include "kudu/gutil/integral_types.h"
 
@@ -75,5 +74,3 @@ class CharSet {
 };
 
 } // namespace strings
-
-#endif // STRINGS_CHARSET_H_

@@ -1,9 +1,7 @@
 // Copyright 2001 - 2003 Google, Inc.
 //
 // Google-specific types
-
-#ifndef BASE_BASICTYPES_H_
-#define BASE_BASICTYPES_H_
+#pragma once
 
 #include "kudu/gutil/integral_types.h"
 #include "kudu/gutil/macros.h"
@@ -23,5 +21,3 @@ enum Ownership { DO_NOT_TAKE_OWNERSHIP, TAKE_OWNERSHIP };
 //
 template <typename T>
 inline void ignore_result(const T&) {}
-
-#endif // BASE_BASICTYPES_H_

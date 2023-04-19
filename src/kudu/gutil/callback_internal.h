@@ -5,8 +5,7 @@
 // This file contains utility functions and classes that help the
 // implementation, and management of the Callback objects.
 
-#ifndef KUDU_GUTIL_CALLBACK_INTERNAL_H_
-#define KUDU_GUTIL_CALLBACK_INTERNAL_H_
+#pragma once
 
 #include <cstddef>
 
@@ -174,5 +173,3 @@ typename base::enable_if<IsMoveOnlyType<T>::value, T>::type CallbackForward(
 
 } // namespace internal
 } // namespace kudu
-
-#endif // KUDU_GUTIL_CALLBACK_INTERNAL_H_

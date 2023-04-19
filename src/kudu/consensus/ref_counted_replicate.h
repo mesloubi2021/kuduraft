@@ -15,8 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#ifndef KUDU_CONSENSUS_REF_COUNTED_REPLICATE_H_
-#define KUDU_CONSENSUS_REF_COUNTED_REPLICATE_H_
+#pragma once
 
 #include "kudu/consensus/consensus.pb.h"
 #include "kudu/gutil/ref_counted.h"
@@ -45,5 +44,3 @@ inline ReplicateRefPtr make_scoped_refptr_replicate(ReplicateMsg* replicate) {
 
 } // namespace consensus
 } // namespace kudu
-
-#endif /* KUDU_CONSENSUS_REF_COUNTED_REPLICATE_H_ */

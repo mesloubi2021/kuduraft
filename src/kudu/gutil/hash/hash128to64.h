@@ -1,8 +1,7 @@
 // Copyright 2010 Google Inc. All Rights Reserved.
 // Authors: jyrki@google.com (Jyrki Alakuijala), gpike@google.com (Geoff Pike)
 
-#ifndef UTIL_HASH_HASH128TO64_H_
-#define UTIL_HASH_HASH128TO64_H_
+#pragma once
 
 #include "kudu/gutil/int128.h"
 #include "kudu/gutil/integral_types.h"
@@ -22,5 +21,3 @@ inline uint64 Hash128to64(const kudu::uint128& x) {
   b *= kMul;
   return b;
 }
-
-#endif // UTIL_HASH_HASH128TO64_H_

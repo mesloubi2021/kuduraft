@@ -186,8 +186,7 @@
 // trace points would carry a significant performance cost of acquiring a lock
 // and resolving the category.
 
-#ifndef KUDU_UTIL_DEBUG_TRACE_EVENT_H_
-#define KUDU_UTIL_DEBUG_TRACE_EVENT_H_
+#pragma once
 
 #include <string>
 
@@ -1939,5 +1938,3 @@ class TraceScopedTrackableObject {
 
 } // namespace debug
 } // namespace kudu
-
-#endif /* KUDU_UTIL_DEBUG_TRACE_EVENT_H_ */

@@ -23,9 +23,7 @@
 // be included directly.  Clients should instead include
 // "base/atomicops.h".
 // IWYU pragma: private, include "kudu/gutil/atomicops.h"
-
-#ifndef GUTIL_ATOMICOPS_INTERNALS_X86_H_
-#define GUTIL_ATOMICOPS_INTERNALS_X86_H_
+#pragma once
 
 #include <cstdint>
 #include <ostream>
@@ -533,5 +531,3 @@ inline Atomic64 Release_CompareAndSwap(
 } // namespace base
 
 #undef ATOMICOPS_COMPILER_BARRIER
-
-#endif // GUTIL_ATOMICOPS_INTERNALS_X86_H_

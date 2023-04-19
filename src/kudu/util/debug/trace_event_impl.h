@@ -2,8 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef KUDU_UTIL_DEBUG_TRACE_EVENT_IMPL_H_
-#define KUDU_UTIL_DEBUG_TRACE_EVENT_IMPL_H_
+#pragma once
 
 #include <cstddef>
 #include <cstdint>
@@ -764,5 +763,3 @@ class BASE_EXPORT TraceLog {
 
 } // namespace debug
 } // namespace kudu
-
-#endif // KUDU_UTIL_DEBUG_TRACE_EVENT_IMPL_H_

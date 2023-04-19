@@ -17,8 +17,8 @@
 //
 // Wrappers around the annotations from gutil/dynamic_annotations.h,
 // provided as C++-style scope guards.
-#ifndef KUDU_UTIL_DEBUG_SANITIZER_SCOPES_H_
-#define KUDU_UTIL_DEBUG_SANITIZER_SCOPES_H_
+
+#pragma once
 
 #include "kudu/gutil/dynamic_annotations.h"
 #include "kudu/gutil/macros.h"
@@ -44,5 +44,3 @@ class ScopedTSANIgnoreReadsAndWrites {
 
 } // namespace debug
 } // namespace kudu
-
-#endif // KUDU_UTIL_DEBUG_SANITIZER_SCOPES_H_

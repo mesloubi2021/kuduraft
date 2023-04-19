@@ -21,8 +21,7 @@
 // out of Kudu into a fork known as kuduraft.
 // ********************************************************************
 
-#ifndef KUDU_CONSENSUS_CONSENSUS_QUEUE_H_
-#define KUDU_CONSENSUS_CONSENSUS_QUEUE_H_
+#pragma once
 
 #include <cstdint>
 #include <functional>
@@ -955,5 +954,3 @@ class PeerMessageQueueObserver {
 
 } // namespace consensus
 } // namespace kudu
-
-#endif /* KUDU_CONSENSUS_CONSENSUS_QUEUE_H_ */

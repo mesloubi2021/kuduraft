@@ -2,8 +2,7 @@
 // All Rights Reserved.
 //
 
-#ifndef BASE_INT128_H_
-#define BASE_INT128_H_
+#pragma once
 
 #include <iosfwd>
 #include "kudu/gutil/integral_types.h"
@@ -339,5 +338,3 @@ inline uint128& uint128::operator--() {
 }
 
 } // namespace kudu
-
-#endif // BASE_INT128_H_

@@ -2,8 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef KUDU_GUTIL_REF_COUNTED_MEMORY_H_
-#define KUDU_GUTIL_REF_COUNTED_MEMORY_H_
+#pragma once
 
 #include <cstddef>
 
@@ -157,5 +156,3 @@ class BASE_EXPORT RefCountedMallocedMemory : public RefCountedMemory {
 };
 
 } // namespace kudu
-
-#endif // KUDU_GUTIL_REF_COUNTED_MEMORY_H_

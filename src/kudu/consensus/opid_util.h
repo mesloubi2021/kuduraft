@@ -15,8 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#ifndef KUDU_CONSENSUS_OPID_UTIL_H_
-#define KUDU_CONSENSUS_OPID_UTIL_H_
+#pragma once
 
 #include <cstddef>
 #include <cstdint>
@@ -112,5 +111,3 @@ OpId MakeOpId(int64_t term, int64_t index);
 
 } // namespace consensus
 } // namespace kudu
-
-#endif /* KUDU_CONSENSUS_OPID_UTIL_H_ */

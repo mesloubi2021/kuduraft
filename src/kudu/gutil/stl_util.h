@@ -25,8 +25,7 @@
 // and Google friendly API.
 //
 
-#ifndef UTIL_GTL_STL_UTIL_H_
-#define UTIL_GTL_STL_UTIL_H_
+#pragma once
 
 #include <stddef.h>
 #include <string.h> // for memcpy
@@ -944,5 +943,3 @@ bool SortedRangesHaveIntersection(
   }
   return false;
 }
-
-#endif // UTIL_GTL_STL_UTIL_H_

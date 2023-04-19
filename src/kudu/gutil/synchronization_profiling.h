@@ -32,8 +32,7 @@
  * Author: Chris Ruemmler
  */
 
-#ifndef BASE_AUXILIARY_SYNCHRONIZATION_PROFILING_H_
-#define BASE_AUXILIARY_SYNCHRONIZATION_PROFILING_H_
+#pragma once
 
 #include "kudu/gutil/basictypes.h"
 
@@ -49,4 +48,3 @@ extern void SubmitSpinLockProfileData(
     const void* contendedlock,
     int64 wait_cycles) {}
 } // namespace gutil
-#endif // BASE_AUXILIARY_SYNCHRONIZATION_PROFILING_H_

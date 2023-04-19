@@ -14,8 +14,9 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
-#ifndef KUDU_RPC_SERVICE_H_
-#define KUDU_RPC_SERVICE_H_
+
+#pragma once
+
 #include <memory>
 
 #include "kudu/gutil/ref_counted.h"
@@ -44,5 +45,3 @@ class RpcService : public RefCountedThreadSafe<RpcService> {
 
 } // namespace rpc
 } // namespace kudu
-
-#endif // KUDU_RPC_SERVICE_H_

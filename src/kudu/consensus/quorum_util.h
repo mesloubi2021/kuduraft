@@ -15,8 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#ifndef KUDU_CONSENSUS_QUORUM_UTIL_H_
-#define KUDU_CONSENSUS_QUORUM_UTIL_H_
+#pragma once
 
 #include <optional>
 #include <string>
@@ -221,5 +220,3 @@ bool PeerHasValidQuorumId(const RaftPeerPB& peer);
 
 } // namespace consensus
 } // namespace kudu
-
-#endif /* KUDU_CONSENSUS_QUORUM_UTIL_H_ */

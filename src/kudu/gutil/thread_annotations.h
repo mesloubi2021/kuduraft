@@ -40,8 +40,7 @@
 // for portability and future compatibility.
 //
 
-#ifndef BASE_THREAD_ANNOTATIONS_H_
-#define BASE_THREAD_ANNOTATIONS_H_
+#pragma once
 
 #if defined(__GNUC__) && defined(__SUPPORT_TS_ANNOTATION__) && !defined(SWIG)
 #define THREAD_ANNOTATION_ATTRIBUTE__(x) __attribute__((x))
@@ -221,5 +220,3 @@
 #define TS_CLANG_ONLY(CLANG_EXPR, GCC_EXPR) CLANG_EXPR
 
 #endif // defined(__clang__)
-
-#endif // BASE_THREAD_ANNOTATIONS_H_

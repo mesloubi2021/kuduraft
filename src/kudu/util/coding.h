@@ -7,8 +7,7 @@
 // * In addition we support variable length "varint" encoding
 // * Strings are encoded prefixed by their length in varint format
 
-#ifndef STORAGE_LEVELDB_UTIL_CODING_H_
-#define STORAGE_LEVELDB_UTIL_CODING_H_
+#pragma once
 
 #include <cstdint>
 #include <cstring>
@@ -110,5 +109,3 @@ GetVarint32Ptr(const uint8_t* p, const uint8_t* limit, uint32_t* value) {
 }
 
 } // namespace kudu
-
-#endif // STORAGE_LEVELDB_UTIL_CODING_H_

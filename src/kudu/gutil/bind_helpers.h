@@ -139,9 +139,7 @@
 //                        pointer when invoked. Only use this when necessary.
 //                        In most cases MessageLoop::DeleteSoon() is a better
 //                        fit.
-
-#ifndef KUDU_GUTIL_BIND_HELPERS_H_
-#define KUDU_GUTIL_BIND_HELPERS_H_
+#pragma once
 
 #include <assert.h>
 
@@ -564,5 +562,3 @@ void DeletePointer(T* obj) {
 }
 
 } // namespace kudu
-
-#endif // BASE_BIND_HELPERS_H_

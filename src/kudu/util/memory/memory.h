@@ -29,8 +29,7 @@
 // single allocator per a single user request, thus setting bounds on memory
 // usage on a per-request basis.
 
-#ifndef KUDU_UTIL_MEMORY_MEMORY_H_
-#define KUDU_UTIL_MEMORY_MEMORY_H_
+#pragma once
 
 #include <algorithm>
 #include <cstddef>
@@ -998,5 +997,3 @@ void StaticQuota<thread_safe>::SetQuota(const size_t quota) {
 }
 
 } // namespace kudu
-
-#endif // KUDU_UTIL_MEMORY_MEMORY_H_

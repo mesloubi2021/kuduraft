@@ -20,8 +20,7 @@
 //
 // Memory arena for variable-length datatypes and STL collections.
 
-#ifndef KUDU_UTIL_MEMORY_ARENA_H_
-#define KUDU_UTIL_MEMORY_ARENA_H_
+#pragma once
 
 #include <algorithm>
 #include <cstddef>
@@ -523,5 +522,3 @@ inline T* ArenaBase<THREADSAFE>::NewObject(Args&&... args) {
 }
 
 } // namespace kudu
-
-#endif // KUDU_UTIL_MEMORY_ARENA_H_

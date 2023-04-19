@@ -8,8 +8,7 @@
 // speed. Their values can and will change as their implementations change and
 // evolve.
 
-#ifndef UTIL_HASH_STRING_HASH_H_
-#define UTIL_HASH_STRING_HASH_H_
+#pragma once
 
 #include <stddef.h>
 
@@ -84,5 +83,3 @@ inline size_t HashStringThoroughlyWithSeeds(
   mix(a, b, c);
   return c;
 }
-
-#endif // UTIL_HASH_STRING_HASH_H_

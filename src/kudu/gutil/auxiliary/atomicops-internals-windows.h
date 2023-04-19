@@ -6,8 +6,7 @@
 // functions.  This file should not be included directly.  Clients
 // should instead include "base/atomicops.h".
 
-#ifndef BASE_AUXILIARY_ATOMICOPS_INTERNALS_WINDOWS_H_
-#define BASE_AUXILIARY_ATOMICOPS_INTERNALS_WINDOWS_H_
+#pragma once
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -563,5 +562,3 @@ inline void Release_Store(volatile Atomic64* ptr, Atomic64 value) {
 
 } // namespace subtle
 } // namespace base
-
-#endif // BASE_AUXILIARY_ATOMICOPS_INTERNALS_WINDOWS_H_

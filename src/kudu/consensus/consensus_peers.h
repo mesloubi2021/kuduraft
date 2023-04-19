@@ -21,8 +21,7 @@
 // out of Kudu into a fork known as kuduraft.
 // ********************************************************************
 
-#ifndef KUDU_CONSENSUS_CONSENSUS_PEERS_H_
-#define KUDU_CONSENSUS_CONSENSUS_PEERS_H_
+#pragma once
 
 #include <atomic>
 #include <cstdint>
@@ -390,5 +389,3 @@ Status SetPermanentUuidForRemotePeer(
 
 } // namespace consensus
 } // namespace kudu
-
-#endif /* KUDU_CONSENSUS_CONSENSUS_PEERS_H_ */

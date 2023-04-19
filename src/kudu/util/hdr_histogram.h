@@ -14,8 +14,8 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
-#ifndef KUDU_UTIL_HDRHISTOGRAM_H_
-#define KUDU_UTIL_HDRHISTOGRAM_H_
+
+#pragma once
 
 // C++ (TR1) port of HdrHistogram.
 //
@@ -362,5 +362,3 @@ class PercentileIterator : public AbstractHistogramIterator {
 };
 
 } // namespace kudu
-
-#endif // KUDU_UTIL_HDRHISTOGRAM_H_

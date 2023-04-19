@@ -5,9 +5,7 @@
 // Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-
-#ifndef KUDU_GUTIL_CALLBACK_H_
-#define KUDU_GUTIL_CALLBACK_H_
+#pragma once
 
 #include "kudu/gutil/callback_forward.h"
 #include "kudu/gutil/callback_internal.h"
@@ -778,5 +776,3 @@ class Callback<R(A1, A2, A3, A4, A5, A6, A7)> : public internal::CallbackBase {
 typedef Callback<void(void)> Closure;
 
 } // namespace kudu
-
-#endif // KUDU_GUTIL_CALLBACK_H

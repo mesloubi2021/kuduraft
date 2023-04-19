@@ -21,8 +21,7 @@
 //     ...
 //   }
 
-#ifndef BASE_ONCE_H_
-#define BASE_ONCE_H_
+#pragma once
 
 #include "kudu/gutil/atomicops.h"
 #include "kudu/gutil/macros.h"
@@ -119,5 +118,3 @@ class GoogleOnceDynamic {
   Atomic32 state_;
   DISALLOW_COPY_AND_ASSIGN(GoogleOnceDynamic);
 };
-
-#endif // BASE_ONCE_H_

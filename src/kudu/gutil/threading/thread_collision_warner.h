@@ -2,8 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BASE_THREADING_THREAD_COLLISION_WARNER_H_
-#define BASE_THREADING_THREAD_COLLISION_WARNER_H_
+#pragma once
 
 #include <cstdint>
 
@@ -237,5 +236,3 @@ class BASE_EXPORT ThreadCollisionWarner {
 };
 
 } // namespace base
-
-#endif // BASE_THREADING_THREAD_COLLISION_WARNER_H_

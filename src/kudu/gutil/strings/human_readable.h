@@ -3,8 +3,7 @@
 // A collection of methods to convert back and forth between a number
 // and a human-readable string representing the number.
 
-#ifndef STRINGS_HUMAN_READABLE_H__
-#define STRINGS_HUMAN_READABLE_H__
+#pragma once
 
 #include <functional>
 #include <string>
@@ -155,5 +154,3 @@ class HumanReadableElapsedTime {
  private:
   DISALLOW_IMPLICIT_CONSTRUCTORS(HumanReadableElapsedTime);
 };
-
-#endif // STRINGS_HUMAN_READABLE_H__

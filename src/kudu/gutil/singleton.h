@@ -54,8 +54,7 @@
 //
 // Singleton::get() is very fast - about 1ns on a 2.4GHz Core 2.
 
-#ifndef UTIL_GTL_SINGLETON_H__
-#define UTIL_GTL_SINGLETON_H__
+#pragma once
 
 #include <stddef.h>
 
@@ -151,5 +150,3 @@ Type* Singleton<Type>::instance_ = NULL;
 
 template <typename Type>
 Type* Singleton<Type>::injected_instance_ = NULL;
-
-#endif // UTIL_GTL_SINGLETON_H__

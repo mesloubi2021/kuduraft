@@ -14,8 +14,7 @@
 //
 // IWYU pragma: private, include "strings/split.h"
 
-#ifndef STRINGS_SPLIT_INTERNAL_H_
-#define STRINGS_SPLIT_INTERNAL_H_
+#pragma once
 
 #include <iterator>
 #include <map>
@@ -435,5 +434,3 @@ class Splitter {
 } // namespace internal
 
 } // namespace strings
-
-#endif // STRINGS_SPLIT_INTERNAL_H_

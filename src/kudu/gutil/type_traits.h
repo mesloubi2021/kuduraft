@@ -57,8 +57,7 @@
 // We can add more type traits as required.
 
 // THESE #defines collide with spareshash
-#ifndef KUDU_BASE_TYPE_TRAITS_H_
-#define KUDU_BASE_TYPE_TRAITS_H_
+#pragma once
 
 #include <utility>
 
@@ -482,5 +481,3 @@ struct is_convertible
       ATTRIBUTE_UNUSED
 #define KENFORCE_POD(TypeName) \
   typedef int Dummy_Type_For_ENFORCE_POD ATTRIBUTE_UNUSED
-
-#endif // KUDU_BASE_TYPE_TRAITS_H_

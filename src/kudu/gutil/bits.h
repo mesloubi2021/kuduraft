@@ -2,11 +2,10 @@
 //
 // A collection of useful (static) bit-twiddling functions.
 
+#pragma once
+
 #include "kudu/gutil/integral_types.h"
 #include "kudu/gutil/macros.h"
-
-#ifndef _BITS_H_
-#define _BITS_H_
 
 namespace kudu {
 
@@ -272,5 +271,3 @@ inline bool Bits::BytesAllInRange(T bytes, uint8 lo, uint8 hi) {
 }
 
 } // namespace kudu
-
-#endif // _BITS_H_

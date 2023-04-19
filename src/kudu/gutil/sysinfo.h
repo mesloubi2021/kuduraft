@@ -28,8 +28,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef _SYSINFO_H_
-#define _SYSINFO_H_
+#pragma once
 
 #include <cstdint>
 
@@ -67,4 +66,3 @@ extern double CyclesPerSecond(void);
 extern int ParseMaxCpuIndex(const char* str);
 
 } // namespace base
-#endif /* #ifndef _SYSINFO_H_ */

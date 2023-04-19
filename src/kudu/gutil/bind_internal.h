@@ -6,8 +6,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef KUDU_GUTIL_BIND_INTERNAL_H_
-#define KUDU_GUTIL_BIND_INTERNAL_H_
+#pragma once
 
 #include <utility>
 
@@ -3415,5 +3414,3 @@ struct BindState<Runnable, RunType, void(P1, P2, P3, P4, P5, P6, P7)>
 
 } // namespace internal
 } // namespace kudu
-
-#endif // KUDU_GUTIL_BIND_INTERNAL_H_

@@ -3,8 +3,7 @@
 //
 // Convert strings to numbers or numbers to strings.
 
-#ifndef STRINGS_NUMBERS_H_
-#define STRINGS_NUMBERS_H_
+#pragma once
 
 #include <cinttypes>
 #include <cstddef>
@@ -597,5 +596,3 @@ inline std::string Int64ToString(int64 i64) {
 inline std::string UInt64ToString(uint64 ui64) {
   return StringPrintf("%7" PRIu64, ui64);
 }
-
-#endif // STRINGS_NUMBERS_H_

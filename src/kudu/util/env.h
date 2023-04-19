@@ -10,8 +10,7 @@
 // All Env implementations are safe for concurrent access from
 // multiple threads without any external synchronization.
 
-#ifndef STORAGE_LEVELDB_INCLUDE_ENV_H_
-#define STORAGE_LEVELDB_INCLUDE_ENV_H_
+#pragma once
 
 #include <cstddef>
 #include <cstdint>
@@ -700,5 +699,3 @@ ReadFileToString(Env* env, const std::string& fname, faststring* data);
 std::ostream& operator<<(std::ostream& o, Env::ResourceLimitType t);
 
 } // namespace kudu
-
-#endif // STORAGE_LEVELDB_INCLUDE_ENV_H_

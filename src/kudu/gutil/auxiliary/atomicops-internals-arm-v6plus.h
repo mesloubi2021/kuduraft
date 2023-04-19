@@ -7,8 +7,7 @@
 //
 // This code implements ARM atomics for architectures V6 and  newer.
 
-#ifndef BASE_AUXILIARY_ATOMICOPS_INTERNALS_ARM_V6PLUS_H_
-#define BASE_AUXILIARY_ATOMICOPS_INTERNALS_ARM_V6PLUS_H_
+#pragma once
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -398,5 +397,3 @@ inline Atomic64 Release_CompareAndSwap(
 
 } // namespace subtle
 } // namespace base
-
-#endif // BASE_AUXILIARY_ATOMICOPS_INTERNALS_ARM_V6PLUS_H_

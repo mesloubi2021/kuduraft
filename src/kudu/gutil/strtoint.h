@@ -27,8 +27,7 @@
 // to provide the right overflow and errno behavior.
 //
 
-#ifndef BASE_STRTOINT_H_
-#define BASE_STRTOINT_H_
+#pragma once
 
 #include <cstdlib> // For strtol* functions.
 #include <string>
@@ -89,5 +88,3 @@ inline int32 atoi32(const std::string& s) {
 inline int64 atoi64(const std::string& s) {
   return atoi64(s.c_str());
 }
-
-#endif // BASE_STRTOINT_H_

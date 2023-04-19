@@ -1,8 +1,8 @@
 // Copyright (c) 2011 The LevelDB Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
-#ifndef KUDU_UTIL_RANDOM_H_
-#define KUDU_UTIL_RANDOM_H_
+
+#pragma once
 
 #include <cmath>
 #include <cstdint>
@@ -269,5 +269,3 @@ inline double Random::Normal(double mean, double std_dev) {
 }
 
 } // namespace kudu
-
-#endif // KUDU_UTIL_RANDOM_H_

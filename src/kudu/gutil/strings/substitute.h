@@ -6,8 +6,7 @@
 #include "kudu/gutil/strings/numbers.h"
 #include "kudu/gutil/strings/stringpiece.h"
 
-#ifndef STRINGS_SUBSTITUTE_H_
-#define STRINGS_SUBSTITUTE_H_
+#pragma once
 
 namespace strings {
 
@@ -219,5 +218,3 @@ inline std::string Substitute(
 }
 
 } // namespace strings
-
-#endif // STRINGS_SUBSTITUTE_H_

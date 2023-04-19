@@ -40,8 +40,7 @@
 //
 // For example usage, check out util/gtl/small_map.h.
 
-#ifndef UTIL_GTL_MANUAL_CONSTRUCTOR_H_
-#define UTIL_GTL_MANUAL_CONSTRUCTOR_H_
+#pragma once
 
 #include <stddef.h>
 
@@ -347,5 +346,3 @@ class ManualConstructor {
 #undef UTIL_GTL_ALIGN_OF
 
 } // namespace base
-
-#endif // UTIL_GTL_MANUAL_CONSTRUCTOR_H_

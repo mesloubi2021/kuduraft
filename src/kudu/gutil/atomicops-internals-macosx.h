@@ -6,9 +6,7 @@
 // be included directly.  Clients should instead include
 // "base/atomicops.h".
 // IWYU pragma: private, include "kudu/gutil/atomicops.h"
-
-#ifndef BASE_AUXILIARY_ATOMICOPS_INTERNALS_MACOSX_H_
-#define BASE_AUXILIARY_ATOMICOPS_INTERNALS_MACOSX_H_
+#pragma once
 
 typedef int32_t Atomic32;
 typedef int64_t Atomic64;
@@ -456,4 +454,3 @@ inline Atomic64 Release_Load(volatile const Atomic64* ptr) {
 inline void MemoryBarrier() {
   base::subtle::MemoryBarrier();
 }
-#endif // BASE_AUXILIARY_ATOMICOPS_INTERNALS_MACOSX_H_

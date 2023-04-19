@@ -15,8 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#ifndef KUDU_UTIL_DEBUG_REF_COUNTED_H_
-#define KUDU_UTIL_DEBUG_REF_COUNTED_H_
+#pragma once
 
 #include <glog/logging.h>
 
@@ -52,5 +51,3 @@ class DebugRefCountedThreadSafe : public RefCountedThreadSafe<T, Traits> {
 };
 
 } // namespace kudu
-
-#endif // KUDU_UTIL_DEBUG_REF_COUNTED_H_

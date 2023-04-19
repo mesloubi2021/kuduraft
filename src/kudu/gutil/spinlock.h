@@ -36,8 +36,7 @@
 // If used within a signal handler, all lock holders
 // should block the signal even outside the signal handler.
 
-#ifndef BASE_SPINLOCK_H_
-#define BASE_SPINLOCK_H_
+#pragma once
 
 #include "kudu/gutil/atomicops.h"
 #include "kudu/gutil/dynamic_annotations.h"
@@ -160,5 +159,3 @@ class SCOPED_LOCKABLE SpinLockHolder {
 #define SpinLockHolder(x) COMPILE_ASSERT(0, spin_lock_decl_missing_var_name)
 
 } // namespace base
-
-#endif // BASE_SPINLOCK_H_

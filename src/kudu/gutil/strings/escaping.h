@@ -17,9 +17,7 @@
 //   util/regex/re2/re2.h (Escaping for literals within regular expressions
 //                         - see RE2::QuoteMeta).
 // And probably many more places, as well.
-
-#ifndef STRINGS_ESCAPING_H_
-#define STRINGS_ESCAPING_H_
+#pragma once
 
 #include <stddef.h>
 #include <string>
@@ -693,5 +691,3 @@ void CleanStringLineEndings(
 void CleanStringLineEndings(std::string* str, bool auto_end_last_line);
 
 } // namespace strings
-
-#endif // STRINGS_ESCAPING_H_

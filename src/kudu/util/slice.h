@@ -4,8 +4,7 @@
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 //
 
-#ifndef KUDU_UTIL_SLICE_H_
-#define KUDU_UTIL_SLICE_H_
+#pragma once
 
 // NOTE: using stdint.h instead of cstdint because this file is supposed
 //       to be processed by a compiler lacking C++11 support.
@@ -330,5 +329,3 @@ struct SliceMap {
 };
 
 } // namespace kudu
-
-#endif // KUDU_UTIL_SLICE_H_

@@ -14,8 +14,7 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
-#ifndef KUDU_UTIL_JSONREADER_H_
-#define KUDU_UTIL_JSONREADER_H_
+#pragma once
 
 #include <cstdint>
 #include <string>
@@ -97,5 +96,3 @@ class JsonReader {
 };
 
 } // namespace kudu
-
-#endif // KUDU_UTIL_JSONREADER_H_

@@ -62,8 +62,7 @@
 // For a discussion of the many very subtle implementation details, see the FAQ
 // at the end of condition_variable_win.cc.
 
-#ifndef BASE_SYNCHRONIZATION_CONDITION_VARIABLE_H_
-#define BASE_SYNCHRONIZATION_CONDITION_VARIABLE_H_
+#pragma once
 
 #include <pthread.h>
 
@@ -109,5 +108,3 @@ class ConditionVariable {
 };
 
 } // namespace kudu
-
-#endif // BASE_SYNCHRONIZATION_CONDITION_VARIABLE_H_

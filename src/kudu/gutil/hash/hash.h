@@ -70,8 +70,7 @@
 // property.  We already have several such functions; see
 // hash_unittest.cc for the details and unittests.
 
-#ifndef UTIL_HASH_HASH_H_
-#define UTIL_HASH_HASH_H_
+#pragma once
 
 #include <cstddef>
 #include <cstring>
@@ -333,5 +332,3 @@ struct GoodFastHash<const std::basic_string<CharT, Traits, Alloc>> {
   static const size_t bucket_size = 4; // These are required by MSVC
   static const size_t min_buckets = 8; // 4 and 8 are defaults.
 };
-
-#endif // UTIL_HASH_HASH_H_

@@ -21,8 +21,7 @@
 // out of Kudu into a fork known as kuduraft.
 // ********************************************************************
 
-#ifndef KUDU_CONSENSUS_LOG_H_
-#define KUDU_CONSENSUS_LOG_H_
+#pragma once
 
 #include <atomic>
 #include <cstddef>
@@ -704,4 +703,3 @@ class Log::LogFaultHooks {
 
 } // namespace log
 } // namespace kudu
-#endif /* KUDU_CONSENSUS_LOG_H_ */

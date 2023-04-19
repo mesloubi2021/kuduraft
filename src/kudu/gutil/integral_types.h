@@ -6,9 +6,7 @@
 // platforms like Windows, Mac, and embedded systems.  Before making
 // any changes here, make sure that you're not breaking any platforms.
 //
-
-#ifndef BASE_INTEGRAL_TYPES_H_
-#define BASE_INTEGRAL_TYPES_H_
+#pragma once
 
 #include <inttypes.h>
 #include <limits>
@@ -101,5 +99,3 @@ static const int64 kint64max = std::numeric_limits<int64_t>::max();
 typedef uint64 Fprint;
 static const Fprint kIllegalFprint = 0;
 static const Fprint kMaxFprint = GG_ULONGLONG(0xFFFFFFFFFFFFFFFF);
-
-#endif // BASE_INTEGRAL_TYPES_H_

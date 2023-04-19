@@ -33,8 +33,7 @@
  * It may not be used directly by code outside of //base.
  */
 
-#ifndef BASE_SPINLOCK_INTERNAL_H_
-#define BASE_SPINLOCK_INTERNAL_H_
+#pragma once
 
 #include "kudu/gutil/atomicops.h"
 #include "kudu/gutil/integral_types.h"
@@ -65,4 +64,3 @@ void SpinLockDelay(volatile Atomic32* w, int32 value, int loop);
 } // namespace kudu
 } // namespace internal
 } // namespace base
-#endif

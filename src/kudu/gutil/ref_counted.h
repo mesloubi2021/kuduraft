@@ -2,8 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BASE_MEMORY_REF_COUNTED_H_
-#define BASE_MEMORY_REF_COUNTED_H_
+#pragma once
 
 #include <cassert>
 #include <cstddef>
@@ -373,5 +372,3 @@ struct ScopedRefPtrHashFunctor {
     return reinterpret_cast<size_t>(p.get());
   }
 };
-
-#endif // BASE_MEMORY_REF_COUNTED_H_

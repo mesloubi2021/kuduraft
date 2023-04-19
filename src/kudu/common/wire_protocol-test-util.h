@@ -15,8 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#ifndef KUDU_COMMON_WIRE_PROTOCOL_TEST_UTIL_H_
-#define KUDU_COMMON_WIRE_PROTOCOL_TEST_UTIL_H_
+#pragma once
 
 #include "kudu/common/wire_protocol.h"
 
@@ -77,5 +76,3 @@ inline void AddTestKeyToPB(
 }
 
 } // namespace kudu
-
-#endif /* KUDU_COMMON_WIRE_PROTOCOL_TEST_UTIL_H_ */

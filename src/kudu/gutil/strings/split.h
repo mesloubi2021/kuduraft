@@ -17,8 +17,7 @@
 // (3) (Optional) Replace old Split*() API calls at call sites with calls to new
 //     Split() API.
 //
-#ifndef STRINGS_SPLIT_H_
-#define STRINGS_SPLIT_H_
+#pragma once
 
 #include <cstddef>
 #include <map>
@@ -1244,5 +1243,3 @@ bool SplitStringAndParseToList(
 
 // END DOXYGEN SplitFunctions grouping
 /* @} */
-
-#endif // STRINGS_SPLIT_H_

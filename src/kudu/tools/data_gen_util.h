@@ -17,8 +17,7 @@
 //
 // Utility functions for generating data for use by tools and tests.
 
-#ifndef KUDU_TOOLS_DATA_GEN_UTIL_H_
-#define KUDU_TOOLS_DATA_GEN_UTIL_H_
+#pragma once
 
 #include <stdint.h>
 
@@ -53,5 +52,3 @@ void GenerateDataForRow(
 
 } // namespace tools
 } // namespace kudu
-
-#endif // KUDU_TOOLS_DATA_GEN_UTIL_H_

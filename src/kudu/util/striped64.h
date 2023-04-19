@@ -15,8 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#ifndef KUDU_UTIL_STRIPED64_H_
-#define KUDU_UTIL_STRIPED64_H_
+#pragma once
 
 #include <atomic>
 #include <cstdint>
@@ -178,5 +177,3 @@ class LongAdder : Striped64 {
 };
 
 } // namespace kudu
-
-#endif

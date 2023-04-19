@@ -7,8 +7,7 @@
 // New code should use one of the targeted libraries that provide hash
 // interfaces for the types needed. See //util/hash/README for details.
 
-#ifndef UTIL_HASH_LEGACY_HASH_H_
-#define UTIL_HASH_LEGACY_HASH_H_
+#pragma once
 
 #include "kudu/gutil/hash/builtin_type_hash.h"
 #include "kudu/gutil/hash/string_hash.h"
@@ -82,5 +81,3 @@ inline uint16 HashTo16(const char* s, uint32 slen) {
   uint16 retval = Hash32StringWithSeed(s, slen, MIX32) >> 16;
   return retval == kIllegalHash16 ? static_cast<uint16>(retval - 1) : retval;
 }
-
-#endif // UTIL_HASH_LEGACY_HASH_H_

@@ -4,8 +4,7 @@
 // This file contains conversion functions from various data types to
 // strings and back.
 
-#ifndef STRINGS_SERIALIZE_H_
-#define STRINGS_SERIALIZE_H_
+#pragma once
 
 #include <cstring>
 #include <string>
@@ -338,5 +337,3 @@ bool DictionaryInt64Decode(
 bool DictionaryDoubleDecode(
     std::unordered_map<std::string, double>* dictionary,
     const std::string& encoded_str);
-
-#endif // STRINGS_SERIALIZE_H_

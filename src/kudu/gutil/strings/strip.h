@@ -4,8 +4,7 @@
 // This file contains functions that remove a defined part from the string,
 // i.e., strip the string.
 
-#ifndef STRINGS_STRIP_H_
-#define STRINGS_STRIP_H_
+#pragma once
 
 #include <cstddef>
 
@@ -270,5 +269,3 @@ int memrm(char* str, int strlen, char c);
 // ----------------------------------------------------------------------
 int strrmm(char* str, const char* chars);
 int strrmm(std::string* str, const std::string& chars);
-
-#endif // STRINGS_STRIP_H_
