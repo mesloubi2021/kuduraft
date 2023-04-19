@@ -59,8 +59,7 @@ HdrHistogram::HdrHistogram(
       total_count_(0),
       total_sum_(0),
       min_value_(std::numeric_limits<Atomic64>::max()),
-      max_value_(0),
-      counts_(nullptr) {
+      max_value_(0) {
   Init();
 }
 
@@ -76,8 +75,7 @@ HdrHistogram::HdrHistogram(const HdrHistogram& other)
       total_count_(0),
       total_sum_(0),
       min_value_(std::numeric_limits<Atomic64>::max()),
-      max_value_(0),
-      counts_(nullptr) {
+      max_value_(0) {
   Init();
 
   // Not a consistent snapshot but we try to roughly keep it close.

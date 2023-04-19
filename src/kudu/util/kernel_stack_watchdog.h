@@ -64,7 +64,6 @@
 #include <glog/logging.h>
 
 #include "kudu/gutil/atomicops.h"
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/macros.h"
 #include "kudu/gutil/port.h"
 #include "kudu/gutil/ref_counted.h"
@@ -214,7 +213,7 @@ class KernelStackWatchdog {
 
   // If non-NULL, warnings will be emitted into this vector instead of glog.
   // Used by tests.
-  gscoped_ptr<std::vector<std::string>> log_collector_;
+  std::unique_ptr<std::vector<std::string>> log_collector_;
 
   // Lock protecting log_collector_.
   mutable simple_spinlock log_lock_;

@@ -20,9 +20,11 @@
 #ifndef KUDU_UTIL_OBJECT_POOL_H
 #define KUDU_UTIL_OBJECT_POOL_H
 
+#include <cstdint>
+#include <memory>
+
 #include <glog/logging.h>
-#include <stdint.h>
-#include "kudu/gutil/gscoped_ptr.h"
+
 #include "kudu/gutil/manual_constructor.h"
 
 namespace kudu {
@@ -46,7 +48,7 @@ template <typename T>
 class ObjectPool {
  public:
   typedef ReturnToPool<T> deleter_type;
-  typedef gscoped_ptr<T, deleter_type> scoped_ptr;
+  typedef std::unique_ptr<T, deleter_type> scoped_ptr;
 
   ObjectPool()
       : free_list_head_(nullptr), alloc_list_head_(nullptr), deleter_(this) {}

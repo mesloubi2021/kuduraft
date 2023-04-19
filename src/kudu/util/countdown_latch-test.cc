@@ -18,7 +18,6 @@
 #include <boost/bind.hpp> // IWYU pragma: keep
 #include <gtest/gtest.h>
 
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/ref_counted.h"
 #include "kudu/util/countdown_latch.h"
 #include "kudu/util/monotime.h"
@@ -39,7 +38,7 @@ static void DecrementLatch(CountDownLatch* latch, int amount) {
 // Tests that we can decrement the latch by arbitrary amounts, as well
 // as 1 by one.
 TEST(TestCountDownLatch, TestLatch) {
-  gscoped_ptr<ThreadPool> pool;
+  std::unique_ptr<ThreadPool> pool;
   ASSERT_OK(ThreadPoolBuilder("cdl-test").set_max_threads(1).Build(&pool));
 
   CountDownLatch latch(1000);

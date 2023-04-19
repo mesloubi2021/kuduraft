@@ -42,7 +42,6 @@
 
 #include <glog/logging.h>
 
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/macros.h"
 #include "kudu/gutil/port.h"
 #include "kudu/gutil/singleton.h"
@@ -668,7 +667,7 @@ class MemoryStatisticsCollectingBufferAllocator : public BufferAllocator {
   virtual void FreeInternal(Buffer* buffer) override;
 
   BufferAllocator* delegate_;
-  gscoped_ptr<MemoryStatisticsCollectorInterface> memory_stats_collector_;
+  std::unique_ptr<MemoryStatisticsCollectorInterface> memory_stats_collector_;
 };
 
 // BufferAllocator which uses MemTracker to keep track of and optionally
@@ -799,7 +798,7 @@ class OwningThreadSafeBufferAllocator
   virtual ~OwningThreadSafeBufferAllocator() {}
 
  private:
-  gscoped_ptr<DelegateAllocatorType> delegate_owned_;
+  std::unique_ptr<DelegateAllocatorType> delegate_owned_;
 };
 
 class ThreadSafeMemoryLimit

@@ -23,18 +23,19 @@
 #include <cerrno>
 #include <cstdint>
 #include <cstdlib>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <utility>
 
 #include <glog/logging.h>
 
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/util/debug/leakcheck_disabler.h"
 #include "kudu/util/errno.h"
 #include "kudu/util/status.h"
 
 using std::string;
+using std::unique_ptr;
 
 namespace kudu {
 namespace {
@@ -50,10 +51,7 @@ Status DoGetLoggedInUser(string* user_name) {
   int64_t retval = sysconf(_SC_GETPW_R_SIZE_MAX);
   size_t bufsize = retval > 0 ? retval : 16384;
 
-  gscoped_ptr<char[], FreeDeleter> buf(static_cast<char*>(malloc(bufsize)));
-  if (buf.get() == nullptr) {
-    return Status::RuntimeError("malloc failed", ErrnoToString(errno), errno);
-  }
+  const unique_ptr<char[]> buf(new char[bufsize]);
 
   int ret = getpwuid_r(getuid(), &pwd, buf.get(), bufsize, &result);
   if (result == nullptr) {

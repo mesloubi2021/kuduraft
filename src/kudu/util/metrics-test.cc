@@ -28,7 +28,6 @@
 
 #include "kudu/gutil/bind.h"
 #include "kudu/gutil/bind_helpers.h"
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/map-util.h"
 #include "kudu/gutil/ref_counted.h"
 #include "kudu/util/hdr_histogram.h"

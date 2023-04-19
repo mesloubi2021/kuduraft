@@ -19,8 +19,8 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/hash/city.h"
 #include "kudu/gutil/macros.h"
 #include "kudu/gutil/port.h"
@@ -169,7 +169,7 @@ class BloomFilterBuilder {
   DISALLOW_COPY_AND_ASSIGN(BloomFilterBuilder);
 
   size_t n_bits_;
-  gscoped_array<uint8_t> bitmap_;
+  std::unique_ptr<uint8_t[]> bitmap_;
 
   // The number of hash functions to compute.
   size_t n_hashes_;

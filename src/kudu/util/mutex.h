@@ -19,7 +19,6 @@
 
 #include <glog/logging.h>
 
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/macros.h"
 
 namespace kudu {

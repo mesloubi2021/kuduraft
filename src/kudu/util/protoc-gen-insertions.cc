@@ -28,13 +28,13 @@
 #include <google/protobuf/io/printer.h>
 #include <google/protobuf/io/zero_copy_stream.h>
 
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/strings/strip.h"
 #include "kudu/gutil/strings/substitute.h"
 
 using google::protobuf::io::Printer;
 using google::protobuf::io::ZeroCopyOutputStream;
 using std::string;
+using std::unique_ptr;
 
 namespace kudu {
 
@@ -59,7 +59,7 @@ class InsertAnnotations : public ::google::protobuf::compiler::CodeGenerator {
     string pb_file = path_no_extension + ".pb.cc";
 
     // Actually insert the new #include
-    gscoped_ptr<ZeroCopyOutputStream> inserter(
+    const unique_ptr<ZeroCopyOutputStream> inserter(
         gen_context->OpenForInsert(pb_file, "includes"));
     Printer printer(inserter.get(), '$');
     printer.Print(kIncludeToInsert);

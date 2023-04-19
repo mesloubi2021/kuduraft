@@ -24,7 +24,6 @@
 
 #include <gtest/gtest.h>
 
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/util/blocking_queue.h"
 #include "kudu/util/countdown_latch.h"
 #include "kudu/util/monotime.h"
@@ -166,9 +165,9 @@ TEST(BlockingQueueTest, TestGetFromShutdownQueue) {
 
 TEST(BlockingQueueTest, TestGscopedPtrMethods) {
   BlockingQueue<int*> test_queue(2);
-  gscoped_ptr<int> input_int(new int(123));
+  std::unique_ptr<int> input_int(new int(123));
   ASSERT_EQ(test_queue.Put(&input_int), QUEUE_SUCCESS);
-  gscoped_ptr<int> output_int;
+  std::unique_ptr<int> output_int;
   ASSERT_TRUE(test_queue.BlockingGet(&output_int));
   ASSERT_EQ(123, *output_int.get());
   test_queue.Shutdown();

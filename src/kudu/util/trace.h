@@ -22,7 +22,6 @@
 #include <utility>
 #include <vector>
 
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/macros.h"
 #include "kudu/gutil/ref_counted.h"
 #include "kudu/gutil/strings/stringpiece.h"
@@ -227,7 +226,7 @@ class Trace : public RefCountedThreadSafe<Trace> {
 
   void MetricsToJSON(JsonWriter* jw) const;
 
-  gscoped_ptr<ThreadSafeArena> arena_;
+  std::unique_ptr<ThreadSafeArena> arena_;
 
   // Lock protecting the entries linked list.
   mutable simple_spinlock lock_;

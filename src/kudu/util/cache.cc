@@ -17,7 +17,6 @@
 #include <glog/logging.h>
 
 #include "kudu/gutil/bits.h"
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/hash/city.h"
 #include "kudu/gutil/macros.h"
 #include "kudu/gutil/port.h"
@@ -56,6 +55,7 @@ TAG_FLAG(cache_memtracker_approximation_ratio, hidden);
 using std::atomic;
 using std::shared_ptr;
 using std::string;
+using std::unique_ptr;
 using std::vector;
 
 namespace kudu {
@@ -461,7 +461,7 @@ int DetermineShardBits() {
 class ShardedLRUCache : public Cache {
  private:
   shared_ptr<MemTracker> mem_tracker_;
-  gscoped_ptr<CacheMetrics> metrics_;
+  unique_ptr<CacheMetrics> metrics_;
   vector<LRUCache*> shards_;
 
   // Number of bits of hash used to determine the shard.
@@ -494,7 +494,7 @@ class ShardedLRUCache : public Cache {
     int num_shards = 1 << shard_bits_;
     const size_t per_shard = (capacity + (num_shards - 1)) / num_shards;
     for (int s = 0; s < num_shards; s++) {
-      gscoped_ptr<LRUCache> shard(new LRUCache(mem_tracker_.get()));
+      unique_ptr<LRUCache> shard(new LRUCache(mem_tracker_.get()));
       shard->SetCapacity(per_shard);
       shards_.push_back(shard.release());
     }

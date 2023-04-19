@@ -19,12 +19,12 @@
 
 #include <unistd.h>
 #include <list>
+#include <memory>
 #include <string>
 #include <type_traits>
 #include <vector>
 
 #include "kudu/gutil/basictypes.h"
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/util/condition_variable.h"
 #include "kudu/util/monotime.h"
 #include "kudu/util/mutex.h"
@@ -86,7 +86,7 @@ class BlockingQueue {
 
   // Get an element from the queue.  Returns false if the queue is empty and
   // we were shut down prior to getting the element.
-  bool BlockingGet(gscoped_ptr<T_VAL>* out) {
+  bool BlockingGet(std::unique_ptr<T_VAL>* out) {
     T t = NULL;
     bool got_element = BlockingGet(&t);
     if (!got_element) {
@@ -154,8 +154,8 @@ class BlockingQueue {
   }
 
   // Returns the same as the other Put() overload above.
-  // If the element was inserted, the gscoped_ptr releases its contents.
-  QueueStatus Put(gscoped_ptr<T_VAL>* val) {
+  // If the element was inserted, the std::unique_ptr releases its contents.
+  QueueStatus Put(std::unique_ptr<T_VAL>* val) {
     QueueStatus s = Put(val->get());
     if (s == QUEUE_SUCCESS) {
       ignore_result<>(val->release());
@@ -184,8 +184,8 @@ class BlockingQueue {
   }
 
   // Same as other BlockingPut() overload above. If the element was
-  // enqueued, gscoped_ptr releases its contents.
-  bool BlockingPut(gscoped_ptr<T_VAL>* val) {
+  // enqueued, std::unique_ptr releases its contents.
+  bool BlockingPut(std::unique_ptr<T_VAL>* val) {
     bool ret = Put(val->get());
     if (ret) {
       ignore_result(val->release());

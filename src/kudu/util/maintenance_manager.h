@@ -30,7 +30,6 @@
 #include <glog/logging.h>
 #include <gtest/gtest_prod.h>
 
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/macros.h"
 #include "kudu/gutil/ref_counted.h"
 #include "kudu/util/atomic.h"
@@ -256,7 +255,7 @@ class MaintenanceOp {
   //
   // Note: 'cond_' is used with the MaintenanceManager's mutex. As such,
   // it only exists when the op is registered.
-  gscoped_ptr<ConditionVariable> cond_;
+  std::unique_ptr<ConditionVariable> cond_;
 
   // The MaintenanceManager with which this op is registered, or null
   // if it is not registered.

@@ -48,10 +48,10 @@
 // tracked value (1 hour), it would still maintain a resolution of 3.6 seconds
 // (or better).
 
-#include <stdint.h>
+#include <cstdint>
+#include <memory>
 
 #include "kudu/gutil/atomicops.h"
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/macros.h"
 #include "kudu/gutil/port.h"
 #include "kudu/util/locks.h"
@@ -208,7 +208,7 @@ class HdrHistogram {
   base::subtle::Atomic64 total_sum_;
   base::subtle::Atomic64 min_value_;
   base::subtle::Atomic64 max_value_;
-  gscoped_array<base::subtle::Atomic64> counts_;
+  std::unique_ptr<base::subtle::Atomic64[]> counts_;
 
   HdrHistogram& operator=(
       const HdrHistogram& other); // Disable assignment operator.

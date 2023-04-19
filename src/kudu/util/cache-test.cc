@@ -13,7 +13,6 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/port.h"
 #include "kudu/gutil/ref_counted.h"
 #include "kudu/util/cache.h"
@@ -57,7 +56,7 @@ class CacheTest : public KuduTest,
   std::vector<int> evicted_keys_;
   std::vector<int> evicted_values_;
   std::shared_ptr<MemTracker> mem_tracker_;
-  gscoped_ptr<Cache> cache_;
+  std::unique_ptr<Cache> cache_;
   MetricRegistry metric_registry_;
 
   static const int kCacheSize = 14 * 1024 * 1024;

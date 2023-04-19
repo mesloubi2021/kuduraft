@@ -38,7 +38,6 @@
 #include "kudu/gutil/basictypes.h"
 #include "kudu/gutil/bind.h"
 #include "kudu/gutil/bind_helpers.h"
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/macros.h"
 #include "kudu/gutil/map-util.h"
 #include "kudu/gutil/once.h"
@@ -225,6 +224,12 @@ namespace kudu {
 const char* const Env::kInjectedFailureStatusMsg = "INJECTED FAILURE";
 
 namespace {
+
+struct FreeDeleter {
+  inline void operator()(void* ptr) const {
+    free(ptr);
+  }
+};
 
 #if defined(__APPLE__)
 // Simulates Linux's fallocate file preallocation API on OS X.

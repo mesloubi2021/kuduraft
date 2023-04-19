@@ -22,7 +22,6 @@
 
 #include <gtest/gtest.h>
 
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/util/compression/compression.pb.h"
 #include "kudu/util/compression/compression_codec.h"
 #include "kudu/util/slice.h"
@@ -52,7 +51,7 @@ static void TestCompressionCodec(CompressionType compression) {
   // Allocate the compression buffer
   size_t max_compressed = codec->MaxCompressedLength(kInputSize);
   ASSERT_LT(max_compressed, (kInputSize * 2));
-  gscoped_array<uint8_t> cbuffer(new uint8_t[max_compressed]);
+  std::unique_ptr<uint8_t[]> cbuffer(new uint8_t[max_compressed]);
 
   // Compress and uncompress
   ASSERT_OK(

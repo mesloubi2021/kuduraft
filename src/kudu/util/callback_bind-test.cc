@@ -26,13 +26,13 @@
 #include "kudu/gutil/bind.h"
 #include "kudu/gutil/bind_helpers.h"
 #include "kudu/gutil/callback.h"
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/macros.h"
 #include "kudu/gutil/ref_counted.h"
 
 namespace kudu {
 
 using std::string;
+using std::unique_ptr;
 
 static int Return5() {
   return 5;
@@ -84,21 +84,21 @@ TEST(CallbackBindTest, TestPartialBind) {
   ASSERT_EQ(23, cb.Run("hello world"));
 }
 
-char IncrementChar(gscoped_ptr<char> in) {
+char IncrementChar(unique_ptr<char> in) {
   return *in + 1;
 }
 
 TEST(CallbackBindTest, TestCallScopedPtrArg) {
-  // Calling a function with a gscoped_ptr argument is just like any other
-  // function which takes gscoped_ptr:
-  gscoped_ptr<char> foo(new char('x'));
-  Callback<char(gscoped_ptr<char>)> cb = Bind(&IncrementChar);
+  // Calling a function with a unique_ptr argument is just like any other
+  // function which takes unique_ptr:
+  unique_ptr<char> foo(new char('x'));
+  Callback<char(unique_ptr<char>)> cb = Bind(&IncrementChar);
   ASSERT_EQ('y', cb.Run(std::move(foo)));
 }
 
 TEST(CallbackBindTest, TestBindScopedPtrArg) {
-  // Binding a function with a gscoped_ptr argument requires using Passed()
-  gscoped_ptr<char> foo(new char('x'));
+  // Binding a function with a unique_ptr argument requires using Passed()
+  unique_ptr<char> foo(new char('x'));
   Callback<char(void)> cb = Bind(&IncrementChar, Passed(&foo));
   ASSERT_EQ('y', cb.Run());
 }

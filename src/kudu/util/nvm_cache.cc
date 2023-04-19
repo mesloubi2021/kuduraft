@@ -35,7 +35,6 @@
 #include "kudu/gutil/atomic_refcount.h"
 #include "kudu/gutil/atomicops.h"
 #include "kudu/gutil/dynamic_annotations.h"
-#include "kudu/gutil/gscoped_ptr.h"
 #include "kudu/gutil/hash/city.h"
 #include "kudu/gutil/macros.h"
 #include "kudu/gutil/port.h"
@@ -77,6 +76,7 @@ namespace {
 
 using std::shared_ptr;
 using std::string;
+using std::unique_ptr;
 using std::vector;
 
 typedef simple_spinlock MutexType;
@@ -474,7 +474,7 @@ static const int kNumShards = 1 << kNumShardBits;
 
 class ShardedLRUCache : public Cache {
  private:
-  gscoped_ptr<CacheMetrics> metrics_;
+  unique_ptr<CacheMetrics> metrics_;
   vector<NvmLRUCache*> shards_;
   VMEM* vmp_;
 
@@ -492,7 +492,7 @@ class ShardedLRUCache : public Cache {
       : vmp_(vmp) {
     const size_t per_shard = (capacity + (kNumShards - 1)) / kNumShards;
     for (int s = 0; s < kNumShards; s++) {
-      gscoped_ptr<NvmLRUCache> shard(new NvmLRUCache(vmp_));
+      unique_ptr<NvmLRUCache> shard(new NvmLRUCache(vmp_));
       shard->SetCapacity(per_shard);
       shards_.push_back(shard.release());
     }
