@@ -1550,6 +1550,29 @@ int64_t PeerMessageQueue::DoComputeNewWatermarkStaticMode(
 PeerMessageQueue::QuorumResults PeerMessageQueue::IsQuorumSatisfiedUnlocked(
     const RaftPeerPB& peer,
     const std::function<bool(const TrackedPeer*)>& predicate) {
+  if (!FLAGS_enable_flexi_raft) {
+    // For Vanilla raft mode, peer (local_peer_pb_) might not have fields
+    // populated other than uuid
+    int num_satisfied = 0;
+    std::vector<TrackedPeer*> quorum_peers;
+    for (const PeersMap::value_type& peer : peers_map_) {
+      if (!peer.second->peer_pb.has_member_type() ||
+          peer.second->peer_pb.member_type() != RaftPeerPB::VOTER) {
+        continue;
+      }
+      if (predicate(peer.second)) {
+        num_satisfied++;
+        quorum_peers.push_back(peer.second);
+      }
+    }
+    return {
+        num_satisfied >= queue_state_.majority_size_,
+        num_satisfied,
+        queue_state_.majority_size_,
+        kVanillaRaftQuorumId,
+        quorum_peers};
+  }
+
   const std::string& peer_quorum_id = getQuorumIdUsingCommitRule(peer);
 
   // Compute total number of voters in each region.
