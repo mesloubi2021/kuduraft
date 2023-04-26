@@ -443,8 +443,10 @@ Status TSTabletManager::Start(bool is_first_run) {
   // may invoke TabletReplica::StartFollowerTransaction() during startup,
   // causing a self-deadlock. We take a ref to members protected by 'lock_'
   // before unlocking.
+  std::shared_ptr<consensus::ConsensusBootstrapInfo> bootstrap_info =
+      log_->GetRecoveryInfo();
   RETURN_NOT_OK(consensus_->Start(
-      bootstrap_info_,
+      bootstrap_info,
       std::move(peer_proxy_factory),
       log_,
       std::move(time_manager),
@@ -452,11 +454,7 @@ Status TSTabletManager::Start(bool is_first_run) {
       server_->metric_entity(),
       mark_dirty_clbk_));
 
-  for (consensus::ReplicateMsg* replicate :
-       bootstrap_info_.orphaned_replicates) {
-    delete replicate;
-  }
-  bootstrap_info_.orphaned_replicates.clear();
+  log_->ClearOrphanedReplicates();
 
   RETURN_NOT_OK_PREPEND(
       WaitUntilRunning(), "Failed waiting for the raft to run");
@@ -563,9 +561,11 @@ Status TSTabletManager::SetupRaft() {
   // log_bootstrap_on_first_run in options.
   if (server_->opts().log_factory &&
       (!server_->is_first_run_ || server_->opts().log_bootstrap_on_first_run)) {
-    log_->GetRecoveryInfo(&bootstrap_info_);
-    if (bootstrap_info_.last_id.term() > consensus_->CurrentTerm()) {
-      consensus_->SetCurrentTermBootstrap(bootstrap_info_.last_id.term());
+    std::shared_ptr<consensus::ConsensusBootstrapInfo> bootstrap_info =
+        log_->GetRecoveryInfo();
+    if (bootstrap_info &&
+        bootstrap_info->last_id.term() > consensus_->CurrentTerm()) {
+      consensus_->SetCurrentTermBootstrap(bootstrap_info->last_id.term());
     }
   }
   return s1;

@@ -548,7 +548,8 @@ Log::Log(
       allocation_state_(kAllocationNotStarted),
       codec_(nullptr),
       metric_entity_(std::move(metric_entity)),
-      on_disk_size_(0) {
+      on_disk_size_(0),
+      bootstrap_(std::make_shared<consensus::ConsensusBootstrapInfo>()) {
   CHECK_OK(ThreadPoolBuilder("log-alloc")
                .set_max_threads(1)
                .Build(&allocation_pool_));

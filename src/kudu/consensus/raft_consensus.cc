@@ -494,7 +494,7 @@ Status RaftConsensus::Create(
 }
 
 Status RaftConsensus::Start(
-    const ConsensusBootstrapInfo& info,
+    const std::shared_ptr<ConsensusBootstrapInfo>& info,
     unique_ptr<PeerProxyFactory> peer_proxy_factory,
     scoped_refptr<log::Log> log,
     scoped_refptr<ITimeManager> time_manager,
@@ -502,6 +502,7 @@ Status RaftConsensus::Start(
     const scoped_refptr<MetricEntity>& metric_entity,
     Callback<void(const std::string& reason)> mark_dirty_clbk) {
   DCHECK(metric_entity);
+  CHECK(info);
 
   peer_proxy_factory_ = std::move(peer_proxy_factory);
   log_ = std::move(log);
@@ -572,8 +573,8 @@ Status RaftConsensus::Start(
       routing_table_container_,
       options_.tablet_id,
       raft_pool_->NewToken(ThreadPool::ExecutionMode::SERIAL),
-      info.last_id,
-      info.last_committed_id));
+      info->last_id,
+      info->last_committed_id));
 
   // Proxy failure threshold is set to "2 * leader failure timeout" which
   // is roughly equivalent to 3000 ms
@@ -637,23 +638,23 @@ Status RaftConsensus::Start(
 
     // Our last persisted term can be higher than the last persisted operation
     // (i.e. if we called an election) but reverse should never happen.
-    if (info.last_id.term() > CurrentTermUnlocked()) {
+    if (info->last_id.term() > CurrentTermUnlocked()) {
       return Status::Corruption(Substitute(
           "Unable to start RaftConsensus: "
           "The last op in the WAL with id $0 has a term ($1) that is greater "
           "than the latest recorded term, which is $2",
-          OpIdToString(info.last_id),
-          info.last_id.term(),
+          OpIdToString(info->last_id),
+          info->last_id.term(),
           CurrentTermUnlocked()));
     }
 
     // Append any uncommitted replicate messages found during log replay to the
     // queue.
     LOG_WITH_PREFIX_UNLOCKED(INFO)
-        << "Replica starting. Triggering " << info.orphaned_replicates.size()
+        << "Replica starting. Triggering " << info->orphaned_replicates.size()
         << " pending transactions. Active config: "
         << SecureShortDebugString(cmeta_->ActiveConfig());
-    for (ReplicateMsg* replicate : info.orphaned_replicates) {
+    for (const auto& replicate : info->orphaned_replicates) {
       ReplicateRefPtr replicate_ptr =
           make_scoped_refptr_replicate(new ReplicateMsg(*replicate));
       RETURN_NOT_OK(StartFollowerTransactionUnlocked(replicate_ptr));
@@ -661,7 +662,7 @@ Status RaftConsensus::Start(
 
     // Set the initial committed opid for the PendingRounds only after
     // appending any uncommitted replicate messages to the queue.
-    pending_->SetInitialCommittedOpId(info.last_committed_id);
+    pending_->SetInitialCommittedOpId(info->last_committed_id);
 
     // If this is the first term expire the FD immediately so that we have a
     // fast first election, otherwise we just let the timer expire normally.
@@ -5613,16 +5614,13 @@ void RaftConsensus::UpdateLocalPeerUnlocked(RaftConfigPB& active_config) {
     }
   }
 }
+
 ////////////////////////////////////////////////////////////////////////
 // ConsensusBootstrapInfo
 ////////////////////////////////////////////////////////////////////////
 
 ConsensusBootstrapInfo::ConsensusBootstrapInfo()
     : last_id(MinimumOpId()), last_committed_id(MinimumOpId()) {}
-
-ConsensusBootstrapInfo::~ConsensusBootstrapInfo() {
-  STLDeleteElements(&orphaned_replicates);
-}
 
 ////////////////////////////////////////////////////////////////////////
 // ConsensusRound

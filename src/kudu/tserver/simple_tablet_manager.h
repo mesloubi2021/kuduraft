@@ -224,8 +224,6 @@ class TSTabletManager : public TabletManagerIf,
 
   TSTabletManagerStatePB state_;
 
-  consensus::ConsensusBootstrapInfo bootstrap_info_;
-
   // Function to mark this TabletReplica's tablet as dirty in the
   // TSTabletManager.
   //

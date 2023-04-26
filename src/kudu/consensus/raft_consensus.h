@@ -240,7 +240,7 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // Start() is not thread-safe. Calls to Start() should be externally
   // synchronized with calls accessing non-const members of this class.
   Status Start(
-      const ConsensusBootstrapInfo& info,
+      const std::shared_ptr<ConsensusBootstrapInfo>& info,
       std::unique_ptr<PeerProxyFactory> peer_proxy_factory,
       scoped_refptr<log::Log> log,
       scoped_refptr<ITimeManager> time_manager,

@@ -73,7 +73,6 @@ class ReplicateMsg;
 // into the consensus implementation.
 struct ConsensusBootstrapInfo {
   ConsensusBootstrapInfo();
-  ~ConsensusBootstrapInfo();
 
   // The id of the last operation in the log
   OpId last_id;
@@ -86,7 +85,7 @@ struct ConsensusBootstrapInfo {
   // to potentially commit them.
   //
   // These are owned by the ConsensusBootstrapInfo instance.
-  std::vector<ReplicateMsg*> orphaned_replicates;
+  std::vector<std::shared_ptr<ReplicateMsg>> orphaned_replicates;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ConsensusBootstrapInfo);
@@ -173,9 +172,15 @@ class Log : public RefCountedThreadSafe<Log> {
   // start the instance from where it crashed. In abstracted logs like
   // MySQL, this bootstrap_info object is populated by log abstraction during
   // Log::Init and plumbed via this function to RaftConsensus::Start
-  virtual void GetRecoveryInfo(
-      consensus::ConsensusBootstrapInfo* bootstrap_info) {
-    // In base implementation, we don't override the bootstrap_info
+  virtual std::shared_ptr<consensus::ConsensusBootstrapInfo> GetRecoveryInfo()
+      const {
+    return bootstrap_;
+  }
+
+  // Clear orphaned replicates from bootstrap info
+  virtual void ClearOrphanedReplicates() {
+    CHECK(bootstrap_);
+    bootstrap_->orphaned_replicates.clear();
   }
 
   // Append the given commit message, asynchronously.
@@ -515,6 +520,8 @@ class Log : public RefCountedThreadSafe<Log> {
   // The cached on-disk size of the log, used to track its size even if it has
   // been closed.
   std::atomic<int64_t> on_disk_size_;
+
+  std::shared_ptr<kudu::consensus::ConsensusBootstrapInfo> bootstrap_;
 
   DISALLOW_COPY_AND_ASSIGN(Log);
 };
