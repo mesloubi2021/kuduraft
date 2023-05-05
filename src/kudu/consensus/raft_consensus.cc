@@ -2335,8 +2335,8 @@ Status RaftConsensus::UpdateReplica(
     Status prepare_status;
     auto iter = messages.begin();
     if (request->has_compression_dictionary()) {
-      KLOG_EVERY_N_SECS(INFO, 1)
-          << "[EVERY 1 second] Received compression dictionary from leader";
+      KLOG_EVERY_N_SECS(INFO, 180)
+          << "[EVERY 3 mins] Received compression dictionary from leader";
       const std::string& compression_dict = request->compression_dictionary();
       RETURN_NOT_OK(CompressionCodecManager::SetDictionary(compression_dict));
       persistent_vars_->set_compression_dictionary(compression_dict);

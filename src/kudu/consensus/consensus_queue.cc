@@ -1048,8 +1048,9 @@ Status PeerMessageQueue::RequestForPeer(
     }
     request->clear_compression_dictionary();
     if (peer->should_send_compression_dict) {
-      LOG_WITH_PREFIX_UNLOCKED(INFO)
-          << "Setting compression dictionary in request";
+      KLOG_EVERY_N_SECS(INFO, 180)
+          << "Setting compression dictionary in request to: " << peer->uuid()
+          << " as " << CompressionCodecManager::GetCurrentDictionaryID();
       request->set_compression_dictionary(
           CompressionCodecManager::GetDictionary());
     }
