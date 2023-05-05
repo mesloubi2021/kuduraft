@@ -399,12 +399,7 @@ Status ConsensusMetadata::Flush(FlushMode flush_mode) {
           meta_file_path,
           pb_,
           flush_mode == OVERWRITE ? pb_util::OVERWRITE : pb_util::NO_OVERWRITE,
-          // We use FLAGS_log_force_fsync_all here because the consensus
-          // metadata is essentially an extension of the primary durability
-          // mechanism of the consensus subsystem: the WAL. Using the same flag
-          // ensures that the WAL and the consensus metadata get the same
-          // durability guarantees.
-          FLAGS_log_force_fsync_all ? pb_util::SYNC : pb_util::NO_SYNC),
+          pb_util::SYNC),
       Substitute(
           "Unable to write consensus meta file for tablet $0 to path $1",
           tablet_id_,
