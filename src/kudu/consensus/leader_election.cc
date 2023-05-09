@@ -1202,7 +1202,10 @@ std::pair<bool, bool> FlexibleVoteCounter::IsDynamicQuorumSatisfied() const {
             << "Pessimistic quorum did not help decide election but pausing for: "
             << (FLAGS_wait_before_using_voting_history_secs - time_elapsed_secs)
             << " seconds before trying voting history heuristic";
-        return pessimistic_result;
+        // It's possible that at this point pessimistic quorum is impossible,
+        // nevertheless we shouldn't call the election and should wait for more
+        // votes for voter history computation
+        return {pessimistic_result.first, true};
       }
 
       // This sleep is to give other peers a chance and then falling down to
