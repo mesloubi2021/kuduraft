@@ -191,13 +191,17 @@ bool VoteCounter::IsDecided() const {
       no_votes_ > num_voters_ - majority_size_;
 }
 
-Status VoteCounter::GetDecision(ElectionVote* decision) const {
+Status VoteCounter::GetDecision(
+    ElectionVote* decision,
+    ElectionDecisionMethod* decision_method) const {
   if (yes_votes_ >= majority_size_) {
     *decision = VOTE_GRANTED;
+    *decision_method = ElectionDecisionMethod::SIMPLE_MAJORITY;
     return Status::OK();
   }
   if (no_votes_ > num_voters_ - majority_size_) {
     *decision = VOTE_DENIED;
+    *decision_method = ElectionDecisionMethod::SIMPLE_MAJORITY;
     return Status::OK();
   }
   return Status::IllegalState("Vote not yet decided");
@@ -481,7 +485,8 @@ std::pair<bool, bool> FlexibleVoteCounter::IsMajoritySatisfiedInRegion(
   return results.at(0);
 }
 
-std::pair<bool, bool> FlexibleVoteCounter::IsStaticQuorumSatisfied() const {
+FlexibleVoteCounter::QuorumState FlexibleVoteCounter::IsStaticQuorumSatisfied()
+    const {
   CHECK(
       config_.commit_rule().mode() == QuorumMode::STATIC_DISJUNCTION ||
       config_.commit_rule().mode() == QuorumMode::STATIC_CONJUNCTION);
@@ -535,7 +540,10 @@ std::pair<bool, bool> FlexibleVoteCounter::IsStaticQuorumSatisfied() const {
       quorum_satisfaction_possible = false;
     }
   }
-  return std::make_pair(quorum_satisfied, quorum_satisfaction_possible);
+  return {
+      quorum_satisfied,
+      quorum_satisfaction_possible,
+      ElectionDecisionMethod::STATIC_QUORUM};
 }
 
 // Flexible Paxos/Raft says that for a quorum of N if Datapath quorum is
@@ -547,8 +555,8 @@ std::pair<bool, bool> FlexibleVoteCounter::IsStaticQuorumSatisfied() const {
 // however in case regions are down, this would not work. In those cases
 // we use other heuristics like intersecting with last leader region or
 // a majority of regions + last leader region.
-std::pair<bool, bool> FlexibleVoteCounter::IsPessimisticQuorumSatisfied()
-    const {
+FlexibleVoteCounter::QuorumState
+FlexibleVoteCounter::IsPessimisticQuorumSatisfied() const {
   VLOG_WITH_PREFIX(3) << "Checking if pessimistic quorum is satisfied.";
 
   // Fetching all regions.
@@ -557,7 +565,12 @@ std::pair<bool, bool> FlexibleVoteCounter::IsPessimisticQuorumSatisfied()
        voter_distribution_) {
     regions.insert(region_count_pair.first);
   }
-  return IsMajoritySatisfiedInAllRegions(regions);
+  auto [achievedMajority, canAchieveMajority] =
+      IsMajoritySatisfiedInAllRegions(regions);
+  return {
+      achievedMajority,
+      canAchieveMajority,
+      ElectionDecisionMethod::PESSIMISTIC_QUORUM};
 }
 
 std::pair<bool, bool>
@@ -931,7 +944,7 @@ PotentialNextLeadersResponse FlexibleVoteCounter::GetPotentialNextLeaders(
       -1);
 }
 
-std::pair<bool, bool>
+FlexibleVoteCounter::QuorumState
 FlexibleVoteCounter::ComputeElectionResultFromVotingHistory(
     const LastKnownLeaderPB& last_known_leader,
     const std::string& last_known_leader_region,
@@ -981,8 +994,12 @@ FlexibleVoteCounter::ComputeElectionResultFromVotingHistory(
                    r.potential_leader_regions.end(),
                    ", ");
 
-        return AreMajoritiesSatisfied(
+        auto [achievedMajority, canAchieveMajority] = AreMajoritiesSatisfied(
             r.potential_leader_regions, candidate_region);
+        return {
+            achievedMajority,
+            canAchieveMajority,
+            ElectionDecisionMethod::VOTER_HISTORY};
       }
       case PotentialNextLeadersResponse::ERROR:
         // Declare undecided election in case of an error.
@@ -990,13 +1007,13 @@ FlexibleVoteCounter::ComputeElectionResultFromVotingHistory(
             << "Encountered an error during computing election result "
             << "from vote history. Falling back on pessimistic quorum. "
             << "Election term: " << election_term_;
-        return std::make_pair(false, true);
+        return {false, true, ElectionDecisionMethod::VOTER_HISTORY};
       case PotentialNextLeadersResponse::WAITING_FOR_MORE_VOTES:
       default:
         VLOG_WITH_PREFIX(3)
             << "Waiting for more votes. Election result hasn't been "
             << "determined. Election term: " << election_term_;
-        return std::make_pair(false, true);
+        return {false, true, ElectionDecisionMethod::VOTER_HISTORY};
     }
   }
 
@@ -1005,7 +1022,7 @@ FlexibleVoteCounter::ComputeElectionResultFromVotingHistory(
   VLOG_WITH_PREFIX(3)
       << "Converged to the most pessimistic quorum. Could not reach "
       << "a result using vote histories. Election term: " << election_term_;
-  return std::make_pair(false, true);
+  return {false, true, ElectionDecisionMethod::VOTER_HISTORY};
 }
 
 void FlexibleVoteCounter::GetLastKnownLeader(
@@ -1055,7 +1072,8 @@ std::pair<bool, bool> FlexibleVoteCounter::AreMajoritiesSatisfied(
   return result;
 }
 
-std::pair<bool, bool> FlexibleVoteCounter::IsDynamicQuorumSatisfied() const {
+FlexibleVoteCounter::QuorumState FlexibleVoteCounter::IsDynamicQuorumSatisfied()
+    const {
   CHECK(config_.commit_rule().mode() == QuorumMode::SINGLE_REGION_DYNAMIC);
 
   LastKnownLeaderPB last_known_leader;
@@ -1065,7 +1083,7 @@ std::pair<bool, bool> FlexibleVoteCounter::IsDynamicQuorumSatisfied() const {
   if (election_term_ <= last_known_leader.election_term()) {
     LOG_WITH_PREFIX(INFO) << "Declaring election loss because a new leader "
                           << "has been found in the crowd sourcing phase.";
-    return std::make_pair(false, false);
+    return {false, false, ElectionDecisionMethod::INVALIDATED_BY_HIGHER_TERM};
   }
   bool all_votes_are_in = AreAllVotesIn();
   if (all_votes_are_in) {
@@ -1078,18 +1096,20 @@ std::pair<bool, bool> FlexibleVoteCounter::IsDynamicQuorumSatisfied() const {
       DetermineQuorumIdForUUID(last_known_leader.uuid()));
 
   // Step 1: Check if pessimistic quorum is satisfied.
-  std::pair<bool, bool> pessimistic_result = IsPessimisticQuorumSatisfied();
+  QuorumState pessimistic_result = IsPessimisticQuorumSatisfied();
 
   if (all_votes_are_in &&
-      pessimistic_result.first != pessimistic_result.second) {
+      pessimistic_result.achievedMajority !=
+          pessimistic_result.canAchieveMajority) {
     // when all_votes_are_in, it should not be the case that
     // pessimistic_result.second is different from pessimistic_result.first,
     // because it should be a clear VOTE_GRANTED or VOTE_DENIED case
     // (decideable)
     LOG_WITH_PREFIX(DFATAL)
         << "UNEXPECTED VOTING: All votes are in but Pessimistic quorum is "
-        << "not decideable. Acheived majority: " << pessimistic_result.first
-        << ", can achieve majority: " << pessimistic_result.second;
+        << "not decideable. Acheived majority: "
+        << pessimistic_result.achievedMajority
+        << ", can achieve majority: " << pessimistic_result.canAchieveMajority;
   }
 
   // Return pessimistic quorum result if the pessimistic quorum is satisfied or
@@ -1097,7 +1117,8 @@ std::pair<bool, bool> FlexibleVoteCounter::IsDynamicQuorumSatisfied() const {
   // knowledge of the last leader without having it (eg. during bootstrap), we
   // should declare having lost the election or having insufficient votes to
   // make a decision.
-  if (pessimistic_result.first || last_known_leader_quorum_id.empty()) {
+  if (pessimistic_result.achievedMajority ||
+      last_known_leader_quorum_id.empty()) {
     LOG_WITH_PREFIX(INFO)
         << "Election status returned from pessimistic quorum check. "
         << "Last known leader quorum_id: " << last_known_leader_quorum_id;
@@ -1129,7 +1150,7 @@ std::pair<bool, bool> FlexibleVoteCounter::IsDynamicQuorumSatisfied() const {
 
   bool is_continuous = election_term_ == last_known_leader.election_term() + 1;
 
-  std::pair<bool, bool> result = std::make_pair(true, true);
+  QuorumState result;
 
   if (is_continuous || continuity_not_required) {
     CHECK(!last_known_leader.uuid().empty());
@@ -1143,12 +1164,16 @@ std::pair<bool, bool> FlexibleVoteCounter::IsDynamicQuorumSatisfied() const {
         << " lkl quorum_id: " << last_known_leader_quorum_id
         << " continuity_not_required: " << continuity_not_required
         << " is_continuous: " << is_continuous;
-    result = AreMajoritiesSatisfied(
+    auto [achievedMajority, canAchieveMajority] = AreMajoritiesSatisfied(
         {last_known_leader_quorum_id}, candidate_quorum_id);
     // Log the heuristic used if the election is successful or
     // if the election is definitely lost. We don't want to log
     // for each vote received as it might be 15-20 lines.
-    if (result.first || !result.second) {
+    result.achievedMajority = achievedMajority;
+    result.canAchieveMajority = canAchieveMajority;
+    result.latest_decision_mechanism =
+        ElectionDecisionMethod::CONTINUOUS_LKL_QUORUM;
+    if (result.achievedMajority || !result.canAchieveMajority) {
       LOG_WITH_PREFIX(INFO)
           << "Final decision: Flexiraft Heuristic Info. Election term immediately succeeds term of the last known leader"
           << " or continuity in terms is not required."
@@ -1173,7 +1198,7 @@ std::pair<bool, bool> FlexibleVoteCounter::IsDynamicQuorumSatisfied() const {
     long time_elapsed_secs =
         std::chrono::duration_cast<std::chrono::seconds>(now - creation_time_)
             .count();
-    if (pessimistic_result.second &&
+    if (pessimistic_result.canAchieveMajority &&
         time_elapsed_secs < FLAGS_wait_for_pessimistic_quorum_secs) {
       LOG_WITH_PREFIX(INFO)
           << "Pausing for Pessimistic quorum to help decide election";
@@ -1205,7 +1230,8 @@ std::pair<bool, bool> FlexibleVoteCounter::IsDynamicQuorumSatisfied() const {
         // It's possible that at this point pessimistic quorum is impossible,
         // nevertheless we shouldn't call the election and should wait for more
         // votes for voter history computation
-        return {pessimistic_result.first, true};
+        pessimistic_result.canAchieveMajority = true;
+        return pessimistic_result;
       }
 
       // This sleep is to give other peers a chance and then falling down to
@@ -1248,21 +1274,22 @@ std::pair<bool, bool> FlexibleVoteCounter::IsDynamicQuorumSatisfied() const {
         last_known_leader, last_known_leader_quorum_id, candidate_quorum_id);
   }
 
-  if (all_votes_are_in && result.first != result.second) {
+  if (all_votes_are_in &&
+      result.achievedMajority != result.canAchieveMajority) {
     // when all_votes_are_in, it should not be the case that
     // result.second is different from result.first,
     // because it should be a clear VOTE_GRANTED or VOTE_DENIED case
     // (decideable)
     LOG_WITH_PREFIX(DFATAL)
         << "UNEXPECTED VOTING: All votes are in but quorum is "
-        << "not decideable. Acheived majority: " << result.first
-        << ", can achieve majority: " << result.second;
+        << "not decideable. Acheived majority: " << result.achievedMajority
+        << ", can achieve majority: " << result.canAchieveMajority;
   }
 
   return result;
 }
 
-std::pair<bool, bool> FlexibleVoteCounter::GetQuorumState() const {
+FlexibleVoteCounter::QuorumState FlexibleVoteCounter::GetQuorumState() const {
   // If the quorum is not a function of the last leader's region,
   // return early.
   if (config_.commit_rule().mode() == QuorumMode::STATIC_DISJUNCTION ||
@@ -1273,18 +1300,22 @@ std::pair<bool, bool> FlexibleVoteCounter::GetQuorumState() const {
 }
 
 bool FlexibleVoteCounter::IsDecided() const {
-  const std::pair<bool, bool> quorum_state = GetQuorumState();
-  return quorum_state.first || !quorum_state.second;
+  const QuorumState quorum_state = GetQuorumState();
+  return quorum_state.achievedMajority || !quorum_state.canAchieveMajority;
 }
 
-Status FlexibleVoteCounter::GetDecision(ElectionVote* decision) const {
-  const std::pair<bool, bool> quorum_state = GetQuorumState();
-  if (quorum_state.first) {
+Status FlexibleVoteCounter::GetDecision(
+    ElectionVote* decision,
+    ElectionDecisionMethod* decision_method) const {
+  const QuorumState quorum_state = GetQuorumState();
+  if (quorum_state.achievedMajority) {
     *decision = VOTE_GRANTED;
+    *decision_method = quorum_state.latest_decision_mechanism;
     return Status::OK();
   }
-  if (!quorum_state.second) {
+  if (!quorum_state.canAchieveMajority) {
     *decision = VOTE_DENIED;
+    *decision_method = quorum_state.latest_decision_mechanism;
     return Status::OK();
   }
   return Status::IllegalState("Vote not yet decided");
@@ -1304,12 +1335,14 @@ ElectionResult::ElectionResult(
     ElectionVote decision,
     ConsensusTerm highest_voter_term,
     const std::string& message,
-    bool is_candidate_removed)
+    bool is_candidate_removed,
+    ElectionDecisionMethod decision_method)
     : vote_request(std::move(vote_request)),
       decision(decision),
       highest_voter_term(highest_voter_term),
       message(message),
-      is_candidate_removed(is_candidate_removed) {
+      is_candidate_removed(is_candidate_removed),
+      decision_method(decision_method) {
   DCHECK(!message.empty());
 }
 
@@ -1460,7 +1493,8 @@ void LeaderElection::CheckForDecision() {
     // Check if the vote has been newly decided.
     if (!result_ && vote_counter_->IsDecided()) {
       ElectionVote decision;
-      CHECK_OK(vote_counter_->GetDecision(&decision));
+      ElectionDecisionMethod decision_method;
+      CHECK_OK(vote_counter_->GetDecision(&decision, &decision_method));
       MonoTime end = MonoTime::Now();
       MonoDelta election_duration = end.GetDeltaSince(start_time_);
 
@@ -1477,7 +1511,12 @@ void LeaderElection::CheckForDecision() {
       }
 
       result_.reset(new ElectionResult(
-          request_, decision, highest_voter_term_, msg, is_candidate_removed));
+          request_,
+          decision,
+          highest_voter_term_,
+          msg,
+          is_candidate_removed,
+          decision_method));
       if (vote_logger_)
         vote_logger_->logElectionDecided(*result_);
     }
@@ -1613,7 +1652,8 @@ void LeaderElection::HandleHigherTermUnlocked(const VoterState& state) {
         VOTE_DENIED,
         state.response.responder_term(),
         msg,
-        is_candidate_removed));
+        is_candidate_removed,
+        ElectionDecisionMethod::INVALIDATED_BY_HIGHER_TERM));
   }
 }
 
