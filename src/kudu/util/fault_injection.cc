@@ -43,7 +43,7 @@ void InitRandom() {
 
   debug::ScopedLeakCheckDisabler d;
   g_random = new Random(GetRandomSeed32());
-  ANNOTATE_BENIGN_RACE_SIZED(
+  KUDU_ANNONTATE_BENIGN_RACE_SIZED(
       g_random, sizeof(Random), "Racy random numbers are OK");
 }
 

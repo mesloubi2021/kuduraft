@@ -85,37 +85,37 @@ struct padded_spinlock : public simple_spinlock {
 class rw_spinlock {
  public:
   rw_spinlock() {
-    ANNOTATE_RWLOCK_CREATE(this);
+    KUDU_ANNONTATE_RWLOCK_CREATE(this);
   }
   ~rw_spinlock() {
-    ANNOTATE_RWLOCK_DESTROY(this);
+    KUDU_ANNONTATE_RWLOCK_DESTROY(this);
   }
 
   void lock_shared() {
     sem_.lock_shared();
-    ANNOTATE_RWLOCK_ACQUIRED(this, 0);
+    KUDU_ANNONTATE_RWLOCK_ACQUIRED(this, 0);
   }
 
   void unlock_shared() {
-    ANNOTATE_RWLOCK_RELEASED(this, 0);
+    KUDU_ANNONTATE_RWLOCK_RELEASED(this, 0);
     sem_.unlock_shared();
   }
 
   bool try_lock() {
     bool ret = sem_.try_lock();
     if (ret) {
-      ANNOTATE_RWLOCK_ACQUIRED(this, 1);
+      KUDU_ANNONTATE_RWLOCK_ACQUIRED(this, 1);
     }
     return ret;
   }
 
   void lock() {
     sem_.lock();
-    ANNOTATE_RWLOCK_ACQUIRED(this, 1);
+    KUDU_ANNONTATE_RWLOCK_ACQUIRED(this, 1);
   }
 
   void unlock() {
-    ANNOTATE_RWLOCK_RELEASED(this, 1);
+    KUDU_ANNONTATE_RWLOCK_RELEASED(this, 1);
     sem_.unlock();
   }
 

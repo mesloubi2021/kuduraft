@@ -264,7 +264,7 @@ void MaintenanceManager::UnregisterOp(MaintenanceOp* op) {
 }
 
 bool MaintenanceManager::disabled_for_tests() const {
-  return !ANNOTATE_UNPROTECTED_READ(FLAGS_enable_maintenance_manager);
+  return !KUDU_ANNONTATE_UNPROTECTED_READ(FLAGS_enable_maintenance_manager);
 }
 
 void MaintenanceManager::RunSchedulerThread() {

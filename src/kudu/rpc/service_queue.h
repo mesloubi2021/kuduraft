@@ -109,22 +109,22 @@ class LifoServiceQueue {
 
   // Return an estimate of the current queue length.
   int estimated_queue_length() const {
-    ANNOTATE_IGNORE_READS_BEGIN();
+    KUDU_ANNONTATE_IGNORE_READS_BEGIN();
     // The C++ standard says that std::multiset::size must be constant time,
     // so this method won't try to traverse any actual nodes of the underlying
     // RB tree. Investigation of the libstdcxx implementation confirms that
     // size() is a simple field access of the _Rb_tree structure.
     int ret = queue_.size();
-    ANNOTATE_IGNORE_READS_END();
+    KUDU_ANNONTATE_IGNORE_READS_END();
     return ret;
   }
 
   // Return an estimate of the number of idle threads currently awaiting work.
   int estimated_idle_worker_count() const {
-    ANNOTATE_IGNORE_READS_BEGIN();
+    KUDU_ANNONTATE_IGNORE_READS_BEGIN();
     // Size of a vector is a simple field access so this is safe.
     int ret = waiting_consumers_.size();
-    ANNOTATE_IGNORE_READS_END();
+    KUDU_ANNONTATE_IGNORE_READS_END();
     return ret;
   }
 

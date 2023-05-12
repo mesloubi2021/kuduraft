@@ -88,7 +88,7 @@ void TraceEventSyntheticDelay::Begin() {
   // calculation is done with a lock held, it will always be correct. The only
   // downside of this is that we may fail to apply some delays when the target
   // duration changes.
-  ANNOTATE_BENIGN_RACE(&target_duration_, "Synthetic delay duration");
+  KUDU_ANNONTATE_BENIGN_RACE(&target_duration_, "Synthetic delay duration");
   if (!target_duration_.Initialized())
     return;
 
@@ -103,7 +103,7 @@ void TraceEventSyntheticDelay::Begin() {
 
 void TraceEventSyntheticDelay::BeginParallel(MonoTime* out_end_time) {
   // See note in Begin().
-  ANNOTATE_BENIGN_RACE(&target_duration_, "Synthetic delay duration");
+  KUDU_ANNONTATE_BENIGN_RACE(&target_duration_, "Synthetic delay duration");
   if (!target_duration_.Initialized()) {
     *out_end_time = MonoTime();
     return;
@@ -118,7 +118,7 @@ void TraceEventSyntheticDelay::BeginParallel(MonoTime* out_end_time) {
 
 void TraceEventSyntheticDelay::End() {
   // See note in Begin().
-  ANNOTATE_BENIGN_RACE(&target_duration_, "Synthetic delay duration");
+  KUDU_ANNONTATE_BENIGN_RACE(&target_duration_, "Synthetic delay duration");
   if (!target_duration_.Initialized())
     return;
 

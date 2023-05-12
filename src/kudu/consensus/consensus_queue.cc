@@ -2806,7 +2806,7 @@ string PeerMessageQueue::LogPrefixUnlocked() const {
   // TODO: we should probably use an atomic here. We'll just annotate
   // away the TSAN error for now, since the worst case is a slightly out-of-date
   // log message, and not very likely.
-  Mode mode = ANNOTATE_UNPROTECTED_READ(queue_state_.mode);
+  Mode mode = KUDU_ANNONTATE_UNPROTECTED_READ(queue_state_.mode);
   return Substitute(
       "T $0 P $1 [$2]: ",
       tablet_id_,

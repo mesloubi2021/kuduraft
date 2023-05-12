@@ -32,10 +32,10 @@ namespace debug {
 class ScopedTSANIgnoreReadsAndWrites {
  public:
   ScopedTSANIgnoreReadsAndWrites() {
-    ANNOTATE_IGNORE_READS_AND_WRITES_BEGIN();
+    KUDU_ANNONTATE_IGNORE_READS_AND_WRITES_BEGIN();
   }
   ~ScopedTSANIgnoreReadsAndWrites() {
-    ANNOTATE_IGNORE_READS_AND_WRITES_END();
+    KUDU_ANNONTATE_IGNORE_READS_AND_WRITES_END();
   }
 
  private:

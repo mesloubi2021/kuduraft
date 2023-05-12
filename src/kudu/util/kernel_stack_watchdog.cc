@@ -197,8 +197,8 @@ void KernelStackWatchdog::RunThread() {
           //
           // We just use unprotected reads here since this is a somewhat
           // best-effort check.
-          if (ANNOTATE_UNPROTECTED_READ(tls->depth_) < tls_copy.depth_ ||
-              ANNOTATE_UNPROTECTED_READ(tls->frames_[i].start_time_) !=
+          if (KUDU_ANNONTATE_UNPROTECTED_READ(tls->depth_) < tls_copy.depth_ ||
+              KUDU_ANNONTATE_UNPROTECTED_READ(tls->frames_[i].start_time_) !=
                   frame->start_time_) {
             break;
           }
@@ -253,9 +253,9 @@ void KernelStackWatchdog::TLS::Data::SnapshotCopy(Data* copy) const {
       base::subtle::PauseCPU();
       continue;
     }
-    ANNOTATE_IGNORE_READS_BEGIN();
+    KUDU_ANNONTATE_IGNORE_READS_BEGIN();
     memcpy(copy, this, sizeof(*copy));
-    ANNOTATE_IGNORE_READS_END();
+    KUDU_ANNONTATE_IGNORE_READS_END();
     Atomic32 v_1 = base::subtle::Release_Load(&seq_lock_);
 
     // If the value hasn't changed since we started the copy, then

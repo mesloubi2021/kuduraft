@@ -74,7 +74,7 @@ class LOCKABLE SpinLock {
             &lockword_, kSpinLockFree, kSpinLockHeld) != kSpinLockFree) {
       SlowLock();
     }
-    ANNOTATE_RWLOCK_ACQUIRED(this, 1);
+    KUDU_ANNONTATE_RWLOCK_ACQUIRED(this, 1);
 #ifdef __aarch64__
     __asm__ __volatile__("dmb ish" ::: "memory");
 #endif //__aarch64__
@@ -89,7 +89,7 @@ class LOCKABLE SpinLock {
         (base::subtle::Acquire_CompareAndSwap(
              &lockword_, kSpinLockFree, kSpinLockHeld) == kSpinLockFree);
     if (res) {
-      ANNOTATE_RWLOCK_ACQUIRED(this, 1);
+      KUDU_ANNONTATE_RWLOCK_ACQUIRED(this, 1);
     }
 #ifdef __aarch64__
     __asm__ __volatile__("dmb ish" ::: "memory");
@@ -101,7 +101,7 @@ class LOCKABLE SpinLock {
   // TODO(csilvers): uncomment the annotation when we figure out how to
   //                 support this macro with 0 args (see thread_annotations.h)
   inline void Unlock() /*UNLOCK_FUNCTION()*/ {
-    ANNOTATE_RWLOCK_RELEASED(this, 1);
+    KUDU_ANNONTATE_RWLOCK_RELEASED(this, 1);
     uint64 wait_cycles = static_cast<uint64>(
         base::subtle::Release_AtomicExchange(&lockword_, kSpinLockFree));
     if (wait_cycles != kSpinLockHeld) {

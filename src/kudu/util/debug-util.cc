@@ -281,7 +281,7 @@ void HandleStackTraceSignal(
     // Maybe the signal was sent by a user instead of by ourself, ignore it.
     return;
   }
-  ANNOTATE_HAPPENS_AFTER(sig_data);
+  KUDU_ANNONTATE_HAPPENS_AFTER(sig_data);
   int64_t my_tid = Thread::CurrentThreadId();
 
   // If we were slow to process the signal, the sender may have given up and
@@ -407,7 +407,7 @@ bool StackTraceCollector::RevokeSigData() {
     DLOG(WARNING) << "Leaking SignalData structure " << sig_data_
                   << " after lost signal "
                   << "to thread " << tid_;
-    ANNOTATE_LEAKING_OBJECT_PTR(sig_data_);
+    KUDU_ANNONTATE_LEAKING_OBJECT_PTR(sig_data_);
     sig_data_ = nullptr;
     return false;
   }
@@ -464,7 +464,7 @@ Status StackTraceCollector::TriggerAsync(int64_t tid, StackTrace* stack) {
   // Since we're using a signal to pass information between the two threads,
   // we need to help TSAN out and explicitly tell it about the happens-before
   // relationship here.
-  ANNOTATE_HAPPENS_BEFORE(data.get());
+  KUDU_ANNONTATE_HAPPENS_BEFORE(data.get());
   if (syscall(
           SYS_rt_tgsigqueueinfo, getpid(), tid, g_stack_trace_signum, &info) !=
       0) {

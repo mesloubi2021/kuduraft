@@ -286,12 +286,12 @@ void* NvmLRUCache::VmemMalloc(size_t size) {
 }
 
 bool NvmLRUCache::Unref(LRUHandle* e) {
-  DCHECK_GT(ANNOTATE_UNPROTECTED_READ(e->refs), 0);
+  DCHECK_GT(KUDU_ANNONTATE_UNPROTECTED_READ(e->refs), 0);
   return !base::RefCountDec(&e->refs);
 }
 
 void NvmLRUCache::FreeEntry(LRUHandle* e) {
-  DCHECK_EQ(ANNOTATE_UNPROTECTED_READ(e->refs), 0);
+  DCHECK_EQ(KUDU_ANNONTATE_UNPROTECTED_READ(e->refs), 0);
   if (e->eviction_callback) {
     e->eviction_callback->EvictedEntry(e->key(), e->value());
   }

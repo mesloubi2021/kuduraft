@@ -19,14 +19,14 @@
 
 // Ignore a single leaked object, given its pointer.
 // Does nothing if LeakSanitizer is not enabled.
-#define ANNOTATE_LEAKING_OBJECT_PTR(p)
+#define KUDU_ANNONTATE_LEAKING_OBJECT_PTR(p)
 
 #if defined(__has_feature)
 #if __has_feature(address_sanitizer)
 #if defined(__linux__)
 
-#undef ANNOTATE_LEAKING_OBJECT_PTR
-#define ANNOTATE_LEAKING_OBJECT_PTR(p) __lsan_ignore_object(p);
+#undef KUDU_ANNONTATE_LEAKING_OBJECT_PTR
+#define KUDU_ANNONTATE_LEAKING_OBJECT_PTR(p) __lsan_ignore_object(p);
 
 #endif
 #endif

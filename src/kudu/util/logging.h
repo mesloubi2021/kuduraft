@@ -177,27 +177,29 @@ enum PRIVATE_ThrottleMsg { THROTTLE_MSG };
 ////////////////////////////////////////////////////////////////////////////////
 
 // The "base" macros.
-#define KUDU_SOME_KIND_OF_LOG_EVERY_N(severity, n, what_to_do)              \
-  static int LOG_OCCURRENCES = 0, LOG_OCCURRENCES_MOD_N = 0;                \
-  ANNOTATE_BENIGN_RACE(&LOG_OCCURRENCES, "Logging every N is approximate"); \
-  ANNOTATE_BENIGN_RACE(                                                     \
-      &LOG_OCCURRENCES_MOD_N, "Logging every N is approximate");            \
-  ++LOG_OCCURRENCES;                                                        \
-  if (++LOG_OCCURRENCES_MOD_N > (n))                                        \
-    LOG_OCCURRENCES_MOD_N -= (n);                                           \
-  if (LOG_OCCURRENCES_MOD_N == 1)                                           \
-  google::LogMessage(                                                       \
-      __FILE__,                                                             \
-      __LINE__,                                                             \
-      google::GLOG_##severity,                                              \
-      LOG_OCCURRENCES,                                                      \
-      &what_to_do) /*NOLINT(bugprone-macro-parentheses)*/                   \
+#define KUDU_SOME_KIND_OF_LOG_EVERY_N(severity, n, what_to_do)   \
+  static int LOG_OCCURRENCES = 0, LOG_OCCURRENCES_MOD_N = 0;     \
+  KUDU_ANNONTATE_BENIGN_RACE(                                    \
+      &LOG_OCCURRENCES, "Logging every N is approximate");       \
+  KUDU_ANNONTATE_BENIGN_RACE(                                    \
+      &LOG_OCCURRENCES_MOD_N, "Logging every N is approximate"); \
+  ++LOG_OCCURRENCES;                                             \
+  if (++LOG_OCCURRENCES_MOD_N > (n))                             \
+    LOG_OCCURRENCES_MOD_N -= (n);                                \
+  if (LOG_OCCURRENCES_MOD_N == 1)                                \
+  google::LogMessage(                                            \
+      __FILE__,                                                  \
+      __LINE__,                                                  \
+      google::GLOG_##severity,                                   \
+      LOG_OCCURRENCES,                                           \
+      &what_to_do) /*NOLINT(bugprone-macro-parentheses)*/        \
       .stream()
 
 #define KUDU_SOME_KIND_OF_LOG_IF_EVERY_N(severity, condition, n, what_to_do) \
   static int LOG_OCCURRENCES = 0, LOG_OCCURRENCES_MOD_N = 0;                 \
-  ANNOTATE_BENIGN_RACE(&LOG_OCCURRENCES, "Logging every N is approximate");  \
-  ANNOTATE_BENIGN_RACE(                                                      \
+  KUDU_ANNONTATE_BENIGN_RACE(                                                \
+      &LOG_OCCURRENCES, "Logging every N is approximate");                   \
+  KUDU_ANNONTATE_BENIGN_RACE(                                                \
       &LOG_OCCURRENCES_MOD_N, "Logging every N is approximate");             \
   ++LOG_OCCURRENCES;                                                         \
   if ((condition) &&                                                         \
@@ -211,26 +213,27 @@ enum PRIVATE_ThrottleMsg { THROTTLE_MSG };
       &what_to_do) /*NOLINT(bugprone-macro-parentheses)*/                    \
       .stream()
 
-#define KUDU_SOME_KIND_OF_PLOG_EVERY_N(severity, n, what_to_do)             \
-  static int LOG_OCCURRENCES = 0, LOG_OCCURRENCES_MOD_N = 0;                \
-  ANNOTATE_BENIGN_RACE(&LOG_OCCURRENCES, "Logging every N is approximate"); \
-  ANNOTATE_BENIGN_RACE(                                                     \
-      &LOG_OCCURRENCES_MOD_N, "Logging every N is approximate");            \
-  ++LOG_OCCURRENCES;                                                        \
-  if (++LOG_OCCURRENCES_MOD_N > (n))                                        \
-    LOG_OCCURRENCES_MOD_N -= (n);                                           \
-  if (LOG_OCCURRENCES_MOD_N == 1)                                           \
-  google::ErrnoLogMessage(                                                  \
-      __FILE__,                                                             \
-      __LINE__,                                                             \
-      google::GLOG_##severity,                                              \
-      LOG_OCCURRENCES,                                                      \
-      &what_to_do) /*NOLINT(bugprone-macro-parentheses)*/                   \
+#define KUDU_SOME_KIND_OF_PLOG_EVERY_N(severity, n, what_to_do)  \
+  static int LOG_OCCURRENCES = 0, LOG_OCCURRENCES_MOD_N = 0;     \
+  KUDU_ANNONTATE_BENIGN_RACE(                                    \
+      &LOG_OCCURRENCES, "Logging every N is approximate");       \
+  KUDU_ANNONTATE_BENIGN_RACE(                                    \
+      &LOG_OCCURRENCES_MOD_N, "Logging every N is approximate"); \
+  ++LOG_OCCURRENCES;                                             \
+  if (++LOG_OCCURRENCES_MOD_N > (n))                             \
+    LOG_OCCURRENCES_MOD_N -= (n);                                \
+  if (LOG_OCCURRENCES_MOD_N == 1)                                \
+  google::ErrnoLogMessage(                                       \
+      __FILE__,                                                  \
+      __LINE__,                                                  \
+      google::GLOG_##severity,                                   \
+      LOG_OCCURRENCES,                                           \
+      &what_to_do) /*NOLINT(bugprone-macro-parentheses)*/        \
       .stream()
 
 #define KUDU_SOME_KIND_OF_LOG_FIRST_N(severity, n, what_to_do) \
   static uint64_t LOG_OCCURRENCES = 0;                         \
-  ANNOTATE_BENIGN_RACE(                                        \
+  KUDU_ANNONTATE_BENIGN_RACE(                                  \
       &LOG_OCCURRENCES, "Logging the first N is approximate"); \
   if (LOG_OCCURRENCES++ < (n))                                 \
   google::LogMessage(                                          \
@@ -349,7 +352,7 @@ namespace logging {
 class LogThrottler {
  public:
   LogThrottler() : num_suppressed_(0), last_ts_(0), last_tag_(nullptr) {
-    ANNOTATE_BENIGN_RACE_SIZED(
+    KUDU_ANNONTATE_BENIGN_RACE_SIZED(
         this, sizeof(*this), "OK to be sloppy with log throttling");
   }
 

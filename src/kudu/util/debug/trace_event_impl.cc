@@ -1177,12 +1177,12 @@ TraceLog::TraceLog()
   // accessing the enabled flag. We don't care whether edge-case events are
   // traced or not, so we allow races on the enabled flag to keep the trace
   // macros fast.
-  ANNOTATE_BENIGN_RACE_SIZED(
+  KUDU_ANNONTATE_BENIGN_RACE_SIZED(
       g_category_group_enabled,
       sizeof(g_category_group_enabled),
       "trace_event category enabled");
   for (int i = 0; i < MAX_CATEGORY_GROUPS; ++i) {
-    ANNOTATE_BENIGN_RACE(
+    KUDU_ANNONTATE_BENIGN_RACE(
         &g_category_group_enabled[i], "trace_event category enabled");
   }
   SetProcessID(static_cast<int>(getpid()));
@@ -2258,7 +2258,8 @@ TraceEvent* TraceLog::GetEventByHandleInternal(
             reinterpret_cast<AtomicWord*>(&thr_info->event_buffer_)));
 
     if (buf) {
-      DCHECK_EQ(1, ANNOTATE_UNPROTECTED_READ(thr_info->is_in_trace_event_));
+      DCHECK_EQ(
+          1, KUDU_ANNONTATE_UNPROTECTED_READ(thr_info->is_in_trace_event_));
 
       TraceEvent* trace_event = buf->GetEventByHandle(handle);
       if (trace_event)

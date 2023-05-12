@@ -372,7 +372,7 @@ bool Log::AppendThread::GoIdle() {
 }
 
 void Log::AppendThread::DoWork() {
-  DCHECK_EQ(ANNOTATE_UNPROTECTED_READ(worker_state_), WORKER_ACTIVE);
+  DCHECK_EQ(KUDU_ANNONTATE_UNPROTECTED_READ(worker_state_), WORKER_ACTIVE);
   VLOG_WITH_PREFIX(2) << "WAL Appender going active";
   while (true) {
     CHECK(!FLAGS_raft_derived_log_mode);

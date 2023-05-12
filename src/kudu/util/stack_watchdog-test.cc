@@ -50,8 +50,9 @@ class StackWatchdogTest : public KuduTest {
   virtual void SetUp() override {
     KuduTest::SetUp();
     KernelStackWatchdog::GetInstance()->SaveLogsForTests(true);
-    ANNOTATE_BENIGN_RACE(&FLAGS_hung_task_check_interval_ms, "");
-    ANNOTATE_BENIGN_RACE(&FLAGS_inject_latency_on_kernel_stack_lookup_ms, "");
+    KUDU_ANNONTATE_BENIGN_RACE(&FLAGS_hung_task_check_interval_ms, "");
+    KUDU_ANNONTATE_BENIGN_RACE(
+        &FLAGS_inject_latency_on_kernel_stack_lookup_ms, "");
     FLAGS_hung_task_check_interval_ms = 10;
   }
 };

@@ -328,8 +328,8 @@ void ThreadMgr::AddThread(
   // SuperviseThread() may cause TSAN to establish a "happens before"
   // relationship between thread functors, ignoring potential data races.
   // The annotations prevent this from happening.
-  ANNOTATE_IGNORE_SYNC_BEGIN();
-  ANNOTATE_IGNORE_READS_AND_WRITES_BEGIN();
+  KUDU_ANNONTATE_IGNORE_SYNC_BEGIN();
+  KUDU_ANNONTATE_IGNORE_READS_AND_WRITES_BEGIN();
   {
     MutexLock l(lock_);
     thread_categories_[category][pthread_id] =
@@ -337,15 +337,15 @@ void ThreadMgr::AddThread(
     threads_running_metric_++;
     threads_started_metric_++;
   }
-  ANNOTATE_IGNORE_SYNC_END();
-  ANNOTATE_IGNORE_READS_AND_WRITES_END();
+  KUDU_ANNONTATE_IGNORE_SYNC_END();
+  KUDU_ANNONTATE_IGNORE_READS_AND_WRITES_END();
 }
 
 void ThreadMgr::RemoveThread(
     const pthread_t& pthread_id,
     const string& category) {
-  ANNOTATE_IGNORE_SYNC_BEGIN();
-  ANNOTATE_IGNORE_READS_AND_WRITES_BEGIN();
+  KUDU_ANNONTATE_IGNORE_SYNC_BEGIN();
+  KUDU_ANNONTATE_IGNORE_READS_AND_WRITES_BEGIN();
   {
     MutexLock l(lock_);
     auto category_it = thread_categories_.find(category);
@@ -353,8 +353,8 @@ void ThreadMgr::RemoveThread(
     category_it->second.erase(pthread_id);
     threads_running_metric_--;
   }
-  ANNOTATE_IGNORE_SYNC_END();
-  ANNOTATE_IGNORE_READS_AND_WRITES_END();
+  KUDU_ANNONTATE_IGNORE_SYNC_END();
+  KUDU_ANNONTATE_IGNORE_READS_AND_WRITES_END();
 }
 
 void ThreadMgr::PrintThreadCategoryRows(
@@ -616,9 +616,9 @@ void* Thread::SuperviseThread(void* arg) {
   PCHECK(system_tid != -1);
 
   // Take an additional reference to the thread manager, which we'll need below.
-  ANNOTATE_IGNORE_SYNC_BEGIN();
+  KUDU_ANNONTATE_IGNORE_SYNC_BEGIN();
   shared_ptr<ThreadMgr> thread_mgr_ref = thread_manager;
-  ANNOTATE_IGNORE_SYNC_END();
+  KUDU_ANNONTATE_IGNORE_SYNC_END();
 
   // Set up the TLS.
   //

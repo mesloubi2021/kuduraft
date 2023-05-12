@@ -41,9 +41,9 @@ void ErrnoToCString(int err, char* buf, size_t buf_len) {
 
   // KUDU-1515: TSAN in Clang 3.9 has an incorrect interceptor for strerror_r:
   // https://github.com/google/sanitizers/issues/696
-  ANNOTATE_IGNORE_WRITES_BEGIN();
+  KUDU_ANNONTATE_IGNORE_WRITES_BEGIN();
   char* ret = strerror_r(err, buf, buf_len);
-  ANNOTATE_IGNORE_WRITES_END();
+  KUDU_ANNONTATE_IGNORE_WRITES_END();
   if (ret != buf) {
     strncpy(buf, ret, buf_len);
     buf[buf_len - 1] = '\0';

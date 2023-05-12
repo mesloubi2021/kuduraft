@@ -186,7 +186,7 @@ int RunningOnValgrind(void) {
   int local_running_on_valgrind = running_on_valgrind;
   /* C doesn't have thread-safe initialization of statics, and we
      don't want to depend on pthread_once here, so hack it. */
-  ANNOTATE_BENIGN_RACE(&running_on_valgrind, "safe hack");
+  KUDU_ANNONTATE_BENIGN_RACE(&running_on_valgrind, "safe hack");
   if (local_running_on_valgrind == -1)
     running_on_valgrind = local_running_on_valgrind = GetRunningOnValgrind();
   return local_running_on_valgrind;
@@ -197,7 +197,7 @@ double ValgrindSlowdown(void) {
   /* Same initialization hack as in RunningOnValgrind(). */
   static volatile double slowdown = 0.0;
   double local_slowdown = slowdown;
-  ANNOTATE_BENIGN_RACE(&slowdown, "safe hack");
+  KUDU_ANNONTATE_BENIGN_RACE(&slowdown, "safe hack");
   if (RunningOnValgrind() == 0) {
     return 1.0;
   }
