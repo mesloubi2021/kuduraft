@@ -624,13 +624,14 @@ void __asan_poison_memory_region(void const volatile* addr, size_t size);
 void __asan_unpoison_memory_region(void const volatile* addr, size_t size);
 
 // User code should use macros instead of functions.
-#define ASAN_POISON_MEMORY_REGION(addr, size) \
+#define KUDU_ASAN_POISON_MEMORY_REGION(addr, size) \
   __asan_poison_memory_region((addr), (size))
-#define ASAN_UNPOISON_MEMORY_REGION(addr, size) \
+#define KUDU_ASAN_UNPOISON_MEMORY_REGION(addr, size) \
   __asan_unpoison_memory_region((addr), (size))
 #else
-#define ASAN_POISON_MEMORY_REGION(addr, size) ((void)(addr), (void)(size))
-#define ASAN_UNPOISON_MEMORY_REGION(addr, size) ((void)(addr), (void)(size))
+#define KUDU_ASAN_POISON_MEMORY_REGION(addr, size) ((void)(addr), (void)(size))
+#define KUDU_ASAN_UNPOISON_MEMORY_REGION(addr, size) \
+  ((void)(addr), (void)(size))
 #endif
 
 // Sets the callback to be called right before death on error.
@@ -638,9 +639,9 @@ void __asan_unpoison_memory_region(void const volatile* addr, size_t size);
 void __asan_set_death_callback(void (*callback)(void));
 
 #if defined(__SANITIZE_ADDRESS__) || defined(ADDRESS_SANITIZER)
-#define ASAN_SET_DEATH_CALLBACK(cb) __asan_set_death_callback((cb))
+#define KUDU_ASAN_SET_DEATH_CALLBACK(cb) __asan_set_death_callback((cb))
 #else
-#define ASAN_SET_DEATH_CALLBACK(cb) ((void)(cb))
+#define KUDU_ASAN_SET_DEATH_CALLBACK(cb) ((void)(cb))
 #endif
 
 #ifdef __cplusplus

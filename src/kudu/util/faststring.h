@@ -44,11 +44,11 @@ class faststring {
       data_ = new uint8_t[capacity];
       capacity_ = capacity;
     }
-    ASAN_POISON_MEMORY_REGION(data_, capacity_);
+    KUDU_ASAN_POISON_MEMORY_REGION(data_, capacity_);
   }
 
   ~faststring() {
-    ASAN_UNPOISON_MEMORY_REGION(initial_data_, arraysize(initial_data_));
+    KUDU_ASAN_UNPOISON_MEMORY_REGION(initial_data_, arraysize(initial_data_));
     if (data_ != initial_data_) {
       delete[] data_;
     }
@@ -60,7 +60,7 @@ class faststring {
   // unchanged.
   void clear() {
     resize(0);
-    ASAN_POISON_MEMORY_REGION(data_, capacity_);
+    KUDU_ASAN_POISON_MEMORY_REGION(data_, capacity_);
   }
 
   // Resize the string to the given length.
@@ -74,8 +74,8 @@ class faststring {
       reserve(newsize);
     }
     len_ = newsize;
-    ASAN_POISON_MEMORY_REGION(data_ + len_, capacity_ - len_);
-    ASAN_UNPOISON_MEMORY_REGION(data_, len_);
+    KUDU_ASAN_POISON_MEMORY_REGION(data_ + len_, capacity_ - len_);
+    KUDU_ASAN_UNPOISON_MEMORY_REGION(data_, len_);
   }
 
   // Releases the underlying array; after this, the buffer is left empty.
@@ -90,7 +90,7 @@ class faststring {
     len_ = 0;
     capacity_ = kInitialCapacity;
     data_ = initial_data_;
-    ASAN_POISON_MEMORY_REGION(data_, capacity_);
+    KUDU_ASAN_POISON_MEMORY_REGION(data_, capacity_);
     return ret;
   }
 
@@ -111,7 +111,7 @@ class faststring {
   void append(const void* src_v, size_t count) {
     const uint8_t* src = reinterpret_cast<const uint8_t*>(src_v);
     EnsureRoomForAppend(count);
-    ASAN_UNPOISON_MEMORY_REGION(data_ + len_, count);
+    KUDU_ASAN_UNPOISON_MEMORY_REGION(data_ + len_, count);
 
     // appending short values is common enough that this
     // actually helps, according to benchmarks. In theory
@@ -137,7 +137,7 @@ class faststring {
   // Append the given character to this string.
   void push_back(const char byte) {
     EnsureRoomForAppend(1);
-    ASAN_UNPOISON_MEMORY_REGION(data_ + len_, 1);
+    KUDU_ASAN_UNPOISON_MEMORY_REGION(data_ + len_, 1);
     data_[len_] = byte;
     len_++;
   }

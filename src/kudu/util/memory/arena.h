@@ -376,7 +376,7 @@ class ArenaBase<THREADSAFE>::Component {
     return size_;
   }
   void Reset() {
-    ASAN_POISON_MEMORY_REGION(data_, size_);
+    KUDU_ASAN_POISON_MEMORY_REGION(data_, size_);
     offset_ = 0;
   }
 
@@ -461,7 +461,7 @@ inline void ArenaBase<THREADSAFE>::Component::AsanUnpoison(
     size_t size) {
 #ifdef ADDRESS_SANITIZER
   std::lock_guard<spinlock_type> l(asan_lock_);
-  ASAN_UNPOISON_MEMORY_REGION(addr, size);
+  KUDU_ASAN_UNPOISON_MEMORY_REGION(addr, size);
 #endif
 }
 
