@@ -844,12 +844,10 @@ void FlexibleVoteCounter::AppendPotentialLeaderUUID(
     std::pair<bool, bool> quorum_satisfaction_info =
         DoHistoricalVotesSatisfyMajorityInRegion(
             leader_region, vote_count, pruned_count);
-    if (quorum_satisfaction_info.first) {
+    if (quorum_satisfaction_info.first || quorum_satisfaction_info.second) {
       potential_leader_uuids->insert(candidate_uuid);
       VLOG_WITH_PREFIX(3) << "Added potential leader UUID: " << candidate_uuid;
-    } else if (quorum_satisfaction_info.second) {
-      potential_leader_uuids->insert(candidate_uuid);
-      VLOG_WITH_PREFIX(3) << "Added potential leader UUID: " << candidate_uuid;
+      return;
     }
   }
 }
