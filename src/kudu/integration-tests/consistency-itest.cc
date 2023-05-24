@@ -64,7 +64,7 @@
 #include "kudu/util/thread.h"
 
 DECLARE_int32(heartbeat_interval_ms);
-DECLARE_int32(max_clock_sync_error_usec);
+DECLARE_int32(kudu_max_clock_sync_error_usec);
 DECLARE_int32(scanner_gc_check_interval_us);
 DECLARE_string(time_source);
 
@@ -460,7 +460,7 @@ TEST_F(ConsistencyITest, TestTimestampPropagationFromScans) {
 // clock, the resulting timestamp returned to the client should be strictly
 // greater than the propagated one.
 TEST_F(ConsistencyITest, TestTimestampPropagationForWriteOps) {
-  const int32_t offset_usec = FLAGS_max_clock_sync_error_usec;
+  const int32_t offset_usec = FLAGS_kudu_max_clock_sync_error_usec;
   // Assuming the offset is specified as a positive number.
   ASSERT_GT(offset_usec, 0);
   // Need to have at least one row in the first partition starting with key 0.
@@ -553,7 +553,7 @@ TEST_F(ConsistencyITest, TestTimestampPropagationForWriteOps) {
 //        be visible the the scan.
 //
 TEST_F(ConsistencyITest, TestSnapshotScanTimestampReuse) {
-  const int32_t offset_usec = FLAGS_max_clock_sync_error_usec / 2;
+  const int32_t offset_usec = FLAGS_kudu_max_clock_sync_error_usec / 2;
   // Assuming the offset is specified as a positive number.
   ASSERT_GT(offset_usec, 0);
   // Need to have two rows in the first partition; the values start at 0.
@@ -696,7 +696,7 @@ TEST_F(ConsistencyITest, TestSnapshotScanTimestampReuse) {
 // a timestamp which is not less than the propagated timestamp
 // encoded in the token.
 TEST_F(ConsistencyITest, TestScanTokenTimestampPropagation) {
-  const int32_t offset_usec = FLAGS_max_clock_sync_error_usec;
+  const int32_t offset_usec = FLAGS_kudu_max_clock_sync_error_usec;
 
   // Need to have at least one row in the first partition with
   // values starting at 0.

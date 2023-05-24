@@ -47,12 +47,12 @@ using std::string;
 using strings::Substitute;
 
 DEFINE_int32(
-    max_clock_sync_error_usec,
+    kudu_max_clock_sync_error_usec,
     10 * 1000 * 1000, // 10 secs
     "Maximum allowed clock synchronization error as reported by NTP "
     "before the server will abort.");
-TAG_FLAG(max_clock_sync_error_usec, advanced);
-TAG_FLAG(max_clock_sync_error_usec, runtime);
+TAG_FLAG(kudu_max_clock_sync_error_usec, advanced);
+TAG_FLAG(kudu_max_clock_sync_error_usec, runtime);
 
 DEFINE_bool(
     use_hybrid_clock,
@@ -169,7 +169,7 @@ Timestamp HybridClock::NowLatest() {
 Status HybridClock::GetGlobalLatest(Timestamp* t) {
   Timestamp now = Now();
   uint64_t now_latest =
-      GetPhysicalValueMicros(now) + FLAGS_max_clock_sync_error_usec;
+      GetPhysicalValueMicros(now) + FLAGS_kudu_max_clock_sync_error_usec;
   uint64_t now_logical = GetLogicalValue(now);
   *t = TimestampFromMicrosecondsAndLogicalValue(now_latest, now_logical);
   return Status::OK();
@@ -246,7 +246,8 @@ Status HybridClock::Update(const Timestamp& to_update) {
   // we won't update our clock if to_update is more than
   // 'max_clock_sync_error_usec' into the future as it might have been corrupted
   // or originated from an out-of-sync server.
-  if ((to_update_physical - now_physical) > FLAGS_max_clock_sync_error_usec) {
+  if ((to_update_physical - now_physical) >
+      FLAGS_kudu_max_clock_sync_error_usec) {
     return Status::InvalidArgument(
         "Tried to update clock beyond the max. error.");
   }
@@ -429,7 +430,7 @@ Status HybridClock::WalltimeWithError(
 
   // If the clock is synchronized but has max_error beyond
   // max_clock_sync_error_usec we also return a non-ok status.
-  if (*error_usec > FLAGS_max_clock_sync_error_usec) {
+  if (*error_usec > FLAGS_kudu_max_clock_sync_error_usec) {
     return Status::ServiceUnavailable(Substitute(
         "clock error estimate ($0us) too high (clock considered $1 by the kernel)",
         *error_usec,
