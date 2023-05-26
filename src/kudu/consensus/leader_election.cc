@@ -1548,12 +1548,6 @@ void LeaderElection::VoteResponseRpcCallback(const std::string& voter_uuid) {
 
       // Check for tablet errors.
     } else if (state->response.has_error()) {
-#ifdef FB_DO_NOT_REMOVE
-      LOG_WITH_PREFIX(WARNING)
-          << "Tablet error from VoteRequest() call to peer "
-          << state->PeerInfo() << ": "
-          << StatusFromPB(state->response.error().status()).ToString();
-#endif
       RecordVoteUnlocked(*state, VOTE_DENIED);
 
       // If the peer changed their IP address, we shouldn't count this vote
@@ -1592,7 +1586,11 @@ void LeaderElection::RecordVoteUnlocked(
   VoteInfo vote_info;
   vote_info.vote = vote;
   vote_info.last_known_leader = state.response.last_known_leader();
-  vote_info.last_pruned_term = state.response.last_pruned_term();
+  if (state.response.has_last_pruned_term()) {
+    vote_info.last_pruned_term = state.response.last_pruned_term();
+  } else {
+    vote_info.last_pruned_term = election_term();
+  }
   if (state.response.has_voter_context()) {
     vote_info.is_candidate_removed =
         state.response.voter_context().is_candidate_removed();
