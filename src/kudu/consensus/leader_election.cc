@@ -655,35 +655,6 @@ FlexibleVoteCounter::DoHistoricalVotesSatisfyMajorityInRegion(
   return std::make_pair(quorum_satisfied, quorum_satisfaction_possible);
 }
 
-std::pair<bool, bool>
-FlexibleVoteCounter::DoHistoricalVotesSatisfyMajorityInMajorityOfRegions(
-    const RegionToVoterSet& region_to_voter_set,
-    const std::map<std::string, int32_t>& region_pruned_counts) const {
-  int32_t num_regions = 0;
-  int32_t num_majority_satisfied = 0;
-  int32_t num_majority_satisfaction_possible = 0;
-  for (const std::pair<const std::string, int32_t>& regional_count :
-       voter_distribution_) {
-    num_regions++;
-    const std::string& region = regional_count.first;
-    int32_t vote_count =
-        FindWithDefault(region_to_voter_set, region, std::set<std::string>())
-            .size();
-    int32_t pruned_count = FindWithDefault(region_pruned_counts, region, 0);
-    std::pair<bool, bool> result = DoHistoricalVotesSatisfyMajorityInRegion(
-        region, vote_count, pruned_count);
-    if (result.first) {
-      num_majority_satisfied++;
-    }
-    if (result.second) {
-      num_majority_satisfaction_possible++;
-    }
-  }
-  return std::make_pair(
-      num_majority_satisfied >= MajoritySize(num_regions),
-      num_majority_satisfaction_possible >= MajoritySize(num_regions));
-}
-
 void FlexibleVoteCounter::CrowdsourceLastKnownLeader(
     LastKnownLeaderPB* last_known_leader) const {
   CHECK(last_known_leader);

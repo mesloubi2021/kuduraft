@@ -289,14 +289,6 @@ class FlexibleVoteCounter : public VoteCounter {
       int32_t vote_count,
       int32_t pruned_count) const;
 
-  // Given the `region_to_voter_set` for specific candidate in a historical
-  // term, this function returns if the historical votes amount to a majority
-  // in majority of the regions. The `region_pruned_counts` represents number
-  // of servers per region which have pruned voting history.
-  std::pair<bool, bool> DoHistoricalVotesSatisfyMajorityInMajorityOfRegions(
-      const RegionToVoterSet& region_to_voter_set,
-      const std::map<std::string, int32_t>& region_pruned_counts) const;
-
   // Return the last known leader. If crowdsourcing is not enabled it just
   // returns what's known locally, otherwise it uses CrowdsouceLastKnownLeader()
   void GetLastKnownLeader(LastKnownLeaderPB* last_known_leader) const;
