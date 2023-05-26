@@ -89,32 +89,32 @@ void ConsensusMetadata::populate_previous_vote_history(
   InsertIfNotPresent(
       previous_vote_history, prev_vote.election_term(), prev_vote);
 
-  int64_t last_known_leader_term = pb_.last_known_leader().election_term();
-  int64_t last_pruned_term = pb_.last_pruned_term();
+  int64_t term_to_prune_to = pb_.last_known_leader().election_term();
 
-  // Prune vote history, if necessary.
-  // Step 1: Prune all the way until last known leader's term.
-  google::protobuf::Map<int64_t, PreviousVotePB>::iterator begin_it =
-      previous_vote_history->begin();
-  google::protobuf::Map<int64_t, PreviousVotePB>::iterator end_it = begin_it;
-  while (end_it != previous_vote_history->end() &&
-         end_it->first <= last_known_leader_term) {
-    last_pruned_term = end_it->first;
-    end_it++;
-  }
-
-  if (end_it != begin_it) {
-    VLOG_WITH_PREFIX(2) << "Pruning history older than: " << last_pruned_term;
-    previous_vote_history->erase(begin_it, end_it);
-    pb_.set_last_pruned_term(last_pruned_term);
-  }
-
-  // Step 2: Prune further if the voting history max size is greater.
   if (previous_vote_history->size() > VOTE_HISTORY_MAX_SIZE) {
-    begin_it = previous_vote_history->begin();
-    VLOG_WITH_PREFIX(2) << "Pruning history older than: " << begin_it->first;
-    pb_.set_last_pruned_term(begin_it->first);
-    previous_vote_history->erase(begin_it->first);
+    std::vector<int64_t> terms;
+    terms.reserve(previous_vote_history->size());
+    for (const auto& [term, _] : *previous_vote_history) {
+      terms.push_back(term);
+    }
+    std::sort(terms.begin(), terms.end(), std::greater<int64_t>());
+    term_to_prune_to = std::max(term_to_prune_to, terms[VOTE_HISTORY_MAX_SIZE]);
+  }
+
+  if (term_to_prune_to <= pb_.last_pruned_term()) {
+    return;
+  }
+  VLOG_WITH_PREFIX(2) << "Pruning history older than: " << term_to_prune_to;
+
+  pb_.set_last_pruned_term(term_to_prune_to);
+  for (google::protobuf::Map<int64_t, PreviousVotePB>::iterator it =
+           previous_vote_history->begin();
+       it != previous_vote_history->end();) {
+    if (it->first <= term_to_prune_to) {
+      it = previous_vote_history->erase(it);
+    } else {
+      it++;
+    }
   }
 }
 
