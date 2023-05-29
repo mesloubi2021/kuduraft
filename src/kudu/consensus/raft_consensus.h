@@ -93,7 +93,9 @@ class RpcContext;
 
 namespace tserver {
 class TSTabletManager;
-}
+class RaftConsensusManager;
+class RaftConsensusInstance;
+} // namespace tserver
 
 namespace consensus {
 
@@ -804,6 +806,8 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
  private:
   friend class RaftConsensusQuorumTest;
   friend class tserver::TSTabletManager;
+  friend class tserver::RaftConsensusManager;
+  friend class tserver::RaftConsensusInstance;
   friend class facebook::datashuttle::KuduRingManager;
   FRIEND_TEST(
       RaftConsensusQuorumTest,

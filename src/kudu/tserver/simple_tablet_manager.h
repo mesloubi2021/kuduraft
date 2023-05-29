@@ -75,11 +75,17 @@ class TabletManagerIf {
   virtual ~TabletManagerIf() {}
   virtual const NodeInstancePB& NodeInstance() const = 0;
   virtual std::shared_ptr<consensus::RaftConsensus> shared_consensus(
-      const std::string& = "") const = 0;
+      const std::string& id = "") const = 0;
   virtual Status Init(bool is_first_run) = 0;
   virtual Status Start(bool is_first_run) = 0;
   virtual bool IsInitialized() const = 0;
   virtual void Shutdown() = 0;
+  static Status CreateConfigFromTserverAddresses(
+      const TabletServerOptions& options,
+      KC::RaftConfigPB* new_config);
+  static void CreateConfigFromBootstrapPeers(
+      const TabletServerOptions& options,
+      KC::RaftConfigPB* new_config);
 };
 
 // Keeps track of the tablets hosted on the tablet server side.
@@ -132,7 +138,7 @@ class TSTabletManager : public TabletManagerIf,
       const scoped_refptr<consensus::ConsensusRound>& round) override;
 
   std::shared_ptr<consensus::RaftConsensus> shared_consensus(
-      const std::string& = "") const override {
+      const std::string& /*id*/) const override {
     shared_lock<RWMutex> l(lock_);
     return consensus_;
   }
@@ -191,14 +197,6 @@ class TSTabletManager : public TabletManagerIf,
   Status CreateDistributedConfig(
       const TabletServerOptions& options,
       consensus::RaftConfigPB* committed_config);
-
-  Status CreateConfigFromTserverAddresses(
-      const TabletServerOptions& options,
-      KC::RaftConfigPB* new_config);
-
-  void CreateConfigFromBootstrapPeers(
-      const TabletServerOptions& options,
-      KC::RaftConfigPB* new_config);
 
  private:
   FsManager* const fs_manager_;
