@@ -57,8 +57,41 @@ using std::unique_ptr;
 namespace kudu {
 namespace tserver {
 
+std::string RaftConsensusServerIf::ConsensusServiceRpcQueueToString() const {
+  const kudu::rpc::ServicePool* pool = rpc_server_->service_pool(
+      kudu::consensus::ConsensusServiceIf::static_service_name());
+  if (pool) {
+    return pool->RpcServiceQueueToString();
+  }
+  return "";
+}
+
+/*static*/ Status RaftConsensusServerIf::ShowKuduThreadStatus(
+    std::vector<ThreadDescriptor>* threads) {
+  return GlobalShowThreadStatus(threads);
+}
+
+// Change thread priority for a particular category, this not only changes the
+// current threads belong to that category, but also future threads spawned in
+// that category.
+//
+// @param category In the other words, thread pool name
+// @param priority thread priority based on nice. Should be -20 to 19
+// @return Status:OK if succeed
+/*static*/ Status RaftConsensusServerIf::ChangeKuduThreadPriority(
+    const std::string& pool,
+    int priority) {
+  return GlobalChangeThreadPriority(pool, priority);
+}
+
+RaftConsensusServerIf::RaftConsensusServerIf(
+    const std::string& name,
+    const server::ServerBaseOptions& opts,
+    const std::string& metrics_namespace)
+    : kserver::KuduServer(name, opts, metrics_namespace) {}
+
 TabletServer::TabletServer(const TabletServerOptions& opts)
-    : KuduServer("TabletServer", opts, "kudu.tabletserver"),
+    : RaftConsensusServerIf("TabletServer", opts, "kudu.tabletserver"),
       initted_(false),
 #ifdef FB_DO_NOT_REMOVE
       fail_heartbeats_for_tests_(false),
@@ -77,7 +110,7 @@ TabletServer::TabletServer(
     const TabletServerOptions& opts,
     const std::function<std::unique_ptr<TabletManagerIf>(TabletServer&)>&
         factory)
-    : KuduServer("TabletServer", opts, "kudu.tabletserver"),
+    : RaftConsensusServerIf("TabletServer", opts, "kudu.tabletserver"),
       initted_(false),
       opts_(opts),
       tablet_manager_(factory(*this)) {}
@@ -224,24 +257,6 @@ void TabletServer::Shutdown() {
     LOG(INFO) << name << " shutdown complete.";
     initted_ = false;
   }
-}
-
-std::string TabletServer::ConsensusServiceRpcQueueToString() const {
-  const kudu::rpc::ServicePool* pool = rpc_server_->service_pool(
-      kudu::consensus::ConsensusServiceIf::static_service_name());
-  if (pool) {
-    return pool->RpcServiceQueueToString();
-  }
-  return "";
-}
-
-Status TabletServer::ShowKuduThreadStatus(
-    std::vector<ThreadDescriptor>* threads) {
-  return GlobalShowThreadStatus(threads);
-}
-
-Status TabletServer::ChangeKuduThreadPriority(string pool, int priority) {
-  return GlobalChangeThreadPriority(pool, priority);
 }
 
 } // namespace tserver

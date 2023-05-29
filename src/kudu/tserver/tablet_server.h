@@ -46,7 +46,41 @@ class TabletServerPathHandlers;
 class TSTabletManager;
 class TabletManagerIf;
 
-class TabletServer : public kserver::KuduServer {
+class RaftConsensusServerIf : public kserver::KuduServer {
+ public:
+  RaftConsensusServerIf(
+      const std::string& name,
+      const server::ServerBaseOptions& opts,
+      const std::string& metrics_namespace);
+
+  virtual Status Init() override = 0;
+
+  virtual Status Start() override = 0;
+
+  virtual void Shutdown() override = 0;
+
+  virtual std::string ToString() const = 0;
+
+  virtual TabletManagerIf* tablet_manager() = 0;
+
+  /*
+   * Capture a snapshot of the RPC service queue in the server log file.
+   */
+  std::string ConsensusServiceRpcQueueToString() const;
+
+  static Status ShowKuduThreadStatus(std::vector<ThreadDescriptor>* threads);
+
+  // Change thread priority for a particular category, this not only changes the
+  // current threads belong to that category, but also future threads spawned in
+  // that category.
+  //
+  // @param category In the other words, thread pool name
+  // @param priority thread priority based on nice. Should be -20 to 19
+  // @return Status:OK if succeed
+  static Status ChangeKuduThreadPriority(const std::string& pool, int priority);
+};
+
+class TabletServer : public RaftConsensusServerIf {
  public:
   // TODO(unknown): move this out of this header, since clients want to use
   // this constant as well.
@@ -79,9 +113,9 @@ class TabletServer : public kserver::KuduServer {
 
   virtual void Shutdown() override;
 
-  std::string ToString() const;
+  std::string ToString() const override;
 
-  TabletManagerIf* tablet_manager() {
+  TabletManagerIf* tablet_manager() override {
     return tablet_manager_.get();
   }
 
@@ -111,27 +145,6 @@ class TabletServer : public kserver::KuduServer {
   }
 
 #endif
-
-  /*
-   * Capture a snapshot of the RPC service queue in the server log file.
-   */
-  std::string ConsensusServiceRpcQueueToString() const;
-
-  // Show the status of all kudu threads, see ThreadDescriptor for what detailed
-  // information is included for each thread.
-  //
-  // @param threads Output parameters for all thread info.
-  // @return Status:OK if succeed
-  Status ShowKuduThreadStatus(std::vector<ThreadDescriptor>* threads);
-
-  // Change thread priority for a particular category, this not only changes the
-  // current threads belong to that category, but also future threads spawned in
-  // that category.
-  //
-  // @param category In the other words, thread pool name
-  // @param priority thread priority based on nice. Should be -20 to 19
-  // @return Status:OK if succeed
-  Status ChangeKuduThreadPriority(std::string pool, int priority);
 
  private:
   friend class TabletServerTestBase;
