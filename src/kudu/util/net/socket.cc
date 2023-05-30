@@ -269,14 +269,6 @@ Status Socket::SetReusePort(bool flag) {
 #endif
 }
 
-Status Socket::SetSendBuf(int send_buf) {
-  return SetSockBuf(SO_SNDBUF, "SO_SNDBUF", send_buf);
-}
-
-Status Socket::SetReceiveBuf(int receive_buf) {
-  return SetSockBuf(SO_RCVBUF, "SO_RCVBUF", receive_buf);
-}
-
 Status Socket::BindAndListen(const Sockaddr& sockaddr, int listen_queue_size) {
   RETURN_NOT_OK(SetReuseAddr(true));
   RETURN_NOT_OK(Bind(sockaddr));

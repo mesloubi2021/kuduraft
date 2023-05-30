@@ -90,12 +90,6 @@ class Socket {
   // Sets SO_REUSEPORT to 'flag'. Should be used prior to Bind().
   Status SetReusePort(bool flag);
 
-  // Sets SO_SNDBUF to 'send_buf'.
-  Status SetSendBuf(int send_buf);
-
-  // Sets SO_RCVBUF to 'receive_buf'.
-  Status SetReceiveBuf(int receive_buf);
-
   // Convenience method to invoke the common sequence:
   // 1) SetReuseAddr(true)
   // 2) Bind()

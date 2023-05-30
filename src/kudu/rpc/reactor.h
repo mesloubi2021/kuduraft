@@ -267,8 +267,7 @@ class ReactorThread {
   void ScanIdleConnections();
 
   // Create a new client socket (non-blocking, NODELAY)
-  // buf_size can be specified to set SO_RCVBUF. 0 to skip setting
-  static Status CreateClientSocket(Socket* sock, int buf_size = 0);
+  static Status CreateClientSocket(Socket* sock);
 
   // Initiate a new connection on the given socket.
   static Status StartConnect(Socket* sock, const Sockaddr& remote);
