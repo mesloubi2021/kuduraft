@@ -922,13 +922,12 @@ FlexibleVoteCounter::ComputeElectionResultFromVotingHistory(
       << "Attempting to compute election result from voting history.";
   int64_t term_it = last_known_leader.election_term();
   std::set<std::string> next_leader_regions{last_known_leader_region};
-  std::set<std::string> explored_leader_regions{last_known_leader_region};
 
   // We limit the number of iterations performed even though the algorithm
   // guarantees termination to prevent against any future bugs.
   int64_t iteration_count = 0;
 
-  while (explored_leader_regions.size() < voter_distribution_.size() &&
+  while (next_leader_regions.size() < voter_distribution_.size() &&
          iteration_count++ < QUORUM_OPTIMIZATION_ITERATION_COUNT_MAX) {
     const PotentialNextLeadersResponse& r =
         GetPotentialNextLeaders(term_it, next_leader_regions);
@@ -938,8 +937,6 @@ FlexibleVoteCounter::ComputeElectionResultFromVotingHistory(
         DCHECK_GT(r.next_term, term_it);
         term_it = r.next_term;
         next_leader_regions = std::move(r.potential_leader_regions);
-        explored_leader_regions.insert(
-            next_leader_regions.begin(), next_leader_regions.end());
         LOG_WITH_PREFIX(INFO)
             << "Computed new potential leaders in the next term: " << term_it
             << ". Current election term: " << election_term_
