@@ -215,7 +215,7 @@ class PeerMessageQueue {
     // a configured limit.
     bool is_healthy() const;
 
-    int32_t consecutive_failures();
+    int32_t consecutive_failures() const;
     void incr_consecutive_failures();
     void reset_consecutive_failures();
     // Used for tests.

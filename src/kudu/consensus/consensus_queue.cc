@@ -130,7 +130,7 @@ DECLARE_bool(enable_raft_leader_lease);
 
 DEFINE_int32(
     consecutive_failures_unhealthy_threshold,
-    20,
+    10,
     "Number of consecutive failed requests before we consider a peer "
     "unhealthy");
 
@@ -295,7 +295,7 @@ bool PeerMessageQueue::TrackedPeer::is_healthy() const {
   return consecutive_failures_ < FLAGS_consecutive_failures_unhealthy_threshold;
 }
 
-int32_t PeerMessageQueue::TrackedPeer::consecutive_failures() {
+int32_t PeerMessageQueue::TrackedPeer::consecutive_failures() const {
   return consecutive_failures_;
 }
 
