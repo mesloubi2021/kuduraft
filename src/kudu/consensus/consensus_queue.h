@@ -201,10 +201,6 @@ class PeerMessageQueue {
     // The peer's latest overall health status.
     HealthReportPB::HealthStatus last_overall_health_status;
 
-    // Number of consecutive errors received by a leader from a peer. This
-    // counter is not meaningful for a non-leader.
-    int32_t consecutive_failures;
-
     // Throttler for how often we will log status messages pertaining to this
     // peer (eg when it is lagging, etc).
     std::shared_ptr<logging::LogThrottler> status_log_throttler;
@@ -219,11 +215,21 @@ class PeerMessageQueue {
     // a configured limit.
     bool is_healthy() const;
 
+    int32_t consecutive_failures();
+    void incr_consecutive_failures();
+    void reset_consecutive_failures();
+    // Used for tests.
+    void set_consecutive_failures(int32_t value);
+
    private:
     // The last term we saw from a given peer.
     // This is only used for sanity checking that a peer doesn't
     // go backwards in time.
     int64_t last_seen_term_;
+
+    // Number of consecutive errors received by a leader from a peer. This
+    // counter is not meaningful for a non-leader.
+    int32_t consecutive_failures_;
 
     const PeerMessageQueue* queue = nullptr;
   };

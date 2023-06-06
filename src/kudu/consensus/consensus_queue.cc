@@ -237,9 +237,11 @@ PeerMessageQueue::TrackedPeer::TrackedPeer(
       rpc_start_(MonoTime::Min()),
       wal_catchup_possible(true),
       last_overall_health_status(HealthReportPB::UNKNOWN),
-      consecutive_failures(0),
       status_log_throttler(std::make_shared<logging::LogThrottler>()),
       last_seen_term_(0),
+      // We initialize to max to ensure that a peer, that was never
+      // successfully contacted, is considered unhealthy.
+      consecutive_failures_(INT_MAX),
       queue(queue) {
   PopulateIsPeerInLocalQuorum();
   PopulateIsPeerInLocalRegion();
@@ -290,7 +292,26 @@ void PeerMessageQueue::TrackedPeer::PopulateIsPeerInLocalRegion() {
 }
 
 bool PeerMessageQueue::TrackedPeer::is_healthy() const {
-  return consecutive_failures < FLAGS_consecutive_failures_unhealthy_threshold;
+  return consecutive_failures_ < FLAGS_consecutive_failures_unhealthy_threshold;
+}
+
+int32_t PeerMessageQueue::TrackedPeer::consecutive_failures() {
+  return consecutive_failures_;
+}
+
+void PeerMessageQueue::TrackedPeer::incr_consecutive_failures() {
+  // avoid overflow
+  if (consecutive_failures_ != INT_MAX) {
+    consecutive_failures_++;
+  }
+}
+
+void PeerMessageQueue::TrackedPeer::reset_consecutive_failures() {
+  consecutive_failures_ = 0;
+}
+
+void PeerMessageQueue::TrackedPeer::set_consecutive_failures(int32_t value) {
+  consecutive_failures_ = value;
 }
 
 std::string PeerMessageQueue::TrackedPeer::ToString() const {
@@ -457,7 +478,7 @@ void PeerMessageQueue::SetLeaderMode(
   for (const PeersMap::value_type& entry : peers_map_) {
     entry.second->last_communication_time = now;
     entry.second->last_successful_exchange = now;
-    entry.second->consecutive_failures = 0;
+    entry.second->reset_consecutive_failures();
   }
   time_manager_->SetLeaderMode();
 }
@@ -1907,7 +1928,7 @@ void PeerMessageQueue::UpdatePeerStatus(
       break;
 
     case PeerStatus::RPC_LAYER_ERROR:
-      peer->consecutive_failures++;
+      peer->incr_consecutive_failures();
       // Most controller errors are caused by network issues or corner cases
       // like shutdown and failure to deserialize a protobuf. Therefore, we
       // generally consider these errors to indicate an unreachable peer.
@@ -1915,13 +1936,13 @@ void PeerMessageQueue::UpdatePeerStatus(
       break;
 
     case PeerStatus::TABLET_NOT_FOUND:
-      peer->consecutive_failures++;
+      peer->incr_consecutive_failures();
       VLOG_WITH_PREFIX_UNLOCKED(1)
           << "Peer needs tablet copy: " << peer->ToString();
       break;
 
     case PeerStatus::TABLET_FAILED: {
-      peer->consecutive_failures++;
+      peer->incr_consecutive_failures();
       UpdatePeerHealthUnlocked(peer);
       return;
     }
@@ -1930,7 +1951,7 @@ void PeerMessageQueue::UpdatePeerStatus(
     case PeerStatus::INVALID_TERM:
     case PeerStatus::LMP_MISMATCH:
     case PeerStatus::CANNOT_PREPARE:
-      peer->consecutive_failures++;
+      peer->incr_consecutive_failures();
 
       if (status.IsCompressionDictMismatch()) {
         peer->should_send_compression_dict = true;
@@ -1942,7 +1963,7 @@ void PeerMessageQueue::UpdatePeerStatus(
       break;
 
     case PeerStatus::OK:
-      peer->consecutive_failures = 0;
+      peer->reset_consecutive_failures();
       DCHECK(status.ok());
       break;
   }
@@ -1963,7 +1984,7 @@ void PeerMessageQueue::UpdateExchangeStatus(
   if (PREDICT_TRUE(!status.has_error())) {
     peer->last_exchange_status = PeerStatus::OK;
     peer->last_successful_exchange = now;
-    peer->consecutive_failures = 0;
+    peer->reset_consecutive_failures();
     *lmp_mismatch = false;
     if (peer->should_send_compression_dict) {
       LOG_WITH_PREFIX_UNLOCKED(INFO)
@@ -1973,7 +1994,7 @@ void PeerMessageQueue::UpdateExchangeStatus(
     return;
   }
 
-  peer->consecutive_failures++;
+  peer->incr_consecutive_failures();
 
   switch (status.error().code()) {
     case ConsensusErrorPB::PRECEDING_ENTRY_DIDNT_MATCH:
