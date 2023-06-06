@@ -472,14 +472,6 @@ void PeerMessageQueue::SetLeaderMode(
   LOG_WITH_PREFIX_UNLOCKED(INFO)
       << "Queue going to LEADER mode. State: " << queue_state_.ToString();
 
-  // Reset last communication time with all peers to reset the clock on the
-  // failure timeout.
-  const auto now = MonoTime::Now();
-  for (const PeersMap::value_type& entry : peers_map_) {
-    entry.second->last_communication_time = now;
-    entry.second->last_successful_exchange = now;
-    entry.second->reset_consecutive_failures();
-  }
   time_manager_->SetLeaderMode();
 }
 
@@ -505,7 +497,9 @@ void PeerMessageQueue::TrackPeer(const RaftPeerPB& peer_pb) {
   TrackPeerUnlocked(peer_pb);
 }
 
-void PeerMessageQueue::TrackPeerUnlocked(const RaftPeerPB& peer_pb) {
+void PeerMessageQueue::TrackPeerUnlocked(
+    const RaftPeerPB& peer_pb,
+    bool is_local_peer) {
   CHECK(!peer_pb.permanent_uuid().empty()) << SecureShortDebugString(peer_pb);
   CHECK(peer_pb.has_member_type()) << SecureShortDebugString(peer_pb);
   DCHECK(queue_lock_.is_locked());
@@ -521,6 +515,11 @@ void PeerMessageQueue::TrackPeerUnlocked(const RaftPeerPB& peer_pb) {
   // does not have a log that matches ours, the normal queue negotiation
   // process will eventually find the right point to resume from.
   tracked_peer->next_index = queue_state_.last_appended.index() + 1;
+
+  if (is_local_peer) {
+    tracked_peer->reset_consecutive_failures();
+  }
+
   InsertOrDie(&peers_map_, tracked_peer->uuid(), tracked_peer);
 
   CheckPeersInActiveConfigIfLeaderUnlocked();
@@ -566,7 +565,7 @@ void PeerMessageQueue::TrackLocalPeerUnlocked() {
   if (ContainsKey(peers_map_, local_peer_pb_.permanent_uuid())) {
     UntrackPeerUnlocked(local_peer_pb_.permanent_uuid());
   }
-  TrackPeerUnlocked(*local_peer_in_config);
+  TrackPeerUnlocked(*local_peer_in_config, /*is_local_peer=*/true);
 }
 
 unordered_map<string, HealthReportPB> PeerMessageQueue::ReportHealthOfPeers()

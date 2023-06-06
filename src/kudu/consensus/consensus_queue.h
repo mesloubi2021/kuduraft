@@ -781,7 +781,10 @@ class PeerMessageQueue {
   // 'preceding_first_op_in_queue_' if the queue is empty.
   const OpId& GetLastOp() const;
 
-  void TrackPeerUnlocked(const RaftPeerPB& peer_pb);
+  // Tracks a peer.
+  // If a peer is the local peer, set is_local_peer to true so that it has the
+  // correct defaults. ie. consecutive_failures for local peer is always 0.
+  void TrackPeerUnlocked(const RaftPeerPB& peer_pb, bool is_local_peer = false);
 
   void UntrackPeerUnlocked(const std::string& uuid);
 
