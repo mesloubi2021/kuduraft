@@ -51,18 +51,24 @@ bool HumanReadableNumBytes::ToInt64(const string& str, int64* num_bytes) {
   switch (*end) {
     // NB: an int64 can only go up to <8 EB.
     case 'E':
-      scale <<= 10; // Fall through...
+      scale <<= 10;
+      [[fallthrough]];
     case 'P':
       scale <<= 10;
+      [[fallthrough]];
     case 'T':
       scale <<= 10;
+      [[fallthrough]];
     case 'G':
       scale <<= 10;
+      [[fallthrough]];
     case 'M':
       scale <<= 10;
+      [[fallthrough]];
     case 'K':
     case 'k':
       scale <<= 10;
+      [[fallthrough]];
     case 'B':
     case '\0':
       break; // To here.
