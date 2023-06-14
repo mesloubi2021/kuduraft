@@ -217,7 +217,9 @@ class FlexibleVoteCounter : public VoteCounter {
 
   // Fetches the number of votes that still haven't arrived in this election
   // cycle from the given `region`.
-  int FetchVotesRemainingInRegion(const std::string& region) const;
+  // If use_vd is true, we consider total votes based on voter_distribution_
+  // instead of the config
+  int FetchVotesRemainingInRegion(const std::string& region, bool use_vd) const;
 
   // Populates the number of servers per region that have pruned voting
   // history beyond `term`.
@@ -286,8 +288,8 @@ class FlexibleVoteCounter : public VoteCounter {
   // election term.
   std::pair<bool, bool> DoHistoricalVotesSatisfyMajorityInRegion(
       const std::string& region,
-      int32_t vote_count,
-      int32_t pruned_count) const;
+      const RegionToVoterSet& region_to_voter_set,
+      const std::map<std::string, int32_t>& region_pruned_counts) const;
 
   // Return the last known leader. If crowdsourcing is not enabled it just
   // returns what's known locally, otherwise it uses CrowdsouceLastKnownLeader()
@@ -306,13 +308,11 @@ class FlexibleVoteCounter : public VoteCounter {
 
   // Iterates over all the votes that have come in so far and collates them
   // corresponding to each UUID term pair for the purpose of determining if
-  // one of those UUIDs could have won an election after the `term` provided
-  // when the possible leader regions in `term` were `leader_regions`.
+  // one of those UUIDs could have won an election after the `term` provided.
   // It also computes the `min_term` greater than `term` in which one of the
   // servers from the `leader_regions` had voted.
   void ConstructRegionWiseVoteCollation(
       int64_t term,
-      const std::set<std::string>& leader_regions,
       VoteHistoryCollation* vote_collation,
       int64_t* min_term) const;
 

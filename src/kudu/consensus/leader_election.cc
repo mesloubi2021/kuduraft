@@ -57,6 +57,12 @@ DEFINE_bool(
     "Whether to use last known leader information from the "
     "responding voters");
 DEFINE_bool(
+    voter_history_consider_candidate_quorum,
+    false,
+    "Whether to consider candidate quorums when looking for potential leaders in "
+    "voter history logic. include_candidate_region must be on for this to have "
+    "an effect");
+DEFINE_bool(
     srd_strict_leader_election_quorum,
     false,
     "Use majority of majorities for leader election quorum (LEQ) "
@@ -356,13 +362,17 @@ Status FlexibleVoteCounter::RegisterVote(
 }
 
 int FlexibleVoteCounter::FetchVotesRemainingInRegion(
-    const std::string& region) const {
+    const std::string& region,
+    bool use_vd) const {
   // All the following must at least be initialized to zero in the
   // constructor.
   int regional_yes_count = FindOrDie(yes_vote_count_, region);
   int regional_no_count = FindOrDie(no_vote_count_, region);
-  int total_region_count = FindOrDie(voter_distribution_, region);
-  return total_region_count - regional_yes_count - regional_no_count;
+  int total_region_count = use_vd
+      ? FindOrDie(voter_distribution_, region)
+      : FindOrDie(num_voters_per_quorum_id_, region);
+  return std::max(
+      0, total_region_count - regional_yes_count - regional_no_count);
 }
 
 void FlexibleVoteCounter::FetchRegionalPrunedCounts(
@@ -629,17 +639,22 @@ std::pair<bool, bool> FlexibleVoteCounter::IsMajoritySatisfiedInAllRegions(
 std::pair<bool, bool>
 FlexibleVoteCounter::DoHistoricalVotesSatisfyMajorityInRegion(
     const std::string& region,
-    int32_t votes_received,
-    int32_t pruned_count) const {
+    const RegionToVoterSet& region_to_voter_set,
+    const std::map<std::string, int32_t>& region_pruned_counts) const {
   VLOG_WITH_PREFIX(1) << "Fetching quorum satisfaction info from "
                       << "vote history. Region: " << region;
+  int32_t pruned_count = FindWithDefault(region_pruned_counts, region, 0);
+  int32_t votes_received =
+      FindWithDefault(region_to_voter_set, region, std::set<std::string>())
+          .size();
+
   bool quorum_satisfied = true;
   bool quorum_satisfaction_possible = true;
 
   int total_voters = FindOrDie(voter_distribution_, region);
   DCHECK(total_voters >= 1 || !adjust_voter_distribution_);
   int commit_requirement = MajoritySize(total_voters);
-  int votes_remaining = FetchVotesRemainingInRegion(region);
+  int votes_remaining = FetchVotesRemainingInRegion(region, false);
   VLOG_WITH_PREFIX(3) << "Region: " << region
                       << " , Votes granted: " << votes_received
                       << " , Votes remaining: " << votes_remaining
@@ -703,9 +718,12 @@ Status FlexibleVoteCounter::ExtendNextLeaderRegions(
   return Status::OK();
 }
 
+/**
+ * Collating voter history into votes received for instance in term.
+ * { (uuid, term) => { quorum => votes } }
+ */
 void FlexibleVoteCounter::ConstructRegionWiseVoteCollation(
     int64_t term,
-    const std::set<std::string>& leader_quorum_ids,
     VoteHistoryCollation* vote_collation,
     int64_t* min_term) const {
   CHECK(vote_collation);
@@ -719,11 +737,8 @@ void FlexibleVoteCounter::ConstructRegionWiseVoteCollation(
     const VoteInfo& vote_info = it.second;
     const std::vector<PreviousVotePB>& pvh = vote_info.previous_vote_history;
 
-    // Skip servers that are not in the region of the potential leaders in
-    // the preceding term.
     const std::string quorum_id = DetermineQuorumIdForUUID(uuid);
-    if (quorum_id.empty() ||
-        leader_quorum_ids.find(quorum_id) == leader_quorum_ids.end()) {
+    if (quorum_id.empty()) {
       continue;
     }
 
@@ -760,7 +775,7 @@ bool FlexibleVoteCounter::EnoughVotesWithSufficientHistories(
   // registered.
   for (const std::string& leader_region : leader_regions) {
     int total_voters = FindOrDie(voter_distribution_, leader_region);
-    int votes_not_received = FetchVotesRemainingInRegion(leader_region);
+    int votes_not_received = FetchVotesRemainingInRegion(leader_region, true);
 
     // If we haven't received enough votes from one potential leader region,
     // there is no point proceeding. We need to wait for more votes.
@@ -805,16 +820,25 @@ void FlexibleVoteCounter::AppendPotentialLeaderUUID(
     std::set<std::string>* potential_leader_uuids) const {
   CHECK(potential_leader_uuids);
 
+  if (FLAGS_include_candidate_region &&
+      FLAGS_voter_history_consider_candidate_quorum) {
+    const std::string candidate_region =
+        DetermineQuorumIdForUUID(candidate_uuid);
+    const std::pair<bool, bool> candidate_quorum_satisfication_info =
+        DoHistoricalVotesSatisfyMajorityInRegion(
+            candidate_region, region_to_voter_set, region_pruned_counts);
+    if (!candidate_quorum_satisfication_info.first &&
+        !candidate_quorum_satisfication_info.second) {
+      VLOG_WITH_PREFIX(3) << "Not adding candidate UUID: " << candidate_uuid
+                          << " due to lack of candidate quorum";
+      return;
+    }
+  }
+
   for (const std::string& leader_region : leader_regions) {
-    int32_t pruned_count =
-        FindWithDefault(region_pruned_counts, leader_region, 0);
-    int32_t vote_count =
-        FindWithDefault(
-            region_to_voter_set, leader_region, std::set<std::string>())
-            .size();
     std::pair<bool, bool> quorum_satisfaction_info =
         DoHistoricalVotesSatisfyMajorityInRegion(
-            leader_region, vote_count, pruned_count);
+            leader_region, region_to_voter_set, region_pruned_counts);
     if (quorum_satisfaction_info.first || quorum_satisfaction_info.second) {
       potential_leader_uuids->insert(candidate_uuid);
       VLOG_WITH_PREFIX(3) << "Added potential leader UUID: " << candidate_uuid;
@@ -846,8 +870,7 @@ PotentialNextLeadersResponse FlexibleVoteCounter::GetPotentialNextLeaders(
   // Mapping from UUID term pair to a set of UUIDs that voted for it
   // grouped by their region.
   VoteHistoryCollation vote_collation;
-  ConstructRegionWiseVoteCollation(
-      term, leader_regions, &vote_collation, &min_term);
+  ConstructRegionWiseVoteCollation(term, &vote_collation, &min_term);
   // Set of regions that could possibly serve as leaders in the subsequent
   // terms.
   std::set<std::string> next_leader_regions = leader_regions;
@@ -898,8 +921,7 @@ PotentialNextLeadersResponse FlexibleVoteCounter::GetPotentialNextLeaders(
     // No UUID could have won an election in min_term, recompute vote
     // collations. This function advances the min_term.
     int64_t old_min_term = min_term;
-    ConstructRegionWiseVoteCollation(
-        old_min_term, leader_regions, &vote_collation, &min_term);
+    ConstructRegionWiseVoteCollation(old_min_term, &vote_collation, &min_term);
 
     // The next iteration should always consider a higher term.
     DCHECK_GT(min_term, old_min_term);
@@ -940,7 +962,7 @@ FlexibleVoteCounter::ComputeElectionResultFromVotingHistory(
         LOG_WITH_PREFIX(INFO)
             << "Computed new potential leaders in the next term: " << term_it
             << ". Current election term: " << election_term_
-            << "Potential leader regions: "
+            << ". Potential leader regions: "
             << JoinStringsIterator(
                    next_leader_regions.begin(),
                    next_leader_regions.end(),
@@ -954,7 +976,7 @@ FlexibleVoteCounter::ComputeElectionResultFromVotingHistory(
             << " in term: " << last_known_leader.election_term()
             << " were explored. "
             << "Current election term: " << election_term_
-            << "Potential leader regions: "
+            << ". Potential leader regions: "
             << JoinStringsIterator(
                    r.potential_leader_regions.begin(),
                    r.potential_leader_regions.end(),
@@ -1078,8 +1100,8 @@ FlexibleVoteCounter::QuorumState FlexibleVoteCounter::IsDynamicQuorumSatisfied()
         << ", can achieve majority: " << pessimistic_result.canAchieveMajority;
   }
 
-  // Return pessimistic quorum result if the pessimistic quorum is satisfied or
-  // if the pessimistic quorum cannot be satisfied and we depend on the
+  // Return pessimistic quorum result if the pessimistic quorum is satisfied
+  // or if the pessimistic quorum cannot be satisfied and we depend on the
   // knowledge of the last leader without having it (eg. during bootstrap), we
   // should declare having lost the election or having insufficient votes to
   // make a decision.
@@ -1100,8 +1122,9 @@ FlexibleVoteCounter::QuorumState FlexibleVoteCounter::IsDynamicQuorumSatisfied()
   //
   // Since pessimistic quorum is not satisfied, we have to intersect with last
   // known leader region to guarantee longest log in next LEADER.
-  // However if there is a period of confusion after there was a stable LEADER,
-  // the CANDIDATE might not be able to know which region to intersect with.
+  // However if there is a period of confusion after there was a stable
+  // LEADER, the CANDIDATE might not be able to know which region to intersect
+  // with.
   //
   // If a CANDIDATE has heard from all voters then it should have confidence
   // that its crowdsourced last known leader is the correct one. So if there
@@ -1194,14 +1217,15 @@ FlexibleVoteCounter::QuorumState FlexibleVoteCounter::IsDynamicQuorumSatisfied()
             << (FLAGS_wait_before_using_voting_history_secs - time_elapsed_secs)
             << " seconds before trying voting history heuristic";
         // It's possible that at this point pessimistic quorum is impossible,
-        // nevertheless we shouldn't call the election and should wait for more
-        // votes for voter history computation
+        // nevertheless we shouldn't call the election and should wait for
+        // more votes for voter history computation
         pessimistic_result.canAchieveMajority = true;
         return pessimistic_result;
       }
 
       // This sleep is to give other peers a chance and then falling down to
-      // voter history. A typical value of 10 - 60 seconds should be sufficient
+      // voter history. A typical value of 10 - 60 seconds should be
+      // sufficient
       SleepFor(MonoDelta::FromSeconds(
           FLAGS_wait_before_using_voting_history_secs - time_elapsed_secs));
     }
@@ -1219,23 +1243,26 @@ FlexibleVoteCounter::QuorumState FlexibleVoteCounter::IsDynamicQuorumSatisfied()
     // possible or we were not able to decide with pessimistic quorum
     // We also should have waited ror FLAGS_wait_for_pessimistic_quorum_secs
     // and FLAGS_wait_before_using_voting_history_secs
-    // to give pessimistic quorum and other peers a chance to win the election.
+    // to give pessimistic quorum and other peers a chance to win the
+    // election.
 
     // Find possible leader regions at every term greater than last known
-    // leader's term. Computes possible successor regions until next term is the
-    // current election's term or the quorum converges to pessimistic quorum.
+    // leader's term. Computes possible successor regions until next term is
+    // the current election's term or the quorum converges to pessimistic
+    // quorum.
     //
-    // If we come here, it is guaranteed that none of the current votes that we
-    // have received (including our own) help us figure out last known LEADER,
-    // or we are running an election where there has been a period of confusion,
-    // i.e. we are running an election at a term which does not immediately
-    // follow Last Known Leader. This is not expected to happen due to PreVote
-    // being used all the time, but in some cases ForcedElections
-    // (StartElection) with failure can lead to analysis paralysis term.
+    // If we come here, it is guaranteed that none of the current votes that
+    // we have received (including our own) help us figure out last known
+    // LEADER, or we are running an election where there has been a period of
+    // confusion, i.e. we are running an election at a term which does not
+    // immediately follow Last Known Leader. This is not expected to happen
+    // due to PreVote being used all the time, but in some cases
+    // ForcedElections (StartElection) with failure can lead to analysis
+    // paralysis term.
     //
     // So our hail mary is: If by analyzing the votes, we can find potential
-    // leader regions, we can intersect with those potential regions in the hope
-    // that it will be less than pessimistic quorum.
+    // leader regions, we can intersect with those potential regions in the
+    // hope that it will be less than pessimistic quorum.
     result = ComputeElectionResultFromVotingHistory(
         last_known_leader, last_known_leader_quorum_id, candidate_quorum_id);
   }
@@ -1439,8 +1466,8 @@ void LeaderElection::Run() {
         &state->request,
         &state->response,
         &state->rpc,
-        // We use gutil Bind() for the refcounting and boost::bind to adapt the
-        // gutil Callback to a thunk.
+        // We use gutil Bind() for the refcounting and boost::bind to adapt
+        // the gutil Callback to a thunk.
         boost::bind(
             &Closure::Run,
             Bind(&LeaderElection::VoteResponseRpcCallback, this, voter_uuid)));
@@ -1586,8 +1613,8 @@ void LeaderElection::RecordVoteUnlocked(
   }
   if (duplicate) {
     // Note: This is DFATAL because at the time of writing we do not support
-    // retrying vote requests, so this should be impossible. It may be valid to
-    // receive duplicate votes in the future if we implement retry.
+    // retrying vote requests, so this should be impossible. It may be valid
+    // to receive duplicate votes in the future if we implement retry.
     LOG_WITH_PREFIX(DFATAL)
         << "Duplicate vote received from peer " << state.PeerInfo();
   }
