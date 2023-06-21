@@ -84,9 +84,17 @@ struct PotentialNextLeadersResponse {
   };
   PotentialNextLeadersResponse(Status);
   PotentialNextLeadersResponse(Status, const std::set<std::string>&, int64_t);
+  PotentialNextLeadersResponse(
+      Status,
+      const std::set<std::string>&,
+      int64_t,
+      bool);
   Status status;
   std::set<std::string> potential_leader_regions;
   int64_t next_term;
+  // If we used votes that have not arrived in a conservative way to include
+  // potential leaders
+  bool used_unreceived_votes = false;
 };
 
 // Simple class to count votes (in-memory, not persisted to disk).
@@ -286,7 +294,7 @@ class FlexibleVoteCounter : public VoteCounter {
   // `pruned_count` is the number of voters in the `region` which
   // have pruned their voting histories beyond the last known leader's
   // election term.
-  std::pair<bool, bool> DoHistoricalVotesSatisfyMajorityInRegion(
+  std::tuple<bool, bool, bool> DoHistoricalVotesSatisfyMajorityInRegion(
       const std::string& region,
       const RegionToVoterSet& region_to_voter_set,
       const std::map<std::string, int32_t>& region_pruned_counts) const;
@@ -334,7 +342,8 @@ class FlexibleVoteCounter : public VoteCounter {
       const std::set<std::string>& leader_regions,
       const RegionToVoterSet& region_to_voter_set,
       const std::map<std::string, int32_t>& region_pruned_counts,
-      std::set<std::string>* potential_leader_uuids) const;
+      std::set<std::string>* potential_leader_uuids,
+      bool* used_unreceived_votes) const;
 
   // Optimizer function which tries to recursively figure out the next leader
   // regions since the last term provided and the potential set of leaders

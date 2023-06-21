@@ -240,6 +240,17 @@ PotentialNextLeadersResponse::PotentialNextLeadersResponse(
   next_term = term;
 }
 
+PotentialNextLeadersResponse::PotentialNextLeadersResponse(
+    PotentialNextLeadersResponse::Status s,
+    const std::set<std::string>& leader_regions,
+    int64_t term,
+    bool unreceived_votes) {
+  status = s;
+  potential_leader_regions.insert(leader_regions.begin(), leader_regions.end());
+  next_term = term;
+  used_unreceived_votes = unreceived_votes;
+}
+
 void FlexibleVoteCounter::FetchTopologyInfo() {
   CHECK(config_.has_commit_rule());
 
@@ -636,7 +647,7 @@ std::pair<bool, bool> FlexibleVoteCounter::IsMajoritySatisfiedInAllRegions(
   return std::make_pair(quorum_satisfied, quorum_satisfaction_possible);
 }
 
-std::pair<bool, bool>
+std::tuple<bool, bool, bool>
 FlexibleVoteCounter::DoHistoricalVotesSatisfyMajorityInRegion(
     const std::string& region,
     const RegionToVoterSet& region_to_voter_set,
@@ -648,8 +659,9 @@ FlexibleVoteCounter::DoHistoricalVotesSatisfyMajorityInRegion(
       FindWithDefault(region_to_voter_set, region, std::set<std::string>())
           .size();
 
-  bool quorum_satisfied = true;
-  bool quorum_satisfaction_possible = true;
+  bool quorum_satisfied = false;
+  bool quorum_satisfaction_possible = false;
+  bool used_unreceived_votes = false;
 
   int total_voters = FindOrDie(voter_distribution_, region);
   DCHECK(total_voters >= 1 || !adjust_voter_distribution_);
@@ -660,14 +672,19 @@ FlexibleVoteCounter::DoHistoricalVotesSatisfyMajorityInRegion(
                       << " , Votes remaining: " << votes_remaining
                       << " , Voters with pruned history: " << pruned_count
                       << " , Commit Requirement: " << commit_requirement;
-  if (votes_received < commit_requirement) {
-    quorum_satisfied = false;
+  if (votes_received >= commit_requirement) {
+    quorum_satisfied = true;
   }
-  if (votes_received + votes_remaining + pruned_count < commit_requirement) {
-    quorum_satisfaction_possible = false;
+  if (votes_received + pruned_count >= commit_requirement) {
+    quorum_satisfaction_possible = true;
+  } else if (
+      votes_received + votes_remaining + pruned_count >= commit_requirement) {
+    quorum_satisfaction_possible = true;
+    used_unreceived_votes = true;
   }
 
-  return std::make_pair(quorum_satisfied, quorum_satisfaction_possible);
+  return std::make_tuple(
+      quorum_satisfied, quorum_satisfaction_possible, used_unreceived_votes);
 }
 
 void FlexibleVoteCounter::CrowdsourceLastKnownLeader(
@@ -817,30 +834,37 @@ void FlexibleVoteCounter::AppendPotentialLeaderUUID(
     const std::set<std::string>& leader_regions,
     const RegionToVoterSet& region_to_voter_set,
     const std::map<std::string, int32_t>& region_pruned_counts,
-    std::set<std::string>* potential_leader_uuids) const {
+    std::set<std::string>* potential_leader_uuids,
+    bool* used_unreceived_votes) const {
   CHECK(potential_leader_uuids);
 
   if (FLAGS_include_candidate_region &&
       FLAGS_voter_history_consider_candidate_quorum) {
     const std::string candidate_region =
         DetermineQuorumIdForUUID(candidate_uuid);
-    const std::pair<bool, bool> candidate_quorum_satisfication_info =
+    const std::tuple<bool, bool, bool> candidate_quorum_satisfaction_info =
         DoHistoricalVotesSatisfyMajorityInRegion(
             candidate_region, region_to_voter_set, region_pruned_counts);
-    if (!candidate_quorum_satisfication_info.first &&
-        !candidate_quorum_satisfication_info.second) {
+    if (!std::get<0>(candidate_quorum_satisfaction_info) &&
+        !std::get<1>(candidate_quorum_satisfaction_info)) {
       VLOG_WITH_PREFIX(3) << "Not adding candidate UUID: " << candidate_uuid
                           << " due to lack of candidate quorum";
       return;
     }
+    *used_unreceived_votes = *used_unreceived_votes ||
+        std::get<2>(candidate_quorum_satisfaction_info);
   }
 
   for (const std::string& leader_region : leader_regions) {
-    std::pair<bool, bool> quorum_satisfaction_info =
+    std::tuple<bool, bool, bool> quorum_satisfaction_info =
         DoHistoricalVotesSatisfyMajorityInRegion(
             leader_region, region_to_voter_set, region_pruned_counts);
-    if (quorum_satisfaction_info.first || quorum_satisfaction_info.second) {
+    if (std::get<0>(quorum_satisfaction_info) ||
+        std::get<1>(quorum_satisfaction_info)) {
       potential_leader_uuids->insert(candidate_uuid);
+      *used_unreceived_votes =
+          *used_unreceived_votes || std::get<2>(quorum_satisfaction_info);
+
       VLOG_WITH_PREFIX(3) << "Added potential leader UUID: " << candidate_uuid;
       return;
     }
@@ -885,6 +909,7 @@ PotentialNextLeadersResponse FlexibleVoteCounter::GetPotentialNextLeaders(
     FetchRegionalPrunedCounts(min_term, &region_pruned_counts);
 
     std::set<std::string> potential_leader_uuids;
+    bool used_unreceived_votes = false;
     for (const std::pair<const UUIDTermPair, RegionToVoterSet>&
              collation_entry : vote_collation) {
       const std::string& uuid = collation_entry.first.first;
@@ -902,7 +927,8 @@ PotentialNextLeadersResponse FlexibleVoteCounter::GetPotentialNextLeaders(
           leader_regions,
           region_to_voter_set,
           region_pruned_counts,
-          &potential_leader_uuids);
+          &potential_leader_uuids,
+          &used_unreceived_votes);
     }
 
     if (!potential_leader_uuids.empty()) {
@@ -915,7 +941,8 @@ PotentialNextLeadersResponse FlexibleVoteCounter::GetPotentialNextLeaders(
       return PotentialNextLeadersResponse(
           PotentialNextLeadersResponse::POTENTIAL_NEXT_LEADERS_DETECTED,
           next_leader_regions,
-          min_term);
+          min_term,
+          used_unreceived_votes);
     }
 
     // No UUID could have won an election in min_term, recompute vote
@@ -948,11 +975,13 @@ FlexibleVoteCounter::ComputeElectionResultFromVotingHistory(
   // We limit the number of iterations performed even though the algorithm
   // guarantees termination to prevent against any future bugs.
   int64_t iteration_count = 0;
+  bool used_unreceived_votes = false;
 
   while (next_leader_regions.size() < voter_distribution_.size() &&
          iteration_count++ < QUORUM_OPTIMIZATION_ITERATION_COUNT_MAX) {
     const PotentialNextLeadersResponse& r =
         GetPotentialNextLeaders(term_it, next_leader_regions);
+    used_unreceived_votes = used_unreceived_votes || r.used_unreceived_votes;
     switch (r.status) {
       case PotentialNextLeadersResponse::POTENTIAL_NEXT_LEADERS_DETECTED: {
         // Next term to consider should always be higher.
@@ -980,13 +1009,15 @@ FlexibleVoteCounter::ComputeElectionResultFromVotingHistory(
             << JoinStringsIterator(
                    r.potential_leader_regions.begin(),
                    r.potential_leader_regions.end(),
-                   ", ");
+                   ", ")
+            << ". Used unreceived votes to include regions: "
+            << used_unreceived_votes;
 
         auto [achievedMajority, canAchieveMajority] = AreMajoritiesSatisfied(
             r.potential_leader_regions, candidate_region);
         return {
             achievedMajority,
-            canAchieveMajority,
+            used_unreceived_votes || canAchieveMajority,
             ElectionDecisionMethod::VOTER_HISTORY};
       }
       case PotentialNextLeadersResponse::ERROR:
@@ -1001,7 +1032,7 @@ FlexibleVoteCounter::ComputeElectionResultFromVotingHistory(
         VLOG_WITH_PREFIX(3)
             << "Waiting for more votes. Election result hasn't been "
             << "determined. Election term: " << election_term_;
-        return {false, true, ElectionDecisionMethod::VOTER_HISTORY};
+        return {false, !AreAllVotesIn(), ElectionDecisionMethod::VOTER_HISTORY};
     }
   }
 
