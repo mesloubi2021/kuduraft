@@ -763,6 +763,9 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // Gets the Leader Lease timestamp
   MonoTime GetLeaderLeaseUntil();
 
+  // Get the bounded data loss window expiry timestamp
+  MonoTime GetBoundedDataLossWindowUntil();
+
   // Enables (or disables) compression of messages read from log
   Status EnableCompressionOnCacheMiss(bool enable);
 

@@ -114,6 +114,10 @@ DECLARE_bool(enable_raft_leader_lease);
 
 DECLARE_int32(raft_leader_lease_interval_ms);
 
+DECLARE_bool(enable_bounded_dataloss_window);
+
+DECLARE_int32(bounded_dataloss_window_interval_ms);
+
 DEFINE_int32(
     proxy_batch_duration_ms,
     0,
@@ -444,7 +448,7 @@ void Peer::SendNextRequest(
                                     << " not found in peer proxy pool";
   }
 
-  if (FLAGS_enable_raft_leader_lease) {
+  if (FLAGS_enable_raft_leader_lease || FLAGS_enable_bounded_dataloss_window) {
     s_this->SetUpdateConsensusRpcStart(MonoTime::Now());
   }
   next_hop_proxy->UpdateAsync(&request_, &response_, &controller_, [s_this]() {
@@ -553,7 +557,7 @@ void Peer::DoProcessResponse() {
       << "Response from peer " << peer_pb().permanent_uuid() << ": "
       << SecureShortDebugString(response_);
 
-  if (FLAGS_enable_raft_leader_lease) {
+  if (FLAGS_enable_raft_leader_lease || FLAGS_enable_bounded_dataloss_window) {
     queue_->SetPeerRpcStartTime(peer_pb().permanent_uuid(), rpc_start_);
   }
   bool send_more_immediately =

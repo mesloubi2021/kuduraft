@@ -96,6 +96,8 @@ DECLARE_bool(safe_time_advancement_without_writes);
 DECLARE_bool(raft_prepare_replacement_before_eviction);
 DECLARE_bool(raft_attempt_to_replace_replica_without_majority);
 DECLARE_bool(enable_raft_leader_lease);
+DECLARE_bool(enable_bounded_dataloss_window);
+DECLARE_int32(bounded_dataloss_window_interval_ms);
 DEFINE_bool(
     synchronous_transfer_leadership,
     false,
@@ -197,6 +199,12 @@ METRIC_DEFINE_gauge_int64(
     "Available Leader lease grantors",
     MetricUnit::kUnits,
     "Number of remote peers who are Leader lease grantors.");
+METRIC_DEFINE_gauge_int64(
+    server,
+    available_bounded_dataloss_window_ackers,
+    "Available Bounded DataLoss Window ACKers",
+    MetricUnit::kUnits,
+    "Number of remote peers who are Bounded DataLoss window ACKers.");
 
 const char* PeerStatusToString(PeerStatus p) {
   switch (p) {
@@ -232,6 +240,7 @@ PeerMessageQueue::TrackedPeer::TrackedPeer(
       last_known_committed_index(MinimumOpId().index()),
       last_exchange_status(PeerStatus::NEW),
       lease_granted(MinimumOpId()),
+      bounded_dataloss_window_acked(MinimumOpId()),
       last_successful_exchange(MonoTime::Now()),
       last_communication_time(MonoTime::Now()),
       rpc_start_(MonoTime::Min()),
@@ -334,6 +343,8 @@ PeerMessageQueue::Metrics::Metrics(
       num_ops_behind_leader(INSTANTIATE_METRIC(METRIC_ops_behind_leader)),
       available_leader_lease_grantors(
           INSTANTIATE_METRIC(METRIC_available_leader_lease_grantors)),
+      available_bounded_dataloss_window_ackers(
+          INSTANTIATE_METRIC(METRIC_available_bounded_dataloss_window_ackers)),
       available_commit_peers(
           INSTANTIATE_METRIC(METRIC_available_commit_peers)) {
   check_quorum_runs =
@@ -369,7 +380,8 @@ PeerMessageQueue::PeerMessageQueue(
           tablet_id_),
       metrics_(metric_entity),
       time_manager_(std::move(time_manager)),
-      leader_lease_until_(MonoTime::Min()) {
+      leader_lease_until_(MonoTime::Min()),
+      bounded_dataloss_window_until_(MonoTime::Min()) {
   DCHECK(local_peer_pb_.has_permanent_uuid());
   DCHECK(local_peer_pb_.has_last_known_addr());
   DCHECK(last_locally_replicated.IsInitialized());
@@ -821,6 +833,13 @@ MonoTime PeerMessageQueue::GetLeaderLeaseUntil() {
     return MonoTime().Min();
   }
   return leader_lease_until_;
+}
+
+MonoTime PeerMessageQueue::GetBoundedDataLossWindowUntil() {
+  if (queue_state_.mode != LEADER) {
+    return MonoTime().Min();
+  }
+  return bounded_dataloss_window_until_;
 }
 
 bool PeerMessageQueue::SafeToEvictUnlocked(const string& evict_uuid) const {
@@ -1678,6 +1697,32 @@ PeerMessageQueue::QuorumResults PeerMessageQueue::IsQuorumSatisfiedUnlocked(
   return results;
 }
 
+PeerMessageQueue::QuorumResults
+PeerMessageQueue::IsSecondRegionDurabilitySatisfiedUnlocked(
+    const std::function<bool(const TrackedPeer*)>& predicate) {
+  int acks_outoflocalregion = 0;
+  std::vector<TrackedPeer*> outoflocalregion_peers;
+  for (const PeersMap::value_type& peer : peers_map_) {
+    if (!peer.second->peer_pb.has_member_type() ||
+        peer.second->peer_pb.member_type() != RaftPeerPB::VOTER) {
+      continue;
+    }
+    if (predicate(peer.second)) {
+      if (peer.second->is_peer_in_local_region.has_value() &&
+          !peer.second->is_peer_in_local_region.value()) {
+        acks_outoflocalregion++;
+        outoflocalregion_peers.push_back(peer.second);
+      }
+    }
+  }
+  return {// Check if atleast one of the acks is out of local region
+          acks_outoflocalregion > 0,
+          acks_outoflocalregion,
+          queue_state_.majority_size_,
+          kVanillaRaftQuorumId,
+          outoflocalregion_peers};
+}
+
 int64_t PeerMessageQueue::ComputeNewWatermarkDynamicMode(int64_t* watermark) {
   CHECK(watermark);
   CHECK(queue_state_.active_config->has_commit_rule());
@@ -2143,6 +2188,12 @@ MonoDelta PeerMessageQueue::LeaderLeaseTimeout() {
   return MonoDelta::FromMilliseconds(lease_timeout);
 }
 
+MonoDelta PeerMessageQueue::BoundedDataLossDefaultWindowInMsec() {
+  int32_t const bounded_data_loss_window_ms =
+      FLAGS_bounded_dataloss_window_interval_ms;
+  return MonoDelta::FromMilliseconds(bounded_data_loss_window_ms);
+}
+
 void PeerMessageQueue::SetPeerRpcStartTime(
     const std::string& peer_uuid,
     MonoTime rpc_start) {
@@ -2350,10 +2401,14 @@ bool PeerMessageQueue::DoResponseFromPeer(
           << "Response: " << SecureShortDebugString(response);
     }
 
-    if (FLAGS_enable_raft_leader_lease && response.has_lease_granted()) {
-      if (response.lease_granted() &&
-          peer->last_exchange_status == PeerStatus::OK) {
+    if (peer->last_exchange_status == PeerStatus::OK) {
+      if (FLAGS_enable_raft_leader_lease && response.has_lease_granted() &&
+          response.lease_granted()) {
         peer->lease_granted = peer->last_received;
+      }
+
+      if (FLAGS_enable_bounded_dataloss_window) {
+        peer->bounded_dataloss_window_acked = peer->last_received;
       }
     }
 
@@ -2432,28 +2487,21 @@ bool PeerMessageQueue::DoResponseFromPeer(
           // Check for Quorum of lease renewal approvals from followers
           QuorumResults qresults;
           if (CanLeaderLeaseRenewUnlocked(qresults)) {
-            std::vector<MonoTime> rpc_starts;
-            rpc_starts.reserve(qresults.quorum_peers.size());
-            for (const TrackedPeer* peer : qresults.quorum_peers) {
-              rpc_starts.emplace_back(peer->rpc_start_);
-            }
+            leader_lease_until_.store(std::max(
+                leader_lease_until_.load(),
+                GetQuorumMajorityOfPeerRpcStarts(qresults) +
+                    LeaderLeaseTimeout()));
+          }
+        }
 
-            // sort rpc_start times in descending order
-            if (qresults.quorum_size > 1 &&
-                rpc_starts.size() >= qresults.quorum_size - 1) {
-              std::sort(rpc_starts.begin(), rpc_starts.end(), std::greater<>());
-              leader_lease_until_.store(std::max(
-                  leader_lease_until_.load(),
-                  rpc_starts
-                          [qresults.quorum_size - 1 -
-                           1 /* Leader rpc_start does not exist */] +
-                      LeaderLeaseTimeout()));
-            } else {
-              LOG_WITH_PREFIX_UNLOCKED(WARNING)
-                  << "Unable to increment Leader Lease timestamp, "
-                  << "Quorum size: " << qresults.quorum_size << ". "
-                  << "Number of remote peers: " << rpc_starts.size() << ".";
-            }
+        if (FLAGS_enable_bounded_dataloss_window) {
+          // Check for Vote Quorum of Bounded DataLoss ACKs from followers
+          QuorumResults qresults;
+          if (CanBoundedDataLossWindowRenewUnlocked(qresults)) {
+            bounded_dataloss_window_until_.store(std::max(
+                bounded_dataloss_window_until_.load(),
+                GetMaximumOfPeerRpcStarts(qresults) +
+                    BoundedDataLossDefaultWindowInMsec()));
           }
         }
       } else {
@@ -2501,6 +2549,48 @@ bool PeerMessageQueue::DoResponseFromPeer(
   return send_more_immediately;
 }
 
+MonoTime PeerMessageQueue::GetQuorumMajorityOfPeerRpcStarts(
+    QuorumResults& qresults) {
+  MonoTime result = MonoTime::Min();
+  std::vector<MonoTime> rpc_starts;
+  rpc_starts.reserve(qresults.quorum_peers.size());
+  for (const TrackedPeer* peer : qresults.quorum_peers) {
+    rpc_starts.emplace_back(peer->rpc_start_);
+  }
+
+  // sort rpc_start times in descending order
+  if (rpc_starts.size() > 0 && qresults.quorum_size > 1 &&
+      rpc_starts.size() >= qresults.quorum_size - 1) {
+    std::sort(rpc_starts.begin(), rpc_starts.end(), std::greater<>());
+    result = rpc_starts
+        [qresults.quorum_size - 1 - 1 /* Leader rpc_start does not exist */];
+  } else {
+    LOG_WITH_PREFIX_UNLOCKED(WARNING)
+        << "Unable to run GetQuorumMajorityOfPeerRpcStarts, "
+        << "Quorum size: " << qresults.quorum_size << ". "
+        << "Number of remote peers: " << rpc_starts.size() << ".";
+  }
+  return result;
+}
+
+MonoTime PeerMessageQueue::GetMaximumOfPeerRpcStarts(QuorumResults& qresults) {
+  MonoTime result = MonoTime::Min();
+  std::vector<MonoTime> rpc_starts;
+  rpc_starts.reserve(qresults.quorum_peers.size());
+  for (const TrackedPeer* peer : qresults.quorum_peers) {
+    rpc_starts.emplace_back(peer->rpc_start_);
+  }
+
+  if (rpc_starts.size() > 0) {
+    result = *std::max_element(rpc_starts.begin(), rpc_starts.end());
+  } else {
+    LOG_WITH_PREFIX_UNLOCKED(WARNING)
+        << "Unable to run GetMaximumOfPeerRpcStarts, "
+        << "Number of remote peers: " << rpc_starts.size() << ".";
+  }
+  return result;
+}
+
 PeerMessageQueue::TrackedPeer PeerMessageQueue::GetTrackedPeerForTests(
     const string& uuid) {
   std::lock_guard<simple_mutexlock> scoped_lock(queue_lock_);
@@ -2521,12 +2611,40 @@ bool PeerMessageQueue::CanLeaderLeaseRenewUnlocked(QuorumResults& qresults) {
         return peer->lease_granted.index() >= queue_state_.committed_index;
       });
 
-  metrics_.available_leader_lease_grantors->set_value(results.quorum_size);
+  metrics_.available_leader_lease_grantors->set_value(results.num_satisfied);
 
   if (!results.quorum_satisfied) {
     LOG(WARNING) << "Lease granted quorum failed. " << results.quorum_size
                  << " is required lease grant quorum. " << results.num_satisfied
                  << " peers grants are healthy.";
+    return false;
+  }
+  qresults = std::move(results);
+  return true;
+}
+
+bool PeerMessageQueue::CanBoundedDataLossWindowRenewUnlocked(
+    QuorumResults& qresults) {
+  DCHECK(queue_lock_.is_locked());
+  string local_uuid = local_peer_pb_.permanent_uuid();
+  auto results =
+      IsSecondRegionDurabilitySatisfiedUnlocked([this, &local_uuid](auto peer) {
+        // Check for the Leader
+        const string& peer_uuid = peer->uuid();
+        if (peer_uuid == local_uuid) {
+          return true;
+        }
+        return peer->bounded_dataloss_window_acked.index() >=
+            queue_state_.committed_index;
+      });
+
+  metrics_.available_bounded_dataloss_window_ackers->set_value(
+      results.num_satisfied);
+
+  if (!results.quorum_satisfied) {
+    LOG(WARNING) << "Bounded Data Loss window lease granted, quorum failed. "
+                 << results.quorum_size << " is required lease grant quorum. "
+                 << results.num_satisfied << " peers grants are healthy.";
     return false;
   }
   qresults = std::move(results);

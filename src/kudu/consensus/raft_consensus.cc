@@ -128,6 +128,23 @@ DEFINE_bool(
     "Leader attempts to renew. And Followers either accept or reject.");
 TAG_FLAG(enable_raft_leader_lease, experimental);
 
+DEFINE_bool(
+    enable_bounded_dataloss_window,
+    false,
+    "Whether to enable Bounded DataLoss window support in raft. If enabled, Leader keeps "
+    "renewing the window using Vote quorum on every commit requtest."
+    "And Followers will ACK on each of the commits sent by Leader.");
+TAG_FLAG(enable_bounded_dataloss_window, experimental);
+
+DEFINE_int32(
+    bounded_dataloss_window_interval_ms,
+    2 * 60 * 60 * 1000,
+    "The Bounded DataLoss Window interval after which commits on Leader are "
+    "stopped/write-throttled. The Leader creates a sliding window and waits for "
+    "Vote quorum of nodes to ACK the window. The Followers expect "
+    "the Window to be renewed for all updates until the Leader is active.");
+TAG_FLAG(bounded_dataloss_window_interval_ms, experimental);
+
 DEFINE_double(
     snooze_for_leader_ban_ratio,
     1.0,
@@ -1168,6 +1185,10 @@ Status RaftConsensus::CancelTransferLeadership() {
 
 MonoTime RaftConsensus::GetLeaderLeaseUntil() {
   return queue_->GetLeaderLeaseUntil();
+}
+
+MonoTime RaftConsensus::GetBoundedDataLossWindowUntil() {
+  return queue_->GetBoundedDataLossWindowUntil();
 }
 
 Status RaftConsensus::BeginLeaderTransferPeriodUnlocked(
