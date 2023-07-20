@@ -119,6 +119,7 @@ DiagnosticsLog::DiagnosticsLog(string log_dir, MetricRegistry* metric_registry)
       wake_(&lock_),
       metrics_log_interval_(MonoDelta::FromSeconds(60)),
       symbols_(new SymbolSet()) {}
+
 DiagnosticsLog::~DiagnosticsLog() {
   Stop();
 }
@@ -139,6 +140,14 @@ void DiagnosticsLog::DumpStacksNow(std::string reason) {
 Status DiagnosticsLog::Start() {
   unique_ptr<RollingLog> l(
       new RollingLog(Env::Default(), log_dir_, "diagnostics"));
+  // Fewer and smaller raft metric files.
+  l->SetMaxNumSegments(2); // latest + 2 prev logs
+
+  // 40KB is roughly 20mins of metric log lines (entries) before "current" file
+  // is rotated to next segment.
+  l->SetRollThresholdBytes(40 * 1024); // 40KB
+  l->SetCompressionEnabled(false); // no compression when rolled
+
   RETURN_NOT_OK_PREPEND(l->Open(), "unable to open diagnostics log");
   log_ = std::move(l);
   Status s = Thread::Create(

@@ -187,9 +187,9 @@ Status RollingLog::Append(StringPiece s) {
 
   RETURN_NOT_OK(file_->Append(s));
   if (file_->Size() > roll_threshold_bytes_) {
-    RETURN_NOT_OK_PREPEND(Close(), "Unable to roll log");
+    RETURN_NOT_OK_PREPEND(Close(), "Unable to close prev log");
     roll_count_++;
-    RETURN_NOT_OK_PREPEND(Open(), "Unable to roll log");
+    RETURN_NOT_OK_PREPEND(Open(), "Unable to open new log");
   }
   return Status::OK();
 }
