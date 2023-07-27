@@ -227,6 +227,11 @@ TAG_FLAG(rpc_default_keepalive_time_ms, advanced);
 
 DECLARE_bool(use_hybrid_clock);
 
+DEFINE_bool(
+    write_metrics_to_file,
+    false,
+    "When enabled, write metrics log periodically");
+
 using std::shared_ptr;
 using std::string;
 using std::unique_ptr;
@@ -707,6 +712,10 @@ Status ServerBase::RegisterService(unique_ptr<rpc::ServiceIf> rpc_impl) {
 
 Status ServerBase::StartMetricsLogging() {
   if (options_.metrics_log_interval_ms <= 0) {
+    return Status::OK();
+  }
+  if (!FLAGS_write_metrics_to_file) {
+    LOG(WARNING) << "Not starting metrics log since disabled by gflag";
     return Status::OK();
   }
   std::string log_dir = FLAGS_log_dir;
