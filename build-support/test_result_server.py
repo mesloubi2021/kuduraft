@@ -130,7 +130,7 @@ class TRServer(object):
                 return c
             except MySQLdb.OperationalError as err:
                 if err.args[0] == MYSQL_SERVER_GONE_AWAY and attempt_num < MAX_ATTEMPTS:
-                    logging.warn("Forcing reconnect to MySQL: %s" % err)
+                    logging.warning("Forcing reconnect to MySQL: %s" % err)
                     self.thread_local.db = None
                     continue
                 else:
