@@ -464,12 +464,20 @@ Status RaftConsensus::Init() {
     CHECK_OK(persistent_vars_->Flush());
   }
 
+  // This is the part we reconcile voter_type and quorum_id. Both can be changed
+  // after a modify-member. We need to load the source of truth from cmeta to
+  // local_peer_pb
   for (const auto& peer : cmeta_->ActiveConfig().peers()) {
     if (peer.has_permanent_uuid() && local_peer_pb_.has_permanent_uuid() &&
-        peer.permanent_uuid() == local_peer_pb_.permanent_uuid() &&
-        peer.has_attrs() && local_peer_pb_.has_attrs() &&
-        peer.attrs().has_quorum_id()) {
-      local_peer_pb_.mutable_attrs()->set_quorum_id(peer.attrs().quorum_id());
+        peer.permanent_uuid() == local_peer_pb_.permanent_uuid()) {
+      if (peer.has_attrs() && local_peer_pb_.has_attrs() &&
+          peer.attrs().has_quorum_id()) {
+        local_peer_pb_.mutable_attrs()->set_quorum_id(peer.attrs().quorum_id());
+      }
+
+      if (peer.has_member_type()) {
+        local_peer_pb_.set_member_type(peer.member_type());
+      }
     }
   }
 
