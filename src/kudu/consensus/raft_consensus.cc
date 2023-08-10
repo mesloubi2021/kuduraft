@@ -304,7 +304,7 @@ DEFINE_bool(
     "Enable check quorum failure callback");
 
 DEFINE_int32(
-    check_quorum_failure_callback_cooldown_ms,
+    check_quorum_cooldown_ms,
     300000,
     "Milliseconds to wait before running the check quorum failure callback "
     "again after a failure");
@@ -5745,7 +5745,7 @@ void RaftConsensus::InitCheckQuorumDetectorUnlocked() {
                 // election mutex.
                 consensus->SnoozeCheckQuorumDetector(
                     MonoDelta::FromMilliseconds(
-                        FLAGS_check_quorum_failure_callback_cooldown_ms));
+                        FLAGS_check_quorum_cooldown_ms));
                 consensus->check_quorum_failure_callback_();
               }
             }
