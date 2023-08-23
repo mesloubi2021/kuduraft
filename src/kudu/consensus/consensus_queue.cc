@@ -108,13 +108,15 @@ DEFINE_bool(
 // FB - warning - this is disabled in upstream Mysql raft, because automatic
 // health management of peers is risky. It also reduces contention on consensus
 // queue lock, as it does not have to be reacquired.
-DEFINE_bool(
+DEFINE_HANDLER(
+    bool,
     update_peer_health_status,
     true,
     "After every request for peer, maintain the health status of the peer "
     " This can be used to evict an irrecovarable peer");
 
-DEFINE_bool(
+DEFINE_HANDLER(
+    bool,
     async_local_vote_count,
     true,
     "Should the local voter counting be done async? (not sync in the append path)");
@@ -655,7 +657,7 @@ void PeerMessageQueue::LocalPeerAppendFinished(
   // asynchronously (so as not to block the thread writing to local log from
   // blocking on queue_lock_)
   OpId local_id = id;
-  if (FLAGS_async_local_vote_count) {
+  if (FLAGS_HANDLER(FLAGS_async_local_vote_count)) {
     CHECK_OK(raft_pool_observers_token_->SubmitClosure(Bind(
         &PeerMessageQueue::DoLocalPeerAppendFinished,
         Unretained(this),
@@ -1119,7 +1121,7 @@ Status PeerMessageQueue::RequestForPeer(
   // Preventing the overhead of this as we need to take consensus queue lock
   // again
   SCOPED_CLEANUP({
-    if (!FLAGS_update_peer_health_status) {
+    if (!FLAGS_HANDLER(FLAGS_update_peer_health_status)) {
       return;
     }
     std::lock_guard<simple_mutexlock> lock(queue_lock_);

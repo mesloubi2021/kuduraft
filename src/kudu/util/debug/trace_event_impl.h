@@ -109,8 +109,8 @@ class BASE_EXPORT TraceEvent {
 
   void Initialize(
       int thread_id,
-      MicrosecondsInt64 timestamp,
-      MicrosecondsInt64 thread_timestamp,
+      kudu::MicrosecondsInt64 timestamp,
+      kudu::MicrosecondsInt64 thread_timestamp,
       char phase,
       const unsigned char* category_group_enabled,
       const char* name,
@@ -125,8 +125,8 @@ class BASE_EXPORT TraceEvent {
   void Reset();
 
   void UpdateDuration(
-      const MicrosecondsInt64& now,
-      const MicrosecondsInt64& thread_now);
+      const kudu::MicrosecondsInt64& now,
+      const kudu::MicrosecondsInt64& thread_now);
 
   // Serialize event data to JSON
   void AppendAsJSON(std::string* out) const;
@@ -135,10 +135,10 @@ class BASE_EXPORT TraceEvent {
   static void
   AppendValueAsJSON(unsigned char type, TraceValue value, std::string* out);
 
-  MicrosecondsInt64 timestamp() const {
+  kudu::MicrosecondsInt64 timestamp() const {
     return timestamp_;
   }
-  MicrosecondsInt64 thread_timestamp() const {
+  kudu::MicrosecondsInt64 thread_timestamp() const {
     return thread_timestamp_;
   }
   char phase() const {
@@ -147,10 +147,10 @@ class BASE_EXPORT TraceEvent {
   int thread_id() const {
     return thread_id_;
   }
-  MicrosecondsInt64 duration() const {
+  kudu::MicrosecondsInt64 duration() const {
     return duration_;
   }
-  MicrosecondsInt64 thread_duration() const {
+  kudu::MicrosecondsInt64 thread_duration() const {
     return thread_duration_;
   }
   uint64_t id() const {
@@ -180,10 +180,10 @@ class BASE_EXPORT TraceEvent {
 
  private:
   // Note: these are ordered by size (largest first) for optimal packing.
-  MicrosecondsInt64 timestamp_;
-  MicrosecondsInt64 thread_timestamp_;
-  MicrosecondsInt64 duration_;
-  MicrosecondsInt64 thread_duration_;
+  kudu::MicrosecondsInt64 timestamp_;
+  kudu::MicrosecondsInt64 thread_timestamp_;
+  kudu::MicrosecondsInt64 duration_;
+  kudu::MicrosecondsInt64 thread_duration_;
   // id_ can be used to store phase-specific data.
   uint64_t id_;
   TraceValue arg_values_[kTraceMaxNumArgs];
@@ -477,7 +477,7 @@ class BASE_EXPORT TraceLog {
   // of TRACE_EVENT_PHASE_BEGIN and TRACE_EVENT_PHASE_END events to keep the
   // interface simple.
   typedef void (*EventCallback)(
-      MicrosecondsInt64 timestamp,
+      kudu::MicrosecondsInt64 timestamp,
       char phase,
       const unsigned char* category_group_enabled,
       const char* name,
@@ -536,7 +536,7 @@ class BASE_EXPORT TraceLog {
       const char* name,
       uint64_t id,
       int thread_id,
-      const MicrosecondsInt64& timestamp,
+      const kudu::MicrosecondsInt64& timestamp,
       int num_args,
       const char** arg_names,
       const unsigned char* arg_types,
@@ -601,7 +601,7 @@ class BASE_EXPORT TraceLog {
 
   // Allow setting an offset between the current MicrosecondsInt64 time and the
   // time that should be reported.
-  void SetTimeOffset(MicrosecondsInt64 offset);
+  void SetTimeOffset(kudu::MicrosecondsInt64 offset);
 
   size_t GetObserverCountForTest() const;
 
@@ -642,7 +642,7 @@ class BASE_EXPORT TraceLog {
 
   std::string EventToConsoleMessage(
       unsigned char phase,
-      const MicrosecondsInt64& timestamp,
+      const kudu::MicrosecondsInt64& timestamp,
       TraceEvent* trace_event);
 
   TraceEvent* AddEventToThreadSharedChunkWhileLocked(
@@ -674,10 +674,11 @@ class BASE_EXPORT TraceLog {
   }
   void UseNextTraceBuffer();
 
-  MicrosecondsInt64 OffsetNow() const {
+  kudu::MicrosecondsInt64 OffsetNow() const {
     return OffsetTimestamp(GetMonoTimeMicros());
   }
-  MicrosecondsInt64 OffsetTimestamp(const MicrosecondsInt64& timestamp) const {
+  kudu::MicrosecondsInt64 OffsetTimestamp(
+      const kudu::MicrosecondsInt64& timestamp) const {
     return timestamp - time_offset_;
   }
 
@@ -706,7 +707,7 @@ class BASE_EXPORT TraceLog {
   std::unordered_map<int, std::string> thread_names_;
 
   // The following two maps are used only when ECHO_TO_CONSOLE.
-  std::unordered_map<int, std::stack<MicrosecondsInt64>>
+  std::unordered_map<int, std::stack<kudu::MicrosecondsInt64>>
       thread_event_start_times_;
   std::unordered_map<std::string, int> thread_colors_;
 
@@ -715,7 +716,7 @@ class BASE_EXPORT TraceLog {
 
   int process_id_;
 
-  MicrosecondsInt64 time_offset_;
+  kudu::MicrosecondsInt64 time_offset_;
 
   // Allow tests to wake up when certain events occur.
   WatchEventCallback watch_event_callback_;

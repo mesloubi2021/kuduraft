@@ -208,11 +208,11 @@ void test_shared_lock(int num_threads, TestMethod method, const char* name) {
     }
   }
 
-  int64_t start = CycleClock::Now();
+  int64_t start = kudu::CycleClock::Now();
   for (thread& thr : threads) {
     thr.join();
   }
-  int64_t end = CycleClock::Now();
+  int64_t end = kudu::CycleClock::Now();
 
   printf(
       "%13s  % 7d  %" PRId64 "M\n", name, num_threads, (end - start) / 1000000);

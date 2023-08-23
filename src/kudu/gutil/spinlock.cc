@@ -99,7 +99,7 @@ void SpinLock::SlowLock() {
   // it.  Record the current timestamp in the local variable wait_start_time
   // so the total wait time can be stored in the lockword once this thread
   // obtains the lock.
-  int64 wait_start_time = CycleClock::Now();
+  int64 wait_start_time = kudu::CycleClock::Now();
   Atomic32 wait_cycles;
   Atomic32 lock_value = SpinLoop(wait_start_time, &wait_cycles);
 
@@ -174,7 +174,7 @@ void SpinLock::SlowUnlock(uint64 wait_cycles) {
 
 inline int32 SpinLock::CalculateWaitCycles(int64 wait_start_time) {
   int32 wait_cycles =
-      ((CycleClock::Now() - wait_start_time) >> PROFILE_TIMESTAMP_SHIFT);
+      ((kudu::CycleClock::Now() - wait_start_time) >> PROFILE_TIMESTAMP_SHIFT);
   // The number of cycles waiting for the lock is used as both the
   // wait_cycles and lock value, so it can't be kSpinLockFree or
   // kSpinLockHeld.  Make sure the value returned is at least

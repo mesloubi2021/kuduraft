@@ -38,6 +38,8 @@
 #include "kudu/gutil/arm_instruction_set_select.h"
 #include "kudu/gutil/port.h"
 
+namespace kudu {
+
 // Please do not nest #if directives.  Keep one section, and one #if per
 // platform.
 
@@ -224,3 +226,4 @@ inline int64 CycleClock::Now() {
 // available.
 #error You need to define CycleTimer for your O/S and CPU
 #endif
+} //  namespace  kudu

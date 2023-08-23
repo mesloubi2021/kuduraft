@@ -159,7 +159,7 @@ void MethodSampler::SampleCall(InboundCall* call) {
     }
   }
 
-  MicrosecondsInt64 now = GetMonoTimeMicros();
+  kudu::MicrosecondsInt64 now = GetMonoTimeMicros();
   int64_t us_since_trace = now - bucket->last_sample_time.Load();
   if (us_since_trace > kSampleIntervalMs * 1000) {
     Sample new_sample = {call->header(), call->trace(), duration_ms};

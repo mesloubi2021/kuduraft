@@ -53,10 +53,10 @@ void Mutex::Acquire() {
 
   // If we weren't able to acquire the mutex immediately, then it's
   // worth gathering timing information about the mutex acquisition.
-  MicrosecondsInt64 start_time = GetMonoTimeMicros();
+  kudu::MicrosecondsInt64 start_time = GetMonoTimeMicros();
   int rv = pthread_mutex_lock(&native_handle_);
   DCHECK_EQ(0, rv) << ". " << strerror(rv); // NOLINT(whitespace/semicolon)
-  MicrosecondsInt64 end_time = GetMonoTimeMicros();
+  kudu::MicrosecondsInt64 end_time = GetMonoTimeMicros();
 
   int64_t wait_time = end_time - start_time;
   if (wait_time > 0) {

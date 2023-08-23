@@ -1590,9 +1590,9 @@ Status LogWritableBlock::AppendV(ArrayView<const Slice> data) {
   int64_t cur_block_offset = block_offset_ + block_length_;
   RETURN_NOT_OK(container_->EnsurePreallocated(cur_block_offset, data_size));
 
-  MicrosecondsInt64 start_time = GetMonoTimeMicros();
+  kudu::MicrosecondsInt64 start_time = GetMonoTimeMicros();
   RETURN_NOT_OK(container_->WriteVData(cur_block_offset, data));
-  MicrosecondsInt64 end_time = GetMonoTimeMicros();
+  kudu::MicrosecondsInt64 end_time = GetMonoTimeMicros();
 
   int64_t dur = end_time - start_time;
   TRACE_COUNTER_INCREMENT("lbm_write_time_us", dur);
@@ -1785,9 +1785,9 @@ Status LogReadableBlock::ReadV(uint64_t offset, ArrayView<Slice> results)
             log_block_->offset() + log_block_->length()));
   }
 
-  MicrosecondsInt64 start_time = GetMonoTimeMicros();
+  kudu::MicrosecondsInt64 start_time = GetMonoTimeMicros();
   RETURN_NOT_OK(container_->ReadVData(read_offset, results));
-  MicrosecondsInt64 end_time = GetMonoTimeMicros();
+  kudu::MicrosecondsInt64 end_time = GetMonoTimeMicros();
 
   int64_t dur = end_time - start_time;
   TRACE_COUNTER_INCREMENT("lbm_read_time_us", dur);

@@ -29,6 +29,8 @@
 #include <stdio.h>
 #include <string.h>
 
+namespace kudu {
+
 #if defined(__APPLE__)
 #include <mach/clock.h> // @manual
 #include <mach/mach.h> // @manual
@@ -217,3 +219,4 @@ std::string LocalTimeAsString() {
   StringAppendStrftime(&ret, "%Y-%m-%d %H:%M:%S %Z", time(nullptr), true);
   return ret;
 }
+} // namespace kudu

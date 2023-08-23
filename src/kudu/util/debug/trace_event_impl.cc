@@ -396,8 +396,8 @@ void InitializeMetadataEvent(
   ::trace_event_internal::SetTraceValue(value, &arg_type, &arg_value);
   trace_event->Initialize(
       thread_id,
-      MicrosecondsInt64(0),
-      MicrosecondsInt64(0),
+      kudu::MicrosecondsInt64(0),
+      kudu::MicrosecondsInt64(0),
       TRACE_EVENT_PHASE_METADATA,
       &g_category_group_enabled[kCategoryMetadata],
       metadata_name,
@@ -574,8 +574,8 @@ void TraceEvent::CopyFrom(const TraceEvent& other) {
 
 void TraceEvent::Initialize(
     int thread_id,
-    MicrosecondsInt64 timestamp,
-    MicrosecondsInt64 thread_timestamp,
+    kudu::MicrosecondsInt64 timestamp,
+    kudu::MicrosecondsInt64 thread_timestamp,
     char phase,
     const unsigned char* category_group_enabled,
     const char* name,
@@ -671,8 +671,8 @@ void TraceEvent::Reset() {
 }
 
 void TraceEvent::UpdateDuration(
-    const MicrosecondsInt64& now,
-    const MicrosecondsInt64& thread_now) {
+    const kudu::MicrosecondsInt64& now,
+    const kudu::MicrosecondsInt64& thread_now) {
   DCHECK(duration_ == -1);
   duration_ = now - timestamp_;
   thread_duration_ = thread_now - thread_timestamp_;
@@ -1764,7 +1764,7 @@ TraceEventHandle TraceLog::AddTraceEvent(
     const scoped_refptr<ConvertableToTraceFormat>* convertable_values,
     unsigned char flags) {
   int thread_id = static_cast<int>(kudu::Thread::UniqueThreadId());
-  MicrosecondsInt64 now = GetMonoTimeMicros();
+  kudu::MicrosecondsInt64 now = GetMonoTimeMicros();
   return AddTraceEventWithThreadIdAndTimestamp(
       phase,
       category_group_enabled,
@@ -1833,7 +1833,7 @@ TraceEventHandle TraceLog::AddTraceEventWithThreadIdAndTimestamp(
     const char* name,
     uint64_t id,
     int thread_id,
-    const MicrosecondsInt64& timestamp,
+    const kudu::MicrosecondsInt64& timestamp,
     int num_args,
     const char** arg_names,
     const unsigned char* arg_types,
@@ -1849,8 +1849,8 @@ TraceEventHandle TraceLog::AddTraceEventWithThreadIdAndTimestamp(
   if (flags & TRACE_EVENT_FLAG_MANGLE_ID)
     id ^= process_id_hash_;
 
-  MicrosecondsInt64 now = OffsetTimestamp(timestamp);
-  MicrosecondsInt64 thread_now = GetThreadCpuTimeMicros();
+  kudu::MicrosecondsInt64 now = OffsetTimestamp(timestamp);
+  kudu::MicrosecondsInt64 thread_now = GetThreadCpuTimeMicros();
 
   PerThreadInfo* thr_info = thread_local_info_;
   if (PREDICT_FALSE(!thr_info)) {
@@ -2007,7 +2007,7 @@ TraceEventHandle TraceLog::AddTraceEventWithThreadIdAndTimestamp(
 // recycled (phase == TRACE_EVENT_PHASE_END and trace_event == NULL).
 std::string TraceLog::EventToConsoleMessage(
     unsigned char phase,
-    const MicrosecondsInt64& timestamp,
+    const kudu::MicrosecondsInt64& timestamp,
     TraceEvent* trace_event) {
   SpinLockHolder thread_info_lock(&thread_info_lock_);
 
@@ -2015,7 +2015,7 @@ std::string TraceLog::EventToConsoleMessage(
   // TRACE_EVENT_PHASE_BEGIN or TRACE_EVENT_END.
   DCHECK(phase != TRACE_EVENT_PHASE_COMPLETE);
 
-  MicrosecondsInt64 duration;
+  kudu::MicrosecondsInt64 duration;
   int thread_id =
       trace_event ? trace_event->thread_id() : Thread::UniqueThreadId();
   if (phase == TRACE_EVENT_PHASE_END) {
@@ -2106,8 +2106,8 @@ void TraceLog::UpdateTraceEventDuration(
     return;
   MarkFlagInScope thread_is_in_trace_event(&thr_info->is_in_trace_event_);
 
-  MicrosecondsInt64 thread_now = GetThreadCpuTimeMicros();
-  MicrosecondsInt64 now = OffsetNow();
+  kudu::MicrosecondsInt64 thread_now = GetThreadCpuTimeMicros();
+  kudu::MicrosecondsInt64 now = OffsetNow();
 
   std::string console_message;
   if (*category_group_enabled & ENABLED_FOR_RECORDING) {
@@ -2327,7 +2327,7 @@ void TraceLog::SetThreadSortIndex(int64_t thread_id, int sort_index) {
   thread_sort_indices_[static_cast<int>(thread_id)] = sort_index;
 }
 
-void TraceLog::SetTimeOffset(MicrosecondsInt64 offset) {
+void TraceLog::SetTimeOffset(kudu::MicrosecondsInt64 offset) {
   time_offset_ = offset;
 }
 
@@ -2549,7 +2549,7 @@ ScopedTraceBinaryEfficient::ScopedTraceBinaryEfficient(
             name,
             trace_event_internal::kNoEventId,
             static_cast<int>(kudu::Thread::UniqueThreadId()),
-            GetMonoTimeMicros(),
+            kudu::GetMonoTimeMicros(),
             0,
             nullptr,
             nullptr,

@@ -125,7 +125,7 @@ class KernelStackWatchdog {
       // The time at which this frame entered the SCOPED_WATCH_STACK section.
       // We use MicrosecondsInt64 instead of MonoTime because it inlines a bit
       // better.
-      MicrosecondsInt64 start_time_;
+      kudu::MicrosecondsInt64 start_time_;
       // The threshold of time beyond which the watchdog should emit warnings.
       int threshold_ms_;
       // A string explaining the state that the thread is in (typically a

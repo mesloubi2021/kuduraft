@@ -58,7 +58,7 @@ Trace::~Trace() {}
 
 // Struct which precedes each entry in the trace.
 struct TraceEntry {
-  MicrosecondsInt64 timestamp_micros;
+  kudu::MicrosecondsInt64 timestamp_micros;
 
   // The source file and line number which generated the trace message.
   const char* file_path;

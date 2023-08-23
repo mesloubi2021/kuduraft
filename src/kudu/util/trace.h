@@ -283,7 +283,7 @@ class ScopedTraceLatencyCounter {
 
  private:
   const char* const counter_;
-  MicrosecondsInt64 start_time_;
+  kudu::MicrosecondsInt64 start_time_;
   DISALLOW_COPY_AND_ASSIGN(ScopedTraceLatencyCounter);
 };
 

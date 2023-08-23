@@ -474,11 +474,11 @@ class TraceEventCallbackTest : public KuduTest {
   vector<string> collected_events_categories_;
   vector<string> collected_events_names_;
   vector<unsigned char> collected_events_phases_;
-  vector<MicrosecondsInt64> collected_events_timestamps_;
+  vector<kudu::MicrosecondsInt64> collected_events_timestamps_;
 
   static TraceEventCallbackTest* s_instance;
   static void Callback(
-      MicrosecondsInt64 timestamp,
+      kudu::MicrosecondsInt64 timestamp,
       char phase,
       const unsigned char* category_group_enabled,
       const char* name,

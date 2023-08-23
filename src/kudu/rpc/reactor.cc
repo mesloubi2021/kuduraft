@@ -185,9 +185,9 @@ void ReactorThread::InvokePendingCb(struct ev_loop* loop) {
   // Calculate the number of cycles spent calling our callbacks.
   // This is called quite frequently so we use CycleClock rather than MonoTime
   // since it's a bit faster.
-  int64_t start = CycleClock::Now();
+  int64_t start = kudu::CycleClock::Now();
   ev_invoke_pending(loop);
-  int64_t dur_cycles = CycleClock::Now() - start;
+  int64_t dur_cycles = kudu::CycleClock::Now() - start;
 
   // Contribute this to our histogram.
   ReactorThread* thr = static_cast<ReactorThread*>(ev_userdata(loop));
@@ -201,13 +201,13 @@ void ReactorThread::AboutToPollCb(struct ev_loop* loop) noexcept {
   // Store the current time in a member variable to be picked up below
   // in PollCompleteCb.
   ReactorThread* thr = static_cast<ReactorThread*>(ev_userdata(loop));
-  thr->cycle_clock_before_poll_ = CycleClock::Now();
+  thr->cycle_clock_before_poll_ = kudu::CycleClock::Now();
 }
 
 void ReactorThread::PollCompleteCb(struct ev_loop* loop) noexcept {
   // First things first, capture the time, so that this is as accurate as
   // possible
-  int64_t cycle_clock_after_poll = CycleClock::Now();
+  int64_t cycle_clock_after_poll = kudu::CycleClock::Now();
 
   // Record it in our accounting.
   ReactorThread* thr = static_cast<ReactorThread*>(ev_userdata(loop));
@@ -425,7 +425,7 @@ void ReactorThread::TimerHandler(ev::timer& /*watcher*/, int revents) {
   cur_time_ = MonoTime::Now();
 
   // Compute load percentage.
-  int64_t now_cycles = CycleClock::Now();
+  int64_t now_cycles = kudu::CycleClock::Now();
   if (last_load_measurement_.time_cycles != -1) {
     int64_t cycles_delta = (now_cycles - last_load_measurement_.time_cycles);
     int64_t poll_cycles_delta =

@@ -265,7 +265,7 @@ Status DiagnosticsLog::LogStacks(const string& reason) {
   RETURN_NOT_OK(snap.SnapshotAllStacks());
 
   std::ostringstream buf;
-  MicrosecondsInt64 now = GetCurrentTimeMicros();
+  kudu::MicrosecondsInt64 now = GetCurrentTimeMicros();
 
   // Because symbols are potentially long strings, and likely to be
   // very repetitive, we do a sort of dictionary encoding here. When
@@ -365,7 +365,7 @@ Status DiagnosticsLog::LogMetrics() {
   opts.refresh_histogram_metrics = FLAGS_diag_thread_stats;
 
   std::ostringstream buf;
-  MicrosecondsInt64 now = GetCurrentTimeMicros();
+  kudu::MicrosecondsInt64 now = GetCurrentTimeMicros();
   buf << "I" << FormatTimestampForLog(now) << " metrics " << now << " ";
 
   // Collect the metrics JSON string.

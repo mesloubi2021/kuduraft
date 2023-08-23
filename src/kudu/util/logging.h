@@ -329,7 +329,7 @@ void UnregisterLoggingCallback();
 void GetFullLogFilename(google::LogSeverity severity, std::string* filename);
 
 // Format a timestamp in the same format as used by GLog.
-std::string FormatTimestampForLog(MicrosecondsInt64 micros_since_epoch);
+std::string FormatTimestampForLog(kudu::MicrosecondsInt64 micros_since_epoch);
 
 // Shuts down the google logging library. Call before exit to ensure that log
 // files are flushed.
@@ -357,7 +357,7 @@ class LogThrottler {
   }
 
   bool ShouldLog(int n_secs, const char* tag, int* num_suppressed) {
-    MicrosecondsInt64 ts = GetMonoTimeMicros();
+    kudu::MicrosecondsInt64 ts = GetMonoTimeMicros();
 
     // When we switch tags, we should not show the "suppressed" messages,
     // because in fact it's a different message that we skipped. So, reset it to
@@ -382,7 +382,7 @@ class LogThrottler {
 
  private:
   Atomic32 num_suppressed_;
-  MicrosecondsInt64 last_ts_;
+  kudu::MicrosecondsInt64 last_ts_;
   const char* last_tag_;
 };
 } // namespace logging

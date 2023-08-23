@@ -357,7 +357,7 @@ void GetFullLogFilename(google::LogSeverity severity, string* filename) {
   *filename = ss.str();
 }
 
-std::string FormatTimestampForLog(MicrosecondsInt64 micros_since_epoch) {
+std::string FormatTimestampForLog(kudu::MicrosecondsInt64 micros_since_epoch) {
   time_t secs_since_epoch = micros_since_epoch / 1000000;
   int usecs = micros_since_epoch % 1000000;
   struct tm tm_time;

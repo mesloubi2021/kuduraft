@@ -36,6 +36,8 @@
 
 #include "kudu/gutil/integral_types.h"
 
+namespace kudu {
+
 typedef double WallTime;
 
 // Append result to a supplied string.
@@ -191,6 +193,7 @@ class CycleClock {
  private:
   CycleClock();
 };
+} // namespace kudu
 
 // inline method bodies
 #include "kudu/gutil/cycleclock-inl.h" // IWYU pragma: export

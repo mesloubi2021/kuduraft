@@ -422,7 +422,7 @@ TEST_F(DebugUtilTest, TestTimeouts) {
 
   // First, time a few stack traces to determine how long a non-timed-out stack
   // trace takes.
-  vector<MicrosecondsInt64> durations;
+  vector<kudu::MicrosecondsInt64> durations;
   for (int i = 0; i < 20; i++) {
     StackTrace stack;
     auto st = GetMonoTimeMicros();

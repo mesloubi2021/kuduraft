@@ -57,6 +57,7 @@
 #include "kudu/tserver/tserver.pb.h" // @manual
 #endif
 
+#include "kudu/consensus/flags_layering.h"
 #include "kudu/util/atomic.h"
 #include "kudu/util/faststring.h"
 #include "kudu/util/locks.h"

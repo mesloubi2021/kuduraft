@@ -698,7 +698,7 @@ void ThreadPool::DispatchThread() {
 
     // Execute the task
     {
-      MicrosecondsInt64 start_wall_us = GetMonoTimeMicros();
+      kudu::MicrosecondsInt64 start_wall_us = GetMonoTimeMicros();
 
       task.runnable->Run();
 

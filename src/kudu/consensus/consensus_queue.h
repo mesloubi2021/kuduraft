@@ -36,6 +36,7 @@
 #include <glog/logging.h>
 #include <gtest/gtest_prod.h>
 
+#include "kudu/consensus/flags_layering.h"
 #include "kudu/consensus/log_cache.h"
 #include "kudu/consensus/metadata.pb.h"
 #include "kudu/consensus/opid.pb.h"
