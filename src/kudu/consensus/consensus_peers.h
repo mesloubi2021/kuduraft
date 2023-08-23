@@ -43,6 +43,8 @@
 #include "kudu/util/net/net_util.h"
 #include "kudu/util/status.h"
 
+DECLARE_bool(raft_enforce_rpc_token);
+
 namespace kudu {
 class ThreadPoolToken;
 

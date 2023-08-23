@@ -91,13 +91,39 @@ DEFINE_int32(
 TAG_FLAG(consensus_inject_latency_ms_in_notifications, hidden);
 TAG_FLAG(consensus_inject_latency_ms_in_notifications, unsafe);
 
-DECLARE_int32(consensus_rpc_timeout_ms);
+DEFINE_int32(
+    consensus_rpc_timeout_ms,
+    30000,
+    "Timeout used for all consensus internal RPC communications.");
+TAG_FLAG(consensus_rpc_timeout_ms, advanced);
+
 DECLARE_bool(safe_time_advancement_without_writes);
-DECLARE_bool(raft_prepare_replacement_before_eviction);
-DECLARE_bool(raft_attempt_to_replace_replica_without_majority);
-DECLARE_bool(enable_raft_leader_lease);
-DECLARE_bool(enable_bounded_dataloss_window);
-DECLARE_int32(bounded_dataloss_window_interval_ms);
+
+// Enable improved re-replication (KUDU-1097).
+DEFINE_bool(
+    raft_prepare_replacement_before_eviction,
+    true,
+    "When enabled, failed replicas will only be evicted after a "
+    "replacement has been prepared for them.");
+TAG_FLAG(raft_prepare_replacement_before_eviction, advanced);
+TAG_FLAG(raft_prepare_replacement_before_eviction, experimental);
+
+DEFINE_bool(
+    raft_attempt_to_replace_replica_without_majority,
+    false,
+    "When enabled, the replica replacement logic attempts to perform "
+    "desired Raft configuration changes even if the majority "
+    "of voter replicas is reported failed or offline. "
+    "Warning! This is only intended for testing.");
+TAG_FLAG(raft_attempt_to_replace_replica_without_majority, unsafe);
+
+DEFINE_bool(
+    enable_raft_leader_lease,
+    false,
+    "Whether to enable leader leases support in raft. If enabled, before Lease times out "
+    "Leader attempts to renew. And Followers either accept or reject.");
+TAG_FLAG(enable_raft_leader_lease, experimental);
+
 DEFINE_bool(
     synchronous_transfer_leadership,
     false,
@@ -127,10 +153,22 @@ DEFINE_bool(
     "Should the commit index notification be done async?");
 
 TAG_FLAG(synchronous_transfer_leadership, advanced);
-DECLARE_bool(enable_flexi_raft);
+
+DEFINE_bool(
+    enable_flexi_raft,
+    false,
+    "Enables flexi raft mode. All the configurations need to be already"
+    " present and setup before the flag can be enabled.");
+
 DECLARE_int32(default_quorum_size);
-DECLARE_int32(raft_leader_lease_interval_ms);
-DECLARE_bool(enable_raft_leader_lease);
+
+DEFINE_int32(
+    raft_leader_lease_interval_ms,
+    2000,
+    "The lease interval for Leader leases. The Leader creates a Lease and waits for "
+    "Followers to accept the lease before becoming active-lease. The Followers expect "
+    "the Lease to be renewed for all updates until the Leader is active.");
+TAG_FLAG(raft_leader_lease_interval_ms, experimental);
 
 DEFINE_int32(
     unhealthy_threshold,
@@ -143,6 +181,23 @@ DEFINE_bool(
     true,
     "Whether to filter out candidates that don't have a quorum of voters being "
     "tracked during untargeted LMPs.");
+
+DEFINE_bool(
+    enable_bounded_dataloss_window,
+    false,
+    "Whether to enable Bounded DataLoss window support in raft. If enabled, Leader keeps "
+    "renewing the window using Vote quorum on every commit requtest."
+    "And Followers will ACK on each of the commits sent by Leader.");
+TAG_FLAG(enable_bounded_dataloss_window, experimental);
+
+DEFINE_int32(
+    bounded_dataloss_window_interval_ms,
+    2 * 60 * 60 * 1000,
+    "The Bounded DataLoss Window interval after which commits on Leader are "
+    "stopped/write-throttled. The Leader creates a sliding window and waits for "
+    "Vote quorum of nodes to ACK the window. The Followers expect "
+    "the Window to be renewed for all updates until the Leader is active.");
+TAG_FLAG(bounded_dataloss_window_interval_ms, experimental);
 
 using kudu::pb_util::SecureDebugString;
 using kudu::pb_util::SecureShortDebugString;

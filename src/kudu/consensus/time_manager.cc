@@ -61,7 +61,14 @@ DEFINE_int32(
     "before forcing the client to retry, in milliseconds.");
 TAG_FLAG(safe_time_max_lag_ms, experimental);
 
-DECLARE_int32(raft_heartbeat_interval_ms);
+DEFINE_int32(
+    raft_heartbeat_interval_ms,
+    500,
+    "The heartbeat interval for Raft replication. The leader produces heartbeats "
+    "to followers at this interval. The followers expect a heartbeat at this interval "
+    "and consider a leader to have failed if it misses several in a row.");
+TAG_FLAG(raft_heartbeat_interval_ms, advanced);
+
 DECLARE_int32(scanner_max_wait_ms);
 
 using kudu::clock::Clock;

@@ -56,6 +56,8 @@
 #include "kudu/util/status.h"
 #include "kudu/util/status_callback.h"
 
+DECLARE_bool(raft_derived_log_mode);
+
 namespace kudu {
 
 class CompressionCodec;

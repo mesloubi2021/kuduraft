@@ -194,7 +194,11 @@ DEFINE_validator(fs_wal_dir_reserved_bytes, [](const char* /*n*/, int64_t v) {
 TAG_FLAG(fs_wal_dir_reserved_bytes, runtime);
 TAG_FLAG(fs_wal_dir_reserved_bytes, evolving);
 
-DECLARE_bool(raft_derived_log_mode);
+DEFINE_bool(
+    raft_derived_log_mode,
+    false,
+    "When derived log mode is turned on, certain functions"
+    " inside kudu raft become invalid");
 
 // Validate that log_min_segments_to_retain >= 1
 static bool ValidateLogsToRetain(const char* flagname, int value) {

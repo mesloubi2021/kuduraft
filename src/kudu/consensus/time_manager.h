@@ -29,6 +29,8 @@
 #include "kudu/util/monotime.h"
 #include "kudu/util/status.h"
 
+DECLARE_int32(raft_heartbeat_interval_ms);
+
 namespace kudu {
 
 class CountDownLatch;

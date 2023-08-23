@@ -72,7 +72,6 @@
 #include "kudu/util/trace.h"
 #include "kudu/util/trace_metrics.h"
 
-DECLARE_bool(raft_prepare_replacement_before_eviction);
 DECLARE_int32(memory_limit_warn_threshold_percentage);
 
 using kudu::consensus::BulkChangeConfigRequestPB;

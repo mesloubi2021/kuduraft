@@ -46,7 +46,6 @@ DEFINE_double(
     "Fraction of the time when the server will crash just before flushing "
     "consensus metadata. (For testing only!)");
 TAG_FLAG(fault_crash_before_cmeta_flush, unsafe);
-DECLARE_bool(enable_flexi_raft);
 
 namespace kudu {
 namespace consensus {

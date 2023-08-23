@@ -96,14 +96,6 @@
 #include "kudu/util/url-coding.h"
 #include "raft_consensus.h"
 
-DEFINE_int32(
-    raft_heartbeat_interval_ms,
-    500,
-    "The heartbeat interval for Raft replication. The leader produces heartbeats "
-    "to followers at this interval. The followers expect a heartbeat at this interval "
-    "and consider a leader to have failed if it misses several in a row.");
-TAG_FLAG(raft_heartbeat_interval_ms, advanced);
-
 DEFINE_double(
     leader_failure_max_missed_heartbeat_periods,
     3.0,
@@ -112,38 +104,6 @@ DEFINE_double(
     "raft_heartbeat_interval_ms times leader_failure_max_missed_heartbeat_periods. "
     "The value passed to this flag may be fractional.");
 TAG_FLAG(leader_failure_max_missed_heartbeat_periods, advanced);
-
-DEFINE_int32(
-    raft_leader_lease_interval_ms,
-    2000,
-    "The lease interval for Leader leases. The Leader creates a Lease and waits for "
-    "Followers to accept the lease before becoming active-lease. The Followers expect "
-    "the Lease to be renewed for all updates until the Leader is active.");
-TAG_FLAG(raft_leader_lease_interval_ms, experimental);
-
-DEFINE_bool(
-    enable_raft_leader_lease,
-    false,
-    "Whether to enable leader leases support in raft. If enabled, before Lease times out "
-    "Leader attempts to renew. And Followers either accept or reject.");
-TAG_FLAG(enable_raft_leader_lease, experimental);
-
-DEFINE_bool(
-    enable_bounded_dataloss_window,
-    false,
-    "Whether to enable Bounded DataLoss window support in raft. If enabled, Leader keeps "
-    "renewing the window using Vote quorum on every commit requtest."
-    "And Followers will ACK on each of the commits sent by Leader.");
-TAG_FLAG(enable_bounded_dataloss_window, experimental);
-
-DEFINE_int32(
-    bounded_dataloss_window_interval_ms,
-    2 * 60 * 60 * 1000,
-    "The Bounded DataLoss Window interval after which commits on Leader are "
-    "stopped/write-throttled. The Leader creates a sliding window and waits for "
-    "Vote quorum of nodes to ACK the window. The Followers expect "
-    "the Window to be renewed for all updates until the Leader is active.");
-TAG_FLAG(bounded_dataloss_window_interval_ms, experimental);
 
 DEFINE_double(
     snooze_for_leader_ban_ratio,
@@ -205,24 +165,6 @@ DEFINE_bool(
 TAG_FLAG(raft_enable_tombstoned_voting, experimental);
 TAG_FLAG(raft_enable_tombstoned_voting, runtime);
 
-// Enable improved re-replication (KUDU-1097).
-DEFINE_bool(
-    raft_prepare_replacement_before_eviction,
-    true,
-    "When enabled, failed replicas will only be evicted after a "
-    "replacement has been prepared for them.");
-TAG_FLAG(raft_prepare_replacement_before_eviction, advanced);
-TAG_FLAG(raft_prepare_replacement_before_eviction, experimental);
-
-DEFINE_bool(
-    raft_attempt_to_replace_replica_without_majority,
-    false,
-    "When enabled, the replica replacement logic attempts to perform "
-    "desired Raft configuration changes even if the majority "
-    "of voter replicas is reported failed or offline. "
-    "Warning! This is only intended for testing.");
-TAG_FLAG(raft_attempt_to_replace_replica_without_majority, unsafe);
-
 DEFINE_bool(
     raft_enable_multi_hop_proxy_routing,
     false,
@@ -244,20 +186,6 @@ TAG_FLAG(raft_log_cache_proxy_wait_time_ms, runtime);
 DECLARE_int32(memory_limit_warn_threshold_percentage);
 DECLARE_int32(consensus_max_batch_size_bytes); // defined in consensus_queue
                                                // (expose as method?)
-DECLARE_int32(consensus_rpc_timeout_ms);
-
-DEFINE_bool(
-    raft_derived_log_mode,
-    false,
-    "When derived log mode is turned on, certain functions"
-    " inside kudu raft become invalid");
-
-DEFINE_bool(
-    enable_flexi_raft,
-    false,
-    "Enables flexi raft mode. All the configurations need to be already"
-    " present and setup before the flag can be enabled.");
-
 DEFINE_bool(
     track_removed_peers,
     true,
@@ -267,12 +195,6 @@ DEFINE_bool(
     allow_multiple_backed_by_db_per_quorum,
     false,
     "Can multiple backed_by_db instances be added to the same quorum");
-
-DEFINE_bool(
-    raft_enforce_rpc_token,
-    false,
-    "Should enforce that requests and reponses to this instance must "
-    "have a matching token as what we have stored.");
 
 DEFINE_int32(
     lag_threshold_for_request_vote,

@@ -67,12 +67,6 @@
 #include "kudu/util/threadpool.h"
 
 DEFINE_int32(
-    consensus_rpc_timeout_ms,
-    30000,
-    "Timeout used for all consensus internal RPC communications.");
-TAG_FLAG(consensus_rpc_timeout_ms, advanced);
-
-DEFINE_int32(
     raft_get_node_instance_timeout_ms,
     30000,
     "Timeout for retrieving node instance data over RPC.");
@@ -108,23 +102,16 @@ DEFINE_int32(
     "Maximum proxy routing hops allowed. In other words, the proxy routing TTL");
 TAG_FLAG(raft_proxy_max_hops, advanced);
 
-DECLARE_int32(raft_heartbeat_interval_ms);
-
-DECLARE_bool(enable_raft_leader_lease);
-
-DECLARE_int32(raft_leader_lease_interval_ms);
-
-DECLARE_bool(enable_bounded_dataloss_window);
-
-DECLARE_int32(bounded_dataloss_window_interval_ms);
-
 DEFINE_int32(
     proxy_batch_duration_ms,
     0,
     "Time (in ms) to wait before reading ops for proxy requests");
 
-DECLARE_bool(raft_enforce_rpc_token);
-DECLARE_bool(enable_raft_leader_lease);
+DEFINE_bool(
+    raft_enforce_rpc_token,
+    false,
+    "Should enforce that requests and reponses to this instance must "
+    "have a matching token as what we have stored.");
 
 METRIC_DEFINE_counter(
     server,
