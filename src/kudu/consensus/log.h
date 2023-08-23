@@ -43,6 +43,7 @@
 #include "kudu/consensus/log.pb.h"
 #include "kudu/consensus/log_util.h"
 #include "kudu/consensus/opid.pb.h"
+#include "kudu/consensus/opid_util.h"
 #include "kudu/consensus/ref_counted_replicate.h"
 #include "kudu/gutil/callback.h" // IWYU pragma: keep
 #include "kudu/gutil/macros.h"
@@ -74,7 +75,8 @@ class ReplicateMsg;
 // After completing bootstrap, some of the results need to be plumbed through
 // into the consensus implementation.
 struct ConsensusBootstrapInfo {
-  ConsensusBootstrapInfo();
+  ConsensusBootstrapInfo()
+      : last_id(MinimumOpId()), last_committed_id(MinimumOpId()) {}
 
   // The id of the last operation in the log
   OpId last_id;
