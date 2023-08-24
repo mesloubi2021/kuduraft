@@ -29,7 +29,6 @@
 #include "kudu/consensus/consensus.pb.h"
 #include "kudu/consensus/consensus_peers.h"
 #include "kudu/consensus/metadata.pb.h"
-#include "kudu/consensus/raft_consensus.h"
 #include "kudu/gutil/macros.h"
 #include "kudu/gutil/ref_counted.h"
 #include "kudu/rpc/rpc_controller.h"
@@ -39,6 +38,8 @@
 
 namespace kudu {
 namespace consensus {
+
+using ConsensusTerm = int64_t;
 
 class FlexibleVoteCounterTest;
 
@@ -445,6 +446,18 @@ struct ElectionResult {
   const ElectionDecisionMethod decision_method;
 };
 
+class VoteLoggerInterface {
+ public:
+  virtual ~VoteLoggerInterface() {}
+
+  virtual void logElectionStarted(
+      const VoteRequestPB& voteRequest,
+      const RaftConfigPB& config) = 0;
+  virtual void logVoteReceived(const VoteResponsePB& voteResponse) = 0;
+  virtual void logElectionDecided(const ElectionResult& electionResult) = 0;
+  virtual void advanceEpoch(int64_t epoch) = 0;
+};
+
 // Driver class to run a leader election.
 //
 // The caller must pass a callback to the driver, which will be called exactly
@@ -579,17 +592,6 @@ class LeaderElection : public RefCountedThreadSafe<LeaderElection> {
   MonoTime start_time_;
 
   std::shared_ptr<VoteLoggerInterface> vote_logger_;
-};
-
-class VoteLoggerInterface {
- public:
-  virtual ~VoteLoggerInterface(){};
-  virtual void logElectionStarted(
-      const VoteRequestPB& voteRequest,
-      const RaftConfigPB& config) = 0;
-  virtual void logVoteReceived(const VoteResponsePB& voteResponse) = 0;
-  virtual void logElectionDecided(const ElectionResult& electionResult) = 0;
-  virtual void advanceEpoch(int64_t epoch) = 0;
 };
 
 } // namespace consensus

@@ -39,6 +39,7 @@
 #include "kudu/consensus/consensus.pb.h"
 #include "kudu/consensus/consensus_meta.h" // IWYU pragma: keep
 #include "kudu/consensus/consensus_queue.h"
+#include "kudu/consensus/leader_election.h"
 #include "kudu/consensus/log.h"
 #include "kudu/consensus/metadata.pb.h"
 #include "kudu/consensus/opid.pb.h"
@@ -108,8 +109,6 @@ class PeerProxyFactory;
 class PersistentVarsManager;
 class PendingRounds;
 struct ConsensusBootstrapInfo;
-struct ElectionResult;
-class VoteLoggerInterface;
 
 struct ConsensusOptions {
   std::string tablet_id;
@@ -136,7 +135,6 @@ struct TabletVotingState {
   }
 };
 
-typedef int64_t ConsensusTerm;
 typedef StdStatusCallback ConsensusReplicatedCallback;
 
 // Reasons for StartElection().
