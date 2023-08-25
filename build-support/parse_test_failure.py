@@ -49,7 +49,7 @@ TEST_FAILURE_RE = re.compile(r".*\d+: Failure$")
 GLOG_LINE_RE = re.compile(r"^[WIEF]\d\d\d\d \d\d:\d\d:\d\d")
 
 
-class ParsedTest(object):
+class ParsedTest:
     """
     The LogParser creates one instance of this class for each test that is discovered
     while parsing the log.
@@ -60,7 +60,7 @@ class ParsedTest(object):
         self.errors = []
 
 
-class LogParser(object):
+class LogParser:
     """
     Parser for textual gtest output
     """

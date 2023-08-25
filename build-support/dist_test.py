@@ -105,7 +105,7 @@ DEPS_FOR_ALL = [
 ]
 
 
-class StagingDir(object):
+class StagingDir:
     @staticmethod
     def new():
         dir = rel_to_abs("build/isolate")
@@ -127,7 +127,7 @@ class StagingDir(object):
         return os.path.join(self.dir, "tasks.json")
 
 
-class TestExecution(object):
+class TestExecution:
     """
     An individual test execution that will be run.
 

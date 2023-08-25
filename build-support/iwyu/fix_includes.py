@@ -195,7 +195,7 @@ if sys.version_info[0] < 3:
         return i.__next__()
 
 
-class OrderedSet(object):
+class OrderedSet:
     """Sometimes sets affect order of outputs, which hinders testing. This
     (naive) set implementation preserves order to avoid that problem."""
 
@@ -241,7 +241,7 @@ class FixIncludesError(Exception):
     pass
 
 
-class IWYUOutputRecord(object):
+class IWYUOutputRecord:
     """Information that the iwyu output file has about one source file."""
 
     def __init__(self, filename):
@@ -316,7 +316,7 @@ class IWYUOutputRecord(object):
         )
 
 
-class IWYUOutputParser(object):
+class IWYUOutputParser:
     """Parses the lines in iwyu output corresponding to one source file."""
 
     # iwyu adds this comment to some lines to map them to the source file.
@@ -518,7 +518,7 @@ class IWYUOutputParser(object):
         return retval
 
 
-class LineInfo(object):
+class LineInfo:
     """Information about a single line of a source file."""
 
     def __init__(self, line):
@@ -574,7 +574,7 @@ class LineInfo(object):
         )
 
 
-class FileInfo(object):
+class FileInfo:
     """Details about a file's storage encoding"""
 
     DEFAULT_LINESEP = os.linesep

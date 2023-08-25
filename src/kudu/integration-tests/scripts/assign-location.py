@@ -64,7 +64,7 @@ from builtins import object, range
 #
 
 
-class LocationAssignmentRule(object):
+class LocationAssignmentRule:
     def __init__(self, location_mapping_rules):
         # Convert the input location information into an auxiliary array of
         # location strings.

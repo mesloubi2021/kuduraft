@@ -41,7 +41,7 @@ KUDU_MAX_REQUESTS = 10
 KUDU_REQUEST_POOL = ThreadPool(KUDU_MAX_REQUESTS)
 
 
-class KuduNode(object):
+class KuduNode:
     def __init__(self):
         self.child_nodes = []
 
@@ -77,7 +77,7 @@ class KuduRegularNode(KuduNode):
         return self.name
 
 
-class KuduReader(object):
+class KuduReader:
     __slots__ = ("kudu_table", "metric_name")
     supported = True
 
@@ -181,7 +181,7 @@ class KuduReader(object):
         return FetchInProgress(job.get)
 
 
-class KuduFinder(object):
+class KuduFinder:
     def __init__(self, kudu_table=None):
         self.client = kudu.Client(settings.KUDU_MASTER)
         self.kudu_table = self.client.open_table(settings.KUDU_TABLE)

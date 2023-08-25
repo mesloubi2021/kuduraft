@@ -75,7 +75,7 @@ def percent_rate(num, denom):
     return old_div(num, denom) * 100
 
 
-class TRServer(object):
+class TRServer:
     def __init__(self):
         self.thread_local = threading.local()
         self.ensure_table()

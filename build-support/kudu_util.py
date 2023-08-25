@@ -66,7 +66,7 @@ class ColorFilter(logging.Filter):
         return True
 
 
-class Colors(object):
+class Colors:
     """ANSI color codes."""
 
     def __on_tty(x):
