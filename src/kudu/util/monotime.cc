@@ -24,6 +24,7 @@
 
 #include <glog/logging.h>
 
+#include <folly/Singleton.h>
 #include "kudu/gutil/integral_types.h"
 #include "kudu/gutil/port.h"
 #include "kudu/gutil/stringprintf.h"
@@ -320,6 +321,14 @@ MonoTime operator-(const MonoTime& t, const MonoDelta& delta) {
 
 MonoDelta operator-(const MonoTime& t_end, const MonoTime& t_beg) {
   return t_end.GetDeltaSince(t_beg);
+}
+
+namespace {
+static folly::Singleton<TimeProvider> time_provider_singleton;
+}
+
+std::shared_ptr<TimeProvider> TimeProvider::getInstance() {
+  return time_provider_singleton.try_get();
 }
 
 } // namespace kudu

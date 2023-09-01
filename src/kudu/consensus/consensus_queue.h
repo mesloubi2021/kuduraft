@@ -243,6 +243,8 @@ class PeerMessageQueue {
     // counter is not meaningful for a non-leader.
     int32_t consecutive_failures_;
 
+    std::shared_ptr<TimeProvider> time_provider_;
+
     const PeerMessageQueue* queue = nullptr;
   };
 
@@ -959,6 +961,8 @@ class PeerMessageQueue {
   // Bounded Data loss to support halting/start-throttling commits
   // using a time bound window
   std::atomic<MonoTime> bounded_dataloss_window_until_;
+
+  std::shared_ptr<TimeProvider> time_provider_;
 };
 
 // The interface between RaftConsensus and the PeerMessageQueue.

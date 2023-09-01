@@ -298,8 +298,6 @@ PeerMessageQueue::TrackedPeer::TrackedPeer(
       last_exchange_status(PeerStatus::NEW),
       lease_granted(MinimumOpId()),
       bounded_dataloss_window_acked(MinimumOpId()),
-      last_successful_exchange(MonoTime::Now()),
-      last_communication_time(MonoTime::Now()),
       rpc_start_(MonoTime::Min()),
       wal_catchup_possible(true),
       last_overall_health_status(HealthReportPB::UNKNOWN),
@@ -308,7 +306,10 @@ PeerMessageQueue::TrackedPeer::TrackedPeer(
       // We initialize to max to ensure that a peer, that was never
       // successfully contacted, is considered unhealthy.
       consecutive_failures_(INT_MAX),
+      time_provider_(TimeProvider::getInstance()),
       queue(queue) {
+  last_successful_exchange = time_provider_->Now();
+  last_communication_time = time_provider_->Now();
   PopulateIsPeerInLocalQuorum();
   PopulateIsPeerInLocalRegion();
 }
@@ -438,7 +439,8 @@ PeerMessageQueue::PeerMessageQueue(
       metrics_(metric_entity),
       time_manager_(std::move(time_manager)),
       leader_lease_until_(MonoTime::Min()),
-      bounded_dataloss_window_until_(MonoTime::Min()) {
+      bounded_dataloss_window_until_(MonoTime::Min()),
+      time_provider_(TimeProvider::getInstance()) {
   DCHECK(local_peer_pb_.has_permanent_uuid());
   DCHECK(local_peer_pb_.has_last_known_addr());
   DCHECK(last_locally_replicated.IsInitialized());
@@ -480,7 +482,7 @@ bool PeerMessageQueue::HasProxyPeerFailedUnlocked(
   auto max_proxy_failure_threshold =
       MonoDelta::FromMilliseconds(proxy_failure_threshold_ms_);
 
-  if (MonoTime::Now() - proxy_peer->last_successful_exchange >
+  if (time_provider_->Now() - proxy_peer->last_successful_exchange >
       max_proxy_failure_threshold) {
     KLOG_EVERY_N_SECS(INFO, 180)
         << "Peer " << proxy_peer->uuid()
@@ -902,7 +904,7 @@ MonoTime PeerMessageQueue::GetBoundedDataLossWindowUntil() {
 bool PeerMessageQueue::SafeToEvictUnlocked(const string& evict_uuid) const {
   DCHECK(queue_lock_.is_locked());
   DCHECK_EQ(LEADER, queue_state_.mode);
-  auto now = MonoTime::Now();
+  auto now = time_provider_->Now();
 
   int remaining_voters = 0;
   int remaining_viable_voters = 0;
@@ -997,7 +999,7 @@ void PeerMessageQueue::UpdatePeerHealthUnlocked(TrackedPeer* peer) {
           "with peer $0 for more than $1 seconds ($2)",
           peer->uuid(),
           FLAGS_follower_unavailable_considered_failed_sec,
-          (MonoTime::Now() - peer->last_communication_time).ToString());
+          (time_provider_->Now() - peer->last_communication_time).ToString());
     }
   }
 
@@ -1150,7 +1152,8 @@ Status PeerMessageQueue::RequestForPeer(
       request->set_compression_dictionary(
           CompressionCodecManager::GetDictionary());
     }
-    unreachable_time = MonoTime::Now() - peer_copy.last_communication_time;
+    unreachable_time =
+        time_provider_->Now() - peer_copy.last_communication_time;
 
     RETURN_NOT_OK(routing_table_container_->NextHop(
         local_peer_pb_.permanent_uuid(), uuid, next_hop_uuid));
@@ -2078,7 +2081,7 @@ void PeerMessageQueue::UpdateExchangeStatus(
   DCHECK(queue_lock_.is_locked());
   const ConsensusStatusPB& status = response.status();
 
-  MonoTime now = MonoTime::Now();
+  MonoTime now = time_provider_->Now();
   peer->last_communication_time = now;
   peer->last_known_committed_index = status.last_committed_idx();
 
@@ -2811,6 +2814,8 @@ void PeerMessageQueue::Close() {
 
   std::lock_guard<simple_mutexlock> lock(queue_lock_);
   ClearUnlocked();
+  // Reset here to appease folly::Singleton's check for leaky references
+  time_provider_.reset();
 }
 
 int64_t PeerMessageQueue::GetQueuedOperationsSizeBytesForTests() const {

@@ -21,6 +21,7 @@
 //       to be processed by a compiler lacking C++11 support.
 #include <stdint.h>
 
+#include <memory>
 #include <string>
 
 #ifdef KUDU_HEADERS_NO_STUBS
@@ -415,6 +416,16 @@ MonoTime KUDU_EXPORT operator-(const MonoTime& t, const MonoDelta& delta);
 ///   specified points in time.
 MonoDelta KUDU_EXPORT operator-(const MonoTime& t_end, const MonoTime& t_begin);
 ///@}
+
+class TimeProvider {
+ public:
+  static std::shared_ptr<TimeProvider> getInstance();
+
+  virtual ~TimeProvider() = default;
+  virtual MonoTime Now() const {
+    return MonoTime::Now();
+  }
+};
 
 } // namespace kudu
 
