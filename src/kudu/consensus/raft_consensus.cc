@@ -4380,9 +4380,7 @@ void RaftConsensus::EnableFailureDetector(boost::optional<MonoDelta> delta) {
 }
 
 void RaftConsensus::DisableFailureDetector() {
-  if (!PREDICT_TRUE(FLAGS_enable_leader_failure_detection)) {
-    failure_detector_->Stop();
-  }
+  failure_detector_->Stop();
 }
 
 void RaftConsensus::SetWithholdVotesForTests(bool withhold_votes) {
