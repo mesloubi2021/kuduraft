@@ -35,6 +35,7 @@ class DebouncerTests : public testing::Test {
  */
 TEST_F(DebouncerTests, DebouncerTest) {
   std::latch enqueue_execute_latch{9};
+  std::latch failed_latch{8};
   std::latch acquired_latch{1};
   std::atomic_int acquired, failed = 0;
 
@@ -48,11 +49,13 @@ TEST_F(DebouncerTests, DebouncerTest) {
         acquired_latch.wait();
       } else {
         failed++;
+        failed_latch.count_down();
       }
       co_return;
     });
   }
   enqueue_execute_latch.wait();
+  failed_latch.wait();
 
   EXPECT_EQ(acquired, 1);
   EXPECT_EQ(failed, 8);
