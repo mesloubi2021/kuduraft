@@ -943,13 +943,14 @@ class PeerMessageQueue {
    *
    * This method will buffer up from the last buffered index recorded
    * in the buffer. If no last buffered index is recorded, this function will
-   * not fill anything.
+   * not fill anything. See HandOffBufferIfNeeded.
    *
    * This function also checks if the proxying settings provided by read_context
    * matches the proxy settings of the buffered ops.
    *
    * If this function fails to fill the buffer, it'll reset the buffer and
-   * clear all buffered ops. Buffer will need to be reinited elsewhere.
+   * clear all buffered ops. Buffer will need to be reinited in
+   * HandOffBufferIfNeeded.
    *
    * @param read_context The context that provides append watermarks for the
    * peer we're buffering for
@@ -959,7 +960,28 @@ class PeerMessageQueue {
    */
   Status FillBuffer(
       const ReadContext& read_context,
-      PeerMessageBuffer::TryLockedPtr peer_message_buffer);
+      PeerMessageBuffer::LockedBufferHandle peer_message_buffer);
+
+  /**
+   * Checks to see if we need to handoff the buffer to a waiting promise.
+   *
+   * This function will also check that the buffer is consistent with the
+   * requirements for the handoff (index matches, proxy requirements are
+   * correct, etc.)
+   *
+   * If the buffer is inconsistent, this function resolves it by discarding the
+   * buffer and re-reading once from the log cache.
+   *
+   * This function is also what inits the buffer (moves last_buffered out of
+   * -1). That will allow FillBuffer to continue filling from last_buffered
+   * onwards.
+   *
+   * @param peer_message_buffer A locked pointer to the buffer
+   * @param read_context The context for filling the buffer
+   */
+  void HandOffBufferIfNeeded(
+      PeerMessageBuffer::LockedBufferHandle peer_message_buffer,
+      const ReadContext& read_context);
 
   std::vector<PeerMessageQueueObserver*> observers_;
 

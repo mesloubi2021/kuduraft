@@ -21,6 +21,9 @@ namespace consensus {
 /**
  * A basic data structure to hold pointers to the buffered replicates, as well
  * as some markers on where the buffer starts.
+ *
+ * Note that this class is not thread safe and needs to be synchronized. See
+ * SynchronizedBufferData.
  */
 class BufferData {
  public:
@@ -86,6 +89,16 @@ class BufferData {
     return buffered_for_proxying;
   }
 
+  /**
+   * Moves the data out from this buffer into another BufferData.
+   *
+   * This buffer will be cleared of any data, but last_index() will be persisted
+   * for future reads.
+   *
+   * return A new BufferData instance with the ops in the buffer
+   */
+  BufferData moveDataAndReset();
+
  protected:
   /**
    * The vector of bufferred replicates.
@@ -111,7 +124,156 @@ class BufferData {
 /**
  * BufferData synchronized on a debouncer.
  */
-using PeerMessageBuffer = folly::Synchronized<BufferData, MutexDebouncer>;
+using SynchronizedBufferData = folly::Synchronized<BufferData, MutexDebouncer>;
+
+/**
+ * The struct we use to handoff the buffer to a RPC that's being prepared.
+ */
+struct HandedOffBufferData : public BufferData {
+  /**
+   * Takes in a BufferData object and converts to HandedOffBufferData by
+   * tagging a status.
+   */
+  HandedOffBufferData(Status s, BufferData&& buffer_data)
+      : BufferData(std::move(buffer_data)), status(std::move(s)) {}
+  /**
+   * Status of the prepared buffer.
+   *
+   * This will be OK if we grabbed the prepared buffer, or the status of
+   * LogCache::ReadOps if not.
+   */
+  Status status;
+};
+
+/**
+ * The complete PeerMessageBuffer struct, containing a data section and a
+ * handoff section.
+ *
+ * The data section is synchronized with a mutex debouncer and contains the
+ * bufferred data and metadata.
+ *
+ * The handoff section comprises of a number of thread safe objects that
+ * orchestrates handing off the buffer. handoff_initial_index_ is the sync point
+ * signaling a need to handoff, and the data is handed off to handoff_promise_.
+ */
+struct PeerMessageBuffer {
+ public:
+  /**
+   * A RAII lock handle for the data section. When this struct is alive, the
+   * debouncer on the data section will be held.
+   *
+   * The struct also contains a reference back to PeerMessageBuffer and as such
+   * provides helpers for handoffs by accessing the data under lock.
+   */
+  struct LockedBufferHandle : public SynchronizedBufferData::TryLockedPtr {
+    /**
+     * Inits a handle with a reference to PeerMessageBuffer and a lock pointer
+     * to the data.
+     *
+     * Called by PeerMessageBuffer::tryLock.
+     *
+     * @param message_buffer Reference to PeerMessageBuffer
+     * @param locked_ptr folly:Synchronized lock for PeerMessageBuffer::data_
+     */
+    LockedBufferHandle(
+        PeerMessageBuffer& message_buffer,
+        SynchronizedBufferData::TryLockedPtr&& locked_ptr);
+
+    /**
+     * Swaps out PeerMessageBuffer::handoff_initial_index_ and returns it if
+     * handoff is needed.
+     *
+     * @return The index for the initial index needed, or std::nullopt if no
+     * handoff is needed.
+     */
+    std::optional<int64_t> getIndexForHandoff();
+
+    /**
+     * Returns true of the buffer data satisfies the proxy requirements from the
+     * requested handoff.
+     *
+     * Return value behaviour is undefined if no handoff is requested.
+     *
+     * @return true if the buffer satisfies handoff requirements
+     */
+    bool proxyRequirementSatisfied() const;
+
+    /**
+     * Extracts the buffer from the locked data section and feeds it to
+     * PeerMessageBuffer:handoff_promise_. The promise should be fulfilled after
+     * calling this method.
+     *
+     * Behaviour is undefined if no handoff has been requested.
+     *
+     * @param s status of the handoff, to be wrapped into HandedOffBufferData
+     */
+    void fulfillPromiseWithBuffer(Status s);
+
+   private:
+    /**
+     * A reference to PeerMessageBuffer to orchestrate handoffs.
+     */
+    PeerMessageBuffer& message_buffer_;
+  };
+
+  /**
+   * Attempts to locks data section via a debouncer.
+   *
+   * Returned object needs to be checked via the boolean operator or isNull() to
+   * ascertain if lock has been acquired.
+   *
+   * Note that the data section is locked with a debouncer, so it may reject
+   * duplicate lockers. See kudu/util/Debouncer.h
+   *
+   * @return A RAII handle for the locked data section is locked, a null handle
+   * otherwise
+   */
+  LockedBufferHandle tryLock();
+
+  /**
+   * Swaps out handoff_initial_index_ and returns it if handoff is needed.
+   *
+   * @return The index for the initial index needed, or std::nullopt if no
+   * handoff is needed.
+   */
+  std::optional<int64_t> getIndexForHandoff();
+
+  /**
+   * Returns if the handoff requested for ops to be proxied. Proxied ops have a
+   * different type as compared to non-proxied ops.
+   *
+   * Return value is undefined if no handoff has been requested.
+   *
+   * @return true if handoff requested proxy ops.
+   */
+  bool getProxyOpsNeeded() const;
+
+ private:
+  /**
+   * The synchronized data section.
+   */
+  SynchronizedBufferData data_;
+
+  // Handoff section
+  /**
+   * The sync point for requesting handoffs.
+   *
+   * The initial index populated here denotes the initial index the RPC
+   * requesting handoff requires.
+   *
+   * The rest of the handoff section should be prepared before this is set.
+   */
+  std::atomic_int64_t handoff_initial_index_ = -1;
+  /**
+   * If the handoff requested ops for proxying.
+   */
+  std::atomic_bool proxy_ops_needed_ = false;
+  /**
+   * The promise where we handoff the bufferred ops to. A RPC will be waiting on
+   * a future linked to this promise.
+   */
+  std::promise<HandedOffBufferData> handoff_promise_;
+};
 
 } // namespace consensus
 } // namespace kudu

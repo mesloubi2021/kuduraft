@@ -1399,12 +1399,15 @@ Status PeerMessageQueue::FillBuffer(
 
 Status PeerMessageQueue::FillBuffer(
     const ReadContext& read_context,
-    PeerMessageBuffer::TryLockedPtr peer_message_buffer) {
+    PeerMessageBuffer::LockedBufferHandle peer_message_buffer) {
   if (!peer_message_buffer) {
     return Status::OK();
   }
   if (peer_message_buffer->last_index() == -1) {
-    // Don't buffer without initialization
+    // There's no buffer watermark. If this was a fresh state, we use the logic
+    // in the handoff for the first rpc to bootstrap the last_buffered
+    // watermark.
+    HandOffBufferIfNeeded(std::move(peer_message_buffer), read_context);
     return Status::OK();
   }
 
@@ -1428,7 +1431,9 @@ Status PeerMessageQueue::FillBuffer(
       << ", route_via_proxy: " << read_context.route_via_proxy;
 
   Status s = peer_message_buffer->readFromCache(read_context, log_cache_);
-  if (!s.ok() && !s.IsIncomplete()) {
+  if (s.ok() || s.IsIncomplete()) {
+    HandOffBufferIfNeeded(std::move(peer_message_buffer), read_context);
+  } else {
     VLOG_WITH_PREFIX_UNLOCKED(1)
         << "Error filling buffer for peer: " << *read_context.for_peer_uuid
         << "[" << *read_context.for_peer_host << ":"
@@ -1436,6 +1441,57 @@ Status PeerMessageQueue::FillBuffer(
   }
 
   return s;
+}
+
+void PeerMessageQueue::HandOffBufferIfNeeded(
+    PeerMessageBuffer::LockedBufferHandle peer_message_buffer,
+    const ReadContext& read_context) {
+  int64_t initial_index;
+  if (auto opt_handoff_index = peer_message_buffer.getIndexForHandoff()) {
+    initial_index = *opt_handoff_index;
+  } else {
+    return;
+  }
+
+  VLOG_WITH_PREFIX_UNLOCKED(3)
+      << "Responding to handoff request for peer: "
+      << *read_context.for_peer_uuid << "[" << *read_context.for_peer_host
+      << ":" << read_context.for_peer_port << "] for index: " << initial_index;
+
+  bool buffer_empty = peer_message_buffer->empty();
+  bool proxy_requirement_different =
+      !peer_message_buffer.proxyRequirementSatisfied();
+  bool index_mismatch =
+      !buffer_empty && peer_message_buffer->first_index() != initial_index;
+
+  Status s = Status::OK();
+  if (buffer_empty || proxy_requirement_different || index_mismatch) {
+    VLOG_WITH_PREFIX_UNLOCKED(2)
+        << "Handoff buffer mismatch for peer: " << *read_context.for_peer_uuid
+        << "[" << *read_context.for_peer_host << ":"
+        << read_context.for_peer_port << "] "
+        << (buffer_empty ? "(Buffer empty) " : "")
+        << (proxy_requirement_different ? "(Proxy req different) " : "")
+        << (index_mismatch ? "(Index mismatch) " : "")
+        << ", first bufferred: " << peer_message_buffer->first_index()
+        << ", next index: " << peer_message_buffer->last_index()
+        << ", requested_index: " << initial_index
+        << ", bufferred for proxy: " << peer_message_buffer->for_proxying();
+
+    // Buffer not suitable for handoff, dump the buffer and reread
+    // TODO: this can be more graceful, like we can try to fix the buffer
+    peer_message_buffer->resetBuffer(
+        read_context.route_via_proxy, initial_index - 1);
+    s = peer_message_buffer->readFromCache(read_context, log_cache_);
+    if (!s.ok() && !s.IsIncomplete()) {
+      VLOG_WITH_PREFIX_UNLOCKED(1)
+          << "Error filling buffer for peer during handoff: "
+          << *read_context.for_peer_uuid << "[" << *read_context.for_peer_host
+          << ":" << read_context.for_peer_port << "]: " << s.ToString();
+    }
+  }
+
+  peer_message_buffer.fulfillPromiseWithBuffer(std::move(s));
 }
 
 #ifdef FB_DO_NOT_REMOVE
@@ -1930,6 +1986,7 @@ int64_t PeerMessageQueue::ComputeNewWatermarkStaticMode(int64_t* watermark) {
     return *watermark;
   }
 
+  // clang-format off
   // For each region, we compute a vector of indexes that were replicated.
   // It might look like the following example:
   // prn: <4,4,5,7>
@@ -1939,6 +1996,7 @@ int64_t PeerMessageQueue::ComputeNewWatermarkStaticMode(int64_t* watermark) {
   // replicas in prn, 3 in frc and 2 in lla. Two replicas in prn have received
   // entries until index 4, one has received until 5 and one until 7. Similarly,
   // 2 replicas in lla have received entries until index 5.
+  // clang-format on
   std::map<std::string, std::vector<int64_t>> watermarks_by_region;
   for (const PeersMap::value_type& peer : peers_map_) {
     if (peer.second->peer_pb.member_type() != RaftPeerPB::VOTER) {
