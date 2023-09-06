@@ -302,6 +302,7 @@ PeerMessageQueue::TrackedPeer::TrackedPeer(
       wal_catchup_possible(true),
       last_overall_health_status(HealthReportPB::UNKNOWN),
       status_log_throttler(std::make_shared<logging::LogThrottler>()),
+      peer_msg_buffer(std::make_shared<PeerMessageBuffer>()),
       last_seen_term_(0),
       // We initialize to max to ensure that a peer, that was never
       // successfully contacted, is considered unhealthy.
@@ -1348,6 +1349,93 @@ Status PeerMessageQueue::RequestForPeer(
   }
 
   return Status::OK();
+}
+
+void PeerMessageQueue::FillBufferForPeer(const std::string& uuid) {
+  TrackedPeer peer_copy;
+  bool route_via_proxy = false;
+  {
+    std::lock_guard<simple_mutexlock> lock(queue_lock_);
+    DCHECK_EQ(queue_state_.state, kQueueOpen);
+    DCHECK_NE(uuid, local_peer_pb_.permanent_uuid());
+
+    TrackedPeer* peer = FindPtrOrNull(peers_map_, uuid);
+    if (PREDICT_FALSE(peer == nullptr)) {
+      return;
+    } else if (PREDICT_FALSE(!peer->is_healthy())) {
+      VLOG_WITH_PREFIX_UNLOCKED(3)
+          << "Not buffering for unhealthy peer: " << uuid << "["
+          << peer->peer_pb.last_known_addr().host() << ":"
+          << peer->peer_pb.last_known_addr().port() << "]";
+      return;
+    }
+    std::string next_hop_uuid;
+    routing_table_container_->NextHop(
+        local_peer_pb_.permanent_uuid(), uuid, &next_hop_uuid);
+
+    if (next_hop_uuid != uuid) {
+      TrackedPeer* proxy_peer = FindPtrOrNull(peers_map_, next_hop_uuid);
+      if (proxy_peer != nullptr &&
+          !HasProxyPeerFailedUnlocked(proxy_peer, peer)) {
+        route_via_proxy = true;
+      }
+    }
+
+    peer_copy = *peer;
+  }
+  ReadContext read_context;
+  read_context.for_peer_uuid = &uuid;
+  read_context.for_peer_host = &peer_copy.peer_pb.last_known_addr().host();
+  read_context.for_peer_port = peer_copy.peer_pb.last_known_addr().port();
+  read_context.route_via_proxy = route_via_proxy;
+  FillBuffer(read_context, peer_copy.peer_msg_buffer);
+}
+
+Status PeerMessageQueue::FillBuffer(
+    const ReadContext& read_context,
+    std::shared_ptr<PeerMessageBuffer>& peer_message_buffer) {
+  return FillBuffer(read_context, peer_message_buffer->tryLock());
+}
+
+Status PeerMessageQueue::FillBuffer(
+    const ReadContext& read_context,
+    PeerMessageBuffer::TryLockedPtr peer_message_buffer) {
+  if (!peer_message_buffer) {
+    return Status::OK();
+  }
+  if (peer_message_buffer->last_index() == -1) {
+    // Don't buffer without initialization
+    return Status::OK();
+  }
+
+  if (!peer_message_buffer->empty() &&
+      peer_message_buffer->for_proxying() != read_context.route_via_proxy) {
+    VLOG_WITH_PREFIX_UNLOCKED(1)
+        << "Abandoning buffer for peer: " << *read_context.for_peer_uuid << "["
+        << *read_context.for_peer_host << ":" << read_context.for_peer_port
+        << "] as proxy settings have changed. Buffer: "
+        << peer_message_buffer->for_proxying()
+        << ", request: " << read_context.route_via_proxy;
+
+    peer_message_buffer->resetBuffer();
+    return Status::OK();
+  }
+
+  VLOG_WITH_PREFIX_UNLOCKED(3)
+      << "Filling buffer for peer: " << *read_context.for_peer_uuid << "["
+      << *read_context.for_peer_host << ":" << read_context.for_peer_port
+      << "] starting from index: " << peer_message_buffer->last_index()
+      << ", route_via_proxy: " << read_context.route_via_proxy;
+
+  Status s = peer_message_buffer->readFromCache(read_context, log_cache_);
+  if (!s.ok() && !s.IsIncomplete()) {
+    VLOG_WITH_PREFIX_UNLOCKED(1)
+        << "Error filling buffer for peer: " << *read_context.for_peer_uuid
+        << "[" << *read_context.for_peer_host << ":"
+        << read_context.for_peer_port << "]: " << s.ToString();
+  }
+
+  return s;
 }
 
 #ifdef FB_DO_NOT_REMOVE
