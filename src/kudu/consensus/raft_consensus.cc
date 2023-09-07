@@ -236,6 +236,11 @@ DEFINE_int32(
     "Interval in multiples of heartbeats at which to check whether the leader "
     "can commit to a quorum number of nodes.");
 
+DEFINE_bool(
+    report_proxy_errors,
+    true,
+    "Whether to enable reporting of proxy errors to error manager.");
+
 // Metrics
 // ---------
 METRIC_DEFINE_counter(
@@ -5273,7 +5278,8 @@ void RaftConsensus::HandleProxyRequest(
     RET_RESPOND_ERROR_NOT_OK(s);
   }
 
-  bool degraded_to_heartbeat = false;
+  std::optional<ServerErrorPB::Code> proxy_error = {};
+
   vector<ReplicateRefPtr> messages;
   messages.clear();
 
@@ -5290,6 +5296,13 @@ void RaftConsensus::HandleProxyRequest(
     read_context.for_peer_uuid = &request->dest_uuid();
     read_context.for_peer_host = &next_peer_pb->last_known_addr().host();
     read_context.for_peer_port = next_peer_pb->last_known_addr().port();
+
+    // When we are proxying, we can skip reporting I/O errors (ie. missing log
+    // entries) to avoid remediations from replacing the proxy instance because
+    // these instances will eventually catch up. Proxy instances automatically
+    // disable proxying when there are I/O errors and eventually resume
+    // proxying when they're caught up.
+    read_context.report_errors = FLAGS_report_proxy_errors;
 
     int64_t first_op_index = -1;
     int64_t max_batch_size =
@@ -5343,7 +5356,7 @@ void RaftConsensus::HandleProxyRequest(
       // We timed out and got nothing from the log cache. Send a heartbeat to
       // the destination to prevent it from starting (pre) election
       raft_proxy_num_requests_log_read_timeout_->Increment();
-      degraded_to_heartbeat = true;
+      proxy_error = ServerErrorPB::PROXY_MISSING_LOG_ENTRIES;
     }
 
     // Reconstitute the proxied ops. We silently tolerate proxying a subset of
@@ -5403,6 +5416,16 @@ void RaftConsensus::HandleProxyRequest(
         SecureShortDebugString(*next_peer_pb))));
   }
 
+  if (proxy_error) {
+    SetupErrorAndRespond(
+        Status::Incomplete(
+            "Unable to proxy request. Degraded request to heartbeat."),
+        proxy_error.value(),
+        response,
+        context);
+    return;
+  }
+
   // Proxy the response back to the caller.
   if (downstream_response.has_responder_uuid()) {
     response->set_responder_uuid(downstream_response.responder_uuid());
@@ -5417,10 +5440,7 @@ void RaftConsensus::HandleProxyRequest(
     *response->mutable_error() = downstream_response.error();
   }
 
-  if (!degraded_to_heartbeat) {
-    raft_proxy_num_requests_success_->Increment();
-  }
-
+  raft_proxy_num_requests_success_->Increment();
   context->RespondSuccess();
 }
 

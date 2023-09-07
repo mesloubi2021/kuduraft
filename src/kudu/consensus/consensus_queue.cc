@@ -180,6 +180,8 @@ DEFINE_int32(
     "Number of consecutive failed requests before we consider a peer "
     "unhealthy");
 
+DEFINE_int32(proxy_disable_secs, 600, "Number of seconds to disable proxying.");
+
 DEFINE_bool(
     filter_out_bad_quorums_in_lmp,
     true,
@@ -311,6 +313,7 @@ PeerMessageQueue::TrackedPeer::TrackedPeer(
       // We initialize to max to ensure that a peer, that was never
       // successfully contacted, is considered unhealthy.
       consecutive_failures_(INT_MAX),
+      proxying_disabled_until_(MonoTime::Min()),
       time_provider_(TimeProvider::getInstance()),
       queue(queue) {
   last_successful_exchange = time_provider_->Now();
@@ -384,6 +387,14 @@ void PeerMessageQueue::TrackedPeer::reset_consecutive_failures() {
 
 void PeerMessageQueue::TrackedPeer::set_consecutive_failures(int32_t value) {
   consecutive_failures_ = value;
+}
+
+bool PeerMessageQueue::TrackedPeer::ProxyTargetEnabled() const {
+  return time_provider_->Now() >= proxying_disabled_until_;
+}
+
+void PeerMessageQueue::TrackedPeer::SnoozeProxying(MonoDelta delta) {
+  proxying_disabled_until_ = time_provider_->Now() + delta;
 }
 
 std::string PeerMessageQueue::TrackedPeer::ToString() const {
@@ -1170,9 +1181,26 @@ Status PeerMessageQueue::RequestForPeer(
       // works only on the leader. One solution could be for the leader to
       // periodically exchange the health report of all peers as part of
       // UpdateReplica() call
-      TrackedPeer* proxy_peer = FindPtrOrNull(peers_map_, *next_hop_uuid);
-      if (proxy_peer == nullptr ||
-          HasProxyPeerFailedUnlocked(proxy_peer, peer)) {
+
+      if (peer->ProxyTargetEnabled()) {
+        bool should_proxy = false;
+        if (peer->is_healthy()) {
+          TrackedPeer* proxy_peer = FindPtrOrNull(peers_map_, *next_hop_uuid);
+          if (proxy_peer != nullptr &&
+              !HasProxyPeerFailedUnlocked(proxy_peer, peer)) {
+            should_proxy = true;
+          }
+        }
+
+        if (!should_proxy) {
+          *next_hop_uuid = uuid;
+          peer->SnoozeProxying(
+              MonoDelta::FromSeconds(FLAGS_proxy_disable_secs));
+          LOG(WARNING) << "Proxy target " << uuid
+                       << " is unhealthy. Snooze proxying to this instance for "
+                       << FLAGS_proxy_disable_secs << " seconds";
+        }
+      } else {
         *next_hop_uuid = uuid;
       }
     }
@@ -2869,6 +2897,12 @@ PeerMessageQueue::TrackedPeer PeerMessageQueue::GetTrackedPeerForTests(
   std::lock_guard<simple_mutexlock> scoped_lock(queue_lock_);
   TrackedPeer* tracked = FindOrDie(peers_map_, uuid);
   return *tracked;
+}
+
+PeerMessageQueue::TrackedPeer* PeerMessageQueue::GetTrackedPeerRefForTests(
+    const std::string& uuid) {
+  std::lock_guard<simple_mutexlock> scoped_lock(queue_lock_);
+  return FindOrDie(peers_map_, uuid);
 }
 
 bool PeerMessageQueue::CanLeaderLeaseRenewUnlocked(QuorumResults& qresults) {

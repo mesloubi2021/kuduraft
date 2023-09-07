@@ -103,6 +103,8 @@ struct ReadContext {
   const std::string* for_peer_host = nullptr;
   uint32_t for_peer_port = 0;
   bool route_via_proxy = false;
+  // Whether to report errors to error manager.
+  bool report_errors = true;
 };
 
 } // namespace consensus

@@ -237,6 +237,12 @@ class PeerMessageQueue {
     // Used for tests.
     void set_consecutive_failures(int32_t value);
 
+    // Whether proxying to this instance is enabled.
+    bool ProxyTargetEnabled() const;
+
+    // Disable proxying to this instance for some time delta.
+    void SnoozeProxying(MonoDelta delta);
+
    private:
     // The last term we saw from a given peer.
     // This is only used for sanity checking that a peer doesn't
@@ -246,6 +252,8 @@ class PeerMessageQueue {
     // Number of consecutive errors received by a leader from a peer. This
     // counter is not meaningful for a non-leader.
     int32_t consecutive_failures_;
+
+    MonoTime proxying_disabled_until_;
 
     std::shared_ptr<TimeProvider> time_provider_;
 
@@ -508,6 +516,10 @@ class PeerMessageQueue {
   // Returns a copy of the TrackedPeer with 'uuid' or crashes if the peer is
   // not being tracked.
   TrackedPeer GetTrackedPeerForTests(const std::string& uuid);
+
+  // Returns TrackedPeer reference with 'uuid' or crashes if the peer is not
+  // being tracked.
+  TrackedPeer* GetTrackedPeerRefForTests(const std::string& uuid);
 
   std::string ToString() const;
 

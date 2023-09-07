@@ -134,6 +134,9 @@ message ServerErrorPB {
 
     // An attempt to start an election on a non-voter peer.
     NOT_VOTER = 22;
+
+    // The proxying instance does not have the log entries for the proxy request
+    PROXY_MISSING_LOG_ENTRIES = 23;
   }
 
   // The error code.
