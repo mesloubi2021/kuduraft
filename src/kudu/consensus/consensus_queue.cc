@@ -67,12 +67,6 @@
 #include "kudu/util/threadpool.h"
 #include "kudu/util/url-coding.h"
 
-DEFINE_int32(
-    consensus_max_batch_size_bytes,
-    1024 * 1024,
-    "The maximum per-tablet RPC batch size when updating peers.");
-TAG_FLAG(consensus_max_batch_size_bytes, advanced);
-
 DEFINE_bool(
     buffer_messages_between_rpcs,
     false,
@@ -1470,7 +1464,7 @@ Status PeerMessageQueue::FillBuffer(
     // There's no buffer watermark. If this was a fresh state, we use the logic
     // in the handoff for the first rpc to bootstrap the last_buffered
     // watermark.
-    HandOffBufferIfNeeded(std::move(peer_message_buffer), read_context);
+    HandOffBufferIfNeeded(peer_message_buffer, read_context);
     return Status::OK();
   }
 
@@ -1487,15 +1481,25 @@ Status PeerMessageQueue::FillBuffer(
     return Status::OK();
   }
 
-  VLOG_WITH_PREFIX_UNLOCKED(3)
-      << "Filling buffer for peer: " << *read_context.for_peer_uuid << "["
-      << *read_context.for_peer_host << ":" << read_context.for_peer_port
-      << "] starting from index: " << peer_message_buffer->last_index()
-      << ", route_via_proxy: " << read_context.route_via_proxy;
-
   Status s = peer_message_buffer->readFromCache(read_context, log_cache_);
   if (s.ok() || s.IsIncomplete() || s.IsContinue()) {
-    HandOffBufferIfNeeded(std::move(peer_message_buffer), read_context);
+    HandOffBufferIfNeeded(peer_message_buffer, read_context);
+    if (s.IsContinue() && !peer_message_buffer->buffer_full()) {
+      // Checking for max batch after handoff is intended since if we did
+      // handoff we should start filling for the next rpc
+      VLOG_WITH_PREFIX_UNLOCKED(2)
+          << "Continue buffering for peer: " << *read_context.for_peer_uuid
+          << "[" << *read_context.for_peer_host << ":"
+          << read_context.for_peer_port << "] since there are more ops to read";
+
+      WARN_NOT_OK(
+          raft_pool_observers_token_->SubmitClosure(Bind(
+              &PeerMessageQueue::FillBufferForPeer,
+              Unretained(this),
+              *read_context.for_peer_uuid)),
+          LogPrefixUnlocked() + "Unable to continue filling buffer for " +
+              *read_context.for_peer_uuid);
+    }
   } else {
     VLOG_WITH_PREFIX_UNLOCKED(1)
         << "Error filling buffer for peer: " << *read_context.for_peer_uuid
@@ -1507,7 +1511,7 @@ Status PeerMessageQueue::FillBuffer(
 }
 
 void PeerMessageQueue::HandOffBufferIfNeeded(
-    PeerMessageBuffer::LockedBufferHandle peer_message_buffer,
+    PeerMessageBuffer::LockedBufferHandle& peer_message_buffer,
     const ReadContext& read_context) {
   int64_t initial_index;
   if (auto opt_handoff_index = peer_message_buffer.getIndexForHandoff()) {

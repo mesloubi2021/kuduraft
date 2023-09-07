@@ -9,6 +9,12 @@ DEFINE_int64(
     "The maximum size to fill the peer buffer each attempt.");
 TAG_FLAG(max_buffer_fill_size_bytes, advanced);
 
+DEFINE_int32(
+    consensus_max_batch_size_bytes,
+    1024 * 1024,
+    "The maximum per-tablet RPC batch size when updating peers.");
+TAG_FLAG(consensus_max_batch_size_bytes, advanced);
+
 namespace kudu {
 namespace consensus {
 
@@ -17,17 +23,26 @@ void BufferData::resetBuffer(bool for_proxy, int64_t last_index) {
   last_buffered = last_index;
   preceding_opid = {};
   buffered_for_proxying = for_proxy;
+  bytes_buffered = 0;
 }
 
 Status BufferData::readFromCache(
     const ReadContext& read_context,
     LogCache& log_cache) {
+  int64_t fill_size = std::min(
+      FLAGS_max_buffer_fill_size_bytes,
+      std::max(FLAGS_consensus_max_batch_size_bytes - bytes_buffered, 0L));
+
+  LOG_IF(INFO, VLOG_IS_ON(3))
+      << "Filling buffer for peer: " << *read_context.for_peer_uuid << "["
+      << *read_context.for_peer_host << ":" << read_context.for_peer_port
+      << "] with " << fill_size
+      << " bytes starting from index: " << last_buffered
+      << ", route_via_proxy: " << read_context.route_via_proxy;
+
   bool buffer_empty = msg_buffer_refs.empty();
   LogCache::ReadOpsStatus s = log_cache.ReadOps(
-      last_buffered,
-      FLAGS_max_buffer_fill_size_bytes,
-      read_context,
-      &msg_buffer_refs);
+      last_buffered, fill_size, read_context, &msg_buffer_refs);
 
   if (s.status.ok()) {
     if (!msg_buffer_refs.empty()) {

@@ -15,6 +15,8 @@
 #include "kudu/util/debouncer.h"
 #include "kudu/util/status.h"
 
+DECLARE_int32(consensus_max_batch_size_bytes);
+
 namespace kudu {
 namespace consensus {
 
@@ -91,6 +93,15 @@ class BufferData {
   }
 
   /**
+   * If the buffer is full and should not be filled further.
+   *
+   * @return true if buffer is full
+   */
+  bool buffer_full() const {
+    return bytes_buffered >= FLAGS_consensus_max_batch_size_bytes;
+  }
+
+  /**
    * Moves the data out from this buffer into another BufferData.
    *
    * This buffer will be cleared of any data, but last_index() will be persisted
@@ -120,6 +131,12 @@ class BufferData {
    * If we buffered data that was meant for proxying.
    */
   bool buffered_for_proxying = false;
+  /**
+   * The number of bytes we buffered into the buffer. Note that we don't
+   * actually store bytes, but pointers, so this represents the size of the data
+   * pointed to.
+   */
+  int64_t bytes_buffered = 0;
 };
 
 /**

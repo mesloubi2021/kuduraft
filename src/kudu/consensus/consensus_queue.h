@@ -993,7 +993,7 @@ class PeerMessageQueue {
    * @param read_context The context for filling the buffer
    */
   void HandOffBufferIfNeeded(
-      PeerMessageBuffer::LockedBufferHandle peer_message_buffer,
+      PeerMessageBuffer::LockedBufferHandle& peer_message_buffer,
       const ReadContext& read_context);
 
   std::vector<PeerMessageQueueObserver*> observers_;
