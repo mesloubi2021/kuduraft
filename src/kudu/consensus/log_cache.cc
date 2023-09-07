@@ -538,20 +538,23 @@ Status LogCache::BlockingReadOps(
     }
   }
 
-  return ReadOps(
-      after_op_index, max_size_bytes, context, messages, preceding_op);
+  ReadOpsStatus s = ReadOps(after_op_index, max_size_bytes, context, messages);
+  if (s.status.ok()) {
+    *preceding_op = std::move(s.preceding_op);
+  }
+  return std::move(s.status);
 }
 
-Status LogCache::ReadOps(
+LogCache::ReadOpsStatus LogCache::ReadOps(
     int64_t after_op_index,
     int max_size_bytes,
     const ReadContext& context,
-    std::vector<ReplicateRefPtr>* messages,
-    OpId* preceding_op) {
+    std::vector<ReplicateRefPtr>* messages) {
   DCHECK_GE(after_op_index, 0);
 
   // Try to lookup the first OpId in index
-  auto lookUpStatus = LookupOpId(after_op_index, preceding_op);
+  OpId preceding_id;
+  auto lookUpStatus = LookupOpId(after_op_index, &preceding_id);
   if (!lookUpStatus.ok()) {
     // On error return early
     if (lookUpStatus.IsNotFound()) {
@@ -648,11 +651,13 @@ Status LogCache::ReadOps(
             : msg_wrapper.GetUncompressedMsg();
         CHECK_EQ(next_index, msg->get()->id().index());
 
-        remaining_space -= ApproxMsgSize(msg);
-        if (remaining_space > 0 || messages->empty()) {
-          messages->push_back(msg);
-          next_index++;
+        int64_t bytes_to_add = ApproxMsgSize(msg);
+        if (remaining_space < bytes_to_add && !messages->empty()) {
+          break;
         }
+        remaining_space -= bytes_to_add;
+        messages->push_back(msg);
+        next_index++;
       }
     } else {
       // Pull contiguous messages from the cache until the size limit is
@@ -667,18 +672,22 @@ Status LogCache::ReadOps(
         // The full size of the msg is actually returned by SpaceUsedLong() but
         // that's very expensive, the payload size should be very close to the
         // full msg size
-        remaining_space -=
+        int64_t bytes_to_add =
             static_cast<int64_t>(msg->get()->write_payload().payload().size());
-        if (remaining_space < 0 && !messages->empty()) {
+        if (remaining_space < bytes_to_add && !messages->empty()) {
           break;
         }
-
+        remaining_space -= bytes_to_add;
         messages->push_back(msg);
         next_index++;
       }
     }
   }
-  return Status::OK();
+  return {
+      Status::OK(),
+      std::move(preceding_id),
+      next_index < next_sequential_op_index_,
+      max_size_bytes - remaining_space};
 }
 
 Status LogCache::Clear() {

@@ -44,7 +44,8 @@ class BufferData {
    *                     proxying
    * @param log_cache A reference to the log cache
    * @return OK if we read everything, Incomplete if the first index requested
-   *         is not in the cache yet
+   *         is not in the cache yet, Continue if we hit the size limit before
+   *         reading all ops
    */
   Status readFromCache(const ReadContext& read_context, LogCache& log_cache);
 

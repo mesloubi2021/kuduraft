@@ -363,6 +363,12 @@ class KUDU_EXPORT Status {
       int64_t posix_code = -1) {
     return Status(kCompressionDictMismatch, msg, msg2, posix_code);
   }
+  static Status Continue(
+      const Slice& msg,
+      const Slice& msg2 = Slice(),
+      int64_t posix_code = -1) {
+    return Status(kContinue, msg, msg2, posix_code);
+  }
   ///@}
 
   /// @return @c true iff the status indicates success.
@@ -475,6 +481,11 @@ class KUDU_EXPORT Status {
     return code() == kCompressionDictMismatch;
   }
 
+  /// @return @c true iff the status indicates operation needs to continue later
+  bool IsContinue() const {
+    return code() == kContinue;
+  }
+
   /// @return @c true iff the status indicates a disk failure.
   bool IsDiskFailure() const {
     switch (posix_code()) {
@@ -569,6 +580,7 @@ class KUDU_EXPORT Status {
     kCompressionError = 19,
     kDecompressionError = 20,
     kCompressionDictMismatch = 21,
+    kContinue = 22,
     // NOTE: Remember to duplicate these constants into wire_protocol.proto and
     // and to add StatusTo/FromPB ser/deser cases in wire_protocol.cc !
     // Also remember to make the same changes to the java client in Status.java.

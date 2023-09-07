@@ -175,6 +175,8 @@ Status StatusFromPB(const AppStatusPB& pb) {
       return Status::EndOfFile(pb.message(), "", posix_code);
     case AppStatusPB::COMPRESSION_DICT_MISMATCH:
       return Status::CompressionDictMismatch(pb.message(), "", posix_code);
+    case AppStatusPB::CONTINUE:
+      return Status::Continue(pb.message(), "", posix_code);
     case AppStatusPB::UNKNOWN_ERROR:
     default:
       LOG(WARNING) << "Unknown error code in status: "

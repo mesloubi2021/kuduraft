@@ -76,6 +76,38 @@ class LogCache {
   // Requires that the cache is empty.
   void Init(const OpId& preceding_op);
 
+  /**
+   * Status of read ops with some read metadata.
+   */
+  struct ReadOpsStatus {
+    /* implicit */ ReadOpsStatus(Status s) : status(std::move(s)) {}
+
+    ReadOpsStatus(Status s, OpId opid, bool stopped, int64_t read)
+        : status(std::move(s)),
+          preceding_op(std::move(opid)),
+          stopped_early(stopped),
+          bytes_read(read) {}
+
+    /**
+     * Status of the read.
+     *
+     * OK if successful, NOT_FOUND if ops are purged, INCOMPLETE if ops have yet
+     * to arrive.
+     */
+    Status status;
+    /**
+     * OpId of ops preceding the ops we've read.
+     */
+    OpId preceding_op;
+    /**
+     * If we stopped reading early due to the max_size_bytes limit.
+     */
+    bool stopped_early;
+    /**
+     * The number of bytes we actually read.
+     */
+    int64_t bytes_read;
+  };
   // Read operations from the log, following 'after_op_index'.
   // If such an op exists in the log, an OK result will always include at least
   // one operation.
@@ -91,12 +123,11 @@ class LogCache {
   // synchronously read these ops from disk. Therefore, this function may take a
   // substantial amount of time and should not be called with important locks
   // held, etc.
-  Status ReadOps(
+  ReadOpsStatus ReadOps(
       int64_t after_op_index,
       int max_size_bytes,
       const ReadContext& context,
-      std::vector<ReplicateRefPtr>* messages,
-      OpId* preceding_op);
+      std::vector<ReplicateRefPtr>* messages);
 
   // Similar to ReadOps(...), but blocks for 'max_duration_ms' if
   // 'after_op_index' is not available in the local log.

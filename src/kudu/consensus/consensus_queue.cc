@@ -1362,13 +1362,15 @@ Status PeerMessageQueue::ReadMessagesForRequest(
   read_context.route_via_proxy = route_via_proxy;
 
   // We try to get the follower's next_index from our log.
-  Status s = log_cache_.ReadOps(
+  LogCache::ReadOpsStatus s = log_cache_.ReadOps(
       peer_copy.next_index - 1,
       FLAGS_consensus_max_batch_size_bytes,
       read_context,
-      messages,
-      preceding_id);
-  return s;
+      messages);
+  if (s.status.ok()) {
+    *preceding_id = std::move(s.preceding_op);
+  }
+  return std::move(s.status);
 }
 
 Status PeerMessageQueue::ExtractBuffer(
@@ -1406,7 +1408,8 @@ Status PeerMessageQueue::ExtractBuffer(
   }
 
   HandedOffBufferData buffer_data = std::move(future).get();
-  Status s = buffer_data.status;
+  Status s = buffer_data.status.IsContinue() ? Status::OK()
+                                             : std::move(buffer_data.status);
   std::move(buffer_data).getData(messages, preceding_id);
   return s;
 }
@@ -1491,7 +1494,7 @@ Status PeerMessageQueue::FillBuffer(
       << ", route_via_proxy: " << read_context.route_via_proxy;
 
   Status s = peer_message_buffer->readFromCache(read_context, log_cache_);
-  if (s.ok() || s.IsIncomplete()) {
+  if (s.ok() || s.IsIncomplete() || s.IsContinue()) {
     HandOffBufferIfNeeded(std::move(peer_message_buffer), read_context);
   } else {
     VLOG_WITH_PREFIX_UNLOCKED(1)
@@ -1543,7 +1546,7 @@ void PeerMessageQueue::HandOffBufferIfNeeded(
     peer_message_buffer->resetBuffer(
         read_context.route_via_proxy, initial_index - 1);
     s = peer_message_buffer->readFromCache(read_context, log_cache_);
-    if (!s.ok() && !s.IsIncomplete()) {
+    if (!s.ok() && !s.IsIncomplete() && !s.IsContinue()) {
       VLOG_WITH_PREFIX_UNLOCKED(1)
           << "Error filling buffer for peer during handoff: "
           << *read_context.for_peer_uuid << "[" << *read_context.for_peer_host

@@ -23,28 +23,29 @@ Status BufferData::readFromCache(
     const ReadContext& read_context,
     LogCache& log_cache) {
   bool buffer_empty = msg_buffer_refs.empty();
-  OpId preceding_id;
-  Status s = log_cache.ReadOps(
+  LogCache::ReadOpsStatus s = log_cache.ReadOps(
       last_buffered,
       FLAGS_max_buffer_fill_size_bytes,
       read_context,
-      &msg_buffer_refs,
-      &preceding_id);
+      &msg_buffer_refs);
 
-  if (s.ok()) {
+  if (s.status.ok()) {
     if (!msg_buffer_refs.empty()) {
       last_buffered = msg_buffer_refs.back()->get()->id().index();
       buffered_for_proxying = read_context.route_via_proxy;
     }
     if (buffer_empty) {
-      preceding_opid = std::move(preceding_id);
+      preceding_opid = std::move(s.preceding_op);
     }
-  } else if (!s.IsIncomplete()) { // Incomplete is returned op is pending
-                                  // append, we don't need to reset
+    if (s.stopped_early) {
+      s = Status::Continue("Stopped before reading all ops from LogCache");
+    }
+  } else if (!s.status.IsIncomplete()) { // Incomplete is returned op is pending
+    // append, we don't need to reset
     resetBuffer();
   }
 
-  return s;
+  return std::move(s.status);
 }
 
 BufferData BufferData::moveDataAndReset() {

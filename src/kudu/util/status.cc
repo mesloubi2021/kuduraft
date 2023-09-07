@@ -117,6 +117,9 @@ std::string Status::CodeAsString() const {
     case kCompressionDictMismatch:
       type = "Compression dictionary mismatch";
       break;
+    case kContinue:
+      type = "Continue";
+      break;
   }
   return std::string(type);
 }
