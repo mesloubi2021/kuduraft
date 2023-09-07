@@ -281,6 +281,9 @@ void Peer::SendNextRequest(
 
   // Only allow one request at a time.
   if (request_pending_) {
+    if (FLAGS_buffer_messages_between_rpcs) {
+      queue_->FillBufferForPeer(peer_pb_.permanent_uuid());
+    }
     return;
   }
 

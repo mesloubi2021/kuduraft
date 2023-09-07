@@ -56,6 +56,7 @@
 #include "kudu/util/status_callback.h"
 
 DECLARE_int32(bounded_dataloss_window_interval_ms);
+DECLARE_bool(buffer_messages_between_rpcs);
 DECLARE_int32(consensus_rpc_timeout_ms);
 DECLARE_bool(enable_bounded_dataloss_window);
 DECLARE_bool(enable_flexi_raft);
@@ -922,6 +923,18 @@ class PeerMessageQueue {
   Status GetQuorumHealthForFlexiRaftUnlocked(QuorumHealth* health);
 
   Status GetQuorumHealthForVanillaRaftUnlocked(QuorumHealth* health);
+
+  Status ReadMessagesForRequest(
+      const TrackedPeer& peer_copy,
+      bool route_via_proxy,
+      std::vector<ReplicateRefPtr>* messages,
+      OpId* preceding_id);
+
+  Status ExtractBuffer(
+      const TrackedPeer& peer_copy,
+      bool route_via_proxy,
+      std::vector<ReplicateRefPtr>* messages,
+      OpId* preceding_id);
 
   /**
    * Takes the debouncing lock on the buffer and then fills it. See FillBuffer

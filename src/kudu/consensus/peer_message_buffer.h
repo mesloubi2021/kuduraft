@@ -143,6 +143,18 @@ struct HandedOffBufferData : public BufferData {
    * LogCache::ReadOps if not.
    */
   Status status;
+
+  /**
+   * Extracts the data from this handoff buffer into the provided containers.
+   *
+   * This leaves the handoff buffer in an inconsistent state and is a move
+   * function.
+   *
+   * @param msg The container for the bufferred ops
+   * @param preceding_id The container for populating the preceding OpId for the
+   *                     bufferred data
+   */
+  void getData(std::vector<ReplicateRefPtr>* msg, OpId* preceding_id) &&;
 };
 
 /**
@@ -247,6 +259,22 @@ struct PeerMessageBuffer {
    * @return true if handoff requested proxy ops.
    */
   bool getProxyOpsNeeded() const;
+
+  /**
+   * Requests a handoff. Data will flow into the returned future.
+   *
+   * Note that this method is not internally mutexed. Caller should ensure
+   * that it is the exclusive party requesting the handoff till it gets a result
+   * from the returned future.
+   *
+   * @param index The initial index required
+   * @param proxy_ops_needed If we need ops for proxying
+   * @return A future that will be populated with the requested data, either
+   * from the buffer or from reading from the source (LogCache).
+   */
+  std::future<HandedOffBufferData> requestHandoff(
+      int64_t index,
+      bool proxy_ops_needed);
 
  private:
   /**

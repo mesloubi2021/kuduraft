@@ -59,6 +59,13 @@ BufferData BufferData::moveDataAndReset() {
   return return_data;
 }
 
+void HandedOffBufferData::getData(
+    std::vector<ReplicateRefPtr>* msg,
+    OpId* preceding_id) && {
+  *msg = std::move(msg_buffer_refs);
+  *preceding_id = std::move(preceding_opid);
+}
+
 PeerMessageBuffer::LockedBufferHandle::LockedBufferHandle(
     PeerMessageBuffer& message_buffer,
     SynchronizedBufferData::TryLockedPtr&& locked_ptr)
@@ -97,6 +104,17 @@ std::optional<int64_t> PeerMessageBuffer::getIndexForHandoff() {
 
 bool PeerMessageBuffer::getProxyOpsNeeded() const {
   return proxy_ops_needed_;
+}
+
+std::future<HandedOffBufferData> PeerMessageBuffer::requestHandoff(
+    int64_t index,
+    bool proxy_ops_needed) {
+  handoff_promise_ = {};
+  proxy_ops_needed_ = proxy_ops_needed;
+  int64_t buffer_initial_index = handoff_initial_index_.exchange(index);
+  DCHECK_EQ(buffer_initial_index, -1);
+
+  return handoff_promise_.get_future();
 }
 
 } // namespace consensus

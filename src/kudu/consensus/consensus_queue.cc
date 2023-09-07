@@ -73,6 +73,16 @@ DEFINE_int32(
     "The maximum per-tablet RPC batch size when updating peers.");
 TAG_FLAG(consensus_max_batch_size_bytes, advanced);
 
+DEFINE_bool(
+    buffer_messages_between_rpcs,
+    false,
+    "Read and buffer messages to send in the time while waiting for a RPC to "
+    "return. Turning this on changes the behavior of "
+    "consensus_max_batch_size_bytes to refer to the max size of each read "
+    "instead of each RPC message (previously 1 read == 1 RPC message so "
+    "they're equivalent)");
+TAG_FLAG(buffer_messages_between_rpcs, advanced);
+
 DEFINE_int32(
     follower_unavailable_considered_failed_sec,
     300,
@@ -1227,22 +1237,11 @@ Status PeerMessageQueue::RequestForPeer(
   if (peer_copy.last_exchange_status != PeerStatus::NEW && read_ops) {
     // The batch of messages to send to the peer.
     vector<ReplicateRefPtr> messages;
-    int max_batch_size =
-        FLAGS_consensus_max_batch_size_bytes - request->ByteSize();
+    Status s = FLAGS_buffer_messages_between_rpcs
+        ? ExtractBuffer(peer_copy, route_via_proxy, &messages, &preceding_id)
+        : ReadMessagesForRequest(
+              peer_copy, route_via_proxy, &messages, &preceding_id);
 
-    ReadContext read_context;
-    read_context.for_peer_uuid = &uuid;
-    read_context.for_peer_host = &peer_copy.peer_pb.last_known_addr().host();
-    read_context.for_peer_port = peer_copy.peer_pb.last_known_addr().port();
-    read_context.route_via_proxy = route_via_proxy;
-
-    // We try to get the follower's next_index from our log.
-    Status s = log_cache_.ReadOps(
-        peer_copy.next_index - 1,
-        max_batch_size,
-        read_context,
-        &messages,
-        &preceding_id);
     if (PREDICT_FALSE(!s.ok())) {
       // It's normal to have a NotFound() here if a follower falls behind where
       // the leader has GCed its logs. The follower replica will hang around
@@ -1349,6 +1348,67 @@ Status PeerMessageQueue::RequestForPeer(
   }
 
   return Status::OK();
+}
+
+Status PeerMessageQueue::ReadMessagesForRequest(
+    const TrackedPeer& peer_copy,
+    bool route_via_proxy,
+    std::vector<ReplicateRefPtr>* messages,
+    OpId* preceding_id) {
+  ReadContext read_context;
+  read_context.for_peer_uuid = &peer_copy.uuid();
+  read_context.for_peer_host = &peer_copy.peer_pb.last_known_addr().host();
+  read_context.for_peer_port = peer_copy.peer_pb.last_known_addr().port();
+  read_context.route_via_proxy = route_via_proxy;
+
+  // We try to get the follower's next_index from our log.
+  Status s = log_cache_.ReadOps(
+      peer_copy.next_index - 1,
+      FLAGS_consensus_max_batch_size_bytes,
+      read_context,
+      messages,
+      preceding_id);
+  return s;
+}
+
+Status PeerMessageQueue::ExtractBuffer(
+    const TrackedPeer& peer_copy,
+    bool route_via_proxy,
+    std::vector<ReplicateRefPtr>* messages,
+    OpId* preceding_id) {
+  VLOG_WITH_PREFIX_UNLOCKED(3)
+      << "Extracting buffer for peer: " << peer_copy.uuid() << "["
+      << peer_copy.peer_pb.last_known_addr().host() << ":"
+      << peer_copy.peer_pb.last_known_addr().port()
+      << "] starting at index: " << peer_copy.next_index
+      << ", route_via_proxy: " << route_via_proxy;
+
+  std::future<HandedOffBufferData> future =
+      peer_copy.peer_msg_buffer->requestHandoff(
+          peer_copy.next_index, route_via_proxy);
+
+  {
+    PeerMessageBuffer::LockedBufferHandle handle =
+        peer_copy.peer_msg_buffer->tryLock();
+    // If we did not get the lock here, we know we have a FillBuffer queued
+    // after we set the handoff index, so we can just wait for that to populate
+    // the future. If we got the lock, either the current filler or  this block
+    // (but not both) will populate the future.
+    if (handle) {
+      ReadContext read_context;
+      read_context.for_peer_uuid = &peer_copy.uuid();
+      read_context.for_peer_host = &peer_copy.peer_pb.last_known_addr().host();
+      read_context.for_peer_port = peer_copy.peer_pb.last_known_addr().port();
+      read_context.route_via_proxy = route_via_proxy;
+      auto peer_msg_buffer_ptr = peer_copy.peer_msg_buffer;
+      FillBuffer(read_context, std::move(handle));
+    }
+  }
+
+  HandedOffBufferData buffer_data = std::move(future).get();
+  Status s = buffer_data.status;
+  std::move(buffer_data).getData(messages, preceding_id);
+  return s;
 }
 
 void PeerMessageQueue::FillBufferForPeer(const std::string& uuid) {
