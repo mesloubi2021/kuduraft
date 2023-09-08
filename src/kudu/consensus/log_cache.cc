@@ -651,13 +651,11 @@ LogCache::ReadOpsStatus LogCache::ReadOps(
             : msg_wrapper.GetUncompressedMsg();
         CHECK_EQ(next_index, msg->get()->id().index());
 
-        int64_t bytes_to_add = ApproxMsgSize(msg);
-        if (remaining_space < bytes_to_add && !messages->empty()) {
-          break;
+        remaining_space -= ApproxMsgSize(msg);
+        if (remaining_space > 0 || messages->empty()) {
+          messages->push_back(msg);
+          next_index++;
         }
-        remaining_space -= bytes_to_add;
-        messages->push_back(msg);
-        next_index++;
       }
     } else {
       // Pull contiguous messages from the cache until the size limit is
@@ -672,12 +670,12 @@ LogCache::ReadOpsStatus LogCache::ReadOps(
         // The full size of the msg is actually returned by SpaceUsedLong() but
         // that's very expensive, the payload size should be very close to the
         // full msg size
-        int64_t bytes_to_add =
+        remaining_space -=
             static_cast<int64_t>(msg->get()->write_payload().payload().size());
-        if (remaining_space < bytes_to_add && !messages->empty()) {
+        if (remaining_space < 0 && !messages->empty()) {
           break;
         }
-        remaining_space -= bytes_to_add;
+
         messages->push_back(msg);
         next_index++;
       }
