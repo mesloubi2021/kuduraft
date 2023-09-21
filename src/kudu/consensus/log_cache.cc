@@ -830,32 +830,6 @@ void LogCache::DumpToStrings(vector<string>* lines) const {
   }
 }
 
-void LogCache::DumpToHtml(std::ostream& out) const {
-  using std::endl;
-
-  std::lock_guard<Mutex> lock(lock_);
-  out << "<h3>Messages:</h3>" << endl;
-  out << "<table>" << endl;
-  out << "<tr><th>Entry</th><th>OpId</th><th>Type</th><th>Size</th><th>Status</th></tr>"
-      << endl;
-
-  int counter = 0;
-  for (const auto& entry : cache_) {
-    const ReplicateMsg* msg = entry.second.msg->get();
-    out << Substitute(
-               "<tr><th>$0</th><th>$1.$2</th><td>REPLICATE $3</td>"
-               "<td>$4</td><td>$5</td></tr>",
-               counter++,
-               msg->id().term(),
-               msg->id().index(),
-               OperationType_Name(msg->op_type()),
-               msg->ByteSize(),
-               SecureShortDebugString(msg->id()))
-        << endl;
-  }
-  out << "</table>";
-}
-
 #define INSTANTIATE_METRIC(x) x.Instantiate(metric_entity, 0)
 LogCache::Metrics::Metrics(const scoped_refptr<MetricEntity>& metric_entity)
     : log_cache_num_ops(INSTANTIATE_METRIC(METRIC_log_cache_num_ops)),

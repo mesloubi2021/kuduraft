@@ -3029,27 +3029,6 @@ void PeerMessageQueue::DumpToStringsUnlocked(vector<string>* lines) const {
   log_cache_.DumpToStrings(lines);
 }
 
-void PeerMessageQueue::DumpToHtml(std::ostream& out) const {
-  using std::endl;
-
-  std::lock_guard<simple_mutexlock> lock(queue_lock_);
-  out << "<h3>Watermarks</h3>" << endl;
-  out << "<table>" << endl;
-  ;
-  out << "  <tr><th>Peer</th><th>Watermark</th></tr>" << endl;
-  for (const PeersMap::value_type& entry : peers_map_) {
-    out << Substitute(
-               "  <tr><td>$0</td><td>$1</td></tr>",
-               EscapeForHtmlToString(entry.first),
-               EscapeForHtmlToString(entry.second->ToString()))
-        << endl;
-  }
-  out << "</table>" << endl;
-  out << "<p>" << queue_state_.ToString() << "</p>" << endl;
-
-  log_cache_.DumpToHtml(out);
-}
-
 void PeerMessageQueue::ClearUnlocked() {
   DCHECK(queue_lock_.is_locked());
   STLDeleteValues(&peers_map_);

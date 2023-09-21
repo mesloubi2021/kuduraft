@@ -661,8 +661,6 @@ class RaftConsensus : public std::enable_shared_from_this<RaftConsensus>,
   // Returns a copy of the current pending Raft configuration.
   Status PendingConfig(RaftConfigPB* pendingConfig) const;
 
-  void DumpStatusHtml(std::ostream& out) const;
-
   // Transition to kStopped state. See State enum definition for details.
   // This is a no-op if the tablet is already in kStopped or kShutdown state;
   // otherwise, Raft will pass through the kStopping state on the way to

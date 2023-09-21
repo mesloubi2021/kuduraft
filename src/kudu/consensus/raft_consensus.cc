@@ -3949,38 +3949,6 @@ Status RaftConsensus::PendingConfig(RaftConfigPB* pendingConfig) const {
   return Status::NotFound("No pending config found");
 }
 
-void RaftConsensus::DumpStatusHtml(std::ostream& out) const {
-  RaftPeerPB::Role role;
-  {
-    ThreadRestrictions::AssertWaitAllowed();
-    LockGuard l(lock_);
-    if (state_ != kRunning) {
-      out << "Tablet " << EscapeForHtmlToString(tablet_id()) << " not running"
-          << std::endl;
-      return;
-    }
-    role = cmeta_->active_role();
-  }
-
-  out << "<h1>Raft Consensus State</h1>" << std::endl;
-
-  out << "<h2>State</h2>" << std::endl;
-  out << "<pre>" << EscapeForHtmlToString(ToString()) << "</pre>" << std::endl;
-  out << "<h2>Queue</h2>" << std::endl;
-  out << "<pre>" << EscapeForHtmlToString(queue_->ToString()) << "</pre>"
-      << std::endl;
-
-  // Dump the queues on a leader.
-  if (role == RaftPeerPB::LEADER) {
-    out << "<h2>Queue overview</h2>" << std::endl;
-    out << "<pre>" << EscapeForHtmlToString(queue_->ToString()) << "</pre>"
-        << std::endl;
-    out << "<hr/>" << std::endl;
-    out << "<h2>Queue details</h2>" << std::endl;
-    queue_->DumpToHtml(out);
-  }
-}
-
 void RaftConsensus::ElectionCallback(
     ElectionContext context,
     const ElectionResult& result,

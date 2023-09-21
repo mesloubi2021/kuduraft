@@ -526,8 +526,6 @@ class PeerMessageQueue {
   // Dumps the contents of the queue to the provided string vector.
   void DumpToStrings(std::vector<std::string>* lines) const;
 
-  void DumpToHtml(std::ostream& out) const;
-
   void RegisterObserver(PeerMessageQueueObserver* observer);
 
   Status UnRegisterObserver(PeerMessageQueueObserver* observer);

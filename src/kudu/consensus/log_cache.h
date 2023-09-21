@@ -199,8 +199,6 @@ class LogCache {
   // Dumps the contents of the cache to the provided string vector.
   void DumpToStrings(std::vector<std::string>* lines) const;
 
-  void DumpToHtml(std::ostream& out) const;
-
   std::string StatsString() const;
 
   std::string ToString() const;
