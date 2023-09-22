@@ -215,7 +215,7 @@ Status Peer::SignalRequest(
   // This allows to return early without blocking on "peer_lock_". Note that
   // "peer_lock_" is also held during Peer::SendNextRequest(...) which could
   // take some time for a lagging peer as it involves multiple disk IO
-  if (request_pending_) {
+  if (request_pending_ && !FLAGS_buffer_messages_between_rpcs) {
     return Status::OK();
   }
 
