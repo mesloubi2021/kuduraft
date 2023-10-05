@@ -5316,6 +5316,7 @@ void RaftConsensus::HandleProxyRequest(
           max_batch_size,
           read_context,
           FLAGS_raft_log_cache_proxy_wait_time_ms,
+          request->ops_size(),
           &messages,
           &preceding_id);
     }

@@ -145,6 +145,7 @@ class LogCache {
       int max_size_bytes,
       const ReadContext& context,
       int64_t max_duration_ms,
+      size_t max_ops,
       std::vector<ReplicateRefPtr>* messages,
       OpId* preceding_op);
 

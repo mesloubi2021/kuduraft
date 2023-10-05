@@ -512,6 +512,7 @@ Status LogCache::BlockingReadOps(
     int max_size_bytes,
     const ReadContext& context,
     int64_t max_duration_ms,
+    size_t max_ops,
     std::vector<ReplicateRefPtr>* messages,
     OpId* preceding_op) {
   MonoTime deadline =
@@ -542,6 +543,15 @@ Status LogCache::BlockingReadOps(
   if (s.status.ok()) {
     *preceding_op = std::move(s.preceding_op);
   }
+
+  while (s.status.ok() && s.stopped_early && messages->size() < max_ops &&
+         MonoTime::Now() < deadline) {
+    if (!messages->empty()) {
+      after_op_index = messages->back()->get()->id().index();
+    }
+    s = ReadOps(after_op_index, max_size_bytes, context, messages);
+  }
+
   return std::move(s.status);
 }
 
