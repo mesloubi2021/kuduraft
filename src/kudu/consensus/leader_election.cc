@@ -798,11 +798,9 @@ bool FlexibleVoteCounter::EnoughVotesWithSufficientHistories(
     // there is no point proceeding. We need to wait for more votes.
     DCHECK(total_voters >= 1 || !adjust_voter_distribution_);
     if (votes_not_received >= MajoritySize(total_voters)) {
-      VLOG_WITH_PREFIX(3) << "Not enough votes have arrived in region: "
-                          << leader_region
-                          << ". Votes not received: " << votes_not_received
-                          << ". Total number of voters in the region: "
-                          << total_voters;
+      LOG(INFO) << "Not enough votes have arrived in region: " << leader_region
+                << ". Votes not received: " << votes_not_received
+                << ". Total number of voters in the region: " << total_voters;
       return false;
     }
   }
@@ -819,7 +817,7 @@ bool FlexibleVoteCounter::EnoughVotesWithSufficientHistories(
     // on majority of the servers in one of the possible leader regions.
     DCHECK(total_voters >= 1 || !adjust_voter_distribution_);
     if (unpruned_count < MajoritySize(total_voters)) {
-      VLOG_WITH_PREFIX(3)
+      LOG(INFO)
           << "Not enough voters have sufficient voting history in region: "
           << leader_region << ". Unpruned count: " << unpruned_count
           << ". Total number of voters in the region: " << total_voters;
@@ -877,7 +875,7 @@ PotentialNextLeadersResponse FlexibleVoteCounter::GetPotentialNextLeaders(
   // Return waiting for more votes if there aren't enough votes or if a
   // majority isn't available with sufficient voting histories.
   if (!EnoughVotesWithSufficientHistories(term, leader_regions)) {
-    VLOG_WITH_PREFIX(3)
+    VLOG_WITH_PREFIX(1)
         << "Either not enough votes have arrived or a majority do not "
         << "have sufficient vote histories yet.";
     return PotentialNextLeadersResponse(
@@ -1022,14 +1020,14 @@ FlexibleVoteCounter::ComputeElectionResultFromVotingHistory(
       }
       case PotentialNextLeadersResponse::ERROR:
         // Declare undecided election in case of an error.
-        VLOG_WITH_PREFIX(3)
+        LOG_WITH_PREFIX(INFO)
             << "Encountered an error during computing election result "
             << "from vote history. Falling back on pessimistic quorum. "
             << "Election term: " << election_term_;
         return {false, true, ElectionDecisionMethod::VOTER_HISTORY};
       case PotentialNextLeadersResponse::WAITING_FOR_MORE_VOTES:
       default:
-        VLOG_WITH_PREFIX(3)
+        LOG_WITH_PREFIX(INFO)
             << "Waiting for more votes. Election result hasn't been "
             << "determined. Election term: " << election_term_;
         return {false, !AreAllVotesIn(), ElectionDecisionMethod::VOTER_HISTORY};
@@ -1524,7 +1522,8 @@ void LeaderElection::CheckForDecision() {
 
       LOG_WITH_PREFIX(INFO) << "Election decided. Result: candidate "
                             << ((decision == VOTE_GRANTED) ? "won." : "lost.")
-                            << " duration: " << election_duration.ToString();
+                            << " duration: " << election_duration.ToString()
+                            << ", mechanism: " << decision_method;
       std::string msg = (decision == VOTE_GRANTED)
           ? "achieved majority votes"
           : "could not achieve majority";
